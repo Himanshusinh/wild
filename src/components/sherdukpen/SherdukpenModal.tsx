@@ -21,6 +21,7 @@ import { OutputGrid } from "@/components/warli/OutputGrid";
 import { PromptPreview } from "@/components/warli/PromptPreview";
 import { coerceStyleModalResolution, coerceWarliAspectRatio } from "@/components/warli/warliNanoAspect";
 import { SherdukpenHeader } from "./SherdukpenHeader";
+import { FullscreenImageViewer } from "@/components/common/FullscreenImageViewer";
 import {
   INITIAL_STATE,
   SherdukpenState,
@@ -174,6 +175,7 @@ export function SherdukpenModal({ isOpen, onClose }: { isOpen: boolean; onClose:
   const dispatch = useAppDispatch();
   const [state, dispatchLocal] = useReducer(reducer, INITIAL_STATE);
   const [isVisible, setIsVisible] = React.useState(false);
+  const [fullscreenUrl, setFullscreenUrl] = React.useState<string | null>(null);
 
   const nanoBananaGoogleSearch = useAppSelector((s: RootState) => s.generation.nanoBananaGoogleSearch);
   const nanoBananaThinkingLevel = useAppSelector((s: RootState) => s.generation.nanoBananaThinkingLevel);
@@ -533,7 +535,7 @@ export function SherdukpenModal({ isOpen, onClose }: { isOpen: boolean; onClose:
                     onExpandImage={(i) => {
                       const url = state.generatedImages[i];
                       if (!url) return;
-                      window.open(url, "_blank", "noopener,noreferrer");
+                      setFullscreenUrl(url);
                     }}
                   />
                   <PromptPreview prompt={assembledPrompt} />
@@ -543,6 +545,12 @@ export function SherdukpenModal({ isOpen, onClose }: { isOpen: boolean; onClose:
           </main>
         </div>
       </div>
+
+      <FullscreenImageViewer
+        isOpen={Boolean(fullscreenUrl)}
+        src={fullscreenUrl || ""}
+        onClose={() => setFullscreenUrl(null)}
+      />
     </div>
   );
 }

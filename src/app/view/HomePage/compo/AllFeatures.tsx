@@ -438,17 +438,17 @@ export default function AllFeatures({ mode = "image" }: { mode?: "image" | "vide
           >
             {visibleCards.map((card) => {
               const imageMap: Record<string, string> = {
-                "Image\nGeneration": "/HomePage/Allfeatures/image-generation-bg.png",
+                "Image\nGeneration": "/HomePage/Allfeatures/image-generation-bg.avif",
                 "Create\nVideo": "https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=400&q=80",
-                "Edit\nImage": "/HomePage/Allfeatures/edit-image.png",
-                "Upscale": "/HomePage/Allfeatures/upscale-bg.png",
-                "Remove\nBG": "/HomePage/Allfeatures/remove-bg.png",
+                "Edit\nImage": "/HomePage/Allfeatures/edit-image.avif",
+                "Upscale": "/HomePage/Allfeatures/upscale-bg.avif",
+                "Remove\nBG": "/HomePage/Allfeatures/remove-bg.avif",
                 "Erase /\nReplace": "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&q=80",
                 "Expand\nImage": "https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=400&q=80",
-                "Vectorize": "/HomePage/Allfeatures/vectorize-bg.png",
-                "Restore Old\nPhoto": "/HomePage/Allfeatures/restore-old-photo-bg.png",
-                "Photo To Line\nDrawing": "/HomePage/Allfeatures/photo-to-line-drawing-bg.png",
-                "Line Drawing\nTo Photo": "/HomePage/Allfeatures/line-drawing-to-photo-bg.png",
+                "Vectorize": "/HomePage/Allfeatures/vectorize-bg.avif",
+                "Restore Old\nPhoto": "/HomePage/Allfeatures/restore-old-photo-bg.avif",
+                "Photo To Line\nDrawing": "/HomePage/Allfeatures/photo-to-line-drawing-bg.avif",
+                "Line Drawing\nTo Photo": "/HomePage/Allfeatures/line-drawing-to-photo-bg.avif",
                 "Remove\nElement": "https://images.unsplash.com/photo-1594911772125-07fabee57c4f?w=400&q=80",
                 "Replace\nElement": "https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?w=400&q=80",
 

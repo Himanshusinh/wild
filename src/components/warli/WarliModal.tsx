@@ -25,6 +25,7 @@ import {
 } from "./types";
 import { coerceStyleModalResolution, coerceWarliAspectRatio } from "./warliNanoAspect";
 import { downloadAllImageUrls, downloadImageUrl } from "./warliDownload";
+import { FullscreenImageViewer } from "@/components/common/FullscreenImageViewer";
 
 const STYLE_TAG = "Warli";
 
@@ -230,6 +231,7 @@ export function WarliModal({ isOpen, onClose }: WarliModalProps) {
   const dispatch = useAppDispatch();
   const [state, dispatchLocal] = useReducer(reducer, INITIAL_STATE);
   const [isVisible, setIsVisible] = React.useState(false);
+  const [fullscreenUrl, setFullscreenUrl] = React.useState<string | null>(null);
 
   const nanoBananaGoogleSearch = useAppSelector((s: RootState) => s.generation.nanoBananaGoogleSearch);
   const nanoBananaThinkingLevel = useAppSelector((s: RootState) => s.generation.nanoBananaThinkingLevel);
@@ -398,7 +400,7 @@ export function WarliModal({ isOpen, onClose }: WarliModalProps) {
     (index: number) => {
       const url = state.generatedImages[index];
       if (!url) return;
-      window.open(url, "_blank", "noopener,noreferrer");
+      setFullscreenUrl(url);
     },
     [state.generatedImages],
   );
@@ -513,6 +515,12 @@ export function WarliModal({ isOpen, onClose }: WarliModalProps) {
           />
         </div>
       </div>
+
+      <FullscreenImageViewer
+        isOpen={Boolean(fullscreenUrl)}
+        src={fullscreenUrl || ""}
+        onClose={() => setFullscreenUrl(null)}
+      />
     </div>
   );
 }
