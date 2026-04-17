@@ -451,8 +451,6 @@ export default function AllFeatures({ mode = "image" }: { mode?: "image" | "vide
                 "Restore Old\nPhoto": "/HomePage/Allfeatures/restore-old-photo-bg.avif",
                 "Photo To Line\nDrawing": "/HomePage/Allfeatures/photo-to-line-drawing-bg.avif",
                 "Line Drawing\nTo Photo": "/HomePage/Allfeatures/line-drawing-to-photo-bg.avif",
-                "Remove\nElement": "https://images.unsplash.com/photo-1594911772125-07fabee57c4f?w=400&q=80",
-                "Replace\nElement": "",
                 "Remove\nElement": "/HomePage/Allfeatures/RemoveElement.avif",
                 "Replace\nElement": "/HomePage/Allfeatures/ReplaceElement.avif",
 
