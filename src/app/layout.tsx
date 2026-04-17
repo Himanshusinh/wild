@@ -170,6 +170,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} ${poppins.variable} ${artega.variable} ${satoshi.variable} ${inter.variable} ${bebasNeue.variable}`}
     >
       <head>
@@ -241,6 +242,7 @@ export default function RootLayout({
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${poppins.variable} ${artega.variable} ${satoshi.variable} ${bebasNeue.variable} antialiased`}
+        suppressHydrationWarning
       >
         {/* Google Tag Manager (noscript) */}
         <noscript>
