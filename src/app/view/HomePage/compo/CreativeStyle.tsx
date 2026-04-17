@@ -347,7 +347,7 @@ export default function CreativeStyle({
 
   return (
     <section className="bg-[#0E0E12] pb-4 pt-8 sm:pb-8 sm:pt-18 px-4 sm:px-6 lg:px-8">
-      <div className="mb-0 flex items-end justify-between ">
+      <div className="mb-4 flex items-end justify-between ">
         <div>
           <p className="mb-1 flex items-center gap-2 text-[9px] font-bold uppercase tracking-[0.16em] text-[#3B82F6]">
             <span className="inline-block h-[1.5px] w-4 bg-[#3B82F6]" />
