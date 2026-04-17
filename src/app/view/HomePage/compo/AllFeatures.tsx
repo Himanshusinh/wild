@@ -402,11 +402,9 @@ export default function AllFeatures({ mode = "image" }: { mode?: "image" | "vide
   return (
     <section className="bg-[#0E0E12] pb-12 pt-0">
       <div className="mx-auto w-full max-w-full px-4 sm:px-6 lg:px-8">
-        <div className="mb-5 flex items-center gap-[10px]">
-          <span className="text-[11px] font-medium uppercase tracking-[0.1em] text-white/30">
-            All features
-          </span>
-          <div className="h-[0.5px] flex-1 bg-white/10" />
+        <div className="mb-5 flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-[0.16em] text-[#3B82F6] sm:text-[10px]">
+          <span className="inline-block h-[1.5px] w-3.5 bg-[#3B82F6] sm:w-4" />
+          All Features
         </div>
 
         <div className="relative">
