@@ -112,6 +112,12 @@ const SherdukpenFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () =
         ssr: false
     }
 )
+const IduMishmiFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/IduMishmiFullscreenWalkthrough'),
+    {
+        ssr: false
+    }
+)
 const WorkflowCarousel = dynamic(() => import('./compo/WorkflowCarousel').then(mod => ({ default: mod.default })), {
     loading: () => <div className="h-64 animate-pulse bg-white/5 rounded-lg" />
 })
@@ -169,12 +175,23 @@ const HomePage: React.FC = () => {
     const [showMadhubaniWalkthrough, setShowMadhubaniWalkthrough] = useState(false);
     const [showKyilKhorWalkthrough, setShowKyilKhorWalkthrough] = useState(false);
     const [showSherdukpenWalkthrough, setShowSherdukpenWalkthrough] = useState(false);
+    const [showIduMishmiWalkthrough, setShowIduMishmiWalkthrough] = useState(false);
     const [showAllStylesModal, setShowAllStylesModal] = useState(false);
     const [homepageMode, setHomepageMode] = useState<'image' | 'video'>('image');
 
     const handleStyleSelect = (id: string) => {
         setShowAllStylesModal(false);
         if (id === "Maharashtra") setShowWarliWalkthrough(true);
+        if (id === "madhubani") setShowMadhubaniWalkthrough(true);
+        if (id === "kyilkhor") setShowKyilKhorWalkthrough(true);
+        if (id === "idumishmi") setShowIduMishmiWalkthrough(true);
+        if (id === "etikoppaka") setShowEtikoppakaWalkthrough(true);
+        if (id === "kondapalli") setShowKondapalliWalkthrough(true);
+        if (id === "monpamask") setShowMonpaMaskWalkthrough(true);
+        if (id === "handmadepaper") setShowHandmadePaperWalkthrough(true);
+        if (id === "monpa") setShowMonpaWalkthrough(true);
+        if (id === "wancho") setShowWanchoWalkthrough(true);
+        if (id === "thangka") setShowThangkaWalkthrough(true);
         if (id === "tholu") setShowTholuWalkthrough(true);
         if (id === "uppadajamdani") setShowUppadaWalkthrough(true);
         if (id === "machilipatnam") setShowKalamkariWalkthrough(true);
@@ -363,6 +380,10 @@ const HomePage: React.FC = () => {
                         onSherdukpenOpen={() => {
                             setShowWelcomeModal(false);
                             setShowSherdukpenWalkthrough(true);
+                        }}
+                        onIduMishmiOpen={() => {
+                            setShowWelcomeModal(false);
+                            setShowIduMishmiWalkthrough(true);
                         }}
                         onEtikoppakaOpen={() => {
                             setShowWelcomeModal(false);
@@ -660,6 +681,11 @@ const HomePage: React.FC = () => {
             <SherdukpenFullscreenWalkthrough
                 isOpen={showSherdukpenWalkthrough}
                 onClose={() => setShowSherdukpenWalkthrough(false)}
+            />
+
+            <IduMishmiFullscreenWalkthrough
+                isOpen={showIduMishmiWalkthrough}
+                onClose={() => setShowIduMishmiWalkthrough(false)}
             />
 
             <AllStylesModal

@@ -25,7 +25,6 @@ interface WarliLeftPanelProps {
   onIncludeVariableChange: (v: boolean) => void;
   onIncludeRestyleChange: (v: boolean) => void;
   onGenerate: () => void;
-  onOpenStudio: () => void;
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -51,7 +50,6 @@ export function WarliLeftPanel({
   onIncludeVariableChange,
   onIncludeRestyleChange,
   onGenerate,
-  onOpenStudio,
 }: WarliLeftPanelProps) {
   const loading = state.panelState === "loading";
 

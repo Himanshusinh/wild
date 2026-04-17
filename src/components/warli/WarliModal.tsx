@@ -1,10 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useReducer } from "react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { saveAutoResumeIntent } from "@/lib/autoResume";
-import { saveStudioDraft } from "@/lib/studioDraft";
 import { saveUpload } from "@/lib/libraryApi";
 import { WARLI_PROMPT_FAMILIES } from "@/app/view/HomePage/compo/warliPromptCatalog";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
@@ -227,7 +224,6 @@ interface WarliModalProps {
 }
 
 export function WarliModal({ isOpen, onClose }: WarliModalProps) {
-  const router = useRouter();
   const dispatch = useAppDispatch();
   const [state, dispatchLocal] = useReducer(reducer, INITIAL_STATE);
   const [isVisible, setIsVisible] = React.useState(false);
@@ -422,40 +418,6 @@ export function WarliModal({ isOpen, onClose }: WarliModalProps) {
     }
   }, [state.generatedImages, state.style]);
 
-  const handleOpenStudio = useCallback(async () => {
-    const prompt = assembledPrompt;
-    let uploadedImages: string[] | undefined;
-
-    try {
-      if (state.inputMode === "image" && state.uploadedImage?.trim()) {
-        const hosted = await ensureHostedImageUrl(state.uploadedImage);
-        if (hosted) uploadedImages = [hosted];
-      }
-    } catch {
-      toast.error("Could not prepare reference image for studio");
-      return;
-    }
-
-    const frameForDraft = coerceWarliAspectRatio(state.ratio, state.model);
-
-    const payload = {
-      prompt,
-      model: state.model,
-      imageCount: state.imageCount,
-      frameSize: frameForDraft,
-      style: "Warli",
-      ...(uploadedImages?.length ? { uploadedImages } : {}),
-      metadata: {
-        source: "homepage-warli-modal",
-        warliType: state.style,
-        warliModal: true,
-      },
-    };
-    saveStudioDraft(payload);
-    saveAutoResumeIntent("image", payload);
-    router.push("/text-to-image");
-  }, [assembledPrompt, state, router]);
-
   if (!isOpen) return null;
 
   return (
@@ -498,7 +460,6 @@ export function WarliModal({ isOpen, onClose }: WarliModalProps) {
               dispatchLocal({ type: "SET_INCLUDE_RESTYLE", payload: v })
             }
             onGenerate={() => void handleGenerate()}
-            onOpenStudio={() => void handleOpenStudio()}
           />
 
           <WarliRightPanel

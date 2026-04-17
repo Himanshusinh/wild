@@ -1,0 +1,2 @@
+export { IduMishmiModal } from "./IduMishmiModal";
+

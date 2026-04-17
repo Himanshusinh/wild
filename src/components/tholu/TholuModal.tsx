@@ -1,10 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useReducer } from "react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { saveAutoResumeIntent } from "@/lib/autoResume";
-import { saveStudioDraft } from "@/lib/studioDraft";
 import { saveUpload } from "@/lib/libraryApi";
 import { THOLU_PROMPT_FAMILIES } from "@/app/view/HomePage/compo/tholuPromptCatalog";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
@@ -185,7 +182,6 @@ function buildPrompt(state: TholuState): string {
 }
 
 export function TholuModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
-  const router = useRouter();
   const dispatch = useAppDispatch();
   const [state, dispatchLocal] = useReducer(reducer, INITIAL_STATE);
   const [isVisible, setIsVisible] = React.useState(false);
@@ -331,40 +327,6 @@ export function TholuModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =
       toast.error("Save failed");
     }
   }, [state.generatedImages, state.style]);
-
-  const handleOpenStudio = useCallback(async () => {
-    const prompt = assembledPrompt;
-    let uploadedImages: string[] | undefined;
-
-    try {
-      if (state.inputMode === "image" && state.uploadedImage?.trim()) {
-        const hosted = await ensureHostedImageUrl(state.uploadedImage);
-        if (hosted) uploadedImages = [hosted];
-      }
-    } catch {
-      toast.error("Could not prepare reference image for studio");
-      return;
-    }
-
-    const frameForDraft = coerceWarliAspectRatio(state.ratio, state.model);
-
-    const payload = {
-      prompt,
-      model: state.model,
-      imageCount: state.imageCount,
-      frameSize: frameForDraft,
-      style: "TholuBommalata",
-      ...(uploadedImages?.length ? { uploadedImages } : {}),
-      metadata: {
-        source: "homepage-tholu-modal",
-        tholuVersion: state.style,
-        tholuModal: true,
-      },
-    };
-    saveStudioDraft(payload);
-    saveAutoResumeIntent("image", payload);
-    router.push("/text-to-image");
-  }, [assembledPrompt, state, router]);
 
   if (!isOpen) return null;
 

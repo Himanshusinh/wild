@@ -87,6 +87,18 @@ const getCleanPrompt = (promptText: string): string => {
   return promptText.replace(/\[\s*Style:\s*[^\]]+\]/i, '').trim();
 };
 
+const isBackendStylePrompt = (text: string): boolean => {
+  const t = String(text || "").toLowerCase();
+  if (!t) return false;
+  return (
+    t.includes("primary directive (style lock") ||
+    t.includes("content constraint (strict)") ||
+    t.includes("render settings:") ||
+    t.includes("reference (optional)") ||
+    t.includes("project inputs:")
+  );
+};
+
 /** Same as Image Generation grid: library / device uploads are not real generations — skip in ←/→ navigation. */
 const normalizeModelKey = (t?: string) =>
   t ? String(t).replace(/[_-]/g, "-").toLowerCase() : "";
@@ -1208,9 +1220,12 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   const extractedStyle = selectedEntry?.style || extractStyleFromPrompt(selectedEntry?.prompt || '');
   const displayedStyle = extractedStyle && extractedStyle.toLowerCase() !== 'none' ? extractedStyle : null;
   const displayedAspect = getAspectRatio();
-  const promptToDisplay = selectedEntry?.userPrompt || selectedEntry?.prompt || '';
-  const cleanPrompt = getCleanPrompt(promptToDisplay);
-  const isLongPrompt = cleanPrompt.length > 280;
+  const rawUserPrompt = (selectedEntry as any)?.userPrompt?.trim() || '';
+  const userPromptToDisplay = isBackendStylePrompt(rawUserPrompt) ? '' : rawUserPrompt;
+  const cleanUserPrompt = userPromptToDisplay ? getCleanPrompt(userPromptToDisplay) : '';
+  const hasUserPrompt = Boolean(cleanUserPrompt);
+  const promptForActions = cleanUserPrompt || getCleanPrompt((selectedEntry as any)?.prompt || '');
+  const isLongPrompt = cleanUserPrompt.length > 280;
 
   // Check if this is a vectorize generation (should hide certain action buttons)
   const generationType = (selectedEntry as any)?.generationType || '';
@@ -1402,7 +1417,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
       // Use Web Share API
       await navigator.share({
         title: 'Wild Mind AI Generated Image',
-        text: `Check out this AI-generated image!\n${cleanPrompt.substring(0, 100)}...`,
+        text: `Check out this AI-generated image!\n${promptForActions.substring(0, 100)}...`,
         files: [file]
       });
 
@@ -1730,12 +1745,13 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
 
 
 
-            {/* Prompt */}
+            {/* Prompt (show only userPrompt if provided) */}
+            {hasUserPrompt ? (
             <div className="mb-4">
               <div className="flex items-center justify-between text-white/60 text-xs uppercase tracking-wider mb-0">
                 <span>Prompt</span>
                 <button
-                  onClick={() => copyPrompt(cleanPrompt, `preview-${preview.entry.id}`)}
+                  onClick={() => copyPrompt(cleanUserPrompt, `preview-${preview.entry.id}`)}
                   className={`flex items-center gap-2 px-2 py-1.5 text-white/80 text-xs rounded-lg transition-colors ${copiedButtonId === `preview-${preview.entry.id}`
                     ? 'bg-green-500/20 text-green-400'
                     : 'bg-white/10 hover:bg-white/20'
@@ -1759,7 +1775,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                 </button>
               </div>
               <div className={`text-white/90 text-xs leading-relaxed whitespace-pre-wrap break-words ${!isPromptExpanded && isLongPrompt ? 'line-clamp-4' : ''}`}>
-                {cleanPrompt}
+                {cleanUserPrompt}
               </div>
               {isLongPrompt && (
                 <button
@@ -1770,6 +1786,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                 </button>
               )}
             </div>
+            ) : null}
 
 
             {/* Details */}
@@ -1925,7 +1942,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                         // Prefer userPrompt (original user text), then cleanPrompt, then fallback to stored prompt.
                         const remixPrompt =
                           (selectedEntry as any)?.userPrompt ||
-                          cleanPrompt ||
+                          promptForActions ||
                           (selectedEntry as any)?.prompt ||
                           '';
                         if (remixPrompt) qs.set('prompt', String(remixPrompt));

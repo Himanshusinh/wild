@@ -1,10 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useReducer } from "react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { saveAutoResumeIntent } from "@/lib/autoResume";
-import { saveStudioDraft } from "@/lib/studioDraft";
 import { saveUpload } from "@/lib/libraryApi";
 import { MONPA_PROMPT_FAMILIES } from "@/app/view/HomePage/compo/monpaPromptCatalog";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
@@ -181,7 +178,6 @@ function buildPrompt(state: MonpaState): string {
 }
 
 export function MonpaModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
-  const router = useRouter();
   const dispatch = useAppDispatch();
   const [state, dispatchLocal] = useReducer(reducer, INITIAL_STATE);
   const [isVisible, setIsVisible] = React.useState(false);
@@ -336,41 +332,6 @@ export function MonpaModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =
     [state.generatedImages, state.style],
   );
 
-  const handleOpenStudio = useCallback(async () => {
-    const prompt = assembledPrompt;
-    let uploadedImages: string[] | undefined;
-
-    try {
-      if (state.inputMode === "image" && state.uploadedImage?.trim()) {
-        const hosted = await ensureHostedImageUrl(state.uploadedImage);
-        if (hosted) uploadedImages = [hosted];
-      }
-    } catch {
-      toast.error("Could not prepare reference image for studio");
-      return;
-    }
-
-    const frameForDraft = coerceWarliAspectRatio(state.ratio, state.model);
-
-    const payload = {
-      prompt,
-      model: state.model,
-      resolution: state.resolution,
-      imageCount: state.imageCount,
-      frameSize: frameForDraft,
-      style: "Monpa Textile",
-      ...(uploadedImages?.length ? { uploadedImages } : {}),
-      metadata: {
-        source: "homepage-monpa-modal",
-        monpaVersion: state.style,
-        monpaModal: true,
-      },
-    };
-    saveStudioDraft(payload);
-    saveAutoResumeIntent("image", payload);
-    router.push("/text-to-image");
-  }, [assembledPrompt, state, router]);
-
   if (!isOpen) return null;
 
   const familyMeta = MONPA_PROMPT_FAMILIES[state.style];
@@ -483,13 +444,6 @@ export function MonpaModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =
                 className="w-full rounded-lg bg-[#2F6BFF] py-2.5 text-[12px] font-semibold text-white transition hover:bg-[#2F6BFF]/90 disabled:opacity-50"
               >
                 Generate Monpa Textile
-              </button>
-              <button
-                type="button"
-                onClick={() => void handleOpenStudio()}
-                className="mt-2 w-full rounded-lg border border-white/10 bg-transparent py-2 text-[11px] font-medium text-white/40 transition hover:border-white/20 hover:text-white/70"
-              >
-                Continue in Text-to-Image
               </button>
             </div>
           </aside>

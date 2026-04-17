@@ -152,6 +152,24 @@ const History = () => {
     return promptText.replace(/\[\s*Style:\s*[^\]]+\]/i, "").trim();
   };
 
+  const isBackendStylePrompt = (text: string): boolean => {
+    const t = String(text || "").toLowerCase();
+    if (!t) return false;
+    return (
+      t.includes("primary directive (style lock") ||
+      t.includes("content constraint (strict)") ||
+      t.includes("render settings:") ||
+      t.includes("reference (optional)") ||
+      t.includes("project inputs:")
+    );
+  };
+
+  const getVisibleUserPrompt = (entry: HistoryEntry): string => {
+    const p = ((entry as any)?.userPrompt || "").trim();
+    if (!p) return "";
+    return isBackendStylePrompt(p) ? "" : getCleanPrompt(p);
+  };
+
   // Copy prompt to clipboard
   const copyPrompt = async (e: React.MouseEvent, text: string) => {
     try {
@@ -1850,14 +1868,16 @@ const History = () => {
                                 >
                                   {getCleanPrompt(entry.prompt)}
                                 </span> */}
-                                    <button
-                                      aria-label="Copy prompt"
-                                      className="pointer-events-auto p-2 rounded-lg bg-white/20 hover:bg-white/30 text-white/90 backdrop-blur-3xl"
-                                      onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(entry.prompt)); }}
-                                      onMouseDown={(e) => e.stopPropagation()}
-                                    >
-                                      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" /></svg>
-                                    </button>
+                                    {getVisibleUserPrompt(entry) ? (
+                                      <button
+                                        aria-label="Copy prompt"
+                                        className="pointer-events-auto p-2 rounded-lg bg-white/20 hover:bg-white/30 text-white/90 backdrop-blur-3xl"
+                                        onClick={(e) => { e.stopPropagation(); copyPrompt(e, getVisibleUserPrompt(entry)); }}
+                                        onMouseDown={(e) => e.stopPropagation()}
+                                      >
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" /></svg>
+                                      </button>
+                                    ) : null}
                                     <button
                                       aria-label="Delete generation"
                                       className="pointer-events-auto p-2 rounded-lg bg-red-500/60 hover:bg-red-500/90 text-white backdrop-blur-3xl"
@@ -1915,14 +1935,16 @@ const History = () => {
                                 >
                                   {getCleanPrompt(entry.prompt)}
                                 </span> */}
-                                    <button
-                                      aria-label="Copy prompt"
-                                      className="pointer-events-auto p-2 rounded-lg bg-white/20 hover:bg-white/30 text-white/90 backdrop-blur-3xl"
-                                      onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(entry.prompt)); }}
-                                      onMouseDown={(e) => e.stopPropagation()}
-                                    >
-                                      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" /></svg>
-                                    </button>
+                                    {getVisibleUserPrompt(entry) ? (
+                                      <button
+                                        aria-label="Copy prompt"
+                                        className="pointer-events-auto p-2 rounded-lg bg-white/20 hover:bg-white/30 text-white/90 backdrop-blur-3xl"
+                                        onClick={(e) => { e.stopPropagation(); copyPrompt(e, getVisibleUserPrompt(entry)); }}
+                                        onMouseDown={(e) => e.stopPropagation()}
+                                      >
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" /></svg>
+                                      </button>
+                                    ) : null}
                                     <button
                                       aria-label="Delete generation"
                                       className="pointer-events-auto p-2 rounded-lg bg-red-500/60 hover:bg-red-500/90 text-white backdrop-blur-3xl"
@@ -1978,14 +2000,16 @@ const History = () => {
                                   <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
                                   {/* Hover prompt overlay */}
                                   <div className="pointer-events-none absolute bottom-1 right-1 rounded-lg   opacity-0 group-hover:opacity-100 transition-opacity p-1.5 shadow-lg flex items-center gap-1  z-20">
-                                    <button
-                                      aria-label="Copy prompt"
-                                      className="pointer-events-auto p-2 rounded-lg bg-white/20 hover:bg-white/30 text-white/90 backdrop-blur-3xl"
-                                      onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(entry.prompt)); }}
-                                      onMouseDown={(e) => e.stopPropagation()}
-                                    >
-                                      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" /></svg>
-                                    </button>
+                                    {getVisibleUserPrompt(entry) ? (
+                                      <button
+                                        aria-label="Copy prompt"
+                                        className="pointer-events-auto p-2 rounded-lg bg-white/20 hover:bg-white/30 text-white/90 backdrop-blur-3xl"
+                                        onClick={(e) => { e.stopPropagation(); copyPrompt(e, getVisibleUserPrompt(entry)); }}
+                                        onMouseDown={(e) => e.stopPropagation()}
+                                      >
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" /></svg>
+                                      </button>
+                                    ) : null}
                                     <button
                                       aria-label="Delete generation"
                                       className="pointer-events-auto p-2 rounded-lg bg-red-500/60 hover:bg-red-500/90 text-white backdrop-blur-3xl"

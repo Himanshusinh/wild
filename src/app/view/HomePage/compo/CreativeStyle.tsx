@@ -210,6 +210,7 @@ type CreativeStyleProps = {
   onMonpaOpen?: () => void;
   onHandmadePaperOpen?: () => void;
   onMonpaMaskOpen?: () => void;
+  onIduMishmiOpen?: () => void;
   onAllStylesOpen?: () => void;
 };
 
@@ -229,6 +230,7 @@ export default function CreativeStyle({
   onMonpaOpen,
   onHandmadePaperOpen,
   onMonpaMaskOpen,
+  onIduMishmiOpen,
   onAllStylesOpen,
 }: CreativeStyleProps) {
   const railRef = useRef<HTMLDivElement | null>(null);
@@ -310,6 +312,11 @@ export default function CreativeStyle({
     if (style.id === "srikalahasti" && onSrikalahastiOpen) {
       event.preventDefault();
       onSrikalahastiOpen();
+      return;
+    }
+    if (style.id === "idumishmi" && onIduMishmiOpen) {
+      event.preventDefault();
+      onIduMishmiOpen();
     }
   };
 

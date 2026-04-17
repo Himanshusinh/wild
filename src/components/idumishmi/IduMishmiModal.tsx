@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useReducer } from "react";
 import { toast } from "sonner";
 import { saveUpload } from "@/lib/libraryApi";
-import { SHERDUKPEN_PROMPT_FAMILIES } from "@/app/view/HomePage/compo/sherdukpenPromptCatalog";
+import { IDU_MISHMI_PROMPT_FAMILIES } from "@/app/view/HomePage/compo/iduMishmiPromptCatalog";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import type { RootState } from "@/store";
 import { falGenerate } from "@/store/slices/generationsApi";
@@ -17,21 +17,21 @@ import { SettingsPanel } from "@/components/warli/SettingsPanel";
 import { OutputGrid } from "@/components/warli/OutputGrid";
 import { PromptPreview } from "@/components/warli/PromptPreview";
 import { coerceStyleModalResolution, coerceWarliAspectRatio } from "@/components/warli/warliNanoAspect";
-import { SherdukpenHeader } from "./SherdukpenHeader";
 import { FullscreenImageViewer } from "@/components/common/FullscreenImageViewer";
+import { IduMishmiHeader } from "./IduMishmiHeader";
 import {
   INITIAL_STATE,
-  SherdukpenState,
-  StyleFamily,
-  InputMode,
-  ModelId,
-  ImageCount,
-  AspectRatio,
+  type IduMishmiState,
+  type StyleFamily,
+  type InputMode,
+  type ModelId,
+  type ImageCount,
+  type AspectRatio,
   MODELS,
   STYLE_LABELS,
 } from "./types";
 
-const STYLE_TAG = "Sherdukpen";
+const STYLE_TAG = "IduMishmi";
 
 function toAbsoluteFromProxy(url: string): string {
   try {
@@ -88,12 +88,12 @@ type Action =
   | { type: "SET_COUNT"; payload: ImageCount }
   | { type: "SET_RATIO"; payload: AspectRatio }
   | { type: "SET_INCLUDE_VARIABLE"; payload: boolean }
-  | { type: "SET_PANEL_STATE"; payload: SherdukpenState["panelState"] }
+  | { type: "SET_PANEL_STATE"; payload: IduMishmiState["panelState"] }
   | { type: "SET_GENERATED_IMAGES"; payload: string[] }
   | { type: "SET_ASSEMBLED_PROMPT"; payload: string }
   | { type: "RESET" };
 
-function reducer(state: SherdukpenState, action: Action): SherdukpenState {
+function reducer(state: IduMishmiState, action: Action): IduMishmiState {
   switch (action.type) {
     case "SET_STYLE":
       return { ...state, style: action.payload };
@@ -132,17 +132,13 @@ function reducer(state: SherdukpenState, action: Action): SherdukpenState {
   }
 }
 
-function buildPrompt(state: SherdukpenState): string {
-  const family = SHERDUKPEN_PROMPT_FAMILIES[state.style];
+function buildPrompt(state: IduMishmiState): string {
+  const family = IDU_MISHMI_PROMPT_FAMILIES[state.style];
   const aspect = coerceWarliAspectRatio(state.ratio, state.model);
-
-  const projectInputs =
-    state.inputMode === "text" ? state.sceneText.trim() : state.imageNote.trim();
-
+  const projectInputs = state.inputMode === "text" ? state.sceneText.trim() : state.imageNote.trim();
   const projectLine = projectInputs
     ? `- ${projectInputs}`
-    : "- (none). Keep the Sherdukpen woven utility-object field centered and coherent; do not invent extra bags, figures, or environments.";
-
+    : "- (none). Keep the Idu Mishmi textile language centered and coherent; avoid random motif drift.";
   const variableBlock = state.includeVariable
     ? `\n\nREFERENCE (OPTIONAL) — VARIABLE (slot-based):\n${family.promptVariable.trim()}\n`
     : "";
@@ -156,18 +152,19 @@ function buildPrompt(state: SherdukpenState): string {
     projectLine,
     "",
     "CONTENT CONSTRAINT (STRICT):",
-    "- Keep the output in Sherdukpen woven object-field logic: white ground + centered motif hierarchy.",
-    "- Do not drift into generic Himalayan textile décor or printed fabric look.",
-    "- Keep figures (if present) secondary to carrying cloth/object truth.",
+    "- Keep the output within Idu Mishmi textile geometry and weaving logic.",
+    "- Preserve handwoven material truth and motif clarity.",
     "",
     "RENDER SETTINGS:",
     `- Preferred aspect ratio: ${aspect === "auto" ? "auto" : aspect}`,
     `- Preferred resolution: ${state.resolution}`,
     `- Preferred image count: ${state.imageCount}`,
-  ].filter(Boolean).join("\n");
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
-export function SherdukpenModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+export function IduMishmiModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const dispatch = useAppDispatch();
   const [state, dispatchLocal] = useReducer(reducer, INITIAL_STATE);
   const [isVisible, setIsVisible] = React.useState(false);
@@ -202,7 +199,6 @@ export function SherdukpenModal({ isOpen, onClose }: { isOpen: boolean; onClose:
   }, [isOpen, onClose]);
 
   const assembledPrompt = useMemo(() => buildPrompt(state), [state]);
-
   const ratioSummary = useMemo(() => {
     const a = coerceWarliAspectRatio(state.ratio, state.model);
     return a === "auto" ? "auto" : a;
@@ -222,7 +218,6 @@ export function SherdukpenModal({ isOpen, onClose }: { isOpen: boolean; onClose:
     dispatchLocal({ type: "SET_PANEL_STATE", payload: "loading" });
 
     const promptForModel = `${prompt} [Style: ${STYLE_TAG}]`;
-
     let uploadedForFal: string[] = [];
     try {
       if (state.inputMode === "image" && state.uploadedImage?.trim()) {
@@ -237,8 +232,7 @@ export function SherdukpenModal({ isOpen, onClose }: { isOpen: boolean; onClose:
     }
 
     const aspect = coerceWarliAspectRatio(state.ratio, state.model);
-    const generationType =
-      state.inputMode === "image" && uploadedForFal.length > 0 ? "image-to-image" : "text-to-image";
+    const generationType = state.inputMode === "image" && uploadedForFal.length > 0 ? "image-to-image" : "text-to-image";
 
     try {
       const res = await dispatch(
@@ -248,9 +242,9 @@ export function SherdukpenModal({ isOpen, onClose }: { isOpen: boolean; onClose:
           prompt: promptForModel,
           meta: {
             style_premium: true,
-            style_key: "sherdukpen",
+            style_key: "idumishmi",
             style_version: state.style,
-            source: "homepage-sherdukpen-modal",
+            source: "homepage-idumishmi-modal",
           },
           aspect_ratio: aspect as any,
           num_images: state.imageCount,
@@ -272,25 +266,14 @@ export function SherdukpenModal({ isOpen, onClose }: { isOpen: boolean; onClose:
       toast.error(msg);
       dispatchLocal({ type: "SET_PANEL_STATE", payload: "empty" });
     }
-  }, [
-    dispatch,
-    nanoBananaGoogleSearch,
-    nanoBananaLimitGenerations,
-    nanoBananaThinkingLevel,
-    outputFormat,
-    state,
-  ]);
-
-  const handleRegenerate = useCallback(async () => {
-    await handleGenerate();
-  }, [handleGenerate]);
+  }, [dispatch, nanoBananaGoogleSearch, nanoBananaLimitGenerations, nanoBananaThinkingLevel, outputFormat, state]);
 
   const handleSaveAll = useCallback(async () => {
     const urls = state.generatedImages.filter(Boolean);
     if (!urls.length) return;
-    const t = toast.loading("Saving images…");
+    const t = toast.loading("Saving images...");
     try {
-      await downloadAllImageUrls(urls, `sherdukpen-${state.style}`);
+      await downloadAllImageUrls(urls, `idumishmi-${state.style}`);
       toast.dismiss(t);
       toast.success("All downloads started");
     } catch {
@@ -303,9 +286,9 @@ export function SherdukpenModal({ isOpen, onClose }: { isOpen: boolean; onClose:
     async (index: number) => {
       const url = state.generatedImages[index];
       if (!url) return;
-      const t = toast.loading("Saving…");
+      const t = toast.loading("Saving...");
       try {
-        await downloadImageUrl(url, `sherdukpen-${state.style}-${index + 1}`);
+        await downloadImageUrl(url, `idumishmi-${state.style}-${index + 1}`);
         toast.dismiss(t);
         toast.success("Download started");
       } catch {
@@ -317,23 +300,21 @@ export function SherdukpenModal({ isOpen, onClose }: { isOpen: boolean; onClose:
   );
 
   if (!isOpen) return null;
-
-  const familyMeta = SHERDUKPEN_PROMPT_FAMILIES[state.style];
+  const familyMeta = IDU_MISHMI_PROMPT_FAMILIES[state.style];
   const styleTitle = `${state.style} · ${familyMeta.chip}`;
 
   return (
     <div className="fixed inset-0 z-[160] flex items-center justify-center bg-black/45 p-3 sm:p-6 backdrop-blur-2xl">
       <div className="absolute inset-0" onClick={onClose} aria-hidden />
-
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Sherdukpen Textile Generator"
+        aria-label="Idu Mishmi Textile Generator"
         className={`relative flex w-[min(1080px,calc(100vw-24px))] h-[min(760px,calc(100vh-24px))] flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0E0E12]/95 shadow-[0_24px_70px_rgba(0,0,0,0.7)] ring-1 ring-white/[0.04] transition-all duration-300 ${
           isVisible ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-2 scale-[0.985]"
         }`}
       >
-        <SherdukpenHeader
+        <IduMishmiHeader
           style={state.style}
           onStyleChange={(s) => dispatchLocal({ type: "SET_STYLE", payload: s })}
           onClose={onClose}
@@ -343,9 +324,7 @@ export function SherdukpenModal({ isOpen, onClose }: { isOpen: boolean; onClose:
           <aside className="flex flex-col overflow-hidden border-r border-white/10 bg-[#0E0E12]">
             <div className="flex flex-1 flex-col gap-5 overflow-y-auto px-5 py-5 [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-white/[0.06] [&::-webkit-scrollbar]:w-1">
               <div className="flex flex-col gap-2">
-                <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-white/25">
-                  Input
-                </span>
+                <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-white/25">Input</span>
                 <ModeToggle mode={state.inputMode} onChange={(v) => dispatchLocal({ type: "SET_MODE", payload: v })} />
               </div>
 
@@ -361,16 +340,14 @@ export function SherdukpenModal({ isOpen, onClose }: { isOpen: boolean; onClose:
                     value={state.imageNote}
                     onChange={(e) => dispatchLocal({ type: "SET_IMAGE_NOTE", payload: e.target.value })}
                     rows={3}
-                    placeholder="Optional notes... e.g. centered motifs, white ground, utility-carrying cloth"
+                    placeholder="Optional notes..."
                     className="w-full resize-none rounded-xl border border-white/10 bg-[#13131a] px-4 py-3 text-[13px] leading-relaxed text-white/80 outline-none transition-colors placeholder:text-white/20 focus:border-white/20"
                   />
                 </div>
               )}
 
               <div className="flex flex-col gap-2">
-                <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-white/25">
-                  Model
-                </span>
+                <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-white/25">Model</span>
                 <ModelSelector value={state.model} onChange={(v) => dispatchLocal({ type: "SET_MODEL", payload: v })} />
               </div>
 
@@ -410,7 +387,7 @@ export function SherdukpenModal({ isOpen, onClose }: { isOpen: boolean; onClose:
                 disabled={state.panelState === "loading"}
                 className="w-full rounded-lg bg-[#2F6BFF] py-2.5 text-[12px] font-semibold text-white transition hover:bg-[#2F6BFF]/90 disabled:opacity-50"
               >
-                Generate Sherdukpen Textile
+                Generate Idu Mishmi Textile
               </button>
             </div>
           </aside>
@@ -428,7 +405,7 @@ export function SherdukpenModal({ isOpen, onClose }: { isOpen: boolean; onClose:
                 <div className="flex gap-1.5">
                   <button
                     type="button"
-                    onClick={() => void handleRegenerate()}
+                    onClick={() => void handleGenerate()}
                     className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-medium text-white/40 transition-all hover:border-white/20 hover:text-white/70"
                   >
                     Regenerate
@@ -450,33 +427,24 @@ export function SherdukpenModal({ isOpen, onClose }: { isOpen: boolean; onClose:
                 <div className="flex flex-1 flex-col items-center justify-center gap-2 p-10 text-center">
                   <p className="text-sm font-medium text-white/20">No output yet</p>
                   <p className="max-w-[320px] text-xs leading-relaxed text-white/10">
-                    Describe a Sherdukpen carrying-cloth scene (or upload an image), then Generate.
+                    Describe an Idu Mishmi-inspired textile scene (or upload an image), then Generate.
                   </p>
                 </div>
               ) : null}
 
               {state.panelState === "loading" ? (
                 <div className="flex flex-1 flex-col items-center justify-center gap-6 p-6">
-                  <div
-                    className={`grid w-full gap-3 ${
-                      state.imageCount === 1 ? "grid-cols-1 max-w-lg" : "grid-cols-2"
-                    }`}
-                  >
+                  <div className={`grid w-full gap-3 ${state.imageCount === 1 ? "grid-cols-1 max-w-lg" : "grid-cols-2"}`}>
                     {Array.from({ length: state.imageCount }).map((_, i) => (
                       <div
                         key={i}
                         className="relative flex aspect-square items-center justify-center overflow-hidden rounded-xl border border-white/[0.06] bg-[#111117]"
                       >
-                        <img
-                          src="/styles/Logo.gif"
-                          alt="Generating..."
-                          className="h-16 w-16 object-contain opacity-40"
-                          draggable={false}
-                        />
+                        <img src="/styles/Logo.gif" alt="Generating..." className="h-16 w-16 object-contain opacity-40" draggable={false} />
                       </div>
                     ))}
                   </div>
-                  <p className="text-[11px] text-white/20">Generating…</p>
+                  <p className="text-[11px] text-white/20">Generating...</p>
                 </div>
               ) : null}
 
@@ -500,11 +468,7 @@ export function SherdukpenModal({ isOpen, onClose }: { isOpen: boolean; onClose:
         </div>
       </div>
 
-      <FullscreenImageViewer
-        isOpen={Boolean(fullscreenUrl)}
-        src={fullscreenUrl || ""}
-        onClose={() => setFullscreenUrl(null)}
-      />
+      <FullscreenImageViewer isOpen={Boolean(fullscreenUrl)} src={fullscreenUrl || ""} onClose={() => setFullscreenUrl(null)} />
     </div>
   );
 }
