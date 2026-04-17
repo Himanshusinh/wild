@@ -430,7 +430,9 @@ export default function CreativeStyle({
           onClick={scrollLeft}
           disabled={!showLeftArrow}
           aria-label="Scroll styles left"
-          className={`absolute left-1 top-[40%] z-10 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/60 text-white backdrop-blur-md transition-all hover:bg-black/80 active:scale-95 disabled:cursor-not-allowed disabled:opacity-35 md:flex lg:left-10 ${showLeftArrow ? "opacity-100" : "opacity-35"}`}
+          className={`absolute left-2 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/55 text-white/85 backdrop-blur-md transition-all hover:border-white/20 hover:bg-black/75 active:scale-95 disabled:cursor-not-allowed md:flex lg:left-8 ${
+            showLeftArrow ? "opacity-100" : "pointer-events-none opacity-0"
+          }`}
         >
           <svg width="16" height="16" viewBox="0 0 12 12" fill="none" aria-hidden="true">
             <path d="M8 2.5L4.5 6L8 9.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -442,7 +444,9 @@ export default function CreativeStyle({
           onClick={scrollRight}
           disabled={!showRightArrow}
           aria-label="Scroll styles right"
-          className={`absolute right-1 top-[40%] z-10 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/60 text-white backdrop-blur-md transition-all hover:bg-black/80 active:scale-95 disabled:cursor-not-allowed disabled:opacity-35 md:flex lg:right-10 ${showRightArrow ? "opacity-100" : "opacity-35"}`}
+          className={`absolute right-2 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/55 text-white/85 backdrop-blur-md transition-all hover:border-white/20 hover:bg-black/75 active:scale-95 disabled:cursor-not-allowed md:flex lg:right-8 ${
+            showRightArrow ? "opacity-100" : "pointer-events-none opacity-0"
+          }`}
         >
           <svg width="16" height="16" viewBox="0 0 12 12" fill="none" aria-hidden="true">
             <path d="M4 2.5L7.5 6L4 9.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
