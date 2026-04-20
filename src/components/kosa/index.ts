@@ -1,0 +1,1 @@
+export { KosaModal } from "./KosaModal";

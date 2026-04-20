@@ -1,0 +1,1 @@
+export { KutchModal } from "./KutchModal";

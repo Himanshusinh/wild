@@ -39,6 +39,149 @@ export const STYLES: StyleItem[] = [
     imageFilter: "brightness(0.88) saturate(0.95)",
   },
   {
+    id: "jhajjar",
+    name: "Haryana",
+    title: "JHAJJAR POTTERY",
+    desc: "A traditional terracotta pottery system centered on functional water vessels, known for its slim-necked surahi forms and porous clay body.",
+    image: "/HomePage/creativeStyle/JHAJJAR POTTERY.avif",
+    tag: "Pottery",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.9) saturate(0.95)",
+  },
+  {
+    id: "kaavi",
+    name: "Goa",
+    title: "KAAVI ART",
+    desc: "An incised wall art tradition where designs are carved into a red-oxide layer to reveal white lime plaster beneath.",
+    image: "/HomePage/creativeStyle/KAAVI ART.avif",
+    tag: "Wall Art",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.9) saturate(0.95)",
+  },
+  {
+    id: "kangra",
+    name: "Himachal Pradesh",
+    title: "KANGRA",
+    desc: "A lyrical miniature painting tradition known for its serene figures, delicate lines, and lush green landscapes expressing poetic and devotional themes.",
+    image: "/HomePage/creativeStyle/KANGRA.avif",
+    tag: "Miniature",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.9) saturate(0.95)",
+  },
+  {
+    id: "karepa",
+    name: "Goa",
+    title: "KAREPA WINDOWS",
+    desc: "A traditional window system where translucent shell panes replace glass, filtering light while maintaining privacy and softness.",
+    image: "/HomePage/creativeStyle/KAREPA WINDOWS.avif",
+    tag: "Window",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.9) saturate(0.95)",
+  },
+  {
+    id: "khatwa",
+    name: "Bihar",
+    title: "KHATWA APPLIQUÉ",
+    desc: "A traditional textile art where colored fabric shapes are cut and stitched onto a base cloth to create bold narrative compositions.",
+    image: "/HomePage/creativeStyle/KHATWA APPLIQUÉ.avif",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.9) saturate(0.95)",
+  },
+  {
+    id: "khovar",
+    name: "Jharkhand",
+    title: "KHOVAR",
+    desc: "A ceremonial wall art created by etching through layered clay surfaces, revealing motifs in striking black-and-white contrast.",
+    image: "/HomePage/creativeStyle/KHOVAR.avif",
+    tag: "Wall Art",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.9) saturate(0.95)",
+  },
+  {
+    id: "kinnauri",
+    name: "Himachal Pradesh",
+    title: "KINNAURI SHAWL",
+    desc: "A handwoven wool textile known for its intricate geometric motifs, strong border design, and symbolic pattern structure.",
+    image: "/HomePage/creativeStyle/KINNAURI SHAWL.avif",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.9) saturate(0.95)",
+  },
+  {
+    id: "kosa",
+    name: "Chhattisgarh",
+    title: "KOSA SILK",
+    desc: "A traditional handloom silk crafted from Kosa fibers, known for its natural texture, breathable weave, and subtle golden sheen.",
+    image: "/HomePage/creativeStyle/KOSA SILK.avif",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.9) saturate(0.95)",
+  },
+  {
+    id: "kutch",
+    name: "Gujarat",
+    title: "KUTCH EMBROIDERY",
+    desc: "A traditional hand embroidery system defined by region-specific styles, dense stitchwork, and richly detailed surface patterns built directly into fabric.",
+    image: "/HomePage/creativeStyle/KUTCH EMBROIDERY.avif",
+    tag: "Embroidery",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.9) saturate(0.95)",
+  },
+  {
+    id: "lippan",
+    name: "Gujarat",
+    title: "LIPPAN KAAM",
+    desc: "A traditional mud-relief wall craft known for its sculpted patterns and embedded mirrors that reflect light within earthen surfaces.",
+    image: "/HomePage/creativeStyle/LIPPAN KAAM.avif",
+    tag: "Wall Art",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.9) saturate(0.95)",
+  },
+  {
+    id: "majuli",
+    name: "Assam",
+    title: "MAJULI MASK",
+    desc: "A devotional theatre mask tradition used in Bhaona performances, designed for bold character expression and stage readability.",
+    image: "/HomePage/creativeStyle/MAJULI MASK.avif",
+    tag: "Mask",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.9) saturate(0.95)",
+  },
+  {
+    id: "manjusha",
+    name: "Bihar (Bhagalpur)",
+    title: "MANJUSHA ART",
+    desc: "A ritual narrative painting tradition centered on the Bihula-Bishahari story, using bold outlines, flat colors, and symbolic serpent imagery.",
+    image: "/HomePage/creativeStyle/MANJUSHA ART.avif",
+    tag: "Ritual Art",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.9) saturate(0.95)",
+  },
+  {
+    id: "matanipachedi",
+    name: "Gujarat",
+    title: "MATA NI PACHEDI",
+    desc: "A sacred shrine-cloth tradition where the Mother Goddess is depicted within a ritual enclosure using block-print and hand-painted techniques.",
+    image: "/HomePage/creativeStyle/MATA NI PACHEDI.avif",
+    tag: "Shrine Cloth",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.9) saturate(0.95)",
+  },
+  {
     id: "madhubani",
     name: "Bihar",
     title: "MADHUBANI",
@@ -406,6 +549,19 @@ export const STYLES: StyleItem[] = [
 type CreativeStyleProps = {
   onWarliOpen?: () => void;
   onAjrakhOpen?: () => void;
+  onJhajjarOpen?: () => void;
+  onKaaviOpen?: () => void;
+  onKangraOpen?: () => void;
+  onKarepaOpen?: () => void;
+  onKhatwaOpen?: () => void;
+  onKhovarOpen?: () => void;
+  onKinnauriOpen?: () => void;
+  onKosaOpen?: () => void;
+  onKutchOpen?: () => void;
+  onLippanOpen?: () => void;
+  onMajuliOpen?: () => void;
+  onManjushaOpen?: () => void;
+  onMataNiPachediOpen?: () => void;
   onMadhubaniOpen?: () => void;
   onKyilKhorOpen?: () => void;
   onSherdukpenOpen?: () => void;
@@ -445,6 +601,19 @@ type CreativeStyleProps = {
 export default function CreativeStyle({
   onWarliOpen,
   onAjrakhOpen,
+  onJhajjarOpen,
+  onKaaviOpen,
+  onKangraOpen,
+  onKarepaOpen,
+  onKhatwaOpen,
+  onKhovarOpen,
+  onKinnauriOpen,
+  onKosaOpen,
+  onKutchOpen,
+  onLippanOpen,
+  onMajuliOpen,
+  onManjushaOpen,
+  onMataNiPachediOpen,
   onMadhubaniOpen,
   onKyilKhorOpen,
   onSherdukpenOpen,
@@ -494,6 +663,71 @@ export default function CreativeStyle({
     if (style.id === "ajrakh" && onAjrakhOpen) {
       event.preventDefault();
       onAjrakhOpen();
+      return;
+    }
+    if (style.id === "jhajjar" && onJhajjarOpen) {
+      event.preventDefault();
+      onJhajjarOpen();
+      return;
+    }
+    if (style.id === "kaavi" && onKaaviOpen) {
+      event.preventDefault();
+      onKaaviOpen();
+      return;
+    }
+    if (style.id === "kangra" && onKangraOpen) {
+      event.preventDefault();
+      onKangraOpen();
+      return;
+    }
+    if (style.id === "karepa" && onKarepaOpen) {
+      event.preventDefault();
+      onKarepaOpen();
+      return;
+    }
+    if (style.id === "khatwa" && onKhatwaOpen) {
+      event.preventDefault();
+      onKhatwaOpen();
+      return;
+    }
+    if (style.id === "khovar" && onKhovarOpen) {
+      event.preventDefault();
+      onKhovarOpen();
+      return;
+    }
+    if (style.id === "kinnauri" && onKinnauriOpen) {
+      event.preventDefault();
+      onKinnauriOpen();
+      return;
+    }
+    if (style.id === "kosa" && onKosaOpen) {
+      event.preventDefault();
+      onKosaOpen();
+      return;
+    }
+    if (style.id === "kutch" && onKutchOpen) {
+      event.preventDefault();
+      onKutchOpen();
+      return;
+    }
+    if (style.id === "lippan" && onLippanOpen) {
+      event.preventDefault();
+      onLippanOpen();
+      return;
+    }
+    if (style.id === "majuli" && onMajuliOpen) {
+      event.preventDefault();
+      onMajuliOpen();
+      return;
+    }
+    if (style.id === "manjusha" && onManjushaOpen) {
+      event.preventDefault();
+      onManjushaOpen();
+      return;
+    }
+    if (style.id === "matanipachedi" && onMataNiPachediOpen) {
+      event.preventDefault();
+      onMataNiPachediOpen();
       return;
     }
     if (style.id === "madhubani" && onMadhubaniOpen) {
