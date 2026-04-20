@@ -33,6 +33,14 @@ export default function ActivePlanCard({
   onCancelSubscription,
 }: ActivePlanCardProps) {
   const router = useRouter();
+  const statusUpper = String(subscription.status || "").toUpperCase();
+  const isFreePlan = String(subscription.planCode || "").toUpperCase() === "FREE";
+  const statusText =
+    statusUpper === "PAST_DUE"
+      ? null
+      : isFreePlan
+        ? "Free plan"
+        : "Active subscription";
 
   const storageUsedGB = credits.storageUsed / 1024 / 1024 / 1024;
   const storageQuotaGB = credits.storageQuota / 1024 / 1024 / 1024;
@@ -63,12 +71,12 @@ export default function ActivePlanCard({
           <div>
             <h2 className="text-3xl font-bold tracking-tight">{plan.name} Plan</h2>
             <p className="mt-2 flex items-center gap-2 text-sm text-zinc-400">
-              {subscription.status?.toUpperCase() === "PAST_DUE" ? (
+              {statusUpper === "PAST_DUE" ? (
                 <span className="rounded bg-red-500/90 px-2 py-0.5 text-xs font-bold tracking-wide text-white">
                   PAYMENT FAILED
                 </span>
               ) : (
-                "Active subscription"
+                statusText
               )}
             </p>
           </div>
@@ -171,9 +179,8 @@ export default function ActivePlanCard({
               </p>
               <div className="flex flex-wrap gap-2">
                 {onCancelSubscription &&
-                  ["ACTIVE", "PAST_DUE"].includes(
-                    subscription.status?.toUpperCase(),
-                  ) && (
+                  !isFreePlan &&
+                  ["ACTIVE", "PAST_DUE"].includes(statusUpper) && (
                     <button
                       type="button"
                       onClick={onCancelSubscription}

@@ -23,6 +23,27 @@ interface SubscriptionState {
   creatingSubscription: boolean;
 }
 
+type SubscriptionApiError = {
+  message: string;
+  code?: string;
+};
+
+function normalizeSubscriptionApiError(
+  error: any,
+  fallbackMessage: string,
+): SubscriptionApiError {
+  const data = error?.response?.data;
+  const message =
+    data?.message ||
+    data?.error ||
+    error?.message ||
+    fallbackMessage;
+  const code = data?.code;
+  return typeof code === "string"
+    ? { message, code }
+    : { message };
+}
+
 const initialState: SubscriptionState = {
   current: null,
   loading: false,
@@ -84,9 +105,7 @@ export const createSubscription = createAsyncThunk(
       return response.data;
     } catch (error: any) {
       return rejectWithValue(
-        error?.response?.data?.message ||
-          error.message ||
-          "Failed to create subscription",
+        normalizeSubscriptionApiError(error, "Failed to create subscription"),
       );
     }
   },
@@ -106,9 +125,7 @@ export const cancelSubscription = createAsyncThunk(
       return response.data;
     } catch (error: any) {
       return rejectWithValue(
-        error?.response?.data?.message ||
-          error.message ||
-          "Failed to cancel subscription",
+        normalizeSubscriptionApiError(error, "Failed to cancel subscription"),
       );
     }
   },
@@ -140,9 +157,10 @@ export const changeSubscriptionPlan = createAsyncThunk(
       return response.data;
     } catch (error: any) {
       return rejectWithValue(
-        error?.response?.data?.message ||
-          error.message ||
+        normalizeSubscriptionApiError(
+          error,
           "Failed to change subscription plan",
+        ),
       );
     }
   },
