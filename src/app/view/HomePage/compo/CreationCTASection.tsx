@@ -77,7 +77,7 @@ function ArrowBetween() {
 
 export default function CreationCTASection() {
   return (
-    <section className="bg-[#0E0E12] px-4 pb-4 sm:px-6 md:px-0">
+    <section className="bg-[#0E0E12] px-4 md:pb-4 sm:px-6 md:px-0">
       <div className="relative overflow-hidden  bg-[#0E0E12]">
         {/* <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(59,130,246,0.08)_0%,transparent_52%,rgba(99,102,241,0.05)_100%)]" />
         <div className="pointer-events-none absolute left-[20%] top-[-80px] h-[300px] w-[400px] bg-[radial-gradient(ellipse,rgba(59,130,246,0.18)_0%,transparent_65%)]" />
@@ -85,14 +85,14 @@ export default function CreationCTASection() {
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle,rgba(255,255,255,0.06)_1px,transparent_1px)] [background-size:28px_28px]" /> */}
 
         <div className="relative flex flex-col xl:flex-row xl:items-center">
-          <div className="flex-1 px-4 py-2 sm:px-8 sm:py-10 lg:px-10 xl:py-12">
+          <div className="flex-1 px-1 py-0 sm:px-8 sm:py-10 lg:px-10 xl:py-12">
             <div className="mb-0 inline-flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-[0.18em] text-[#3B82F6]">
               <span className="inline-block h-[1.5px] w-[18px] bg-[#3B82F6]" />
               Pricing
             </div>
 
             <h2
-              className="mb-4 text-[40px] uppercase leading-[0.95] tracking-[0.01em] text-[#F0EFE9] sm:text-[52px]"
+              className="md:mb-4 text-[24px] md:text-[40px] uppercase leading-[0.95] tracking-[0.01em] text-[#F0EFE9] sm:text-[52px]"
               style={{ fontFamily: "var(--font-bebas-neue), 'Bebas Neue', sans-serif" }}
             >
               Start free.
@@ -102,7 +102,7 @@ export default function CreationCTASection() {
               </span>
             </h2>
 
-            <p className="mb-6 max-w-[360px] text-[13.5px] leading-[1.7] text-white/45">
+            <p className="mb-0 max-w-[360px] text-[13.5px] leading-[1.7] text-white/45">
               Simple plans for every creator - pricing details dropping soon.
             </p>
 
@@ -148,8 +148,8 @@ export default function CreationCTASection() {
             </div> */}
           </div>
 
-          <div className="px-4 py-0 sm:px-8 sm:py-8 lg:px-12 xl:border-b-0 xl:py-12">
-            <div className="no-scrollbar -mx-1 flex snap-x snap-mandatory items-stretch gap-2 overflow-x-auto px-1 pb-2 lg:justify-center lg:overflow-visible">
+          <div className="px-2 py-0 pt-4 sm:pt-0 sm:px-8 sm:py-8 lg:px-12 xl:border-b-0 xl:py-12">
+            <div className="no-scrollbar -mx-1 flex snap-x snap-mandatory items-stretch gap-2 overflow-x-auto px-1 pb-4 pt-8 lg:justify-center lg:overflow-visible">
               {planCards.map((plan, index) => (
                 <div key={plan.name} className="flex snap-start items-stretch">
                   {index > 0 ? <ArrowBetween /> : null}
