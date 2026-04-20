@@ -544,6 +544,138 @@ export const STYLES: StyleItem[] = [
     href: "/text-to-image",
     imageFilter: "brightness(0.9) saturate(0.9)",
   },
+  {
+    id: "neoagrarianbrutalism",
+    name: "Haryana",
+    title: "NEO-AGRARIAN BRUTALISM",
+    desc: "A hybrid landscape where cultivated farmland and raw concrete infrastructure merge into a single working production system.",
+    image: "/HomePage/creativeStyle/NEO-AGRARIAN BRUTALISM.avif",
+    tag: "Concept",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "patola",
+    name: "Gujarat",
+    title: "PATOLA",
+    desc: "A double ikat silk weaving tradition where intricate patterns are pre-dyed into threads and precisely aligned during weaving.",
+    image: "/HomePage/creativeStyle/PATOLA.avif",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "phulkari",
+    name: "Haryana (Phulkari Belt)",
+    title: "PHULKARI",
+    desc: "A traditional khaddar-based embroidery where silk threads build patterns through reverse darning, forming ceremonial and heirloom textiles.",
+    image: "/HomePage/creativeStyle/PHULKARI.avif",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "pithora",
+    name: "Gujarat",
+    title: "PITHORA",
+    desc: "A ritual wall painting tradition of the Rathwa community, where sacred horses and deities are painted as part of vow-fulfillment ceremonies.",
+    image: "/HomePage/creativeStyle/PITHORA.avif",
+    tag: "Art",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "roganart",
+    name: "Gujarat (Kutch)",
+    title: "ROGAN ART",
+    desc: "A rare oil-paste textile art where intricate designs are drawn using a stylus and mirrored to create symmetrical compositions on dark cloth.",
+    image: "/HomePage/creativeStyle/ROGAN ART.avif",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "ruralfibercraft",
+    name: "Haryana",
+    title: "RURAL FIBER CRAFT",
+    desc: "A traditional construction system using reed and rope, where tension, binding, and structural weaving create functional everyday objects.",
+    image: "/HomePage/creativeStyle/RURAL FIBER CRAFT.avif",
+    tag: "Craft",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "sarkandaarchitecture",
+    name: "Haryana",
+    title: "SARKANDA ARCHITECTURE",
+    desc: "A traditional reed-and-thatch shelter system designed for climate responsiveness, using layered roofs and breathable walls for natural cooling.",
+    image: "/HomePage/creativeStyle/SARKANDA ARCHITECTURE.avif",
+    tag: "Architecture",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "shimplahastkala",
+    name: "Goa",
+    title: "SHIMPLA HASTKALA",
+    desc: "A traditional shell craft where natural sea shells are assembled into decorative and functional objects through handcrafted techniques.",
+    image: "/HomePage/creativeStyle/SHIMPLA HASTKALA.avif",
+    tag: "Craft",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "sitalpati",
+    name: "Assam",
+    title: "SITALPATI",
+    desc: "A traditional cool mat weaving craft using finely processed murta cane, known for its smooth surface and flat interlaced structure.",
+    image: "/HomePage/creativeStyle/SITALPATI.avif",
+    tag: "Craft",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "sohrai",
+    name: "Jharkhand",
+    title: "SOHRAI",
+    desc: "A ritual wall painting tradition where mud-house surfaces are transformed using natural earth pigments into living murals of animals, plants, and harvest life.",
+    image: "/HomePage/creativeStyle/SOHRAI.avif",
+    tag: "Art",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "sonowaltextile",
+    name: "Assam",
+    title: "SONOWAL TEXTILE",
+    desc: "A community-specific handloom tradition defined by woven borders, rhythmic bands, and identity-driven textile design.",
+    image: "/HomePage/creativeStyle/SONOWAL TEXTILE.avif",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "sufembroidery",
+    name: "Gujarat",
+    title: "SUF EMBROIDERY",
+    desc: "A counted embroidery tradition built through triangular geometry, where patterns emerge from precise stitching rather than pre-drawn design.",
+    image: "/HomePage/creativeStyle/SUF EMBROIDERY.avif",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  }
 ];
 
 type CreativeStyleProps = {
@@ -595,6 +727,18 @@ type CreativeStyleProps = {
   onTikuliArtOpen?: () => void;
   onSohraiKhovarOpen?: () => void;
   onWoodTempleCarvingOpen?: () => void;
+  onNeoAgrarianBrutalismOpen?: () => void;
+  onPatolaOpen?: () => void;
+  onPhulkariOpen?: () => void;
+  onPithoraOpen?: () => void;
+  onRoganArtOpen?: () => void;
+  onRuralFiberCraftOpen?: () => void;
+  onSarkandaArchitectureOpen?: () => void;
+  onShimplaHastkalaOpen?: () => void;
+  onSitalpatiOpen?: () => void;
+  onSohraiOpen?: () => void;
+  onSonowalTextileOpen?: () => void;
+  onSufEmbroideryOpen?: () => void;
   onAllStylesOpen?: () => void;
 };
 
@@ -647,6 +791,18 @@ export default function CreativeStyle({
   onTikuliArtOpen,
   onSohraiKhovarOpen,
   onWoodTempleCarvingOpen,
+  onNeoAgrarianBrutalismOpen,
+  onPatolaOpen,
+  onPhulkariOpen,
+  onPithoraOpen,
+  onRoganArtOpen,
+  onRuralFiberCraftOpen,
+  onSarkandaArchitectureOpen,
+  onShimplaHastkalaOpen,
+  onSitalpatiOpen,
+  onSohraiOpen,
+  onSonowalTextileOpen,
+  onSufEmbroideryOpen,
   onAllStylesOpen,
 }: CreativeStyleProps) {
   const railRef = useRef<HTMLDivElement | null>(null);
@@ -893,6 +1049,67 @@ export default function CreativeStyle({
     if (style.id === "woodtemplecarving" && onWoodTempleCarvingOpen) {
       event.preventDefault();
       onWoodTempleCarvingOpen();
+      return;
+      return;
+    }
+    if (style.id === "neoagrarianbrutalism" && onNeoAgrarianBrutalismOpen) {
+      event.preventDefault();
+      onNeoAgrarianBrutalismOpen();
+      return;
+    }
+    if (style.id === "patola" && onPatolaOpen) {
+      event.preventDefault();
+      onPatolaOpen();
+      return;
+    }
+    if (style.id === "phulkari" && onPhulkariOpen) {
+      event.preventDefault();
+      onPhulkariOpen();
+      return;
+    }
+    if (style.id === "pithora" && onPithoraOpen) {
+      event.preventDefault();
+      onPithoraOpen();
+      return;
+    }
+    if (style.id === "roganart" && onRoganArtOpen) {
+      event.preventDefault();
+      onRoganArtOpen();
+      return;
+    }
+    if (style.id === "ruralfibercraft" && onRuralFiberCraftOpen) {
+      event.preventDefault();
+      onRuralFiberCraftOpen();
+      return;
+    }
+    if (style.id === "sarkandaarchitecture" && onSarkandaArchitectureOpen) {
+      event.preventDefault();
+      onSarkandaArchitectureOpen();
+      return;
+    }
+    if (style.id === "shimplahastkala" && onShimplaHastkalaOpen) {
+      event.preventDefault();
+      onShimplaHastkalaOpen();
+      return;
+    }
+    if (style.id === "sitalpati" && onSitalpatiOpen) {
+      event.preventDefault();
+      onSitalpatiOpen();
+      return;
+    }
+    if (style.id === "sohrai" && onSohraiOpen) {
+      event.preventDefault();
+      onSohraiOpen();
+      return;
+    }
+    if (style.id === "sonowaltextile" && onSonowalTextileOpen) {
+      event.preventDefault();
+      onSonowalTextileOpen();
+      return;
+    }
+    if (style.id === "sufembroidery" && onSufEmbroideryOpen) {
+      event.preventDefault();
+      onSufEmbroideryOpen();
       return;
     }
   };

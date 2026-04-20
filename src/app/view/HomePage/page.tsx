@@ -276,6 +276,54 @@ const WoodTempleCarvingFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClos
     () => import('./compo/WoodTempleCarvingFullscreenWalkthrough'),
     { ssr: false }
 )
+const NeoAgrarianBrutalismFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/NeoAgrarianBrutalismFullscreenWalkthrough'),
+    { ssr: false }
+)
+const PatolaFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/PatolaFullscreenWalkthrough'),
+    { ssr: false }
+)
+const PhulkariFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/PhulkariFullscreenWalkthrough'),
+    { ssr: false }
+)
+const PithoraFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/PithoraFullscreenWalkthrough'),
+    { ssr: false }
+)
+const RoganArtFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/RoganArtFullscreenWalkthrough'),
+    { ssr: false }
+)
+const RuralFiberCraftFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/RuralFiberCraftFullscreenWalkthrough'),
+    { ssr: false }
+)
+const SarkandaArchitectureFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/SarkandaArchitectureFullscreenWalkthrough'),
+    { ssr: false }
+)
+const ShimplaHastkalaFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/ShimplaHastkalaFullscreenWalkthrough'),
+    { ssr: false }
+)
+const SitalpatiFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/SitalpatiFullscreenWalkthrough'),
+    { ssr: false }
+)
+const SohraiFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/SohraiFullscreenWalkthrough'),
+    { ssr: false }
+)
+const SonowalTextileFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/SonowalTextileFullscreenWalkthrough'),
+    { ssr: false }
+)
+const SufEmbroideryFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/SufEmbroideryFullscreenWalkthrough'),
+    { ssr: false }
+)
 const WorkflowCarousel = dynamic(() => import('./compo/WorkflowCarousel').then(mod => ({ default: mod.default })), {
     loading: () => <div className="h-64 animate-pulse bg-white/5 rounded-lg" />
 })
@@ -366,6 +414,18 @@ const HomePage: React.FC = () => {
     const [showTikuliArtWalkthrough, setShowTikuliArtWalkthrough] = useState(false);
     const [showSohraiKhovarWalkthrough, setShowSohraiKhovarWalkthrough] = useState(false);
     const [showWoodTempleCarvingWalkthrough, setShowWoodTempleCarvingWalkthrough] = useState(false);
+    const [showNeoAgrarianBrutalismWalkthrough, setShowNeoAgrarianBrutalismWalkthrough] = useState(false);
+    const [showPatolaWalkthrough, setShowPatolaWalkthrough] = useState(false);
+    const [showPhulkariWalkthrough, setShowPhulkariWalkthrough] = useState(false);
+    const [showPithoraWalkthrough, setShowPithoraWalkthrough] = useState(false);
+    const [showRoganArtWalkthrough, setShowRoganArtWalkthrough] = useState(false);
+    const [showRuralFiberCraftWalkthrough, setShowRuralFiberCraftWalkthrough] = useState(false);
+    const [showSarkandaArchitectureWalkthrough, setShowSarkandaArchitectureWalkthrough] = useState(false);
+    const [showShimplaHastkalaWalkthrough, setShowShimplaHastkalaWalkthrough] = useState(false);
+    const [showSitalpatiWalkthrough, setShowSitalpatiWalkthrough] = useState(false);
+    const [showSohraiWalkthrough, setShowSohraiWalkthrough] = useState(false);
+    const [showSonowalTextileWalkthrough, setShowSonowalTextileWalkthrough] = useState(false);
+    const [showSufEmbroideryWalkthrough, setShowSufEmbroideryWalkthrough] = useState(false);
     const [showAllStylesModal, setShowAllStylesModal] = useState(false);
     const [openedFromAllStyles, setOpenedFromAllStyles] = useState(false);
     const [homepageMode, setHomepageMode] = useState<'image' | 'video'>('image');
@@ -422,6 +482,18 @@ const HomePage: React.FC = () => {
             case "tikuliart": setShowTikuliArtWalkthrough(true); break;
             case "sohraikhovar": setShowSohraiKhovarWalkthrough(true); break;
             case "woodtemplecarving": setShowWoodTempleCarvingWalkthrough(true); break;
+            case "neoagrarianbrutalism": setShowNeoAgrarianBrutalismWalkthrough(true); break;
+            case "patola": setShowPatolaWalkthrough(true); break;
+            case "phulkari": setShowPhulkariWalkthrough(true); break;
+            case "pithora": setShowPithoraWalkthrough(true); break;
+            case "roganart": setShowRoganArtWalkthrough(true); break;
+            case "ruralfibercraft": setShowRuralFiberCraftWalkthrough(true); break;
+            case "sarkandaarchitecture": setShowSarkandaArchitectureWalkthrough(true); break;
+            case "shimplahastkala": setShowShimplaHastkalaWalkthrough(true); break;
+            case "sitalpati": setShowSitalpatiWalkthrough(true); break;
+            case "sohrai": setShowSohraiWalkthrough(true); break;
+            case "sonowaltextile": setShowSonowalTextileWalkthrough(true); break;
+            case "sufembroidery": setShowSufEmbroideryWalkthrough(true); break;
             default: break;
         }
     };
@@ -765,6 +837,66 @@ const HomePage: React.FC = () => {
                         onWoodTempleCarvingOpen={() => {
                             setShowWelcomeModal(false);
                             setShowWoodTempleCarvingWalkthrough(true);
+                        }}
+                        onNeoAgrarianBrutalismOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowNeoAgrarianBrutalismWalkthrough(true);
+                        }}
+                        onPatolaOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowPatolaWalkthrough(true);
+                        }}
+                        onPhulkariOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowPhulkariWalkthrough(true);
+                        }}
+                        onPithoraOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowPithoraWalkthrough(true);
+                        }}
+                        onRoganArtOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowRoganArtWalkthrough(true);
+                        }}
+                        onRuralFiberCraftOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowRuralFiberCraftWalkthrough(true);
+                        }}
+                        onSarkandaArchitectureOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowSarkandaArchitectureWalkthrough(true);
+                        }}
+                        onShimplaHastkalaOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowShimplaHastkalaWalkthrough(true);
+                        }}
+                        onSitalpatiOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowSitalpatiWalkthrough(true);
+                        }}
+                        onSohraiOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowSohraiWalkthrough(true);
+                        }}
+                        onSonowalTextileOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowSonowalTextileWalkthrough(true);
+                        }}
+                        onSufEmbroideryOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowSufEmbroideryWalkthrough(true);
                         }}
                         onEtikoppakaOpen={() => {
                             setOpenedFromAllStyles(false);
@@ -1224,6 +1356,66 @@ const HomePage: React.FC = () => {
             <WoodTempleCarvingFullscreenWalkthrough
                 isOpen={showWoodTempleCarvingWalkthrough}
                 onClose={() => setShowWoodTempleCarvingWalkthrough(false)}
+            />
+
+            <NeoAgrarianBrutalismFullscreenWalkthrough
+                isOpen={showNeoAgrarianBrutalismWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowNeoAgrarianBrutalismWalkthrough)}
+            />
+
+            <PatolaFullscreenWalkthrough
+                isOpen={showPatolaWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowPatolaWalkthrough)}
+            />
+
+            <PhulkariFullscreenWalkthrough
+                isOpen={showPhulkariWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowPhulkariWalkthrough)}
+            />
+
+            <PithoraFullscreenWalkthrough
+                isOpen={showPithoraWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowPithoraWalkthrough)}
+            />
+
+            <RoganArtFullscreenWalkthrough
+                isOpen={showRoganArtWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowRoganArtWalkthrough)}
+            />
+
+            <RuralFiberCraftFullscreenWalkthrough
+                isOpen={showRuralFiberCraftWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowRuralFiberCraftWalkthrough)}
+            />
+
+            <SarkandaArchitectureFullscreenWalkthrough
+                isOpen={showSarkandaArchitectureWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowSarkandaArchitectureWalkthrough)}
+            />
+
+            <ShimplaHastkalaFullscreenWalkthrough
+                isOpen={showShimplaHastkalaWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowShimplaHastkalaWalkthrough)}
+            />
+
+            <SitalpatiFullscreenWalkthrough
+                isOpen={showSitalpatiWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowSitalpatiWalkthrough)}
+            />
+
+            <SohraiFullscreenWalkthrough
+                isOpen={showSohraiWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowSohraiWalkthrough)}
+            />
+
+            <SonowalTextileFullscreenWalkthrough
+                isOpen={showSonowalTextileWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowSonowalTextileWalkthrough)}
+            />
+
+            <SufEmbroideryFullscreenWalkthrough
+                isOpen={showSufEmbroideryWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowSufEmbroideryWalkthrough)}
             />
 
             <AllStylesModal
