@@ -346,6 +346,336 @@ export const STYLES: StyleItem[] = [
     href: "/text-to-image",
     imageFilter: "brightness(0.85) saturate(0.9)",
   },
+  {
+    id: "asharikandi",
+    name: "Assam",
+    title: "ASHARIKANDI TERRACOTTA",
+    desc: "A traditional fired-clay craft from Assam, where handmade terracotta forms are shaped, dried, and fired into earthy, matte objects.",
+    image: "/HomePage/creativeStyle/ASHARIKANDI TERRACOTTA.avif",
+    tag: "Sculpture",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.9) saturate(0.95)",
+  },
+  {
+    id: "azulejos",
+    name: "Goa",
+    title: "AZULEJOS",
+    desc: "A hand-painted ceramic tile tradition featuring blue-on-white imagery, decorative borders, and architectural plaque compositions.",
+    image: "/HomePage/creativeStyle/AZULEJOS1.avif",
+    tag: "Ceramic",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.95) saturate(0.9)",
+  },
+  {
+    id: "bandhani",
+    name: "Gujarat",
+    title: "BANDHANI",
+    desc: "A resist-dye textile tradition created through thousands of hand-tied points, forming intricate dot patterns and vibrant ceremonial cloth.",
+    image: "/HomePage/creativeStyle/BANDHANI.avif",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.9) saturate(1.1)",
+  },
+  {
+    id: "bastardhokra",
+    name: "Chhattisgarh",
+    title: "BASTAR DHOKRA",
+    desc: "A traditional lost-wax metal casting craft where objects are built in wax and transformed into intricate bell-metal forms.",
+    image: "/HomePage/creativeStyle/BASTAR DHOKRA.avif",
+    tag: "Metalcraft",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(1)",
+  },
+  {
+    id: "muriawallpainting",
+    name: "Chhattisgarh (Bastar)",
+    title: "MURIA WALL PAINTING",
+    desc: "A traditional earthen mural art where symbolic figures are painted onto prepared mud walls using natural pigments and communal storytelling.",
+    image: "/HomePage/creativeStyle/MURIA WALL PAINTING.avif",
+    tag: "Art",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.9) saturate(0.9)",
+  },
+  {
+    id: "bastarwoodcraft",
+    name: "Chhattisgarh",
+    title: "BASTAR WOODCRAFT",
+    desc: "A traditional hand-carved woodcraft where solid blocks are shaped into symbolic figures using simple tools and techniques.",
+    image: "/HomePage/creativeStyle/BASTAR WOODCRAFT.avif",
+    tag: "Woodcraft",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.9) saturate(0.9)",
+  },
+  {
+    id: "bhagalpursilk",
+    name: "Bihar",
+    title: "BHAGALPUR SILK",
+    desc: "A handloom silk tradition known for its tussar-based texture, breathable weave, and soft natural lustre.",
+    image: "/HomePage/creativeStyle/BHAGALPUR SILK.avif",
+    tag: "Fabric",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.9) saturate(0.9)",
+  },
+  {
+    id: "chambaminiature",
+    name: "Himachal Pradesh",
+    title: "CHAMBA MINIATURE",
+    desc: "A court painting tradition known for its narrative scenes, stylized figures, and refined use of color in miniature form.",
+    image: "/HomePage/creativeStyle/CHAMBA MINIATURE.avif",
+    tag: "Painting",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.9) saturate(0.9)",
+  },
+  {
+    id: "exposedlaterite",
+    name: "Goa",
+    title: "EXPOSED LATERITE",
+    desc: "A construction system using cut laterite stone blocks, where exposed red-brown masonry defines the structure and character of buildings.",
+    image: "/HomePage/creativeStyle/EXPOSED LATERITE.avif",
+    tag: "Architecture",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.9) saturate(0.9)",
+  },
+  {
+    id: "gharchola",
+    name: "Gujarat",
+    title: "GHARCHOLA",
+    desc: "A ceremonial bridal textile defined by its gold zari grid, Bandhani-filled squares, and structured red-gold design rooted in wedding traditions.",
+    image: "/HomePage/creativeStyle/GHARCHOLA.avif",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.9) saturate(1.1)",
+  },
+  {
+    id: "godnaart",
+    name: "Bihar (Mithila)",
+    title: "GODNA ART",
+    desc: "A tattoo-derived painting tradition where symbolic motifs and repeated marks form inscribed visual narratives.",
+    image: "/HomePage/creativeStyle/GODNA ART.avif",
+    tag: "Painting",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.9) saturate(0.9)",
+  },
+  {
+    id: "taiahommanuscript",
+    name: "Assam",
+    title: "TAI-AHOM MANUSCRIPT",
+    desc: "A traditional manuscript system where script, symbols, and images coexist to preserve knowledge on folio surfaces.",
+    image: "/HomePage/creativeStyle/TAI-AHOM MANUSCRIPT.avif",
+    tag: "Manuscript",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.9) saturate(0.9)",
+  },
+  {
+    id: "tangaliya",
+    name: "Gujarat",
+    title: "TANGALIYA",
+    desc: "A unique handwoven textile tradition where raised bead-like dots are created through extra-weft weaving, forming rhythmic geometric patterns.",
+    image: "/HomePage/creativeStyle/TANGALIYA.avif",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.9) saturate(0.9)",
+  },
+  {
+    id: "agrarianindustrial",
+    name: "Haryana",
+    title: "AGRARIAN–INDUSTRIAL BLEND",
+    desc: "A production ecosystem where agriculture, machinery, and industry operate together within a unified landscape.",
+    image: "/HomePage/creativeStyle/AGRARIAN–INDUSTRIAL BLEND.avif",
+    tag: "Ecosystem",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.9) saturate(0.9)",
+  },
+  {
+    id: "indoportuguese",
+    name: "Goa",
+    title: "INDO-PORTUGUESE",
+    desc: "A distinctive house-front architecture where bold wall colors, white trim, and structured façades define the identity of Goan streets.",
+    image: "/HomePage/creativeStyle/INDO-PORTUGUESE.avif",
+    tag: "Architecture",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.9) saturate(0.9)",
+  },
+  {
+    id: "tikuliart",
+    name: "Bihar (Patna)",
+    title: "TIKULI ART",
+    desc: "A precision-painted decorative art derived from the bindi tradition, known for its polished surface and fine enamel detailing.",
+    image: "/HomePage/creativeStyle/TIKULI ART.avif",
+    tag: "Art",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.9) saturate(0.9)",
+  },
+  {
+    id: "sohraikhovar",
+    name: "Jharkhand",
+    title: "SOHRAI–KHOVAR",
+    desc: "A traditional wall art practice where mud-house surfaces are transformed into ritual murals using natural pigments and symbolic motifs.",
+    image: "/HomePage/creativeStyle/SOHRAI–KHOVAR.avif",
+    tag: "Art",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.9) saturate(0.9)",
+  },
+  {
+    id: "woodtemplecarving",
+    name: "Himachal Pradesh",
+    title: "WOOD TEMPLE CARVING",
+    desc: "A sacred architectural carving tradition where wooden temple structures are intricately sculpted with relief and iconographic detail.",
+    image: "/HomePage/creativeStyle/WOOD TEMPLE CARVING.avif",
+    tag: "Architecture",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.9) saturate(0.9)",
+  },
+  {
+    id: "neoagrarianbrutalism",
+    name: "Haryana",
+    title: "NEO-AGRARIAN BRUTALISM",
+    desc: "A hybrid landscape where cultivated farmland and raw concrete infrastructure merge into a single working production system.",
+    image: "/HomePage/creativeStyle/NEO-AGRARIAN BRUTALISM.avif",
+    tag: "Concept",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "patola",
+    name: "Gujarat",
+    title: "PATOLA",
+    desc: "A double ikat silk weaving tradition where intricate patterns are pre-dyed into threads and precisely aligned during weaving.",
+    image: "/HomePage/creativeStyle/PATOLA.avif",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "phulkari",
+    name: "Haryana (Phulkari Belt)",
+    title: "PHULKARI",
+    desc: "A traditional khaddar-based embroidery where silk threads build patterns through reverse darning, forming ceremonial and heirloom textiles.",
+    image: "/HomePage/creativeStyle/PHULKARI.avif",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "pithora",
+    name: "Gujarat",
+    title: "PITHORA",
+    desc: "A ritual wall painting tradition of the Rathwa community, where sacred horses and deities are painted as part of vow-fulfillment ceremonies.",
+    image: "/HomePage/creativeStyle/PITHORA.avif",
+    tag: "Art",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "roganart",
+    name: "Gujarat (Kutch)",
+    title: "ROGAN ART",
+    desc: "A rare oil-paste textile art where intricate designs are drawn using a stylus and mirrored to create symmetrical compositions on dark cloth.",
+    image: "/HomePage/creativeStyle/ROGAN ART.avif",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "ruralfibercraft",
+    name: "Haryana",
+    title: "RURAL FIBER CRAFT",
+    desc: "A traditional construction system using reed and rope, where tension, binding, and structural weaving create functional everyday objects.",
+    image: "/HomePage/creativeStyle/RURAL FIBER CRAFT.avif",
+    tag: "Craft",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "sarkandaarchitecture",
+    name: "Haryana",
+    title: "SARKANDA ARCHITECTURE",
+    desc: "A traditional reed-and-thatch shelter system designed for climate responsiveness, using layered roofs and breathable walls for natural cooling.",
+    image: "/HomePage/creativeStyle/SARKANDA ARCHITECTURE.avif",
+    tag: "Architecture",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "shimplahastkala",
+    name: "Goa",
+    title: "SHIMPLA HASTKALA",
+    desc: "A traditional shell craft where natural sea shells are assembled into decorative and functional objects through handcrafted techniques.",
+    image: "/HomePage/creativeStyle/SHIMPLA HASTKALA.avif",
+    tag: "Craft",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "sitalpati",
+    name: "Assam",
+    title: "SITALPATI",
+    desc: "A traditional cool mat weaving craft using finely processed murta cane, known for its smooth surface and flat interlaced structure.",
+    image: "/HomePage/creativeStyle/SITALPATI.avif",
+    tag: "Craft",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "sohrai",
+    name: "Jharkhand",
+    title: "SOHRAI",
+    desc: "A ritual wall painting tradition where mud-house surfaces are transformed using natural earth pigments into living murals of animals, plants, and harvest life.",
+    image: "/HomePage/creativeStyle/SOHRAI.avif",
+    tag: "Art",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "sonowaltextile",
+    name: "Assam",
+    title: "SONOWAL TEXTILE",
+    desc: "A community-specific handloom tradition defined by woven borders, rhythmic bands, and identity-driven textile design.",
+    image: "/HomePage/creativeStyle/SONOWAL TEXTILE.avif",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "sufembroidery",
+    name: "Gujarat",
+    title: "SUF EMBROIDERY",
+    desc: "A counted embroidery tradition built through triangular geometry, where patterns emerge from precise stitching rather than pre-drawn design.",
+    image: "/HomePage/creativeStyle/SUF EMBROIDERY.avif",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  }
 ];
 
 type CreativeStyleProps = {
@@ -379,6 +709,36 @@ type CreativeStyleProps = {
   onHandmadePaperOpen?: () => void;
   onMonpaMaskOpen?: () => void;
   onIduMishmiOpen?: () => void;
+  onAsharikandiOpen?: () => void;
+  onAzulejosOpen?: () => void;
+  onBandhaniOpen?: () => void;
+  onBastarDhokraOpen?: () => void;
+  onMuriaWallPaintingOpen?: () => void;
+  onBastarWoodcraftOpen?: () => void;
+  onBhagalpurSilkOpen?: () => void;
+  onChambaMiniatureOpen?: () => void;
+  onExposedLateriteOpen?: () => void;
+  onGharcholaOpen?: () => void;
+  onGodnaArtOpen?: () => void;
+  onTaiAhomManuscriptOpen?: () => void;
+  onTangaliyaOpen?: () => void;
+  onAgrarianIndustrialOpen?: () => void;
+  onIndoPortugueseOpen?: () => void;
+  onTikuliArtOpen?: () => void;
+  onSohraiKhovarOpen?: () => void;
+  onWoodTempleCarvingOpen?: () => void;
+  onNeoAgrarianBrutalismOpen?: () => void;
+  onPatolaOpen?: () => void;
+  onPhulkariOpen?: () => void;
+  onPithoraOpen?: () => void;
+  onRoganArtOpen?: () => void;
+  onRuralFiberCraftOpen?: () => void;
+  onSarkandaArchitectureOpen?: () => void;
+  onShimplaHastkalaOpen?: () => void;
+  onSitalpatiOpen?: () => void;
+  onSohraiOpen?: () => void;
+  onSonowalTextileOpen?: () => void;
+  onSufEmbroideryOpen?: () => void;
   onAllStylesOpen?: () => void;
 };
 
@@ -413,6 +773,36 @@ export default function CreativeStyle({
   onHandmadePaperOpen,
   onMonpaMaskOpen,
   onIduMishmiOpen,
+  onAsharikandiOpen,
+  onAzulejosOpen,
+  onBandhaniOpen,
+  onBastarDhokraOpen,
+  onMuriaWallPaintingOpen,
+  onBastarWoodcraftOpen,
+  onBhagalpurSilkOpen,
+  onChambaMiniatureOpen,
+  onExposedLateriteOpen,
+  onGharcholaOpen,
+  onGodnaArtOpen,
+  onTaiAhomManuscriptOpen,
+  onTangaliyaOpen,
+  onAgrarianIndustrialOpen,
+  onIndoPortugueseOpen,
+  onTikuliArtOpen,
+  onSohraiKhovarOpen,
+  onWoodTempleCarvingOpen,
+  onNeoAgrarianBrutalismOpen,
+  onPatolaOpen,
+  onPhulkariOpen,
+  onPithoraOpen,
+  onRoganArtOpen,
+  onRuralFiberCraftOpen,
+  onSarkandaArchitectureOpen,
+  onShimplaHastkalaOpen,
+  onSitalpatiOpen,
+  onSohraiOpen,
+  onSonowalTextileOpen,
+  onSufEmbroideryOpen,
   onAllStylesOpen,
 }: CreativeStyleProps) {
   const railRef = useRef<HTMLDivElement | null>(null);
@@ -569,6 +959,158 @@ export default function CreativeStyle({
     if (style.id === "idumishmi" && onIduMishmiOpen) {
       event.preventDefault();
       onIduMishmiOpen();
+      return;
+    }
+    if (style.id === "asharikandi" && onAsharikandiOpen) {
+      event.preventDefault();
+      onAsharikandiOpen();
+      return;
+    }
+    if (style.id === "azulejos" && onAzulejosOpen) {
+      event.preventDefault();
+      onAzulejosOpen();
+      return;
+    }
+    if (style.id === "bandhani" && onBandhaniOpen) {
+      event.preventDefault();
+      onBandhaniOpen();
+      return;
+    }
+    if (style.id === "bastardhokra" && onBastarDhokraOpen) {
+      event.preventDefault();
+      onBastarDhokraOpen();
+      return;
+    }
+    if (style.id === "muriawallpainting" && onMuriaWallPaintingOpen) {
+      event.preventDefault();
+      onMuriaWallPaintingOpen();
+      return;
+    }
+    if (style.id === "bastarwoodcraft" && onBastarWoodcraftOpen) {
+      event.preventDefault();
+      onBastarWoodcraftOpen();
+      return;
+    }
+    if (style.id === "bhagalpursilk" && onBhagalpurSilkOpen) {
+      event.preventDefault();
+      onBhagalpurSilkOpen();
+      return;
+    }
+    if (style.id === "chambaminiature" && onChambaMiniatureOpen) {
+      event.preventDefault();
+      onChambaMiniatureOpen();
+      return;
+    }
+    if (style.id === "exposedlaterite" && onExposedLateriteOpen) {
+      event.preventDefault();
+      onExposedLateriteOpen();
+      return;
+    }
+    if (style.id === "gharchola" && onGharcholaOpen) {
+      event.preventDefault();
+      onGharcholaOpen();
+      return;
+    }
+    if (style.id === "godnaart" && onGodnaArtOpen) {
+      event.preventDefault();
+      onGodnaArtOpen();
+      return;
+    }
+    if (style.id === "taiahommanuscript" && onTaiAhomManuscriptOpen) {
+      event.preventDefault();
+      onTaiAhomManuscriptOpen();
+      return;
+    }
+    if (style.id === "tangaliya" && onTangaliyaOpen) {
+      event.preventDefault();
+      onTangaliyaOpen();
+      return;
+    }
+    if (style.id === "agrarianindustrial" && onAgrarianIndustrialOpen) {
+      event.preventDefault();
+      onAgrarianIndustrialOpen();
+      return;
+    }
+    if (style.id === "indoportuguese" && onIndoPortugueseOpen) {
+      event.preventDefault();
+      onIndoPortugueseOpen();
+      return;
+    }
+    if (style.id === "tikuliart" && onTikuliArtOpen) {
+      event.preventDefault();
+      onTikuliArtOpen();
+      return;
+    }
+    if (style.id === "sohraikhovar" && onSohraiKhovarOpen) {
+      event.preventDefault();
+      onSohraiKhovarOpen();
+      return;
+    }
+    if (style.id === "woodtemplecarving" && onWoodTempleCarvingOpen) {
+      event.preventDefault();
+      onWoodTempleCarvingOpen();
+      return;
+      return;
+    }
+    if (style.id === "neoagrarianbrutalism" && onNeoAgrarianBrutalismOpen) {
+      event.preventDefault();
+      onNeoAgrarianBrutalismOpen();
+      return;
+    }
+    if (style.id === "patola" && onPatolaOpen) {
+      event.preventDefault();
+      onPatolaOpen();
+      return;
+    }
+    if (style.id === "phulkari" && onPhulkariOpen) {
+      event.preventDefault();
+      onPhulkariOpen();
+      return;
+    }
+    if (style.id === "pithora" && onPithoraOpen) {
+      event.preventDefault();
+      onPithoraOpen();
+      return;
+    }
+    if (style.id === "roganart" && onRoganArtOpen) {
+      event.preventDefault();
+      onRoganArtOpen();
+      return;
+    }
+    if (style.id === "ruralfibercraft" && onRuralFiberCraftOpen) {
+      event.preventDefault();
+      onRuralFiberCraftOpen();
+      return;
+    }
+    if (style.id === "sarkandaarchitecture" && onSarkandaArchitectureOpen) {
+      event.preventDefault();
+      onSarkandaArchitectureOpen();
+      return;
+    }
+    if (style.id === "shimplahastkala" && onShimplaHastkalaOpen) {
+      event.preventDefault();
+      onShimplaHastkalaOpen();
+      return;
+    }
+    if (style.id === "sitalpati" && onSitalpatiOpen) {
+      event.preventDefault();
+      onSitalpatiOpen();
+      return;
+    }
+    if (style.id === "sohrai" && onSohraiOpen) {
+      event.preventDefault();
+      onSohraiOpen();
+      return;
+    }
+    if (style.id === "sonowaltextile" && onSonowalTextileOpen) {
+      event.preventDefault();
+      onSonowalTextileOpen();
+      return;
+    }
+    if (style.id === "sufembroidery" && onSufEmbroideryOpen) {
+      event.preventDefault();
+      onSufEmbroideryOpen();
+      return;
     }
   };
 

@@ -95,7 +95,7 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
     // Apply visibility filters
     return result.filter(wf => {
       // Logic for determining if an item is "Coming Soon"
-      const isComingSoon = (!['General', 'Photography', 'Fun', 'Viral Trend', 'Fashion', 'Branding', 'Architecture', 'Film Industry'].includes(wf.category) && wf.id !== 'selfie-video') || wf.comingSoon;
+      const isComingSoon = (!['General', 'Photography', 'Fun', 'Fashion', 'Branding', 'Architecture', 'Film Industry'].includes(wf.category) && wf.id !== 'selfie-video') || wf.comingSoon;
 
       // Hide coming soon items if they are in the 'Fun' category
       if (wf.category === 'Fun' && isComingSoon) return false;
@@ -248,7 +248,7 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
               </button>
 
               {CATEGORIES.filter(cat => cat !== 'All').map((cat) => {
-                const isCatComingSoon = !['General', 'Fun', 'Viral Trend', 'Photography', 'Fashion', 'Branding', 'Architecture', 'Film Industry'].includes(cat);
+                const isCatComingSoon = !['General', 'Fun', 'Photography', 'Fashion', 'Branding', 'Architecture', 'Film Industry'].includes(cat);
                 return (
                   <button
                     key={cat}
@@ -306,7 +306,7 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
             }
           >
             {filteredWorkflows.map((wf) => {
-              const isComingSoon = (!['General', 'Photography', 'Fun', 'Viral Trend'].includes(wf.category) && wf.id !== 'selfie-video') || wf.comingSoon;
+              const isComingSoon = (!['General', 'Photography', 'Fun'].includes(wf.category) && wf.id !== 'selfie-video') || wf.comingSoon;
 
               return (
                 <WorkflowCard key={wf.id} wf={wf} router={router} />
@@ -330,7 +330,7 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
 
 function WorkflowCard({ wf, router }) {
   const [isPlaying, setIsPlaying] = useState(false);
-  const isComingSoon = (!['General', 'Branding', 'Photography', 'Architecture', 'Fun', 'Viral Trend', 'Fashion', 'Film Industry'].includes(wf.category) && wf.id !== 'selfie-video') || wf.comingSoon;
+  const isComingSoon = (!['General', 'Branding', 'Photography', 'Architecture', 'Fun', 'Fashion', 'Film Industry'].includes(wf.category) && wf.id !== 'selfie-video') || wf.comingSoon;
 
   const handleClick = () => {
     if (isComingSoon) return;

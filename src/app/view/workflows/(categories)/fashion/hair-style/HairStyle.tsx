@@ -4,17 +4,33 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { X, Camera, Zap, Download } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
+import axiosInstance from '@/lib/axiosInstance';
 import UploadModal from '@/app/view/Generation/ImageGeneration/TextToImage/compo/UploadModal';
 import ImageComparisonSlider from '@/app/view/workflows/components/ImageComparisonSlider';
 import { downloadFileWithNaming } from '@/utils/downloadUtils';
 import { useCredits } from '@/hooks/useCredits';
+import { getSignInUrl } from '@/routes/routes';
+
+// Preset color swatches with their human-readable names
+const COLOR_SWATCHES = [
+  { hex: '#38bdf8', name: 'Sky Blue' },
+  { hex: '#f87171', name: 'Coral Red' },
+  { hex: '#facc15', name: 'Golden Blonde' },
+  { hex: '#4ade80', name: 'Emerald Green' },
+  { hex: '#2dd4bf', name: 'Teal' },
+  { hex: '#3b82f6', name: 'Royal Blue' },
+  { hex: '#ec4899', name: 'Hot Pink' },
+];
+
+const DEFAULT_COLOR = { hex: '#f43f5e', name: 'Red Blonde' };
 
 export default function HairStyle() {
   const router = useRouter();
   const {
     creditBalance,
     deductCreditsOptimisticForGeneration,
-    rollbackOptimisticDeduction
+    rollbackOptimisticDeduction,
+    user,
   } = useCredits();
 
   // State
@@ -23,20 +39,22 @@ export default function HairStyle() {
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-  const [hairStyle, setHairStyle] = useState("");
-  const [selectedColor, setSelectedColor] = useState<string>('#38bdf8');
+  const [hairStyle, setHairStyle] = useState('');
+  const [selectedColor, setSelectedColor] = useState<string>(DEFAULT_COLOR.hex);
+  const [selectedColorName, setSelectedColorName] = useState<string>(DEFAULT_COLOR.name);
 
-  // Workflow Data
+  // Workflow data
   const workflowData = {
-    id: "hair-style",
-    title: "Hair Style",
-    category: "Fashion",
-    description: "Try different hairstyles on your photo.",
-    cost: 90
+    id: 'hair-style',
+    title: 'Hair Style',
+    category: 'Fashion',
+    description: 'Try different hairstyles on your photo.',
+    cost: 90,
   };
 
+  const CREDIT_COST = 90;
+
   useEffect(() => {
-    // Open modal animation on mount
     setTimeout(() => setIsOpen(true), 50);
   }, []);
 
@@ -47,9 +65,7 @@ export default function HairStyle() {
     }, 300);
   };
 
-  const openUploadModal = () => {
-    setIsUploadModalOpen(true);
-  };
+  const openUploadModal = () => setIsUploadModalOpen(true);
 
   const handleImageSelect = (url: string) => {
     setUploadedImage(url);
@@ -57,17 +73,24 @@ export default function HairStyle() {
     setIsUploadModalOpen(false);
   };
 
+  // Convert a hex color to a descriptive color name for the prompt
+  const getColorDescription = (hex: string): string => {
+    const preset = COLOR_SWATCHES.find(s => s.hex.toLowerCase() === hex.toLowerCase());
+    if (preset) return preset.name;
+    if (hex === DEFAULT_COLOR.hex) return DEFAULT_COLOR.name;
+    // For custom colors, return the hex value and let the AI interpret it
+    return hex;
+  };
+
   const handleRun = async () => {
+    if (!user) {
+      router.push(getSignInUrl());
+      return;
+    }
     if (!uploadedImage) {
       toast.error('Please upload an image first');
       return;
     }
-    if (!hairStyle.trim()) {
-      toast.error('Please describe the hair style you want');
-      return;
-    }
-
-    const CREDIT_COST = 90;
     if (creditBalance < CREDIT_COST) {
       toast.error(`Insufficient credits. You need ${CREDIT_COST} credits.`);
       return;
@@ -77,16 +100,43 @@ export default function HairStyle() {
       deductCreditsOptimisticForGeneration(CREDIT_COST);
       setIsGenerating(true);
 
-      // Simulation for now
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      // Use the sample after image as a simulation result
-      setGeneratedImage("/workflow-samples/hairstyle-after.jpg");
-      toast.success('Hairstyle generated!');
+      const colorDescription = getColorDescription(selectedColor);
 
+      // Build payload — if the user left the prompt empty, the backend falls back to a hardcoded default.
+      // If user typed a full instructional prompt (detected by length/keywords), pass it verbatim as customPrompt.
+      const looksLikeCustomPrompt =
+        hairStyle.trim().length > 80 ||
+        /\b(do not|don't|keep|preserve|maintain|change only|only change|make sure|ensure|strictly)\b/i.test(hairStyle.trim());
+
+      const payload: Record<string, any> = {
+        image: uploadedImage,
+        isPublic: true,
+        size: '2K',
+      };
+
+      if (looksLikeCustomPrompt) {
+        // Use verbatim — backend skips its own prompt builder
+        payload.customPrompt = hairStyle.trim();
+      } else {
+        // May be empty — service will use its hardcoded default style
+        payload.hairStyle = hairStyle.trim();
+        payload.hairColor = colorDescription;
+      }
+
+      const response = await axiosInstance.post('/api/workflows/fashion/hair-style', payload);
+
+      if (response.data?.responseStatus === 'success' && response.data?.data?.images?.[0]?.url) {
+        setGeneratedImage(response.data.data.images[0].url);
+        toast.success('Hairstyle generated successfully!');
+      } else {
+        throw new Error(response.data?.message || 'Invalid response from server');
+      }
     } catch (error: any) {
-      console.error('Generation error:', error);
+      console.error('HairStyle generation error:', error);
       rollbackOptimisticDeduction(CREDIT_COST);
-      toast.error(error.response?.data?.message || error.message || 'Failed to generate hairstyle');
+      toast.error(
+        error.response?.data?.message || error.message || 'Failed to generate hairstyle',
+      );
     } finally {
       setIsGenerating(false);
     }
@@ -97,7 +147,7 @@ export default function HairStyle() {
     try {
       await downloadFileWithNaming(generatedImage, null, 'image', 'hairstyle-result');
       toast.success('Downloading...');
-    } catch (error) {
+    } catch {
       toast.error('Failed to download image');
     }
   };
@@ -133,9 +183,10 @@ export default function HairStyle() {
                 <h2 className="text-2xl md:text-4xl font-medium text-white mb-4 tracking-tight">{workflowData.title}</h2>
                 <p className="text-slate-400 text-lg mb-8">{workflowData.description}</p>
 
+                {/* Upload Area */}
                 <div className="mb-8">
                   <div className="border border-dashed border-white/15 rounded-xl bg-black/20 h-48 flex flex-col items-center justify-center gap-4 cursor-pointer hover:bg-[#60a5fa]/5 transition-colors relative overflow-hidden group"
-                    onClick={() => openUploadModal()}>
+                    onClick={openUploadModal}>
                     {uploadedImage ? (
                       <>
                         <img src={uploadedImage} className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:opacity-30 transition-opacity" alt="Uploaded" />
@@ -155,42 +206,67 @@ export default function HairStyle() {
                   </div>
                 </div>
 
+                {/* Hair Style / Custom Prompt */}
                 <div className="mb-8">
-                  <label className="text-xs font-bold uppercase text-slate-500 mb-2 block tracking-wider">HAIR STYLE (REQUIRED)</label>
+                  <label className="text-xs font-bold uppercase text-slate-500 mb-2 block tracking-wider">
+                    HAIR STYLE
+                    <span className="ml-2 font-normal normal-case text-slate-600">(optional)</span>
+                  </label>
                   <textarea
                     value={hairStyle}
                     onChange={(e) => setHairStyle(e.target.value)}
                     className="w-full bg-black/20 border border-white/10 rounded-xl p-4 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-[#60a5fa]/50 focus:bg-black/30 transition-all resize-none h-32"
-                    placeholder="Describe the hair style you want (e.g. 'Long blonde wavy hair')..."
+                    placeholder="e.g. 'Long curly red hair' — leave blank to let AI choose the best style..."
                   ></textarea>
+                  <p className="text-[10px] text-slate-600 mt-1 px-1">Leave blank for AI-selected style, or write a full custom prompt to control every detail.</p>
                 </div>
 
+                {/* Color Preference */}
                 <div className="mb-8">
-                  <label className="text-xs font-bold uppercase text-slate-500 mb-2 block tracking-wider">COLOR PREFERENCE</label>
-                  <div className="flex items-center gap-3">
-                    {['#38bdf8', '#f87171', '#facc15', '#4ade80', '#2dd4bf', '#3b82f6', '#ec4899'].map((color) => (
+                  <label className="text-xs font-bold uppercase text-slate-500 mb-3 block tracking-wider">
+                    COLOR PREFERENCE
+                    <span className="ml-2 text-slate-600 normal-case font-normal">(default: Red Blonde)</span>
+                  </label>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    {/* Default color swatch */}
+                    <button
+                      onClick={() => { setSelectedColor(DEFAULT_COLOR.hex); setSelectedColorName(DEFAULT_COLOR.name); }}
+                      title={DEFAULT_COLOR.name}
+                      className={`w-10 h-10 rounded-xl transition-all shrink-0 ${selectedColor === DEFAULT_COLOR.hex ? 'ring-2 ring-white scale-110' : 'hover:scale-105'}`}
+                      style={{ background: 'linear-gradient(135deg, #f43f5e 50%, #fbbf24 100%)' }}
+                    />
+                    {COLOR_SWATCHES.map((swatch) => (
                       <button
-                        key={color}
-                        onClick={() => setSelectedColor(color)}
-                        className={`w-10 h-10 rounded-xl transition-all shrink-0 ${selectedColor === color ? 'ring-2 ring-white scale-110' : 'hover:scale-105'}`}
-                        style={{ backgroundColor: color }}
+                        key={swatch.hex}
+                        onClick={() => { setSelectedColor(swatch.hex); setSelectedColorName(swatch.name); }}
+                        title={swatch.name}
+                        className={`w-10 h-10 rounded-xl transition-all shrink-0 ${selectedColor === swatch.hex ? 'ring-2 ring-white scale-110' : 'hover:scale-105'}`}
+                        style={{ backgroundColor: swatch.hex }}
                       />
                     ))}
+                    {/* Custom color picker */}
                     <div className="relative shrink-0">
                       <input
                         type="color"
-                        value={selectedColor || '#ffffff'}
-                        onChange={(e) => setSelectedColor(e.target.value)}
+                        value={selectedColor}
+                        onChange={(e) => {
+                          setSelectedColor(e.target.value);
+                          setSelectedColorName(e.target.value);
+                        }}
                         className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
                       />
-                      <div className={`w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 hover:bg-white/10 transition-all ${!['#38bdf8', '#f87171', '#facc15', '#4ade80', '#2dd4bf', '#3b82f6', '#ec4899'].includes(selectedColor) && selectedColor ? 'ring-2 ring-white' : ''}`}>
+                      <div className={`w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 hover:bg-white/10 transition-all ${!COLOR_SWATCHES.some(s => s.hex === selectedColor) && selectedColor !== DEFAULT_COLOR.hex ? 'ring-2 ring-white' : ''}`}>
                         <span className="text-xl">+</span>
                       </div>
                     </div>
                   </div>
+                  {selectedColorName && (
+                    <p className="text-[10px] text-slate-500 mt-2 px-1">Selected: {selectedColorName}</p>
+                  )}
                 </div>
               </div>
 
+              {/* Run Button */}
               <div className="mt-auto pt-6 border-t border-white/5">
                 <div className="flex items-center justify-between mb-4">
                   <span className="text-xs font-medium text-slate-500">Cost estimated:</span>
@@ -201,9 +277,9 @@ export default function HairStyle() {
                 </div>
                 <button
                   onClick={handleRun}
-                  disabled={isGenerating || !uploadedImage || !hairStyle}
+                  disabled={isGenerating || !uploadedImage}
                   className={`w-full py-4 rounded-xl font-bold text-sm tracking-wide transition-all flex items-center justify-center gap-2
-                    ${isGenerating || !uploadedImage || !hairStyle
+                    ${isGenerating || !uploadedImage
                       ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
                       : 'bg-[#60a5fa] text-black hover:bg-[#60a5fa]/90 shadow-[0_0_20px_rgba(96,165,250,0.3)] hover:shadow-[0_0_30px_rgba(96,165,250,0.5)]'
                     }`}
@@ -215,7 +291,7 @@ export default function HairStyle() {
                     </>
                   ) : (
                     <>
-                      <Zap size={16} className={(!uploadedImage) ? "fill-slate-500" : "fill-black"} />
+                      <Zap size={16} className={!uploadedImage ? 'fill-slate-500' : 'fill-black'} />
                       Run Workflow
                     </>
                   )}
@@ -292,4 +368,3 @@ export default function HairStyle() {
     </>
   );
 }
-

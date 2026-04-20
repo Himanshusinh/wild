@@ -155,11 +155,10 @@ export default function CreationCTASection() {
                   {index > 0 ? <ArrowBetween /> : null}
 
                   <div
-                    className={`relative flex w-[108px] flex-col items-center gap-2.5 rounded-2xl px-3 py-4 transition-all duration-200 sm:w-[124px] sm:px-4 sm:py-5 lg:w-[130px] ${
-                      plan.highlighted
+                    className={`relative flex w-[108px] flex-col items-center gap-2.5 rounded-2xl px-3 py-4 transition-all duration-200 sm:w-[124px] sm:px-4 sm:py-5 lg:w-[130px] ${plan.highlighted
                         ? "border border-[#3B82F6]/35 bg-[#3B82F6]/10 shadow-[0_0_30px_rgba(59,130,246,0.12)] hover:shadow-[0_0_40px_rgba(59,130,246,0.22)]"
                         : "border border-white/10 bg-white/[0.03] hover:border-white/20 hover:bg-white/[0.06]"
-                    }`}
+                      }`}
                   >
                     {plan.badge ? (
                       <div className="absolute left-1/2 top-[-11px] -translate-x-1/2 rounded-full bg-[#3B82F6] px-3 py-[3px] text-[8px] font-bold uppercase tracking-[0.1em] text-white shadow-[0_2px_8px_rgba(59,130,246,0.4)]">
@@ -168,29 +167,26 @@ export default function CreationCTASection() {
                     ) : null}
 
                     <div
-                      className={`flex h-[38px] w-[38px] items-center justify-center rounded-[10px] border ${
-                        plan.highlighted
+                      className={`flex h-[38px] w-[38px] items-center justify-center rounded-[10px] border ${plan.highlighted
                           ? "border-[#3B82F6]/40 bg-[#3B82F6]/20"
                           : "border-white/10 bg-white/[0.06]"
-                      }`}
+                        }`}
                     >
                       <PlanIcon icon={plan.icon} highlighted={plan.highlighted} />
                     </div>
 
                     <div
-                      className={`text-[10px] font-bold uppercase tracking-[0.12em] ${
-                        plan.highlighted ? "text-[#3B82F6]" : "text-white/40"
-                      }`}
+                      className={`text-[10px] font-bold uppercase tracking-[0.12em] ${plan.highlighted ? "text-[#3B82F6]" : "text-white/40"
+                        }`}
                     >
                       {plan.name}
                     </div>
 
                     <div
-                      className={`rounded-lg border px-2 py-[5px] text-[10px] font-semibold tracking-[0.04em] ${
-                        plan.highlighted
+                      className={`rounded-lg border px-2 py-[5px] text-[10px] font-semibold tracking-[0.04em] ${plan.highlighted
                           ? "border-[#3B82F6]/25 bg-[#3B82F6]/12 text-[#3B82F6]"
                           : "border-white/10 bg-white/[0.06] text-white/30"
-                      }`}
+                        }`}
                     >
                       Coming Soon
                     </div>

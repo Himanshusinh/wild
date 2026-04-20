@@ -1,0 +1,2 @@
+export { AsharikandiModal } from "./AsharikandiModal";
+
