@@ -1,0 +1,1 @@
+export { MataNiPachediModal } from "./MataNiPachediModal";

@@ -1,0 +1,1 @@
+export { KangraModal } from "./KangraModal";

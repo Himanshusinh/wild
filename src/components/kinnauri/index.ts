@@ -1,0 +1,1 @@
+export { KinnauriModal } from "./KinnauriModal";

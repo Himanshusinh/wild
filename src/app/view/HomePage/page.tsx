@@ -34,6 +34,84 @@ const AjrakhFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => vo
         ssr: false
     }
 )
+const JhajjarFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/JhajjarFullscreenWalkthrough'),
+    {
+        ssr: false
+    }
+)
+const KaaviFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/KaaviFullscreenWalkthrough'),
+    {
+        ssr: false
+    }
+)
+const KangraFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/KangraFullscreenWalkthrough'),
+    {
+        ssr: false
+    }
+)
+const KarepaFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/KarepaFullscreenWalkthrough'),
+    {
+        ssr: false
+    }
+)
+const KhatwaFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/KhatwaFullscreenWalkthrough'),
+    {
+        ssr: false
+    }
+)
+const KhovarFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/KhovarFullscreenWalkthrough'),
+    {
+        ssr: false
+    }
+)
+const KinnauriFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/KinnauriFullscreenWalkthrough'),
+    {
+        ssr: false
+    }
+)
+const KosaFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/KosaFullscreenWalkthrough'),
+    {
+        ssr: false
+    }
+)
+const KutchFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/KutchFullscreenWalkthrough'),
+    {
+        ssr: false
+    }
+)
+const LippanFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/LippanFullscreenWalkthrough'),
+    {
+        ssr: false
+    }
+)
+const MajuliFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/MajuliFullscreenWalkthrough'),
+    {
+        ssr: false
+    }
+)
+const ManjushaFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/ManjushaFullscreenWalkthrough'),
+    {
+        ssr: false
+    }
+)
+const MataNiPachediFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/MataNiPachediFullscreenWalkthrough'),
+    {
+        ssr: false
+    }
+)
 const KalamkariFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
     () => import('./compo/KalamkariFullscreenWalkthrough'),
     {
@@ -168,6 +246,19 @@ const HomePage: React.FC = () => {
     const [showWelcomeModal, setShowWelcomeModal] = useState(false);
     const [showWarliWalkthrough, setShowWarliWalkthrough] = useState(false);
     const [showAjrakhWalkthrough, setShowAjrakhWalkthrough] = useState(false);
+    const [showJhajjarWalkthrough, setShowJhajjarWalkthrough] = useState(false);
+    const [showKaaviWalkthrough, setShowKaaviWalkthrough] = useState(false);
+    const [showKangraWalkthrough, setShowKangraWalkthrough] = useState(false);
+    const [showKarepaWalkthrough, setShowKarepaWalkthrough] = useState(false);
+    const [showKhatwaWalkthrough, setShowKhatwaWalkthrough] = useState(false);
+    const [showKhovarWalkthrough, setShowKhovarWalkthrough] = useState(false);
+    const [showKinnauriWalkthrough, setShowKinnauriWalkthrough] = useState(false);
+    const [showKosaWalkthrough, setShowKosaWalkthrough] = useState(false);
+    const [showKutchWalkthrough, setShowKutchWalkthrough] = useState(false);
+    const [showLippanWalkthrough, setShowLippanWalkthrough] = useState(false);
+    const [showMajuliWalkthrough, setShowMajuliWalkthrough] = useState(false);
+    const [showManjushaWalkthrough, setShowManjushaWalkthrough] = useState(false);
+    const [showMataNiPachediWalkthrough, setShowMataNiPachediWalkthrough] = useState(false);
     const [showKalamkariWalkthrough, setShowKalamkariWalkthrough] = useState(false);
     const [showSrikalahastiWalkthrough, setShowSrikalahastiWalkthrough] = useState(false);
     const [showUppadaWalkthrough, setShowUppadaWalkthrough] = useState(false);
@@ -194,6 +285,19 @@ const HomePage: React.FC = () => {
         switch (id) {
             case "Maharashtra": setShowWarliWalkthrough(true); break;
             case "ajrakh": setShowAjrakhWalkthrough(true); break;
+            case "jhajjar": setShowJhajjarWalkthrough(true); break;
+            case "kaavi": setShowKaaviWalkthrough(true); break;
+            case "kangra": setShowKangraWalkthrough(true); break;
+            case "karepa": setShowKarepaWalkthrough(true); break;
+            case "khatwa": setShowKhatwaWalkthrough(true); break;
+            case "khovar": setShowKhovarWalkthrough(true); break;
+            case "kinnauri": setShowKinnauriWalkthrough(true); break;
+            case "kosa": setShowKosaWalkthrough(true); break;
+            case "kutch": setShowKutchWalkthrough(true); break;
+            case "lippan": setShowLippanWalkthrough(true); break;
+            case "majuli": setShowMajuliWalkthrough(true); break;
+            case "manjusha": setShowManjushaWalkthrough(true); break;
+            case "matanipachedi": setShowMataNiPachediWalkthrough(true); break;
             case "madhubani": setShowMadhubaniWalkthrough(true); break;
             case "kyilkhor": setShowKyilKhorWalkthrough(true); break;
             case "sherdukpen": setShowSherdukpenWalkthrough(true); break;
@@ -395,6 +499,71 @@ const HomePage: React.FC = () => {
                             setOpenedFromAllStyles(false);
                             setShowWelcomeModal(false);
                             setShowAjrakhWalkthrough(true);
+                        }}
+                        onJhajjarOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowJhajjarWalkthrough(true);
+                        }}
+                        onKaaviOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowKaaviWalkthrough(true);
+                        }}
+                        onKangraOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowKangraWalkthrough(true);
+                        }}
+                        onKarepaOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowKarepaWalkthrough(true);
+                        }}
+                        onKhatwaOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowKhatwaWalkthrough(true);
+                        }}
+                        onKhovarOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowKhovarWalkthrough(true);
+                        }}
+                        onKinnauriOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowKinnauriWalkthrough(true);
+                        }}
+                        onKosaOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowKosaWalkthrough(true);
+                        }}
+                        onKutchOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowKutchWalkthrough(true);
+                        }}
+                        onLippanOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowLippanWalkthrough(true);
+                        }}
+                        onMajuliOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowMajuliWalkthrough(true);
+                        }}
+                        onManjushaOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowManjushaWalkthrough(true);
+                        }}
+                        onMataNiPachediOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowMataNiPachediWalkthrough(true);
                         }}
                         onMadhubaniOpen={() => {
                             setOpenedFromAllStyles(false);
@@ -656,6 +825,58 @@ const HomePage: React.FC = () => {
             <AjrakhFullscreenWalkthrough
                 isOpen={showAjrakhWalkthrough}
                 onClose={() => handleCloseWalkthrough(setShowAjrakhWalkthrough)}
+            />
+            <JhajjarFullscreenWalkthrough
+                isOpen={showJhajjarWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowJhajjarWalkthrough)}
+            />
+            <KaaviFullscreenWalkthrough
+                isOpen={showKaaviWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowKaaviWalkthrough)}
+            />
+            <KangraFullscreenWalkthrough
+                isOpen={showKangraWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowKangraWalkthrough)}
+            />
+            <KarepaFullscreenWalkthrough
+                isOpen={showKarepaWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowKarepaWalkthrough)}
+            />
+            <KhatwaFullscreenWalkthrough
+                isOpen={showKhatwaWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowKhatwaWalkthrough)}
+            />
+            <KhovarFullscreenWalkthrough
+                isOpen={showKhovarWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowKhovarWalkthrough)}
+            />
+            <KinnauriFullscreenWalkthrough
+                isOpen={showKinnauriWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowKinnauriWalkthrough)}
+            />
+            <KosaFullscreenWalkthrough
+                isOpen={showKosaWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowKosaWalkthrough)}
+            />
+            <KutchFullscreenWalkthrough
+                isOpen={showKutchWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowKutchWalkthrough)}
+            />
+            <LippanFullscreenWalkthrough
+                isOpen={showLippanWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowLippanWalkthrough)}
+            />
+            <MajuliFullscreenWalkthrough
+                isOpen={showMajuliWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowMajuliWalkthrough)}
+            />
+            <ManjushaFullscreenWalkthrough
+                isOpen={showManjushaWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowManjushaWalkthrough)}
+            />
+            <MataNiPachediFullscreenWalkthrough
+                isOpen={showMataNiPachediWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowMataNiPachediWalkthrough)}
             />
 
             <KalamkariFullscreenWalkthrough
