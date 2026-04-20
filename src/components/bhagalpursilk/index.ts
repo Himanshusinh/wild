@@ -1,0 +1,2 @@
+export { BhagalpurSilkModal } from "./BhagalpurSilkModal";
+

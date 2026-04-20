@@ -1,0 +1,2 @@
+export { TaiAhomManuscriptModal } from "./TaiAhomManuscriptModal";
+

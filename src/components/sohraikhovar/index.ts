@@ -1,0 +1,2 @@
+export { SohraiKhovarModal } from "./SohraiKhovarModal";
+

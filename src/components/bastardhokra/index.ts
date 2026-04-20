@@ -1,0 +1,2 @@
+export { BastarDhokraModal } from "./BastarDhokraModal";
+
