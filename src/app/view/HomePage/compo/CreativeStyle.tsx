@@ -28,6 +28,17 @@ export const STYLES: StyleItem[] = [
     imageFilter: "brightness(0.85) saturate(0.9)",
   },
   {
+    id: "ajrakh",
+    name: "Gujarat",
+    title: "AJRAKH",
+    desc: "A resist block-print textile tradition known for its geometric symmetry, deep indigo tones, and structured border-field composition.",
+    image: "/HomePage/creativeStyle/AJRAKH.avif",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.88) saturate(0.95)",
+  },
+  {
     id: "madhubani",
     name: "Bihar",
     title: "MADHUBANI",
@@ -196,6 +207,7 @@ export const STYLES: StyleItem[] = [
 
 type CreativeStyleProps = {
   onWarliOpen?: () => void;
+  onAjrakhOpen?: () => void;
   onMadhubaniOpen?: () => void;
   onKyilKhorOpen?: () => void;
   onSherdukpenOpen?: () => void;
@@ -216,6 +228,7 @@ type CreativeStyleProps = {
 
 export default function CreativeStyle({
   onWarliOpen,
+  onAjrakhOpen,
   onMadhubaniOpen,
   onKyilKhorOpen,
   onSherdukpenOpen,
@@ -242,6 +255,11 @@ export default function CreativeStyle({
     if (t === "warli" && onWarliOpen) {
       event.preventDefault();
       onWarliOpen();
+      return;
+    }
+    if (style.id === "ajrakh" && onAjrakhOpen) {
+      event.preventDefault();
+      onAjrakhOpen();
       return;
     }
     if (style.id === "madhubani" && onMadhubaniOpen) {

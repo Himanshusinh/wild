@@ -28,6 +28,12 @@ const WelcomeModal = dynamic(() => import('./compo/WelcomeModal'), {
 const WarliFullscreenWalkthrough = dynamic(() => import('./compo/WarliFullscreenWalkthrough'), {
     ssr: false
 })
+const AjrakhFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/AjrakhFullscreenWalkthrough'),
+    {
+        ssr: false
+    }
+)
 const KalamkariFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
     () => import('./compo/KalamkariFullscreenWalkthrough'),
     {
@@ -161,6 +167,7 @@ const HomePage: React.FC = () => {
     const [showWildmindSkitPopup, setShowWildmindSkitPopup] = useState(false);
     const [showWelcomeModal, setShowWelcomeModal] = useState(false);
     const [showWarliWalkthrough, setShowWarliWalkthrough] = useState(false);
+    const [showAjrakhWalkthrough, setShowAjrakhWalkthrough] = useState(false);
     const [showKalamkariWalkthrough, setShowKalamkariWalkthrough] = useState(false);
     const [showSrikalahastiWalkthrough, setShowSrikalahastiWalkthrough] = useState(false);
     const [showUppadaWalkthrough, setShowUppadaWalkthrough] = useState(false);
@@ -186,6 +193,7 @@ const HomePage: React.FC = () => {
         
         switch (id) {
             case "Maharashtra": setShowWarliWalkthrough(true); break;
+            case "ajrakh": setShowAjrakhWalkthrough(true); break;
             case "madhubani": setShowMadhubaniWalkthrough(true); break;
             case "kyilkhor": setShowKyilKhorWalkthrough(true); break;
             case "sherdukpen": setShowSherdukpenWalkthrough(true); break;
@@ -382,6 +390,11 @@ const HomePage: React.FC = () => {
                             setOpenedFromAllStyles(false);
                             setShowWelcomeModal(false);
                             setShowWarliWalkthrough(true);
+                        }}
+                        onAjrakhOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowAjrakhWalkthrough(true);
                         }}
                         onMadhubaniOpen={() => {
                             setOpenedFromAllStyles(false);
@@ -639,6 +652,10 @@ const HomePage: React.FC = () => {
             <WarliFullscreenWalkthrough
                 isOpen={showWarliWalkthrough}
                 onClose={() => handleCloseWalkthrough(setShowWarliWalkthrough)}
+            />
+            <AjrakhFullscreenWalkthrough
+                isOpen={showAjrakhWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowAjrakhWalkthrough)}
             />
 
             <KalamkariFullscreenWalkthrough
