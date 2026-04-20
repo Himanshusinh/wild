@@ -23,13 +23,28 @@ import {
   ensureRazorpayScriptLoaded,
   openRazorpaySubscriptionCheckout,
 } from "@/lib/razorpaySubscriptionCheckout";
+import { openRazorpayOrderCheckout } from "@/lib/razorpayOrderCheckout";
 import {
   fetchSubscriptionCatalog,
   findCatalogSkuByCode,
   type SubscriptionCatalog,
 } from "@/lib/subscriptionCatalog";
-import { getErrorMessage } from "@/lib/errorMessage";
+import { getErrorCode, getErrorMessage } from "@/lib/errorMessage";
 import BillingMessageDialog from "./components/BillingMessageDialog";
+import { getApiClient } from "@/lib/axiosInstance";
+
+function normalizePlanCode(value?: string | null): string | null {
+  if (!value) return null;
+  return value.trim().toUpperCase();
+}
+
+type CreditPack = {
+  code: string;
+  name: string;
+  credits: number;
+  priceUSD: string;
+  pricePerCredit: string;
+};
 
 export default function BillingPage() {
   const router = useRouter();
@@ -71,6 +86,49 @@ export default function BillingPage() {
     onContinue?: () => void;
     primaryLabel?: string;
   } | null>(null);
+  const [showCreditsModal, setShowCreditsModal] = useState(false);
+  const [creditPacks, setCreditPacks] = useState<CreditPack[]>([]);
+  const [creditPacksLoading, setCreditPacksLoading] = useState(false);
+  const [selectedPackCode, setSelectedPackCode] = useState<string>("");
+  const [isBuyingCredits, setIsBuyingCredits] = useState(false);
+
+  const mapSubscriptionErrorMessage = (error: unknown): string => {
+    const code = getErrorCode(error);
+    if (code === "PLAN_CHANGE_NOT_ALLOWED_UPI") {
+      return "Your current payment method (UPI AutoPay) does not support changing this plan in place. Please cancel and resubscribe, or use card/e-mandate for smoother plan changes.";
+    }
+    if (code === "PLAN_CHANGE_NOT_ALLOWED_DOMESTIC_CARD") {
+      return "Your current domestic card mandate allows offer updates only, not direct plan changes. Please cancel and resubscribe, or complete a fresh mandate via checkout.";
+    }
+    if (code === "PLAN_CHANGE_MANDATE_REAUTH_REQUIRED") {
+      return "Your payment method needs re-authorization for this amount change. Please complete checkout again to authorize the new mandate.";
+    }
+    return getErrorMessage(
+      error,
+      "Failed to create or change your subscription.",
+    );
+  };
+
+  const fetchCreditPacks = async (): Promise<void> => {
+    setCreditPacksLoading(true);
+    try {
+      const api = getApiClient();
+      const res = await api.get("/api/payments/packs");
+      const packs: CreditPack[] = Array.isArray(res.data?.data) ? res.data.data : [];
+      setCreditPacks(packs);
+      if (!selectedPackCode && packs[0]?.code) {
+        setSelectedPackCode(packs[0].code);
+      }
+    } catch (error) {
+      setBillingMessage({
+        title: "Couldn’t load credit packs",
+        body: getErrorMessage(error, "Failed to load available credit packs."),
+        variant: "error",
+      });
+    } finally {
+      setCreditPacksLoading(false);
+    }
+  };
 
   useEffect(() => {
     setIsMounted(true);
@@ -100,14 +158,24 @@ export default function BillingPage() {
     const status = String(subscription?.status || "").toUpperCase();
     return status === "CANCELLED" ? "Active until" : "Next billing date";
   }, [subscription?.status]);
+  const currentPlanCode = normalizePlanCode(
+    subscription?.planCode || credits?.planCode || "FREE",
+  );
+  const hasWalletCredits = (credits?.creditBalance ?? 0) > 0;
+  const freeWithBalance =
+    currentPlanCode === "FREE" &&
+    hasWalletCredits &&
+    !["ACTIVE", "PAST_DUE"].includes(
+      String(subscription?.status || "").toUpperCase(),
+    );
 
   useEffect(() => {
-    const currentCode = subscription?.planCode || credits?.planCode;
+    const currentCode = currentPlanCode;
     const currentSku = findCatalogSkuByCode(catalog, currentCode);
     if (currentSku?.billingInterval) {
       setBillingInterval(currentSku.billingInterval);
     }
-  }, [catalog, credits?.planCode, subscription?.planCode]);
+  }, [catalog, currentPlanCode]);
 
   const handleSelectPlan = (planCode: string) => {
     const sku = findCatalogSkuByCode(catalog, planCode);
@@ -117,7 +185,7 @@ export default function BillingPage() {
     );
     if (!sku || !familyPlan) return;
 
-    const currentCode = subscription?.planCode || credits?.planCode || null;
+    const currentCode = currentPlanCode;
     const currentSku = findCatalogSkuByCode(catalog, currentCode);
     const currentPrice = currentSku ? currentSku.priceInPaise / 100 : 0;
     const nextPrice = sku.priceInPaise / 100;
@@ -164,7 +232,7 @@ export default function BillingPage() {
     const targetSku = interval === "YEARLY" ? familyPlan.yearly : familyPlan.monthly;
     if (!targetSku) return;
 
-    const currentCode = subscription?.planCode || credits?.planCode || null;
+    const currentCode = currentPlanCode;
     const currentSku = findCatalogSkuByCode(catalog, currentCode);
     const currentPrice = currentSku ? currentSku.priceInPaise / 100 : 0;
     const nextPrice = targetSku.priceInPaise / 100;
@@ -464,10 +532,7 @@ export default function BillingPage() {
       console.error("Checkout error:", error);
       setBillingMessage({
         title: "Couldn’t complete checkout",
-        body: getErrorMessage(
-          error,
-          "Failed to create or change your subscription.",
-        ),
+        body: mapSubscriptionErrorMessage(error),
         variant: "error",
       });
       setShowCheckout(false);
@@ -497,6 +562,89 @@ export default function BillingPage() {
     }
   };
 
+  const handleBuyAdditionalCredits = async () => {
+    if (isBuyingCredits) return;
+    const packCode = selectedPackCode || creditPacks[0]?.code;
+    if (!packCode) {
+      setBillingMessage({
+        title: "Select a pack",
+        body: "Please select a credit pack before continuing.",
+        variant: "error",
+      });
+      return;
+    }
+
+    setIsBuyingCredits(true);
+    try {
+      const api = getApiClient();
+      const orderResponse = await api.post("/api/payments/create-order", {
+        packCode,
+      });
+      const data = orderResponse.data?.data;
+      if (!data?.orderId || !data?.keyId || !data?.amountInPaise) {
+        throw new Error("Invalid payment order response");
+      }
+
+      const chosen = creditPacks.find((p) => p.code === packCode);
+      await openRazorpayOrderCheckout({
+        keyId: data.keyId,
+        orderId: data.orderId,
+        amountInPaise: data.amountInPaise,
+        packName: chosen?.name || "Credit pack",
+        prefill: {
+          name: userName,
+          email: userEmail,
+        },
+        onSuccess: async (payload) => {
+          try {
+            await api.post("/api/payments/verify", payload);
+          } catch (verifyError) {
+            setBillingMessage({
+              title: "Payment received, verifying...",
+              body: getErrorMessage(
+                verifyError,
+                "We received your payment. Credits and invoice will sync shortly.",
+              ),
+              variant: "info",
+            });
+          } finally {
+            dispatch(fetchUserCredits());
+            dispatch(fetchCurrentSubscription());
+            setFlashNotice({
+              kind: "success",
+              title: "Credits added successfully",
+              detail: "Credits are added instantly and do not expire until used.",
+            });
+            setTimeout(() => setFlashNotice(null), 6000);
+            setShowCreditsModal(false);
+          }
+        },
+        onFailure: (message) => {
+          setBillingMessage({
+            title: "Payment failed",
+            body: message || "Payment failed. Please try again.",
+            variant: "error",
+          });
+        },
+        onDismiss: () => {
+          setBillingMessage({
+            title: "Checkout closed",
+            body: "Payment failed. Please try again.",
+            variant: "error",
+          });
+        },
+      });
+    } catch (error) {
+      setBillingMessage({
+        title: "Couldn’t start payment",
+        body: getErrorMessage(error, "Payment failed. Please try again."),
+        variant: "error",
+      });
+    } finally {
+      setIsBuyingCredits(false);
+    }
+  };
+
   // Hydration fix: Only show loading state after component has mounted on client
   // server renders the content view initially, so client must match for first render
   if (isMounted && loading && !subscription) {
@@ -512,12 +660,12 @@ export default function BillingPage() {
 
   const currentCatalogSku = findCatalogSkuByCode(
     catalog,
-    subscription?.planCode || credits?.planCode,
+    currentPlanCode,
   );
   const currentCatalogFamily = catalog?.plans.find(
     (plan) =>
-      plan.monthly?.code === (subscription?.planCode || credits?.planCode) ||
-      plan.yearly?.code === (subscription?.planCode || credits?.planCode),
+      plan.monthly?.code === currentPlanCode ||
+      plan.yearly?.code === currentPlanCode,
   );
   const currentSubscriptionPlan = (subscription as any)?.plan;
   const fallbackGstRatePercent =
@@ -604,6 +752,15 @@ export default function BillingPage() {
             </div>
           </div>
         ) : null}
+        {freeWithBalance ? (
+          <div className="mb-8 rounded-2xl border border-blue-500/25 bg-blue-500/10 p-4 text-sm text-blue-100">
+            <div className="font-semibold">You are currently on Free plan.</div>
+            <div className="mt-1 text-xs text-blue-200/80">
+              Your existing credits remain available until used. Upgrading re-enables
+              recurring plan credits and storage tiers.
+            </div>
+          </div>
+        ) : null}
         {flashNotice ? (
           <div className="mb-8 rounded-2xl border border-emerald-500/25 bg-emerald-500/10 p-4 text-sm text-emerald-100">
             <div className="font-semibold">{flashNotice.title}</div>
@@ -666,18 +823,30 @@ export default function BillingPage() {
             >
               Payment history
             </button>
+            <button
+              type="button"
+              onClick={() => {
+                setShowCreditsModal(true);
+                void fetchCreditPacks();
+              }}
+              className="rounded-lg border border-blue-500/35 bg-blue-500/10 px-5 py-2.5 text-sm font-semibold text-blue-100 transition hover:bg-blue-500/20"
+            >
+              Buy additional credits
+            </button>
           </div>
         </header>
 
         {/* Current Subscription Card */}
-        {subscription && (currentCatalogSku || (subscription as any)?.plan) && (
+        {(currentCatalogSku ||
+          currentSubscriptionPlan ||
+          currentPlanCode === "FREE") && (
           <div className="mb-12">
             <ActivePlanCard
               subscription={{
-                id: subscription.id || "",
-                planCode: subscription.planCode || "",
-                status: subscription.status || "",
-                nextBillingDate: subscription.nextBillingDate,
+                id: subscription?.id || "",
+                planCode: currentPlanCode || subscription?.planCode || "FREE",
+                status: subscription?.status || (currentPlanCode || "FREE"),
+                nextBillingDate: subscription?.nextBillingDate,
               }}
               credits={{
                 creditBalance: credits?.creditBalance || 0,
@@ -688,7 +857,7 @@ export default function BillingPage() {
                 name:
                   currentCatalogFamily?.name ||
                   (subscription as any)?.plan?.name ||
-                  "Plan",
+                  (currentPlanCode === "FREE" ? "Free" : "Plan"),
                 credits:
                   currentCatalogSku?.credits ||
                   (subscription as any)?.plan?.credits ||
@@ -754,7 +923,7 @@ export default function BillingPage() {
           <PlanCards
             plans={catalog?.plans || []}
             selectedBillingInterval={billingInterval}
-            currentPlanCode={subscription?.planCode || credits?.planCode}
+            currentPlanCode={currentPlanCode || undefined}
             onSelectPlan={handleSelectPlan}
           />
         </div>
@@ -780,7 +949,87 @@ export default function BillingPage() {
             })()}
           />
         )}
+
+        {showCreditsModal ? (
+          <div
+            className="fixed inset-0 z-[75] flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="buy-credits-title"
+          >
+            <div className="w-full max-w-lg rounded-2xl border border-white/[0.1] bg-[#0a0a0a] p-6 shadow-[0_24px_64px_rgba(0,0,0,0.6)]">
+              <div className="mb-2 text-lg font-semibold text-white" id="buy-credits-title">
+                Buy additional credits
+              </div>
+              <p className="mb-5 text-sm text-zinc-400">
+                Credits are added instantly and do not expire until used.
+              </p>
+              <div className="space-y-2">
+                {creditPacksLoading ? (
+                  <div className="text-sm text-zinc-400">Loading packs...</div>
+                ) : creditPacks.length === 0 ? (
+                  <div className="text-sm text-zinc-400">
+                    No credit packs are available for your plan right now.
+                  </div>
+                ) : (
+                  creditPacks.map((pack) => {
+                    const selected = selectedPackCode === pack.code;
+                    const priceInr = Number(pack.priceUSD);
+                    return (
+                      <button
+                        key={pack.code}
+                        type="button"
+                        onClick={() => setSelectedPackCode(pack.code)}
+                        className={`w-full rounded-xl border p-3 text-left transition ${
+                          selected
+                            ? "border-blue-400/60 bg-blue-500/10"
+                            : "border-white/[0.12] bg-white/[0.03] hover:bg-white/[0.07]"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="font-semibold text-white">{pack.name}</span>
+                          <span className="text-zinc-200">₹{priceInr.toLocaleString("en-IN")}</span>
+                        </div>
+                        <div className="mt-1 text-xs text-zinc-400">
+                          {pack.credits.toLocaleString()} credits
+                        </div>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+              <div className="mt-3 text-xs text-zinc-500">GST included in checkout pricing.</div>
+              <div className="mt-6 flex justify-end gap-2">
+                <button
+                  type="button"
+                  className="rounded-lg px-4 py-2 text-sm font-medium text-zinc-300 transition hover:bg-white/5"
+                  onClick={() => setShowCreditsModal(false)}
+                  disabled={isBuyingCredits}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="rounded-lg bg-[#2F6BFF] px-4 py-2 text-sm font-semibold text-white shadow-[0_4px_16px_rgba(47,107,255,0.4)] transition hover:bg-[#2a5fe3] disabled:cursor-not-allowed disabled:opacity-60"
+                  onClick={() => void handleBuyAdditionalCredits()}
+                  disabled={isBuyingCredits || creditPacksLoading || creditPacks.length === 0}
+                >
+                  {isBuyingCredits ? "Processing..." : "Continue to pay"}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </div>
+      <BillingMessageDialog
+        open={!!billingMessage}
+        title={billingMessage?.title || ""}
+        body={billingMessage?.body || ""}
+        variant={billingMessage?.variant}
+        onContinue={billingMessage?.onContinue}
+        primaryLabel={billingMessage?.primaryLabel}
+        onClose={() => setBillingMessage(null)}
+      />
     </div>
   );
 }
