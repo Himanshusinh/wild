@@ -32,11 +32,13 @@ export const MODELS = [
 export const IMAGE_COUNTS: ImageCount[] = [1, 2, 4];
 
 export const STYLE_LABELS: Record<StyleFamily, { badge: string; title: string }> = {
-  V3: { badge: "CINEMATIC", title: "3D Realistic Neo-Agrarian Brutalism World" },
+  V1: { badge: "AUTHENTIC", title: "Agrarian-Industrial Flatscape" },
+  V2: { badge: "ARTISAN", title: "Dimensional Agrarian-Industrial World" },
+  V3: { badge: "CINEMATIC", title: "3D Cinematic Agrarian-Industrial World" },
 };
 
 export const INITIAL_STATE: NeoAgrarianBrutalismState = {
-  style: "V3",
+  style: "V1",
   inputMode: "text",
   sceneText: "",
   uploadedImage: null,

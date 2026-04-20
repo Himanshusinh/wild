@@ -4,17 +4,20 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { X, Camera, Zap, Download } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
+import axiosInstance from '@/lib/axiosInstance';
 import UploadModal from '@/app/view/Generation/ImageGeneration/TextToImage/compo/UploadModal';
 import ImageComparisonSlider from '@/app/view/workflows/components/ImageComparisonSlider';
 import { downloadFileWithNaming } from '@/utils/downloadUtils';
 import { useCredits } from '@/hooks/useCredits';
+import { getSignInUrl } from '@/routes/routes';
 
 export default function FashionModelingPoses() {
   const router = useRouter();
   const {
     creditBalance,
     deductCreditsOptimisticForGeneration,
-    rollbackOptimisticDeduction
+    rollbackOptimisticDeduction,
+    user
   } = useCredits();
 
   // State
@@ -23,16 +26,18 @@ export default function FashionModelingPoses() {
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-  const [prompt, setPrompt] = useState("");
+  const [poseDescription, setPoseDescription] = useState("");
 
   // Workflow Data
   const workflowData = {
     id: "fashion-modeling-poses",
     title: "Fashion Modeling Poses",
     category: "Fashion",
-    description: "Generate professional fashion modeling poses from a single photo.",
+    description: "Generate professional fashion modeling poses from a single photo while preserving identity.",
     cost: 90
   };
+
+  const CREDIT_COST = 90;
 
   useEffect(() => {
     // Open modal animation on mount
@@ -57,16 +62,20 @@ export default function FashionModelingPoses() {
   };
 
   const handleRun = async () => {
+    if (!user) {
+      router.push(getSignInUrl());
+      return;
+    }
+
     if (!uploadedImage) {
       toast.error('Please upload an image first');
       return;
     }
-    if (!prompt.trim()) {
+    if (!poseDescription.trim()) {
       toast.error('Please describe the pose you want');
       return;
     }
 
-    const CREDIT_COST = 90;
     if (creditBalance < CREDIT_COST) {
       toast.error(`Insufficient credits. You need ${CREDIT_COST} credits.`);
       return;
@@ -76,11 +85,19 @@ export default function FashionModelingPoses() {
       deductCreditsOptimisticForGeneration(CREDIT_COST);
       setIsGenerating(true);
 
-      // Simulation for now
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      // Use the sample after image as a simulation result
-      setGeneratedImage("/workflow-samples/fashion-modeling-after.jpg");
-      toast.success('Pose generated!');
+      const response = await axiosInstance.post('/api/workflows/fashion/modeling-poses', {
+        image: uploadedImage,
+        poseDescription: poseDescription.trim(),
+        isPublic: true,
+        size: '2K', // Seedream 5 Lite best results
+      });
+
+      if (response.data?.responseStatus === 'success' && response.data?.data?.images?.[0]?.url) {
+        setGeneratedImage(response.data.data.images[0].url);
+        toast.success('Fashion pose generated!');
+      } else {
+        throw new Error(response.data?.message || 'Invalid response from server');
+      }
 
     } catch (error: any) {
       console.error('Generation error:', error);
@@ -130,7 +147,7 @@ export default function FashionModelingPoses() {
                   <span className="text-[10px] font-bold uppercase tracking-wider text-[#60a5fa] border border-[#60a5fa]/30 px-2 py-1 rounded-full">{workflowData.category}</span>
                 </div>
                 <h2 className="text-2xl md:text-4xl font-medium text-white mb-4 tracking-tight">{workflowData.title}</h2>
-                <p className="text-slate-400 text-lg mb-8">{workflowData.description}</p>
+                <p className="text-slate-400 text-lg mb-8 leading-relaxed">{workflowData.description}</p>
 
                 <div className="mb-8">
                   <div className="border border-dashed border-white/15 rounded-xl bg-black/20 h-48 flex flex-col items-center justify-center gap-4 cursor-pointer hover:bg-[#60a5fa]/5 transition-colors relative overflow-hidden group"
@@ -146,7 +163,7 @@ export default function FashionModelingPoses() {
                       <>
                         <div className="w-12 h-12 rounded-full bg-[#111] flex items-center justify-center text-slate-400"><Camera size={24} /></div>
                         <div className="text-center">
-                          <span className="text-sm text-slate-300 block font-medium">Upload Image</span>
+                          <span className="text-sm text-slate-300 block font-medium">Upload Model Photo</span>
                           <span className="text-xs text-slate-500">JPG, PNG, WebP up to 25MB</span>
                         </div>
                       </>
@@ -155,13 +172,16 @@ export default function FashionModelingPoses() {
                 </div>
 
                 <div className="mb-8">
-                  <label className="text-xs font-bold uppercase text-slate-500 mb-2 block tracking-wider">POSE DESCRIPTION (REQUIRED)</label>
+                  <label className="text-xs font-bold uppercase text-slate-500 mb-2 block tracking-wider">POSE & COSTUME DESCRIPTION (REQUIRED)</label>
                   <textarea
-                    value={prompt}
-                    onChange={(e) => setPrompt(e.target.value)}
-                    className="w-full bg-black/20 border border-white/10 rounded-xl p-4 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-[#60a5fa]/50 focus:bg-black/30 transition-all resize-none h-32"
-                    placeholder="Describe the pose you want (e.g. 'Standing casually with hands in pockets')..."
+                    value={poseDescription}
+                    onChange={(e) => setPoseDescription(e.target.value)}
+                    className="w-full bg-black/20 border border-white/10 rounded-xl p-4 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-[#60a5fa]/50 focus:bg-black/30 transition-all resize-none h-40"
+                    placeholder="Describe the pose you want (e.g. 'Standing casually with hands in pockets'). Mention costume changes if needed."
                   ></textarea>
+                  <p className="text-[10px] text-slate-600 mt-2 px-1 leading-relaxed">
+                    Identity and facial features will be preserved. Costume will be kept unless you specify a change in the prompt.
+                  </p>
                 </div>
 
               </div>
@@ -176,9 +196,9 @@ export default function FashionModelingPoses() {
                 </div>
                 <button
                   onClick={handleRun}
-                  disabled={isGenerating || !uploadedImage || !prompt}
+                  disabled={isGenerating || !uploadedImage || !poseDescription.trim()}
                   className={`w-full py-4 rounded-xl font-bold text-sm tracking-wide transition-all flex items-center justify-center gap-2
-                    ${isGenerating || !uploadedImage || !prompt
+                    ${isGenerating || !uploadedImage || !poseDescription.trim()
                       ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
                       : 'bg-[#60a5fa] text-black hover:bg-[#60a5fa]/90 shadow-[0_0_20px_rgba(96,165,250,0.3)] hover:shadow-[0_0_30px_rgba(96,165,250,0.5)]'
                     }`}
@@ -186,12 +206,12 @@ export default function FashionModelingPoses() {
                   {isGenerating ? (
                     <>
                       <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin"></div>
-                      Running Workflow...
+                      Generating Pose...
                     </>
                   ) : (
                     <>
-                      <Zap size={16} className={(!uploadedImage) ? "fill-slate-500" : "fill-black"} />
-                      Run Workflow
+                      <Zap size={16} className={(!uploadedImage || !poseDescription.trim()) ? "fill-slate-500" : "fill-black"} />
+                      Generate Modeling Pose
                     </>
                   )}
                 </button>
@@ -267,4 +287,3 @@ export default function FashionModelingPoses() {
     </>
   );
 }
-

@@ -1,11 +1,13 @@
 import type { SufEmbroideryVersion } from "@/app/view/HomePage/compo/sufembroideryPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
+
 export type StyleFamily = SufEmbroideryVersion;
 export type InputMode = "text" | "image";
 export type ModelId = "google/nano-banana-2" | "google/nano-banana-pro";
 export type ImageCount = 1 | 2 | 4;
 export type AspectRatio = WarliAspectRatioChoice;
 export type RightPanelState = "empty" | "loading" | "results";
+
 export interface SufEmbroideryState {
   style: StyleFamily;
   inputMode: InputMode;
@@ -21,16 +23,22 @@ export interface SufEmbroideryState {
   generatedImages: string[];
   assembledPrompt: string;
 }
+
 export const MODELS = [
   { id: "google/nano-banana-2" as const, label: "Nano Banana 2", tag: "Google" },
   { id: "google/nano-banana-pro" as const, label: "Nano Banana Pro", tag: "Google" },
 ];
+
 export const IMAGE_COUNTS: ImageCount[] = [1, 2, 4];
+
 export const STYLE_LABELS: Record<StyleFamily, { badge: string; title: string }> = {
-  V3: { badge: "CINEMATIC", title: "3D Realistic SUF EMBROIDERY World" },
+  V1: { badge: "AUTHENTIC", title: "Suf Embroidered Surface" },
+  V2: { badge: "ARTISAN", title: "Dimensional Suf World" },
+  V3: { badge: "CINEMATIC", title: "3D Realistic Suf World" },
 };
+
 export const INITIAL_STATE: SufEmbroideryState = {
-  style: "V3",
+  style: "V1",
   inputMode: "text",
   sceneText: "",
   uploadedImage: null,
