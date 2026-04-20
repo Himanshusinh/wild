@@ -9,21 +9,31 @@ import {
 } from 'lucide-react';
 import WSolid from '@/components/icons/WSolid';
 
-const FeatureItem = ({ href, icon: Icon, title, desc, onClick }: any) => (
-    <Link
-        href={href}
-        onClick={onClick}
-        className="group/item flex w-full cursor-pointer items-center gap-3 rounded-lg border border-transparent p-2 transition-colors hover:bg-white/10 hover:border-white/20"
-    >
-        <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-white/10 bg-white/5 text-white p-2">
-            <Icon size={18} />
-        </div>
-        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-            <div className="text-sm font-normal text-white group-hover/item:text-white transition-colors tracking-wide">{title}</div>
-            <div className="text-[11px] font-thin text-zinc-300 group-hover/item:text-zinc-100 transition-colors leading-snug">{desc}</div>
-        </div>
-    </Link>
-);
+const FeatureItem = ({ href, icon: Icon, title, desc, onClick, isSoon }: any) => {
+    const Element = isSoon ? 'div' : Link;
+    return (
+        <Element
+            href={isSoon ? undefined : href}
+            onClick={isSoon ? undefined : onClick}
+            className={`group/item flex w-full items-center gap-3 rounded-lg border border-transparent p-2 transition-colors ${isSoon ? 'cursor-not-allowed opacity-70' : 'cursor-pointer hover:bg-white/10 hover:border-white/20'}`}
+        >
+            <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-white/10 bg-white/5 text-white p-2">
+                <Icon size={18} />
+            </div>
+            <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <div className="flex items-center gap-2">
+                    <div className="text-sm font-normal text-white group-hover/item:text-white transition-colors tracking-wide">{title}</div>
+                    {isSoon && (
+                        <div className="px-1.5 py-[2px] text-[9px] font-bold tracking-widest uppercase bg-yellow-500/20 text-yellow-500 rounded leading-none">
+                            SOON
+                        </div>
+                    )}
+                </div>
+                <div className="text-[11px] font-thin text-zinc-300 group-hover/item:text-zinc-100 transition-colors leading-snug">{desc}</div>
+            </div>
+        </Element>
+    );
+};
 
 const ModelItem = ({ href, tag, tagColor, name, desc, onClick }: any) => (
     <Link
@@ -106,7 +116,7 @@ export const AppsPopout = ({
                             <div className="flex flex-col gap-0.5">
                                 <FeatureItem href="/view/workflows/general" icon={Wand2} title="General" desc="Upscale, manage elements" onClick={onMouseLeave} />
                                 <FeatureItem href="/view/workflows/fun" icon={Smile} title="Fun" desc="Creative fun effects" onClick={onMouseLeave} />
-                                <FeatureItem href="/view/workflows/viral-trend" icon={TrendingUp} title="Viral Trend" desc="Trending social styles" onClick={onMouseLeave} />
+                                <FeatureItem href="/view/workflows/viral-trend" icon={TrendingUp} title="Viral Trend" desc="Trending social styles" onClick={onMouseLeave} isSoon />
                                 <FeatureItem href="/view/workflows/photography" icon={Camera} title="Photography" desc="Enhance and transform" onClick={onMouseLeave} />
                             </div>
                         </div>

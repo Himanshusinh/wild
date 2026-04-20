@@ -277,7 +277,7 @@ export const WORKFLOWS_DATA = [
     "title": "Cad plans to 3d render (Int/Ext)",
     "category": "Architecture",
     "description": "Transform 2D CAD drawings and floor plans into photorealistic 3D interior or exterior renders.",
-    "model": "Seadream4/ Nano Banana/ Qwen",
+    "model": "Seedream 5 Lite",
     "thumbnail": "/workflow-samples/cad-to-3d-before-v2.png",
     "sampleBefore": "/workflow-samples/cad-to-3d-before-v2.png",
     "sampleAfter": "/workflow-samples/cad-to-3d-after-v2.jpg",
