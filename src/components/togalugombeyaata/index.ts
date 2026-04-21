@@ -1,0 +1,2 @@
+export { TogaluGombeyaataModal } from "./TogaluGombeyaataModal";
+

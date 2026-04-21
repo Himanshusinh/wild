@@ -675,6 +675,435 @@ export const STYLES: StyleItem[] = [
     titleColor: "#ffffff",
     href: "/text-to-image",
     imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "katabapplique",
+    name: "Gujarat",
+    title: "KATAB APPLIQUÉ",
+    desc: "A traditional textile craft where cut fabric pieces are stitched onto a base cloth to create bold geometric compositions.",
+    image: "/HomePage/creativeStyle/Next Styles Images/KATAB APPLIQUÉ.png",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "baghprint",
+    name: "Madhya Pradesh",
+    title: "BAGH PRINT",
+    desc: "A traditional hand block-printing craft known for its natural red and black dyes, repeat patterns, and textile-based design structure.",
+    image: "/HomePage/creativeStyle/Next Styles Images/BAGH PRINT.png",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "bamboocraft",
+    name: "Meghalaya",
+    title: "BAMBOO CRAFT",
+    desc: "A traditional craft where split bamboo strips are woven and bound into lightweight, functional structures.",
+    image: "/HomePage/creativeStyle/Next Styles Images/BAMBOO CRAFT.png",
+    tag: "Craft",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "nagabeadcluster",
+    name: "Nagaland",
+    title: "NAGA BEAD CLUSTER",
+    desc: "A traditional ornament system where layered bead strands form dense, tiered clusters across the neck and chest.",
+    image: "/HomePage/creativeStyle/Next Styles Images/NAGA BEAD CLUSTER.png",
+    tag: "Ornament",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "bidriware",
+    name: "Karnataka (Bidar)",
+    title: "BIDRIWARE",
+    desc: "A traditional metal craft where silver is inlaid into engraved grooves on a deep black alloy surface, creating striking contrast-driven designs.",
+    image: "/HomePage/creativeStyle/Next Styles Images/BIDRIWARE.png",
+    tag: "Metalwork",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "bordersigntextile",
+    name: "Manipur",
+    title: "BORDER-SIGN TEXTILE",
+    desc: "A traditional textile system where meaning is defined through the relationship between a restrained field and a strong identity-bearing border.",
+    image: "/HomePage/creativeStyle/Next Styles Images/BORDER-SIGN TEXTILE.png",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "bundelipainting",
+    name: "Madhya Pradesh (Orchha)",
+    title: "BUNDELI PAINTING",
+    desc: "A traditional mural art where clustered scenes depict courtly, devotional, and everyday life using bold colors and narrative composition.",
+    image: "/HomePage/creativeStyle/Next Styles Images/BUNDELI PAINTING.png",
+    tag: "Painting",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "ceremonialemblem",
+    name: "Manipur",
+    title: "CEREMONIAL EMBLEM",
+    desc: "A symbolic textile system where authority and meaning are expressed through black fields, red boundaries, and ranked emblematic forms.",
+    image: "/HomePage/creativeStyle/Next Styles Images/CEREMONIAL EMBLEM.png",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "channapatnatoys",
+    name: "Karnataka",
+    title: "CHANNAPATNA TOYS",
+    desc: "A traditional craft of lathe-turned wooden toys finished with glossy lacquer, known for their smooth forms and vibrant colors.",
+    image: "/HomePage/creativeStyle/Next Styles Images/CHANNAPATNA TOYS.png",
+    tag: "Craft",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "coircraft",
+    name: "Kerala",
+    title: "COIR CRAFT",
+    desc: "A natural fibre craft where coconut husk is transformed into twisted yarn and rope to create durable, functional products.",
+    image: "/HomePage/creativeStyle/Next Styles Images/COIR CRAFT.png",
+    tag: "Fibre",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "bellmetalrituals",
+    name: "Kerala",
+    title: "BELL-METAL RITUALS",
+    desc: "A sacred object tradition defined by typology-led forms like lamps and vessels, crafted in dense bell-metal for ritual use.",
+    image: "/HomePage/creativeStyle/Next Styles Images/BELL-METAL RITUALS.png",
+    tag: "Metalcraft",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "kasutiembroidery",
+    name: "Karnataka",
+    title: "KASUTI EMBROIDERY",
+    desc: "A traditional counted-thread embroidery where geometric motifs are built through precise, knotless stitching on cloth.",
+    image: "/HomePage/creativeStyle/Next Styles Images/KASUTI EMBROIDERY.png",
+    tag: "Embroidery",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "keralamural",
+    name: "Kerala",
+    title: "KERALA MURAL",
+    desc: "A sacred painting tradition where divine figures are constructed through codified forms, expressive eyes, and a disciplined five-color system.",
+    image: "/HomePage/creativeStyle/Next Styles Images/KERALA MURAL.png",
+    tag: "Painting",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "khambhatagate",
+    name: "Gujarat",
+    title: "KHAMBHAT AGATE",
+    desc: "A traditional stone craft where raw agate is shaped, drilled, and polished to reveal natural banding and translucency.",
+    image: "/HomePage/creativeStyle/Next Styles Images/KHAMBHAT AGATE.png",
+    tag: "Stonecraft",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "kinhalcraft",
+    name: "Karnataka",
+    title: "KINHAL CRAFT",
+    desc: "A traditional craft where wooden forms are built through additive shaping and finished with painted symbolic identity.",
+    image: "/HomePage/creativeStyle/Next Styles Images/KINHAL CRAFT.png",
+    tag: "Craft",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "kolhapurjewellery",
+    name: "Maharashtra",
+    title: "KOLHAPUR JEWELLERY",
+    desc: "A traditional metal craft where ornaments are built through linked units, articulation, and body-bound placement.",
+    image: "/HomePage/creativeStyle/Next Styles Images/KOLHAPUR JEWELLERY.png",
+    tag: "Jewellery",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "kolhapurichappal",
+    name: "Maharashtra",
+    title: "KOLHAPURI CHAPPAL",
+    desc: "A traditional leather footwear system built through sole-first construction, strap geometry, and grounded body-fit logic.",
+    image: "/HomePage/creativeStyle/Next Styles Images/KOLHAPURI CHAPPAL.png",
+    tag: "Footwear",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "kolhapurisaaj",
+    name: "Maharashtra",
+    title: "KOLHAPURI SAAJ",
+    desc: "A traditional necklace system where symbolic pendants are arranged in a structured sequence across the neckline.",
+    image: "/HomePage/creativeStyle/Next Styles Images/KOLHAPURI SAAJ.png",
+    tag: "Jewellery",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "lambaniembroidery",
+    name: "Karnataka",
+    title: "LAMBANI EMBROIDERY",
+    desc: "A traditional textile craft where surfaces are constructed through patchwork, mirrors, dense stitching, and attached ornamentation.",
+    image: "/HomePage/creativeStyle/Next Styles Images/LAMBANI EMBROIDERY.png",
+    tag: "Embroidery",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "leathertoys",
+    name: "Madhya Pradesh (Indore)",
+    title: "LEATHER TOYS",
+    desc: "A traditional craft where figures are built on armature structures and covered with stretched leather, finished with painted details.",
+    image: "/HomePage/creativeStyle/Next Styles Images/LEATHER TOYS.png",
+    tag: "Toys",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "paithani",
+    name: "Maharashtra",
+    title: "PAITHANI",
+    desc: "A handwoven silk-and-zari textile defined by pallu dominance, structural borders, and intricate loom-woven motifs.",
+    image: "/HomePage/creativeStyle/Next Styles Images/PAITHANI.png",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "pawndum",
+    name: "Mizoram",
+    title: "PAWNDUM",
+    desc: "A traditional dark-ground wrap cloth defined by bold woven stripes, panel construction, and socially coded lower-body use.",
+    image: "/HomePage/creativeStyle/Next Styles Images/PAWNDUM.png",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "poshinaterracotta",
+    name: "Gujarat",
+    title: "POSHINA TERRACOTTA",
+    desc: "A votive clay tradition where terracotta horses are offered at shrines as symbols of faith, protection, and fulfilled vows.",
+    image: "/HomePage/creativeStyle/Next Styles Images/POSHINA TERRACOTTA.png",
+    tag: "Terracotta",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "prestigependants",
+    name: "Nagaland",
+    title: "PRESTIGE PENDANTS",
+    desc: "Body-worn symbolic forms representing status, bravery, and inherited identity through visible focal signs.",
+    image: "/HomePage/creativeStyle/Next Styles Images/PRESTIGE PENDANTS.png",
+    tag: "Jewellery",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "puanchei",
+    name: "Mizoram",
+    title: "PUANCHEI",
+    desc: "A vibrant ceremonial textile defined by bold woven bands, strong color contrasts, and rhythmic horizontal structure.",
+    image: "/HomePage/creativeStyle/Next Styles Images/PUANCHEI.png",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "puanlaisen",
+    name: "Mizoram",
+    title: "PUANLAISEN",
+    desc: "A traditional woven textile defined by a dominant central red band that structures the entire cloth.",
+    image: "/HomePage/creativeStyle/Next Styles Images/PUANLAISEN.png",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "sandalwoodcarving",
+    name: "Karnataka (Mysuru)",
+    title: "SANDALWOOD CARVING",
+    desc: "A delicate woodcraft tradition known for intricate hand-carved details, fine relief work, and precious sandalwood material.",
+    image: "/HomePage/creativeStyle/Next Styles Images/SANDALWOOD CARVING.png",
+    tag: "Woodcraft",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "sankhedawoodwork",
+    name: "Gujarat (Vadodara)",
+    title: "SANKHEDA WOODWORK",
+    desc: "A traditional furniture craft defined by turned wooden forms, lacquered surfaces, and hand-painted motifs.",
+    image: "/HomePage/creativeStyle/Next Styles Images/SANKHEDA WOODWORK.png",
+    tag: "Woodcraft",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "ganjifa",
+    name: "Maharashtra (Sawantwadi)",
+    title: "GANJIFA",
+    desc: "A traditional hand-painted card art defined by circular composition, symbolic figures, and structured decorative borders.",
+    image: "/HomePage/creativeStyle/Next Styles Images/GANJIFA.png",
+    tag: "Painting",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "sawantwadiwoodcraft",
+    name: "Maharashtra",
+    title: "SAWANTWADI WOODCRAFT",
+    desc: "A traditional miniature craft where hand-carved wooden forms are painted and arranged into playful object-world sets.",
+    image: "/HomePage/creativeStyle/Next Styles Images/SAWANTWADI WOODCRAFT.png",
+    tag: "Woodcraft",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "shapheelanphee",
+    name: "Manipur",
+    title: "SHAPHEE LANPHEE",
+    desc: "A ceremonial honour cloth defined by black field authority, red borders, and symbolic motifs representing status and tradition.",
+    image: "/HomePage/creativeStyle/Next Styles Images/SHAPHEE LANPHEE.png",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "sheerfieldcloth",
+    name: "Manipur",
+    title: "SHEER FIELD CLOTH",
+    desc: "A soft upper-wrap textile system defined by translucency, gentle drape, and poised visual presence.",
+    image: "/HomePage/creativeStyle/Next Styles Images/SHEER FIELD CLOTH.png",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "bodyaugmentation",
+    name: "Nagaland",
+    title: "BODY AUGMENTATION",
+    desc: "A cultural system where tattoos, hair, and feathers transform the body into a symbolic and socially coded visual field.",
+    image: "/HomePage/creativeStyle/Next Styles Images/BODY AUGMENTATION.png",
+    tag: "Tattoo",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "tawlhlophuan",
+    name: "Mizoram",
+    title: "TAWLHLOHPUAN",
+    desc: "A traditional warrior cloth defined by joined construction, firm woven structure, and symbolic red-white seam discipline.",
+    image: "/HomePage/creativeStyle/Next Styles Images/TAWLHLOHPUAN.png",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "templemural",
+    name: "Karnataka (Hampi)",
+    title: "TEMPLE MURAL",
+    desc: "A sacred architectural painting tradition where narrative panels, divine figures, and ornamental borders are integrated into temple ceilings.",
+    image: "/HomePage/creativeStyle/Next Styles Images/TEMPLE MURAL.png",
+    tag: "Painting",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "togalugombeyaata",
+    name: "Karnataka",
+    title: "TOGALU GOMBEYAATA",
+    desc: "A traditional shadow-puppetry form where translucent leather figures, light, and screen create dynamic storytelling.",
+    image: "/HomePage/creativeStyle/Next Styles Images/TOGALU GOMBEYAATA.png",
+    tag: "Puppetry",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "nagashawl",
+    name: "Nagaland",
+    title: "NAGA SHAWL",
+    desc: "A tribe-specific woven system where pattern, structure, and identity are governed by a single coherent visual code.",
+    image: "/HomePage/creativeStyle/Next Styles Images/Tribe-signature shawl branch - Nagaland.png",
+    tag: "Shawl",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "wangkheiphee",
+    name: "Manipur",
+    title: "WANGKHEI PHEE",
+    desc: "A delicate woven textile defined by airy muslin-like body fields, sparse motifs, and strong geometric borders.",
+    image: "/HomePage/creativeStyle/Next Styles Images/WANGKHEI PHEE.png",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "meritshawl",
+    name: "Nagaland",
+    title: "MERIT SHAWL",
+    desc: "An earned ceremonial textile defined by bold segmented patterns, strong contrast, and public status symbolism.",
+    image: "/HomePage/creativeStyle/Next Styles Images/MERIT SHAWL.png",
+    tag: "Shawl",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
   }
 ];
 
@@ -739,6 +1168,45 @@ type CreativeStyleProps = {
   onSohraiOpen?: () => void;
   onSonowalTextileOpen?: () => void;
   onSufEmbroideryOpen?: () => void;
+  onKatabAppliqueOpen?: () => void;
+  onBaghPrintOpen?: () => void;
+  onBambooCraftOpen?: () => void;
+  onNagaBeadClusterOpen?: () => void;
+  onBidriwareOpen?: () => void;
+  onBorderSignTextileOpen?: () => void;
+  onBundeliPaintingOpen?: () => void;
+  onCeremonialEmblemOpen?: () => void;
+  onChannapatnaToysOpen?: () => void;
+  onCoirCraftOpen?: () => void;
+  onBellMetalRitualsOpen?: () => void;
+  onKasutiEmbroideryOpen?: () => void;
+  onKeralaMuralOpen?: () => void;
+  onKhambhatAgateOpen?: () => void;
+  onKinhalCraftOpen?: () => void;
+  onKolhapurJewelleryOpen?: () => void;
+  onKolhapuriChappalOpen?: () => void;
+  onKolhapuriSaajOpen?: () => void;
+  onLambaniEmbroideryOpen?: () => void;
+  onLeatherToysOpen?: () => void;
+  onPaithaniOpen?: () => void;
+  onPawndumOpen?: () => void;
+  onPoshinaTerracottaOpen?: () => void;
+  onPrestigePendantsOpen?: () => void;
+  onPuancheiOpen?: () => void;
+  onPuanlaisenOpen?: () => void;
+  onSandalwoodCarvingOpen?: () => void;
+  onSankhedaWoodworkOpen?: () => void;
+  onGanjifaOpen?: () => void;
+  onSawantwadiWoodcraftOpen?: () => void;
+  onShapheeLanpheeOpen?: () => void;
+  onSheerFieldClothOpen?: () => void;
+  onBodyAugmentationOpen?: () => void;
+  onTawlhlophuanOpen?: () => void;
+  onTempleMuralOpen?: () => void;
+  onTogaluGombeyaataOpen?: () => void;
+  onNagaShawlOpen?: () => void;
+  onWangkheiPheeOpen?: () => void;
+  onMeritShawlOpen?: () => void;
   onAllStylesOpen?: () => void;
 };
 
@@ -803,6 +1271,45 @@ export default function CreativeStyle({
   onSohraiOpen,
   onSonowalTextileOpen,
   onSufEmbroideryOpen,
+  onKatabAppliqueOpen,
+  onBaghPrintOpen,
+  onBambooCraftOpen,
+  onNagaBeadClusterOpen,
+  onBidriwareOpen,
+  onBorderSignTextileOpen,
+  onBundeliPaintingOpen,
+  onCeremonialEmblemOpen,
+  onChannapatnaToysOpen,
+  onCoirCraftOpen,
+  onBellMetalRitualsOpen,
+  onKasutiEmbroideryOpen,
+  onKeralaMuralOpen,
+  onKhambhatAgateOpen,
+  onKinhalCraftOpen,
+  onKolhapurJewelleryOpen,
+  onKolhapuriChappalOpen,
+  onKolhapuriSaajOpen,
+  onLambaniEmbroideryOpen,
+  onLeatherToysOpen,
+  onPaithaniOpen,
+  onPawndumOpen,
+  onPoshinaTerracottaOpen,
+  onPrestigePendantsOpen,
+  onPuancheiOpen,
+  onPuanlaisenOpen,
+  onSandalwoodCarvingOpen,
+  onSankhedaWoodworkOpen,
+  onGanjifaOpen,
+  onSawantwadiWoodcraftOpen,
+  onShapheeLanpheeOpen,
+  onSheerFieldClothOpen,
+  onBodyAugmentationOpen,
+  onTawlhlophuanOpen,
+  onTempleMuralOpen,
+  onTogaluGombeyaataOpen,
+  onNagaShawlOpen,
+  onWangkheiPheeOpen,
+  onMeritShawlOpen,
   onAllStylesOpen,
 }: CreativeStyleProps) {
   const railRef = useRef<HTMLDivElement | null>(null);
@@ -1110,6 +1617,201 @@ export default function CreativeStyle({
     if (style.id === "sufembroidery" && onSufEmbroideryOpen) {
       event.preventDefault();
       onSufEmbroideryOpen();
+      return;
+    }
+    if (style.id === "katabapplique" && onKatabAppliqueOpen) {
+      event.preventDefault();
+      onKatabAppliqueOpen();
+      return;
+    }
+    if (style.id === "baghprint" && onBaghPrintOpen) {
+      event.preventDefault();
+      onBaghPrintOpen();
+      return;
+    }
+    if (style.id === "bamboocraft" && onBambooCraftOpen) {
+      event.preventDefault();
+      onBambooCraftOpen();
+      return;
+    }
+    if (style.id === "nagabeadcluster" && onNagaBeadClusterOpen) {
+      event.preventDefault();
+      onNagaBeadClusterOpen();
+      return;
+    }
+    if (style.id === "bidriware" && onBidriwareOpen) {
+      event.preventDefault();
+      onBidriwareOpen();
+      return;
+    }
+    if (style.id === "bordersigntextile" && onBorderSignTextileOpen) {
+      event.preventDefault();
+      onBorderSignTextileOpen();
+      return;
+    }
+    if (style.id === "bundelipainting" && onBundeliPaintingOpen) {
+      event.preventDefault();
+      onBundeliPaintingOpen();
+      return;
+    }
+    if (style.id === "ceremonialemblem" && onCeremonialEmblemOpen) {
+      event.preventDefault();
+      onCeremonialEmblemOpen();
+      return;
+    }
+    if (style.id === "channapatnatoys" && onChannapatnaToysOpen) {
+      event.preventDefault();
+      onChannapatnaToysOpen();
+      return;
+    }
+    if (style.id === "coircraft" && onCoirCraftOpen) {
+      event.preventDefault();
+      onCoirCraftOpen();
+      return;
+    }
+    if (style.id === "bellmetalrituals" && onBellMetalRitualsOpen) {
+      event.preventDefault();
+      onBellMetalRitualsOpen();
+      return;
+    }
+    if (style.id === "kasutiembroidery" && onKasutiEmbroideryOpen) {
+      event.preventDefault();
+      onKasutiEmbroideryOpen();
+      return;
+    }
+    if (style.id === "keralamural" && onKeralaMuralOpen) {
+      event.preventDefault();
+      onKeralaMuralOpen();
+      return;
+    }
+    if (style.id === "khambhatagate" && onKhambhatAgateOpen) {
+      event.preventDefault();
+      onKhambhatAgateOpen();
+      return;
+    }
+    if (style.id === "kinhalcraft" && onKinhalCraftOpen) {
+      event.preventDefault();
+      onKinhalCraftOpen();
+      return;
+    }
+    if (style.id === "kolhapurjewellery" && onKolhapurJewelleryOpen) {
+      event.preventDefault();
+      onKolhapurJewelleryOpen();
+      return;
+    }
+    if (style.id === "kolhapurichappal" && onKolhapuriChappalOpen) {
+      event.preventDefault();
+      onKolhapuriChappalOpen();
+      return;
+    }
+    if (style.id === "kolhapurisaaj" && onKolhapuriSaajOpen) {
+      event.preventDefault();
+      onKolhapuriSaajOpen();
+      return;
+    }
+    if (style.id === "lambaniembroidery" && onLambaniEmbroideryOpen) {
+      event.preventDefault();
+      onLambaniEmbroideryOpen();
+      return;
+    }
+    if (style.id === "leathertoys" && onLeatherToysOpen) {
+      event.preventDefault();
+      onLeatherToysOpen();
+      return;
+    }
+    if (style.id === "paithani" && onPaithaniOpen) {
+      event.preventDefault();
+      onPaithaniOpen();
+      return;
+    }
+    if (style.id === "pawndum" && onPawndumOpen) {
+      event.preventDefault();
+      onPawndumOpen();
+      return;
+    }
+    if (style.id === "poshinaterracotta" && onPoshinaTerracottaOpen) {
+      event.preventDefault();
+      onPoshinaTerracottaOpen();
+      return;
+    }
+    if (style.id === "prestigependants" && onPrestigePendantsOpen) {
+      event.preventDefault();
+      onPrestigePendantsOpen();
+      return;
+    }
+    if (style.id === "puanchei" && onPuancheiOpen) {
+      event.preventDefault();
+      onPuancheiOpen();
+      return;
+    }
+    if (style.id === "puanlaisen" && onPuanlaisenOpen) {
+      event.preventDefault();
+      onPuanlaisenOpen();
+      return;
+    }
+    if (style.id === "sandalwoodcarving" && onSandalwoodCarvingOpen) {
+      event.preventDefault();
+      onSandalwoodCarvingOpen();
+      return;
+    }
+    if (style.id === "sankhedawoodwork" && onSankhedaWoodworkOpen) {
+      event.preventDefault();
+      onSankhedaWoodworkOpen();
+      return;
+    }
+    if (style.id === "ganjifa" && onGanjifaOpen) {
+      event.preventDefault();
+      onGanjifaOpen();
+      return;
+    }
+    if (style.id === "sawantwadiwoodcraft" && onSawantwadiWoodcraftOpen) {
+      event.preventDefault();
+      onSawantwadiWoodcraftOpen();
+      return;
+    }
+    if (style.id === "shapheelanphee" && onShapheeLanpheeOpen) {
+      event.preventDefault();
+      onShapheeLanpheeOpen();
+      return;
+    }
+    if (style.id === "sheerfieldcloth" && onSheerFieldClothOpen) {
+      event.preventDefault();
+      onSheerFieldClothOpen();
+      return;
+    }
+    if (style.id === "bodyaugmentation" && onBodyAugmentationOpen) {
+      event.preventDefault();
+      onBodyAugmentationOpen();
+      return;
+    }
+    if (style.id === "tawlhlophuan" && onTawlhlophuanOpen) {
+      event.preventDefault();
+      onTawlhlophuanOpen();
+      return;
+    }
+    if (style.id === "templemural" && onTempleMuralOpen) {
+      event.preventDefault();
+      onTempleMuralOpen();
+      return;
+    }
+    if (style.id === "togalugombeyaata" && onTogaluGombeyaataOpen) {
+      event.preventDefault();
+      onTogaluGombeyaataOpen();
+      return;
+    }
+    if (style.id === "nagashawl" && onNagaShawlOpen) {
+      event.preventDefault();
+      onNagaShawlOpen();
+      return;
+    }
+    if (style.id === "wangkheiphee" && onWangkheiPheeOpen) {
+      event.preventDefault();
+      onWangkheiPheeOpen();
+      return;
+    }
+    if (style.id === "meritshawl" && onMeritShawlOpen) {
+      event.preventDefault();
+      onMeritShawlOpen();
       return;
     }
   };

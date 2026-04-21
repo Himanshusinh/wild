@@ -1,0 +1,2 @@
+export { PuancheiModal } from "./PuancheiModal";
+

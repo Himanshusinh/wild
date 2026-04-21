@@ -1,0 +1,2 @@
+export { PaithaniModal } from "./PaithaniModal";
+

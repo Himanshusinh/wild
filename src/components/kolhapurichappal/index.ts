@@ -1,0 +1,2 @@
+export { KolhapuriChappalModal } from "./KolhapuriChappalModal";
+

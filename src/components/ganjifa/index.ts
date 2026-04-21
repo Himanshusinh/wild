@@ -1,0 +1,2 @@
+export { GanjifaModal } from "./GanjifaModal";
+

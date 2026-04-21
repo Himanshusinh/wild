@@ -1,0 +1,2 @@
+export { KhambhatAgateModal } from "./KhambhatAgateModal";
+

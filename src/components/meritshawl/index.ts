@@ -1,0 +1,2 @@
+export { MeritShawlModal } from "./MeritShawlModal";
+

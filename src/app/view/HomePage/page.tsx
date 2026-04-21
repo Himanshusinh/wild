@@ -324,6 +324,162 @@ const SufEmbroideryFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: (
     () => import('./compo/SufEmbroideryFullscreenWalkthrough'),
     { ssr: false }
 )
+const KatabAppliqueFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/KatabAppliqueFullscreenWalkthrough'),
+    { ssr: false }
+)
+const BaghPrintFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/BaghPrintFullscreenWalkthrough'),
+    { ssr: false }
+)
+const BambooCraftFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/BambooCraftFullscreenWalkthrough'),
+    { ssr: false }
+)
+const NagaBeadClusterFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/NagaBeadClusterFullscreenWalkthrough'),
+    { ssr: false }
+)
+const BidriwareFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/BidriwareFullscreenWalkthrough'),
+    { ssr: false }
+)
+const BorderSignTextileFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/BorderSignTextileFullscreenWalkthrough'),
+    { ssr: false }
+)
+const BundeliPaintingFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/BundeliPaintingFullscreenWalkthrough'),
+    { ssr: false }
+)
+const CeremonialEmblemFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/CeremonialEmblemFullscreenWalkthrough'),
+    { ssr: false }
+)
+const ChannapatnaToysFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/ChannapatnaToysFullscreenWalkthrough'),
+    { ssr: false }
+)
+const CoirCraftFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/CoirCraftFullscreenWalkthrough'),
+    { ssr: false }
+)
+const BellMetalRitualsFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/BellMetalRitualsFullscreenWalkthrough'),
+    { ssr: false }
+)
+const KasutiEmbroideryFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/KasutiEmbroideryFullscreenWalkthrough'),
+    { ssr: false }
+)
+const KeralaMuralFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/KeralaMuralFullscreenWalkthrough'),
+    { ssr: false }
+)
+const KhambhatAgateFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/KhambhatAgateFullscreenWalkthrough'),
+    { ssr: false }
+)
+const KinhalCraftFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/KinhalCraftFullscreenWalkthrough'),
+    { ssr: false }
+)
+const KolhapurJewelleryFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/KolhapurJewelleryFullscreenWalkthrough'),
+    { ssr: false }
+)
+const KolhapuriChappalFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/KolhapuriChappalFullscreenWalkthrough'),
+    { ssr: false }
+)
+const KolhapuriSaajFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/KolhapuriSaajFullscreenWalkthrough'),
+    { ssr: false }
+)
+const LambaniEmbroideryFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/LambaniEmbroideryFullscreenWalkthrough'),
+    { ssr: false }
+)
+const LeatherToysFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/LeatherToysFullscreenWalkthrough'),
+    { ssr: false }
+)
+const PaithaniFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/PaithaniFullscreenWalkthrough'),
+    { ssr: false }
+)
+const PawndumFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/PawndumFullscreenWalkthrough'),
+    { ssr: false }
+)
+const PoshinaTerracottaFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/PoshinaTerracottaFullscreenWalkthrough'),
+    { ssr: false }
+)
+const PrestigePendantsFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/PrestigePendantsFullscreenWalkthrough'),
+    { ssr: false }
+)
+const PuancheiFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/PuancheiFullscreenWalkthrough'),
+    { ssr: false }
+)
+const PuanlaisenFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/PuanlaisenFullscreenWalkthrough'),
+    { ssr: false }
+)
+const SandalwoodCarvingFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/SandalwoodCarvingFullscreenWalkthrough'),
+    { ssr: false }
+)
+const SankhedaWoodworkFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/SankhedaWoodworkFullscreenWalkthrough'),
+    { ssr: false }
+)
+const GanjifaFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/GanjifaFullscreenWalkthrough'),
+    { ssr: false }
+)
+const SawantwadiWoodcraftFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/SawantwadiWoodcraftFullscreenWalkthrough'),
+    { ssr: false }
+)
+const ShapheeLanpheeFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/ShapheeLanpheeFullscreenWalkthrough'),
+    { ssr: false }
+)
+const SheerFieldClothFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/SheerFieldClothFullscreenWalkthrough'),
+    { ssr: false }
+)
+const BodyAugmentationFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/BodyAugmentationFullscreenWalkthrough'),
+    { ssr: false }
+)
+const TawlhlophuanFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/TawlhlophuanFullscreenWalkthrough'),
+    { ssr: false }
+)
+const TempleMuralFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/TempleMuralFullscreenWalkthrough'),
+    { ssr: false }
+)
+const TogaluGombeyaataFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/TogaluGombeyaataFullscreenWalkthrough'),
+    { ssr: false }
+)
+const NagaShawlFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/NagaShawlFullscreenWalkthrough'),
+    { ssr: false }
+)
+const WangkheiPheeFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/WangkheiPheeFullscreenWalkthrough'),
+    { ssr: false }
+)
+const MeritShawlFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/MeritShawlFullscreenWalkthrough'),
+    { ssr: false }
+)
 const WorkflowCarousel = dynamic(() => import('./compo/WorkflowCarousel').then(mod => ({ default: mod.default })), {
     loading: () => <div className="h-64 animate-pulse bg-white/5 rounded-lg" />
 })
@@ -426,6 +582,45 @@ const HomePage: React.FC = () => {
     const [showSohraiWalkthrough, setShowSohraiWalkthrough] = useState(false);
     const [showSonowalTextileWalkthrough, setShowSonowalTextileWalkthrough] = useState(false);
     const [showSufEmbroideryWalkthrough, setShowSufEmbroideryWalkthrough] = useState(false);
+    const [showKatabAppliqueWalkthrough, setShowKatabAppliqueWalkthrough] = useState(false);
+    const [showBaghPrintWalkthrough, setShowBaghPrintWalkthrough] = useState(false);
+    const [showBambooCraftWalkthrough, setShowBambooCraftWalkthrough] = useState(false);
+    const [showNagaBeadClusterWalkthrough, setShowNagaBeadClusterWalkthrough] = useState(false);
+    const [showBidriwareWalkthrough, setShowBidriwareWalkthrough] = useState(false);
+    const [showBorderSignTextileWalkthrough, setShowBorderSignTextileWalkthrough] = useState(false);
+    const [showBundeliPaintingWalkthrough, setShowBundeliPaintingWalkthrough] = useState(false);
+    const [showCeremonialEmblemWalkthrough, setShowCeremonialEmblemWalkthrough] = useState(false);
+    const [showChannapatnaToysWalkthrough, setShowChannapatnaToysWalkthrough] = useState(false);
+    const [showCoirCraftWalkthrough, setShowCoirCraftWalkthrough] = useState(false);
+    const [showBellMetalRitualsWalkthrough, setShowBellMetalRitualsWalkthrough] = useState(false);
+    const [showKasutiEmbroideryWalkthrough, setShowKasutiEmbroideryWalkthrough] = useState(false);
+    const [showKeralaMuralWalkthrough, setShowKeralaMuralWalkthrough] = useState(false);
+    const [showKhambhatAgateWalkthrough, setShowKhambhatAgateWalkthrough] = useState(false);
+    const [showKinhalCraftWalkthrough, setShowKinhalCraftWalkthrough] = useState(false);
+    const [showKolhapurJewelleryWalkthrough, setShowKolhapurJewelleryWalkthrough] = useState(false);
+    const [showKolhapuriChappalWalkthrough, setShowKolhapuriChappalWalkthrough] = useState(false);
+    const [showKolhapuriSaajWalkthrough, setShowKolhapuriSaajWalkthrough] = useState(false);
+    const [showLambaniEmbroideryWalkthrough, setShowLambaniEmbroideryWalkthrough] = useState(false);
+    const [showLeatherToysWalkthrough, setShowLeatherToysWalkthrough] = useState(false);
+    const [showPaithaniWalkthrough, setShowPaithaniWalkthrough] = useState(false);
+    const [showPawndumWalkthrough, setShowPawndumWalkthrough] = useState(false);
+    const [showPoshinaTerracottaWalkthrough, setShowPoshinaTerracottaWalkthrough] = useState(false);
+    const [showPrestigePendantsWalkthrough, setShowPrestigePendantsWalkthrough] = useState(false);
+    const [showPuancheiWalkthrough, setShowPuancheiWalkthrough] = useState(false);
+    const [showPuanlaisenWalkthrough, setShowPuanlaisenWalkthrough] = useState(false);
+    const [showSandalwoodCarvingWalkthrough, setShowSandalwoodCarvingWalkthrough] = useState(false);
+    const [showSankhedaWoodworkWalkthrough, setShowSankhedaWoodworkWalkthrough] = useState(false);
+    const [showGanjifaWalkthrough, setShowGanjifaWalkthrough] = useState(false);
+    const [showSawantwadiWoodcraftWalkthrough, setShowSawantwadiWoodcraftWalkthrough] = useState(false);
+    const [showShapheeLanpheeWalkthrough, setShowShapheeLanpheeWalkthrough] = useState(false);
+    const [showSheerFieldClothWalkthrough, setShowSheerFieldClothWalkthrough] = useState(false);
+    const [showBodyAugmentationWalkthrough, setShowBodyAugmentationWalkthrough] = useState(false);
+    const [showTawlhlophuanWalkthrough, setShowTawlhlophuanWalkthrough] = useState(false);
+    const [showTempleMuralWalkthrough, setShowTempleMuralWalkthrough] = useState(false);
+    const [showTogaluGombeyaataWalkthrough, setShowTogaluGombeyaataWalkthrough] = useState(false);
+    const [showNagaShawlWalkthrough, setShowNagaShawlWalkthrough] = useState(false);
+    const [showWangkheiPheeWalkthrough, setShowWangkheiPheeWalkthrough] = useState(false);
+    const [showMeritShawlWalkthrough, setShowMeritShawlWalkthrough] = useState(false);
     const [showAllStylesModal, setShowAllStylesModal] = useState(false);
     const [openedFromAllStyles, setOpenedFromAllStyles] = useState(false);
     const [homepageMode, setHomepageMode] = useState<'image' | 'video'>('image');
@@ -494,6 +689,45 @@ const HomePage: React.FC = () => {
             case "sohrai": setShowSohraiWalkthrough(true); break;
             case "sonowaltextile": setShowSonowalTextileWalkthrough(true); break;
             case "sufembroidery": setShowSufEmbroideryWalkthrough(true); break;
+            case "katabapplique": setShowKatabAppliqueWalkthrough(true); break;
+            case "baghprint": setShowBaghPrintWalkthrough(true); break;
+            case "bamboocraft": setShowBambooCraftWalkthrough(true); break;
+            case "nagabeadcluster": setShowNagaBeadClusterWalkthrough(true); break;
+            case "bidriware": setShowBidriwareWalkthrough(true); break;
+            case "bordersigntextile": setShowBorderSignTextileWalkthrough(true); break;
+            case "bundelipainting": setShowBundeliPaintingWalkthrough(true); break;
+            case "ceremonialemblem": setShowCeremonialEmblemWalkthrough(true); break;
+            case "channapatnatoys": setShowChannapatnaToysWalkthrough(true); break;
+            case "coircraft": setShowCoirCraftWalkthrough(true); break;
+            case "bellmetalrituals": setShowBellMetalRitualsWalkthrough(true); break;
+            case "kasutiembroidery": setShowKasutiEmbroideryWalkthrough(true); break;
+            case "keralamural": setShowKeralaMuralWalkthrough(true); break;
+            case "khambhatagate": setShowKhambhatAgateWalkthrough(true); break;
+            case "kinhalcraft": setShowKinhalCraftWalkthrough(true); break;
+            case "kolhapurjewellery": setShowKolhapurJewelleryWalkthrough(true); break;
+            case "kolhapurichappal": setShowKolhapuriChappalWalkthrough(true); break;
+            case "kolhapurisaaj": setShowKolhapuriSaajWalkthrough(true); break;
+            case "lambaniembroidery": setShowLambaniEmbroideryWalkthrough(true); break;
+            case "leathertoys": setShowLeatherToysWalkthrough(true); break;
+            case "paithani": setShowPaithaniWalkthrough(true); break;
+            case "pawndum": setShowPawndumWalkthrough(true); break;
+            case "poshinaterracotta": setShowPoshinaTerracottaWalkthrough(true); break;
+            case "prestigependants": setShowPrestigePendantsWalkthrough(true); break;
+            case "puanchei": setShowPuancheiWalkthrough(true); break;
+            case "puanlaisen": setShowPuanlaisenWalkthrough(true); break;
+            case "sandalwoodcarving": setShowSandalwoodCarvingWalkthrough(true); break;
+            case "sankhedawoodwork": setShowSankhedaWoodworkWalkthrough(true); break;
+            case "ganjifa": setShowGanjifaWalkthrough(true); break;
+            case "sawantwadiwoodcraft": setShowSawantwadiWoodcraftWalkthrough(true); break;
+            case "shapheelanphee": setShowShapheeLanpheeWalkthrough(true); break;
+            case "sheerfieldcloth": setShowSheerFieldClothWalkthrough(true); break;
+            case "bodyaugmentation": setShowBodyAugmentationWalkthrough(true); break;
+            case "tawlhlophuan": setShowTawlhlophuanWalkthrough(true); break;
+            case "templemural": setShowTempleMuralWalkthrough(true); break;
+            case "togalugombeyaata": setShowTogaluGombeyaataWalkthrough(true); break;
+            case "nagashawl": setShowNagaShawlWalkthrough(true); break;
+            case "wangkheiphee": setShowWangkheiPheeWalkthrough(true); break;
+            case "meritshawl": setShowMeritShawlWalkthrough(true); break;
             default: break;
         }
     };
@@ -897,6 +1131,201 @@ const HomePage: React.FC = () => {
                             setOpenedFromAllStyles(false);
                             setShowWelcomeModal(false);
                             setShowSufEmbroideryWalkthrough(true);
+                        }}
+                        onKatabAppliqueOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowKatabAppliqueWalkthrough(true);
+                        }}
+                        onBaghPrintOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowBaghPrintWalkthrough(true);
+                        }}
+                        onBambooCraftOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowBambooCraftWalkthrough(true);
+                        }}
+                        onNagaBeadClusterOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowNagaBeadClusterWalkthrough(true);
+                        }}
+                        onBidriwareOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowBidriwareWalkthrough(true);
+                        }}
+                        onBorderSignTextileOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowBorderSignTextileWalkthrough(true);
+                        }}
+                        onBundeliPaintingOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowBundeliPaintingWalkthrough(true);
+                        }}
+                        onCeremonialEmblemOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowCeremonialEmblemWalkthrough(true);
+                        }}
+                        onChannapatnaToysOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowChannapatnaToysWalkthrough(true);
+                        }}
+                        onCoirCraftOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowCoirCraftWalkthrough(true);
+                        }}
+                        onBellMetalRitualsOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowBellMetalRitualsWalkthrough(true);
+                        }}
+                        onKasutiEmbroideryOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowKasutiEmbroideryWalkthrough(true);
+                        }}
+                        onKeralaMuralOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowKeralaMuralWalkthrough(true);
+                        }}
+                        onKhambhatAgateOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowKhambhatAgateWalkthrough(true);
+                        }}
+                        onKinhalCraftOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowKinhalCraftWalkthrough(true);
+                        }}
+                        onKolhapurJewelleryOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowKolhapurJewelleryWalkthrough(true);
+                        }}
+                        onKolhapuriChappalOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowKolhapuriChappalWalkthrough(true);
+                        }}
+                        onKolhapuriSaajOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowKolhapuriSaajWalkthrough(true);
+                        }}
+                        onLambaniEmbroideryOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowLambaniEmbroideryWalkthrough(true);
+                        }}
+                        onLeatherToysOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowLeatherToysWalkthrough(true);
+                        }}
+                        onPaithaniOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowPaithaniWalkthrough(true);
+                        }}
+                        onPawndumOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowPawndumWalkthrough(true);
+                        }}
+                        onPoshinaTerracottaOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowPoshinaTerracottaWalkthrough(true);
+                        }}
+                        onPrestigePendantsOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowPrestigePendantsWalkthrough(true);
+                        }}
+                        onPuancheiOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowPuancheiWalkthrough(true);
+                        }}
+                        onPuanlaisenOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowPuanlaisenWalkthrough(true);
+                        }}
+                        onSandalwoodCarvingOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowSandalwoodCarvingWalkthrough(true);
+                        }}
+                        onSankhedaWoodworkOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowSankhedaWoodworkWalkthrough(true);
+                        }}
+                        onGanjifaOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowGanjifaWalkthrough(true);
+                        }}
+                        onSawantwadiWoodcraftOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowSawantwadiWoodcraftWalkthrough(true);
+                        }}
+                        onShapheeLanpheeOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowShapheeLanpheeWalkthrough(true);
+                        }}
+                        onSheerFieldClothOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowSheerFieldClothWalkthrough(true);
+                        }}
+                        onBodyAugmentationOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowBodyAugmentationWalkthrough(true);
+                        }}
+                        onTawlhlophuanOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowTawlhlophuanWalkthrough(true);
+                        }}
+                        onTempleMuralOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowTempleMuralWalkthrough(true);
+                        }}
+                        onTogaluGombeyaataOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowTogaluGombeyaataWalkthrough(true);
+                        }}
+                        onNagaShawlOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowNagaShawlWalkthrough(true);
+                        }}
+                        onWangkheiPheeOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowWangkheiPheeWalkthrough(true);
+                        }}
+                        onMeritShawlOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowMeritShawlWalkthrough(true);
                         }}
                         onEtikoppakaOpen={() => {
                             setOpenedFromAllStyles(false);
@@ -1416,6 +1845,201 @@ const HomePage: React.FC = () => {
             <SufEmbroideryFullscreenWalkthrough
                 isOpen={showSufEmbroideryWalkthrough}
                 onClose={() => handleCloseWalkthrough(setShowSufEmbroideryWalkthrough)}
+            />
+
+            <KatabAppliqueFullscreenWalkthrough
+                isOpen={showKatabAppliqueWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowKatabAppliqueWalkthrough)}
+            />
+
+            <BaghPrintFullscreenWalkthrough
+                isOpen={showBaghPrintWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowBaghPrintWalkthrough)}
+            />
+
+            <BambooCraftFullscreenWalkthrough
+                isOpen={showBambooCraftWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowBambooCraftWalkthrough)}
+            />
+
+            <NagaBeadClusterFullscreenWalkthrough
+                isOpen={showNagaBeadClusterWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowNagaBeadClusterWalkthrough)}
+            />
+
+            <BidriwareFullscreenWalkthrough
+                isOpen={showBidriwareWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowBidriwareWalkthrough)}
+            />
+
+            <BorderSignTextileFullscreenWalkthrough
+                isOpen={showBorderSignTextileWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowBorderSignTextileWalkthrough)}
+            />
+
+            <BundeliPaintingFullscreenWalkthrough
+                isOpen={showBundeliPaintingWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowBundeliPaintingWalkthrough)}
+            />
+
+            <CeremonialEmblemFullscreenWalkthrough
+                isOpen={showCeremonialEmblemWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowCeremonialEmblemWalkthrough)}
+            />
+
+            <ChannapatnaToysFullscreenWalkthrough
+                isOpen={showChannapatnaToysWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowChannapatnaToysWalkthrough)}
+            />
+
+            <CoirCraftFullscreenWalkthrough
+                isOpen={showCoirCraftWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowCoirCraftWalkthrough)}
+            />
+
+            <BellMetalRitualsFullscreenWalkthrough
+                isOpen={showBellMetalRitualsWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowBellMetalRitualsWalkthrough)}
+            />
+
+            <KasutiEmbroideryFullscreenWalkthrough
+                isOpen={showKasutiEmbroideryWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowKasutiEmbroideryWalkthrough)}
+            />
+
+            <KeralaMuralFullscreenWalkthrough
+                isOpen={showKeralaMuralWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowKeralaMuralWalkthrough)}
+            />
+
+            <KhambhatAgateFullscreenWalkthrough
+                isOpen={showKhambhatAgateWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowKhambhatAgateWalkthrough)}
+            />
+
+            <KinhalCraftFullscreenWalkthrough
+                isOpen={showKinhalCraftWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowKinhalCraftWalkthrough)}
+            />
+
+            <KolhapurJewelleryFullscreenWalkthrough
+                isOpen={showKolhapurJewelleryWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowKolhapurJewelleryWalkthrough)}
+            />
+
+            <KolhapuriChappalFullscreenWalkthrough
+                isOpen={showKolhapuriChappalWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowKolhapuriChappalWalkthrough)}
+            />
+
+            <KolhapuriSaajFullscreenWalkthrough
+                isOpen={showKolhapuriSaajWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowKolhapuriSaajWalkthrough)}
+            />
+
+            <LambaniEmbroideryFullscreenWalkthrough
+                isOpen={showLambaniEmbroideryWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowLambaniEmbroideryWalkthrough)}
+            />
+
+            <LeatherToysFullscreenWalkthrough
+                isOpen={showLeatherToysWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowLeatherToysWalkthrough)}
+            />
+
+            <PaithaniFullscreenWalkthrough
+                isOpen={showPaithaniWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowPaithaniWalkthrough)}
+            />
+
+            <PawndumFullscreenWalkthrough
+                isOpen={showPawndumWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowPawndumWalkthrough)}
+            />
+
+            <PoshinaTerracottaFullscreenWalkthrough
+                isOpen={showPoshinaTerracottaWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowPoshinaTerracottaWalkthrough)}
+            />
+
+            <PrestigePendantsFullscreenWalkthrough
+                isOpen={showPrestigePendantsWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowPrestigePendantsWalkthrough)}
+            />
+
+            <PuancheiFullscreenWalkthrough
+                isOpen={showPuancheiWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowPuancheiWalkthrough)}
+            />
+
+            <PuanlaisenFullscreenWalkthrough
+                isOpen={showPuanlaisenWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowPuanlaisenWalkthrough)}
+            />
+
+            <SandalwoodCarvingFullscreenWalkthrough
+                isOpen={showSandalwoodCarvingWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowSandalwoodCarvingWalkthrough)}
+            />
+
+            <SankhedaWoodworkFullscreenWalkthrough
+                isOpen={showSankhedaWoodworkWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowSankhedaWoodworkWalkthrough)}
+            />
+
+            <GanjifaFullscreenWalkthrough
+                isOpen={showGanjifaWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowGanjifaWalkthrough)}
+            />
+
+            <SawantwadiWoodcraftFullscreenWalkthrough
+                isOpen={showSawantwadiWoodcraftWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowSawantwadiWoodcraftWalkthrough)}
+            />
+
+            <ShapheeLanpheeFullscreenWalkthrough
+                isOpen={showShapheeLanpheeWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowShapheeLanpheeWalkthrough)}
+            />
+
+            <SheerFieldClothFullscreenWalkthrough
+                isOpen={showSheerFieldClothWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowSheerFieldClothWalkthrough)}
+            />
+
+            <BodyAugmentationFullscreenWalkthrough
+                isOpen={showBodyAugmentationWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowBodyAugmentationWalkthrough)}
+            />
+
+            <TawlhlophuanFullscreenWalkthrough
+                isOpen={showTawlhlophuanWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowTawlhlophuanWalkthrough)}
+            />
+
+            <TempleMuralFullscreenWalkthrough
+                isOpen={showTempleMuralWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowTempleMuralWalkthrough)}
+            />
+
+            <TogaluGombeyaataFullscreenWalkthrough
+                isOpen={showTogaluGombeyaataWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowTogaluGombeyaataWalkthrough)}
+            />
+
+            <NagaShawlFullscreenWalkthrough
+                isOpen={showNagaShawlWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowNagaShawlWalkthrough)}
+            />
+
+            <WangkheiPheeFullscreenWalkthrough
+                isOpen={showWangkheiPheeWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowWangkheiPheeWalkthrough)}
+            />
+
+            <MeritShawlFullscreenWalkthrough
+                isOpen={showMeritShawlWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowMeritShawlWalkthrough)}
             />
 
             <AllStylesModal
