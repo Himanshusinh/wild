@@ -87,7 +87,7 @@ export const STYLES: StyleItem[] = [
     name: "Bihar",
     title: "KHATWA APPLIQUÉ",
     desc: "A traditional textile art where colored fabric shapes are cut and stitched onto a base cloth to create bold narrative compositions.",
-    image: "/HomePage/creativeStyle/KHATWA APPLIQUÉ.avif",
+    image: "/HomePage/creativeStyle/KHATWA APPLIQUE.avif",
     tag: "Textile",
     titleColor: "#ffffff",
     href: "/text-to-image",
@@ -675,8 +675,549 @@ export const STYLES: StyleItem[] = [
     titleColor: "#ffffff",
     href: "/text-to-image",
     imageFilter: "brightness(0.85) saturate(0.95)",
-  }
+  },
+  {
+    id: "ganjifa",
+    name: "Karnataka (Mysore)",
+    title: "GANJIFA CARDS",
+    desc: "A traditional hand-painted card system featuring miniature symbolic imagery organized within bounded fields and deck-based themes.",
+    image: "/HomePage/creativeStyle/Next Styles Images/GANJIFA CARDS.png",
+    tag: "Art",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.9) saturate(0.95)",
+  },
+  {
+    id: "garoweaving",
+    name: "Meghalaya",
+    title: "GARO WEAVING",
+    desc: "A traditional weaving system where border hierarchy and symbolic motifs structure cloth designed for body-wrapped garments.",
+    image: "/HomePage/creativeStyle/Next Styles Images/GARO WEAVING.png",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "nagabodycloth",
+    name: "Nagaland",
+    title: "NAGA BODY-CLOTH",
+    desc: "A ceremonial textile system where identity and social role are expressed through the placement and structure of body-worn cloth.",
+    image: "/HomePage/creativeStyle/Next Styles Images/NAGA BODY-CLOTH.png",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "gondpainting",
+    name: "Madhya Pradesh",
+    title: "GOND PAINTING",
+    desc: "A traditional art form where living beings are created through rhythmic dots and lines, expressing nature, mythology, and inner life.",
+    image: "/HomePage/creativeStyle/Next Styles Images/GOND PAINTING.png",
+    tag: "Art",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "hardornament",
+    name: "Nagaland",
+    title: "HARD ORNAMENT",
+    desc: "A body-extension system where rigid encircling forms define limb zones and reinforce the human silhouette.",
+    image: "/HomePage/creativeStyle/Next Styles Images/HARD ORNAMENT.png",
+    tag: "Art",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "himroo",
+    name: "Maharashtra",
+    title: "HIMROO",
+    desc: "A courtly weaving tradition from Aurangabad featuring intricate silk and cotton patterns rooted in Deccani heritage.",
+    image: "/HomePage/creativeStyle/Next Styles Images/HIMROO.png",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "hmaram",
+    name: "Mizoram",
+    title: "HMARAM",
+    desc: "A distinctive Mizo textile defined by indigo-white contrast and precise triangular motifs woven on back-strap looms.",
+    image: "/HomePage/creativeStyle/Next Styles Images/HMARAM.png",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "hoysalarelief",
+    name: "Karnataka",
+    title: "HOYSALA RELIEF",
+    desc: "An architectural sculpture tradition featuring dense, multi-tiered soapstone carvings and star-shaped structural plans.",
+    image: "/HomePage/creativeStyle/Next Styles Images/HOYSALA RELIEF.png",
+    tag: "Art",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "jaintiatextile",
+    name: "Meghalaya",
+    title: "JAINTIA TEXTILE",
+    desc: "A complex weaving tradition defined by field-and-zone order, checkered patterns, and ritual shawl hierarchies.",
+    image: "/HomePage/creativeStyle/Next Styles Images/JAINTIA TEXTILE.png",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "jhabuadolls",
+    name: "Madhya Pradesh",
+    title: "JHABUA DOLLS",
+    desc: "Handcrafted stuffed-cloth dolls that record tribal life through painted features and miniature ritual ornaments.",
+    image: "/HomePage/creativeStyle/Next Styles Images/JHABUA DOLLS.png",
+    tag: "Art",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "maheshwari",
+    name: "Madhya Pradesh",
+    title: "MAHESHWARI",
+    desc: "A lightweight handloom textile defined by body–border–pallu hierarchy, refined weave, and graceful drape.",
+    image: "/HomePage/creativeStyle/Next Styles Images/MAHESHWARI.png",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "mashruweaving",
+    name: "Gujarat",
+    title: "MASHRU WEAVING",
+    desc: "A traditional silk-cotton textile where warp-faced weaving creates vibrant stripes and a soft luminous surface.",
+    image: "/HomePage/creativeStyle/Next Styles Images/MASHRU WEAVING.png",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "moirangphee",
+    name: "Manipur",
+    title: "MOIRANG PHEE",
+    desc: "A traditional textile where the Moirang Pheejin border motif is woven through extra-weft technique, defining the identity of the cloth.",
+    image: "/HomePage/creativeStyle/Next Styles Images/MOIRANG PHEE.png",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "motibharat",
+    name: "Gujarat",
+    title: "MOTI BHARAT",
+    desc: "A traditional beadwork craft where surfaces are built through dense bead placement, forming contour, color, and texture.",
+    image: "/HomePage/creativeStyle/Next Styles Images/MOTI BHARAT.png",
+    tag: "Craft",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "mysorepainting",
+    name: "Karnataka",
+    title: "MYSORE PAINTING",
+    desc: "A courtly painting tradition known for its delicate gesso work, gold foil application, and refined iconographic detail.",
+    image: "/HomePage/creativeStyle/Next Styles Images/MYSORE PAINTING.png",
+    tag: "Art",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "rosewoodinlay",
+    name: "Karnataka",
+    title: "ROSEWOOD INLAY",
+    desc: "A meticulous woodwork craft where intricate patterns of ivory, bone, or contrasting wood are embedded into rosewood surfaces.",
+    image: "/HomePage/creativeStyle/Next Styles Images/ROSEWOOD INLAY.png",
+    tag: "Woodwork",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "nagashawlordinary",
+    name: "Nagaland",
+    title: "NAGA SHAWL (ORDINARY)",
+    desc: "A community-specific handwoven textile defined by bold stripe patterns and extra-weft motifs that encode ancestral lineage.",
+    image: "/HomePage/creativeStyle/Next Styles Images/NAGA SHAWL (ORDINARY).png",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "ngotekherh",
+    name: "Mizoram",
+    title: "NGOTEKHERH",
+    desc: "A traditional handwoven textile known for its distinctive warp-stripe structure and rhythmic extra-weft patterns.",
+    image: "/HomePage/creativeStyle/Next Styles Images/NGOTEKHERH.png",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "nironalacquer",
+    name: "Gujarat (Kutch)",
+    title: "NIRONA LACQUER",
+    desc: "A traditional lac-turned woodcraft where vibrant natural colors are built into smooth, durable, and lustrous surfaces.",
+    image: "/HomePage/creativeStyle/Next Styles Images/NIRONA LACQUER.png",
+    tag: "Woodcraft",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "opaquewrap",
+    name: "Mizoram",
+    title: "OPAQUE WRAP",
+    desc: "A traditional textile system where body-wrapped garments are defined by dense weave and bold symbolic motifs.",
+    image: "/HomePage/creativeStyle/Next Styles Images/OPAQUE WRAP.png",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "tawlhlohpuan",
+    name: "Mizoram",
+    title: "TAWLHLOHPUAN",
+    desc: "A ceremonial handwoven textile known for its bold extra-weft motifs and high-prestige status in Mizo tradition.",
+    image: "/HomePage/creativeStyle/Next Styles Images/TAWLHLOHPUAN.png",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "woodcarving",
+    name: "Uttar Pradesh",
+    title: "WOOD CARVING",
+    desc: "A traditional woodwork craft known for its deep relief carving, geometric patterns, and fine handcrafted detail.",
+    image: "/HomePage/creativeStyle/Next Styles Images/WOOD CARVING.png",
+    tag: "Woodwork",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "wroughtiron",
+    name: "Chhattisgarh",
+    title: "WROUGHT IRON",
+    desc: "A traditional hand-forged metalcraft where raw iron is shaped into ritual and symbolic forms.",
+    image: "/HomePage/creativeStyle/Next Styles Images/WROUGHT IRON.png",
+    tag: "Metalcraft",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "yakshagana",
+    name: "Karnataka",
+    title: "YAKSHAGANA",
+    desc: "A traditional theatre art known for its bold headgear, vibrant costumes, and expressive makeup.",
+    image: "/HomePage/creativeStyle/Next Styles Images/YAKSHAGANA.png",
+    tag: "Art/Theatre",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "baghembroidery",
+    name: "Punjab",
+    title: "BAGH EMBROIDERY",
+    desc: "A dense embroidered textile tradition where silk-thread stitches fully saturate the cloth, creating luminous patterned fields.",
+    image: "/HomePage/creativeStyle/3rd images/BAGH EMBROIDERY.png",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "bagruprint",
+    name: "Rajasthan",
+    title: "BAGRU PRINT",
+    desc: "A traditional block-print textile defined by natural dyes, rhythmic repetition, and cloth-based design logic.",
+    image: "/HomePage/creativeStyle/3rd images/BAGRU PRINT.png",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "bandhej",
+    name: "Rajasthan",
+    title: "BANDHEJ",
+    desc: "A resist tie-dye textile where tied points create vibrant dot patterns through controlled dye absorption.",
+    image: "/HomePage/creativeStyle/3rd images/BANDHEJ.png",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "berhampurpatta",
+    name: "Odisha",
+    title: "BERHAMPUR PATTA",
+    desc: "A heritage silk weaving tradition defined by vibrant color blocks and refined temple-border motifs.",
+    image: "/HomePage/creativeStyle/3rd images/BERHAMPUR PATTA.png",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "bomkai",
+    name: "Odisha",
+    title: "BOMKAI",
+    desc: "A handloom textile where supplementary-weft motifs create symbolic narratives within a structured border-field composition.",
+    image: "/HomePage/creativeStyle/3rd images/BOMKAI.png",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "buddhistmask",
+    name: "Sikkim",
+    title: "BUDDHIST MASK",
+    desc: "A ritual craft where wooden or clay masks are sculpted with bold symbolic expressions for sacred performances.",
+    image: "/HomePage/creativeStyle/3rd images/BUDDHIST MASK.png",
+    tag: "Mask",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "sikkimcarpet",
+    name: "Sikkim",
+    title: "SIKKIM CARPET",
+    desc: "A traditional hand-knotted wool craft where dense pile surfaces are built with symbolic geometric and floral motifs.",
+    image: "/HomePage/creativeStyle/3rd images/SIKKIM CARPET.png",
+    tag: "Craft",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "durrie",
+    name: "Punjab",
+    title: "DURRIE",
+    desc: "A flat-woven textile tradition defined by geometric clarity, durable cotton or wool structures, and rhythmic patterns.",
+    image: "/HomePage/creativeStyle/3rd images/DURRIE.png",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "thangka",
+    name: "Sikkim",
+    title: "THANGKA",
+    desc: "A sacred Buddhist painting tradition on cotton or silk, representing a structured cosmic diagram with central hierarchy and symbolic geometry.",
+    image: "/HomePage/creativeStyle/3rd images/THANGKA.png",
+    tag: "Sacred",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "punjabjutti",
+    name: "Punjab",
+    title: "PUNJAB JUTTI",
+    desc: "A traditional leather footwear craft where surfaces are built through dense embroidery, forming contour, color, and texture.",
+    image: "/HomePage/creativeStyle/3rd images/PUNJAB JUTTI.png",
+    tag: "Craft",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "kathputli",
+    name: "Rajasthan",
+    title: "KATHPUTLI",
+    desc: "A traditional string puppet craft from Rajasthan, featuring carved wooden heads and vibrant textile-based character design.",
+    image: "/HomePage/creativeStyle/3rd images/KATHPUTLI.png",
+    tag: "Puppetry",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "khaddar",
+    name: "Punjab",
+    title: "KHADDAR",
+    desc: "A traditional hand-spun and hand-woven textile defined by its coarse texture, breathability, and rustic material integrity.",
+    image: "/HomePage/creativeStyle/3rd images/KHADDAR.png",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "khandua",
+    name: "Odisha",
+    title: "KHANDUA",
+    desc: "A ritual ikat silk textile from Odisha, featuring extra-weft temple borders and symbolic motifs woven into a structured field.",
+    image: "/HomePage/creativeStyle/3rd images/KHANDUA.png",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "khes",
+    name: "Punjab",
+    title: "KHES",
+    desc: "A traditional geometric cotton textile defined by its multi-layered weave, bold checkered patterns, and functional durability.",
+    image: "/HomePage/creativeStyle/3rd images/KHES.png",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "malerkotlazari",
+    name: "Punjab",
+    title: "MALERKOTLA ZARI",
+    desc: "A specialized metallic embroidery tradition where gold and silver threads are used to create intricate, luminous surface designs.",
+    image: "/HomePage/creativeStyle/3rd images/MALERKOTLA ZARI.png",
+    tag: "Embroidery",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "molela",
+    name: "Rajasthan",
+    title: "MOLELA",
+    desc: "A traditional terracotta craft where religious and social narratives are sculpted in relief on flat clay panels.",
+    image: "/HomePage/creativeStyle/3rd images/MOLELA.png",
+    tag: "Craft",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "pichhwai",
+    name: "Rajasthan",
+    title: "PICHHWAI",
+    desc: "A ritual textile painting tradition depicting Krishna narratives through large-scale, detailed compositions on cloth.",
+    image: "/HomePage/creativeStyle/3rd images/PICHHWAI.png",
+    tag: "Painting",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "pattachitra",
+    name: "Odisha",
+    title: "PATTACHITRA",
+    desc: "A traditional scroll painting style from Odisha, known for its fine line work, mythological themes, and natural pigment colors.",
+    image: "/HomePage/creativeStyle/3rd images/PATTACHITRA.png",
+    tag: "Painting",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "pipili",
+    name: "Odisha",
+    title: "PIPILI",
+    desc: "A traditional appliqué craft from Odisha where colored fabric shapes are stitched onto a base cloth to create bold symbolic patterns.",
+    image: "/HomePage/creativeStyle/3rd images/PIPILI.png",
+    tag: "Craft",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "rajasthaniminiature",
+    name: "Rajasthan",
+    title: "RAJASTHANI MINIATURE",
+    desc: "A court painting tradition known for its fine detail, vibrant colors, and refined narrative storytelling in miniature form.",
+    image: "/HomePage/creativeStyle/3rd images/RAJASTHANI MINIATURE.png",
+    tag: "Painting",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "sambalpuribandha",
+    name: "Odisha",
+    title: "SAMBALPURI BANDHA",
+    desc: "A complex ikat weaving tradition from Odisha where patterns are created through precision tie-dyeing of warp and weft threads.",
+    image: "/HomePage/creativeStyle/3rd images/SAMBALPURI BANDHA.png",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "sanganer",
+    name: "Rajasthan",
+    title: "SANGANER",
+    desc: "A traditional block-print style from Rajasthan known for its fine floral patterns, light backgrounds, and delicate design logic.",
+    image: "/HomePage/creativeStyle/3rd images/SANGANER.png",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "ustaart",
+    name: "Rajasthan",
+    title: "USTA ART",
+    desc: "A traditional craft system encompassing gold-leaf work (Usta), gold embossing (Thewa), and blue-on-white ceramic imagery (Blue Pottery).",
+    image: "/HomePage/creativeStyle/3rd images/USTA ART.png",
+    tag: "Craft",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "pipiliapplique",
+    name: "Odisha",
+    title: "PIPILI APPLIQUÉ",
+    desc: "A traditional appliqué craft from Odisha where colored fabric shapes are stitched onto a base cloth to create bold symbolic patterns.",
+    image: "/HomePage/creativeStyle/3rd images/PIPILI APPLIQUÉ.png",
+    tag: "Craft",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "saura",
+    name: "Odisha",
+    title: "SAURA",
+    desc: "A ritual wall painting tradition of the Saura tribe, featuring stick-figure motifs that record tribal life and mythology in a rhythmic field.",
+    image: "/HomePage/creativeStyle/3rd images/SAURA.png",
+    tag: "Art",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
 ];
+
+
 
 type CreativeStyleProps = {
   onWarliOpen?: () => void;
@@ -739,6 +1280,55 @@ type CreativeStyleProps = {
   onSohraiOpen?: () => void;
   onSonowalTextileOpen?: () => void;
   onSufEmbroideryOpen?: () => void;
+  onGanjifaOpen?: () => void;
+  onGaroWeavingOpen?: () => void;
+  onNagaBodyClothOpen?: () => void;
+  onGondPaintingOpen?: () => void;
+  onHardOrnamentOpen?: () => void;
+  onHimrooOpen?: () => void;
+  onHmaramOpen?: () => void;
+  onHoysalaReliefOpen?: () => void;
+  onJaintiaTextileOpen?: () => void;
+  onJhabuaDollsOpen?: () => void;
+  onMaheshwariOpen?: () => void;
+  onMashruWeavingOpen?: () => void;
+  onMoirangPheeOpen?: () => void;
+  onMotiBharatOpen?: () => void;
+  onMysorePaintingOpen?: () => void;
+  onRosewoodInlayOpen?: () => void;
+  onNagaShawlOrdinaryOpen?: () => void;
+  onNgotekherhOpen?: () => void;
+  onNironaLacquerOpen?: () => void;
+  onOpaqueWrapOpen?: () => void;
+  onTawlhlohpuanOpen?: () => void;
+  onWoodCarvingOpen?: () => void;
+  onWroughtIronOpen?: () => void;
+  onYakshaganaOpen?: () => void;
+  onBaghEmbroideryOpen?: () => void;
+  onBagruPrintOpen?: () => void;
+  onBandhejOpen?: () => void;
+  onBerhampurPattaOpen?: () => void;
+  onBomkaiOpen?: () => void;
+  onBuddhistMaskOpen?: () => void;
+  onSikkimCarpetOpen?: () => void;
+  onDurrieOpen?: () => void;
+  onThangkaFolkOpen?: () => void;
+  onPunjabJuttiOpen?: () => void;
+  onKathputliOpen?: () => void;
+  onKhaddarOpen?: () => void;
+  onKhanduaOpen?: () => void;
+  onKhesOpen?: () => void;
+  onMalerkotlaZariOpen?: () => void;
+  onMolelaOpen?: () => void;
+  onPichhwaiOpen?: () => void;
+  onPattachitraOpen?: () => void;
+  onPipiliOpen?: () => void;
+  onRajasthaniMiniatureOpen?: () => void;
+  onSambalpuriBandhaOpen?: () => void;
+  onSanganerOpen?: () => void;
+  onUstaArtOpen?: () => void;
+  onPipiliAppliqueOpen?: () => void;
+  onSauraOpen?: () => void;
   onAllStylesOpen?: () => void;
 };
 
@@ -803,6 +1393,55 @@ export default function CreativeStyle({
   onSohraiOpen,
   onSonowalTextileOpen,
   onSufEmbroideryOpen,
+  onGanjifaOpen,
+  onGaroWeavingOpen,
+  onNagaBodyClothOpen,
+  onGondPaintingOpen,
+  onHardOrnamentOpen,
+  onHimrooOpen,
+  onHmaramOpen,
+  onHoysalaReliefOpen,
+  onJaintiaTextileOpen,
+  onJhabuaDollsOpen,
+  onMaheshwariOpen,
+  onMashruWeavingOpen,
+  onMoirangPheeOpen,
+  onMotiBharatOpen,
+  onMysorePaintingOpen,
+  onRosewoodInlayOpen,
+  onNagaShawlOrdinaryOpen,
+  onNgotekherhOpen,
+  onNironaLacquerOpen,
+  onOpaqueWrapOpen,
+  onTawlhlohpuanOpen,
+  onWoodCarvingOpen,
+  onWroughtIronOpen,
+  onYakshaganaOpen,
+  onBaghEmbroideryOpen,
+  onBagruPrintOpen,
+  onBandhejOpen,
+  onBerhampurPattaOpen,
+  onBomkaiOpen,
+  onBuddhistMaskOpen,
+  onSikkimCarpetOpen,
+  onDurrieOpen,
+  onThangkaFolkOpen,
+  onPunjabJuttiOpen,
+  onKathputliOpen,
+  onKhaddarOpen,
+  onKhanduaOpen,
+  onKhesOpen,
+  onMalerkotlaZariOpen,
+  onMolelaOpen,
+  onPichhwaiOpen,
+  onPattachitraOpen,
+  onPipiliOpen,
+  onRajasthaniMiniatureOpen,
+  onSambalpuriBandhaOpen,
+  onSanganerOpen,
+  onUstaArtOpen,
+  onPipiliAppliqueOpen,
+  onSauraOpen,
   onAllStylesOpen,
 }: CreativeStyleProps) {
   const railRef = useRef<HTMLDivElement | null>(null);
@@ -1050,7 +1689,6 @@ export default function CreativeStyle({
       event.preventDefault();
       onWoodTempleCarvingOpen();
       return;
-      return;
     }
     if (style.id === "neoagrarianbrutalism" && onNeoAgrarianBrutalismOpen) {
       event.preventDefault();
@@ -1075,6 +1713,131 @@ export default function CreativeStyle({
     if (style.id === "roganart" && onRoganArtOpen) {
       event.preventDefault();
       onRoganArtOpen();
+      return;
+    }
+    if (style.id === "baghembroidery" && onBaghEmbroideryOpen) {
+      event.preventDefault();
+      onBaghEmbroideryOpen();
+      return;
+    }
+    if (style.id === "bagruprint" && onBagruPrintOpen) {
+      event.preventDefault();
+      onBagruPrintOpen();
+      return;
+    }
+    if (style.id === "bandhej" && onBandhejOpen) {
+      event.preventDefault();
+      onBandhejOpen();
+      return;
+    }
+    if (style.id === "berhampurpatta" && onBerhampurPattaOpen) {
+      event.preventDefault();
+      onBerhampurPattaOpen();
+      return;
+    }
+    if (style.id === "bomkai" && onBomkaiOpen) {
+      event.preventDefault();
+      onBomkaiOpen();
+      return;
+    }
+    if (style.id === "buddhistmask" && onBuddhistMaskOpen) {
+      event.preventDefault();
+      onBuddhistMaskOpen();
+      return;
+    }
+    if (style.id === "sikkimcarpet" && onSikkimCarpetOpen) {
+      event.preventDefault();
+      onSikkimCarpetOpen();
+      return;
+    }
+    if (style.id === "durrie" && onDurrieOpen) {
+      event.preventDefault();
+      onDurrieOpen();
+      return;
+    }
+    if (style.id === "thangka" && onThangkaFolkOpen) {
+      event.preventDefault();
+      onThangkaFolkOpen();
+      return;
+    }
+    if (style.id === "punjabjutti" && onPunjabJuttiOpen) {
+      event.preventDefault();
+      onPunjabJuttiOpen();
+      return;
+    }
+    if (style.id === "kathputli" && onKathputliOpen) {
+      event.preventDefault();
+      onKathputliOpen();
+      return;
+    }
+    if (style.id === "khaddar" && onKhaddarOpen) {
+      event.preventDefault();
+      onKhaddarOpen();
+      return;
+    }
+    if (style.id === "khandua" && onKhanduaOpen) {
+      event.preventDefault();
+      onKhanduaOpen();
+      return;
+    }
+    if (style.id === "khes" && onKhesOpen) {
+      event.preventDefault();
+      onKhesOpen();
+      return;
+    }
+    if (style.id === "malerkotlazari" && onMalerkotlaZariOpen) {
+      event.preventDefault();
+      onMalerkotlaZariOpen();
+      return;
+    }
+    if (style.id === "molela" && onMolelaOpen) {
+      event.preventDefault();
+      onMolelaOpen();
+      return;
+    }
+    if (style.id === "pichhwai" && onPichhwaiOpen) {
+      event.preventDefault();
+      onPichhwaiOpen();
+      return;
+    }
+    if (style.id === "pattachitra" && onPattachitraOpen) {
+      event.preventDefault();
+      onPattachitraOpen();
+      return;
+    }
+    if (style.id === "pipili" && onPipiliOpen) {
+      event.preventDefault();
+      onPipiliOpen();
+      return;
+    }
+    if (style.id === "rajasthaniminiature" && onRajasthaniMiniatureOpen) {
+      event.preventDefault();
+      onRajasthaniMiniatureOpen();
+      return;
+    }
+    if (style.id === "sambalpuribandha" && onSambalpuriBandhaOpen) {
+      event.preventDefault();
+      onSambalpuriBandhaOpen();
+      return;
+    }
+    if (style.id === "sanganer" && onSanganerOpen) {
+      event.preventDefault();
+      onSanganerOpen();
+      return;
+    }
+    if (style.id === "ustaart" && onUstaArtOpen) {
+      event.preventDefault();
+      onUstaArtOpen();
+      return;
+    }
+    if (style.id === "pipiliapplique" && onPipiliAppliqueOpen) {
+      event.preventDefault();
+      onPipiliAppliqueOpen();
+      return;
+    }
+    if (style.id === "saura" && onSauraOpen) {
+      event.preventDefault();
+      onSauraOpen();
       return;
     }
     if (style.id === "ruralfibercraft" && onRuralFiberCraftOpen) {
@@ -1111,6 +1874,98 @@ export default function CreativeStyle({
       event.preventDefault();
       onSufEmbroideryOpen();
       return;
+    }
+    if (style.id === "ganjifa" && onGanjifaOpen) {
+      event.preventDefault();
+      onGanjifaOpen();
+      return;
+    }
+    if (style.id === "garoweaving" && onGaroWeavingOpen) {
+      event.preventDefault();
+      onGaroWeavingOpen();
+      return;
+    }
+    if (style.id === "nagabodycloth" && onNagaBodyClothOpen) {
+      event.preventDefault();
+      onNagaBodyClothOpen();
+      return;
+    }
+    if (style.id === "gondpainting" && onGondPaintingOpen) {
+      event.preventDefault();
+      onGondPaintingOpen();
+      return;
+    }
+    if (style.id === "hardornament" && onHardOrnamentOpen) {
+      event.preventDefault();
+      onHardOrnamentOpen();
+      return;
+    }
+    if (style.id === "himroo" && onHimrooOpen) {
+      event.preventDefault();
+      onHimrooOpen();
+      return;
+    }
+    if (style.id === "hmaram" && onHmaramOpen) {
+      event.preventDefault();
+      onHmaramOpen();
+      return;
+    }
+    if (style.id === "hoysalarelief" && onHoysalaReliefOpen) {
+      event.preventDefault();
+      onHoysalaReliefOpen();
+      return;
+    }
+    if (style.id === "jaintiatextile" && onJaintiaTextileOpen) {
+      event.preventDefault();
+      onJaintiaTextileOpen();
+      return;
+    }
+    switch (style.id) {
+      case "jhabuadolls":
+        onJhabuaDollsOpen?.();
+        break;
+      case "maheshwari":
+        onMaheshwariOpen?.();
+        break;
+      case "mashruweaving":
+        onMashruWeavingOpen?.();
+        break;
+      case "moirangphee":
+        onMoirangPheeOpen?.();
+        break;
+      case "motibharat":
+        onMotiBharatOpen?.();
+        break;
+      case "mysorepainting":
+        onMysorePaintingOpen?.();
+        break;
+      case "rosewoodinlay":
+        onRosewoodInlayOpen?.();
+        break;
+      case "nagashawlordinary":
+        onNagaShawlOrdinaryOpen?.();
+        break;
+      case "ngotekherh":
+        onNgotekherhOpen?.();
+        break;
+      case "nironalacquer":
+        onNironaLacquerOpen?.();
+        break;
+      case "opaquewrap":
+        onOpaqueWrapOpen?.();
+        break;
+      case "tawlhlohpuan":
+        onTawlhlohpuanOpen?.();
+        break;
+      case "woodcarving":
+        onWoodCarvingOpen?.();
+        break;
+      case "wroughtiron":
+        onWroughtIronOpen?.();
+        break;
+      case "yakshagana":
+        onYakshaganaOpen?.();
+        break;
     }
   };
 

@@ -7,10 +7,10 @@ import { STYLES } from "./CreativeStyle";
 interface AllStylesModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelectStyle: (id: string) => void;
+  onStyleSelect: (id: string) => void;
 }
 
-export default function AllStylesModal({ isOpen, onClose, onSelectStyle }: AllStylesModalProps) {
+export default function AllStylesModal({ isOpen, onClose, onStyleSelect }: AllStylesModalProps) {
   if (!isOpen) return null;
 
   return (
@@ -41,7 +41,7 @@ export default function AllStylesModal({ isOpen, onClose, onSelectStyle }: AllSt
             {STYLES.map((style) => (
               <button
                 key={style.id}
-                onClick={() => onSelectStyle(style.id)}
+                onClick={() => onStyleSelect(style.id)}
                 className="group flex flex-col text-left transition-all hover:-translate-y-1"
               >
                 <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl border border-white/10 bg-[#18181f] transition-colors group-hover:border-white/20">

@@ -324,6 +324,198 @@ const SufEmbroideryFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: (
     () => import('./compo/SufEmbroideryFullscreenWalkthrough'),
     { ssr: false }
 )
+const GanjifaFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/GanjifaFullscreenWalkthrough'),
+    { ssr: false }
+)
+const GaroWeavingFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/GaroWeavingFullscreenWalkthrough'),
+    { ssr: false }
+)
+const NagaBodyClothFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/NagaBodyClothFullscreenWalkthrough'),
+    { ssr: false }
+)
+const GondPaintingFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/GondPaintingFullscreenWalkthrough'),
+    { ssr: false }
+)
+const HardOrnamentFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/HardOrnamentFullscreenWalkthrough'),
+    { ssr: false }
+)
+const HimrooFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/HimrooFullscreenWalkthrough'),
+    { ssr: false }
+)
+const HmaramFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/HmaramFullscreenWalkthrough'),
+    { ssr: false }
+)
+const HoysalaReliefFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/HoysalaReliefFullscreenWalkthrough'),
+    { ssr: false }
+)
+const JaintiaTextileFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/JaintiaTextileFullscreenWalkthrough'),
+    { ssr: false }
+)
+const JhabuaDollsFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/JhabuaDollsFullscreenWalkthrough'),
+    { ssr: false }
+)
+const MaheshwariFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/MaheshwariFullscreenWalkthrough'),
+    { ssr: false }
+)
+const MashruweavingFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/MashruweavingFullscreenWalkthrough'),
+    { ssr: false }
+)
+const MoirangpheeFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/MoirangpheeFullscreenWalkthrough'),
+    { ssr: false }
+)
+const MotibharatFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/MotibharatFullscreenWalkthrough'),
+    { ssr: false }
+)
+const MysorepaintingFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/MysorepaintingFullscreenWalkthrough'),
+    { ssr: false }
+)
+const RosewoodinlayFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/RosewoodinlayFullscreenWalkthrough'),
+    { ssr: false }
+)
+const NagashawlordinaryFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/NagashawlordinaryFullscreenWalkthrough'),
+    { ssr: false }
+)
+const NgotekherhFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/NgotekherhFullscreenWalkthrough'),
+    { ssr: false }
+)
+const NironalacquerFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/NironalacquerFullscreenWalkthrough'),
+    { ssr: false }
+)
+const OpaquewrapFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/OpaquewrapFullscreenWalkthrough'),
+    { ssr: false }
+)
+const TawlhlohpuanFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/TawlhlohpuanFullscreenWalkthrough'),
+    { ssr: false }
+)
+const WoodcarvingFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/WoodcarvingFullscreenWalkthrough'),
+    { ssr: false }
+)
+const WroughtironFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/WroughtironFullscreenWalkthrough'),
+    { ssr: false }
+)
+const YakshaganaFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/YakshaganaFullscreenWalkthrough'),
+    { ssr: false }
+)
+const BaghEmbroideryFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/BaghEmbroideryFullscreenWalkthrough'),
+    { ssr: false }
+)
+const BagruPrintFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/BagruPrintFullscreenWalkthrough'),
+    { ssr: false }
+)
+const BandhejFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/BandhejFullscreenWalkthrough'),
+    { ssr: false }
+)
+const BerhampurPattaFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/BerhampurPattaFullscreenWalkthrough'),
+    { ssr: false }
+)
+const BomkaiFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/BomkaiFullscreenWalkthrough'),
+    { ssr: false }
+)
+const BuddhistMaskFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/BuddhistMaskFullscreenWalkthrough'),
+    { ssr: false }
+)
+const SikkimCarpetFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/SikkimCarpetFullscreenWalkthrough'),
+    { ssr: false }
+)
+const DurrieFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/DurrieFullscreenWalkthrough'),
+    { ssr: false }
+)
+const PunjabJuttiFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/PunjabJuttiFullscreenWalkthrough'),
+    { ssr: false }
+)
+const KathputliFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/KathputliFullscreenWalkthrough'),
+    { ssr: false }
+)
+const KhaddarFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/KhaddarFullscreenWalkthrough'),
+    { ssr: false }
+)
+const KhanduaFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/KhanduaFullscreenWalkthrough'),
+    { ssr: false }
+)
+const KhesFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/KhesFullscreenWalkthrough'),
+    { ssr: false }
+)
+const MalerkotlaZariFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/MalerkotlaZariFullscreenWalkthrough'),
+    { ssr: false }
+)
+const MolelaFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/MolelaFullscreenWalkthrough'),
+    { ssr: false }
+)
+const PichhwaiFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/PichhwaiFullscreenWalkthrough'),
+    { ssr: false }
+)
+const PattachitraFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/PattachitraFullscreenWalkthrough'),
+    { ssr: false }
+)
+const PipiliFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/PipiliFullscreenWalkthrough'),
+    { ssr: false }
+)
+const RajasthaniMiniatureFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/RajasthaniMiniatureFullscreenWalkthrough'),
+    { ssr: false }
+)
+const SambalpuriBandhaFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/SambalpuriBandhaFullscreenWalkthrough'),
+    { ssr: false }
+)
+const SanganerFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/SanganerFullscreenWalkthrough'),
+    { ssr: false }
+)
+const UstaArtFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/UstaArtFullscreenWalkthrough'),
+    { ssr: false }
+)
+const PipiliAppliqueFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/PipiliAppliqueFullscreenWalkthrough'),
+    { ssr: false }
+)
+const SauraFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/SauraFullscreenWalkthrough'),
+    { ssr: false }
+)
 const WorkflowCarousel = dynamic(() => import('./compo/WorkflowCarousel').then(mod => ({ default: mod.default })), {
     loading: () => <div className="h-64 animate-pulse bg-white/5 rounded-lg" />
 })
@@ -426,6 +618,57 @@ const HomePage: React.FC = () => {
     const [showSohraiWalkthrough, setShowSohraiWalkthrough] = useState(false);
     const [showSonowalTextileWalkthrough, setShowSonowalTextileWalkthrough] = useState(false);
     const [showSufEmbroideryWalkthrough, setShowSufEmbroideryWalkthrough] = useState(false);
+    const [showGanjifaWalkthrough, setShowGanjifaWalkthrough] = useState(false);
+    const [showGaroWeavingWalkthrough, setShowGaroWeavingWalkthrough] = useState(false);
+    const [showNagaBodyClothWalkthrough, setShowNagaBodyClothWalkthrough] = useState(false);
+    const [showGondPaintingWalkthrough, setShowGondPaintingWalkthrough] = useState(false);
+    const [showHardOrnamentWalkthrough, setShowHardOrnamentWalkthrough] = useState(false);
+    const [showHimrooWalkthrough, setShowHimrooWalkthrough] = useState(false);
+    const [showHmaramWalkthrough, setShowHmaramWalkthrough] = useState(false);
+    const [showHoysalaReliefWalkthrough, setShowHoysalaReliefWalkthrough] = useState(false);
+    const [showJaintiaTextileWalkthrough, setShowJaintiaTextileWalkthrough] = useState(false);
+    const [showJhabuaDollsWalkthrough, setShowJhabuaDollsWalkthrough] = useState(false);
+    const [showMaheshwariWalkthrough, setShowMaheshwariWalkthrough] = useState(false);
+    const [showMashruweavingWalkthrough, setShowMashruweavingWalkthrough] = useState(false);
+    const [showMoirangpheeWalkthrough, setShowMoirangpheeWalkthrough] = useState(false);
+    const [showMotibharatWalkthrough, setShowMotibharatWalkthrough] = useState(false);
+    const [showMysorepaintingWalkthrough, setShowMysorepaintingWalkthrough] = useState(false);
+    const [showRosewoodinlayWalkthrough, setShowRosewoodinlayWalkthrough] = useState(false);
+    const [showNagashawlordinaryWalkthrough, setShowNagashawlordinaryWalkthrough] = useState(false);
+    const [showNgotekherhWalkthrough, setShowNgotekherhWalkthrough] = useState(false);
+    const [showNironalacquerWalkthrough, setShowNironalacquerWalkthrough] = useState(false);
+    const [showOpaquewrapWalkthrough, setShowOpaquewrapWalkthrough] = useState(false);
+    const [showTawlhlohpuanWalkthrough, setShowTawlhlohpuanWalkthrough] = useState(false);
+    const [showWoodcarvingWalkthrough, setShowWoodcarvingWalkthrough] = useState(false);
+    const [showWroughtironWalkthrough, setShowWroughtironWalkthrough] = useState(false);
+    const [showYakshaganaWalkthrough, setShowYakshaganaWalkthrough] = useState(false);
+    const [showBaghEmbroideryWalkthrough, setShowBaghEmbroideryWalkthrough] = useState(false);
+    const [showBagruPrintWalkthrough, setShowBagruPrintWalkthrough] = useState(false);
+    const [showBandhejWalkthrough, setShowBandhejWalkthrough] = useState(false);
+    const [showBerhampurPattaWalkthrough, setShowBerhampurPattaWalkthrough] = useState(false);
+    const [showBomkaiWalkthrough, setShowBomkaiWalkthrough] = useState(false);
+    const [showBuddhistMaskWalkthrough, setShowBuddhistMaskWalkthrough] = useState(false);
+    const [showSikkimCarpetWalkthrough, setShowSikkimCarpetWalkthrough] = useState(false);
+    const [showDurrieWalkthrough, setShowDurrieWalkthrough] = useState(false);
+    const [showThangkaNewWalkthrough, setShowThangkaNewWalkthrough] = useState(false);
+    const [showPunjabJuttiWalkthrough, setShowPunjabJuttiWalkthrough] = useState(false);
+    const [showKathputliWalkthrough, setShowKathputliWalkthrough] = useState(false);
+    const [showKhaddarWalkthrough, setShowKhaddarWalkthrough] = useState(false);
+    const [showKhanduaWalkthrough, setShowKhanduaWalkthrough] = useState(false);
+    const [showKhesWalkthrough, setShowKhesWalkthrough] = useState(false);
+    const [showMalerkotlaZariWalkthrough, setShowMalerkotlaZariWalkthrough] = useState(false);
+    const [showMolelaWalkthrough, setShowMolelaWalkthrough] = useState(false);
+    const [showPichhwaiNewWalkthrough, setShowPichhwaiNewWalkthrough] = useState(false);
+    const [showPattachitraWalkthrough, setShowPattachitraWalkthrough] = useState(false);
+    const [showPipiliWalkthrough, setShowPipiliWalkthrough] = useState(false);
+    const [showRajasthaniMiniatureWalkthrough, setShowRajasthaniMiniatureWalkthrough] = useState(false);
+    const [showSambalpuriBandhaWalkthrough, setShowSambalpuriBandhaWalkthrough] = useState(false);
+    const [showSanganerWalkthrough, setShowSanganerWalkthrough] = useState(false);
+    const [showUstaArtWalkthrough, setShowUstaArtWalkthrough] = useState(false);
+    const [showPipiliAppliqueWalkthrough, setShowPipiliAppliqueWalkthrough] = useState(false);
+    const [showGaroWeavingNewWalkthrough, setShowGaroWeavingNewWalkthrough] = useState(false);
+    const [showSauraWalkthrough, setShowSauraWalkthrough] = useState(false);
+
     const [showAllStylesModal, setShowAllStylesModal] = useState(false);
     const [openedFromAllStyles, setOpenedFromAllStyles] = useState(false);
     const [homepageMode, setHomepageMode] = useState<'image' | 'video'>('image');
@@ -494,6 +737,55 @@ const HomePage: React.FC = () => {
             case "sohrai": setShowSohraiWalkthrough(true); break;
             case "sonowaltextile": setShowSonowalTextileWalkthrough(true); break;
             case "sufembroidery": setShowSufEmbroideryWalkthrough(true); break;
+            case "ganjifa": setShowGanjifaWalkthrough(true); break;
+            case "garoweaving": setShowGaroWeavingWalkthrough(true); break;
+            case "nagabodycloth": setShowNagaBodyClothWalkthrough(true); break;
+            case "gondpainting": setShowGondPaintingWalkthrough(true); break;
+            case "hardornament": setShowHardOrnamentWalkthrough(true); break;
+            case "himroo": setShowHimrooWalkthrough(true); break;
+            case "hmaram": setShowHmaramWalkthrough(true); break;
+            case "hoysalarelief": setShowHoysalaReliefWalkthrough(true); break;
+            case "jaintiatextile": setShowJaintiaTextileWalkthrough(true); break;
+            case "jhabuadolls": setShowJhabuaDollsWalkthrough(true); break;
+            case "maheshwari": setShowMaheshwariWalkthrough(true); break;
+            case "mashruweaving": setShowMashruweavingWalkthrough(true); break;
+            case "moirangphee": setShowMoirangpheeWalkthrough(true); break;
+            case "motibharat": setShowMotibharatWalkthrough(true); break;
+            case "mysorepainting": setShowMysorepaintingWalkthrough(true); break;
+            case "rosewoodinlay": setShowRosewoodinlayWalkthrough(true); break;
+            case "nagashawlordinary": setShowNagashawlordinaryWalkthrough(true); break;
+            case "ngotekherh": setShowNgotekherhWalkthrough(true); break;
+            case "nironalacquer": setShowNironalacquerWalkthrough(true); break;
+            case "opaquewrap": setShowOpaquewrapWalkthrough(true); break;
+            case "tawlhlohpuan": setShowTawlhlohpuanWalkthrough(true); break;
+            case "woodcarving": setShowWoodcarvingWalkthrough(true); break;
+            case "wroughtiron": setShowWroughtironWalkthrough(true); break;
+            case "yakshagana": setShowYakshaganaWalkthrough(true); break;
+            case "baghembroidery": setShowBaghEmbroideryWalkthrough(true); break;
+            case "bagruprint": setShowBagruPrintWalkthrough(true); break;
+            case "bandhej": setShowBandhejWalkthrough(true); break;
+            case "berhampurpatta": setShowBerhampurPattaWalkthrough(true); break;
+            case "bomkai": setShowBomkaiWalkthrough(true); break;
+            case "buddhistmask": setShowBuddhistMaskWalkthrough(true); break;
+            case "sikkimcarpet": setShowSikkimCarpetWalkthrough(true); break;
+            case "durrie": setShowDurrieWalkthrough(true); break;
+            case "thangka": setShowThangkaWalkthrough(true); break;
+            case "punjabjutti": setShowPunjabJuttiWalkthrough(true); break;
+            case "kathputli": setShowKathputliWalkthrough(true); break;
+            case "khaddar": setShowKhaddarWalkthrough(true); break;
+            case "khandua": setShowKhanduaWalkthrough(true); break;
+            case "khes": setShowKhesWalkthrough(true); break;
+            case "malerkotlazari": setShowMalerkotlaZariWalkthrough(true); break;
+            case "molela": setShowMolelaWalkthrough(true); break;
+            case "pichhwai": setShowPichhwaiNewWalkthrough(true); break;
+            case "pattachitra": setShowPattachitraWalkthrough(true); break;
+            case "pipili": setShowPipiliWalkthrough(true); break;
+            case "rajasthaniminiature": setShowRajasthaniMiniatureWalkthrough(true); break;
+            case "sambalpuribandha": setShowSambalpuriBandhaWalkthrough(true); break;
+            case "sanganer": setShowSanganerWalkthrough(true); break;
+            case "ustaart": setShowUstaArtWalkthrough(true); break;
+            case "pipiliapplique": setShowPipiliAppliqueWalkthrough(true); break;
+            case "saura": setShowSauraWalkthrough(true); break;
             default: break;
         }
     };
@@ -898,6 +1190,56 @@ const HomePage: React.FC = () => {
                             setShowWelcomeModal(false);
                             setShowSufEmbroideryWalkthrough(true);
                         }}
+                        onGanjifaOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowGanjifaWalkthrough(true);
+                        }}
+                        onGaroWeavingOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowGaroWeavingWalkthrough(true);
+                        }}
+                        onNagaBodyClothOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowNagaBodyClothWalkthrough(true);
+                        }}
+                        onGondPaintingOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowGondPaintingWalkthrough(true);
+                        }}
+                        onHardOrnamentOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowHardOrnamentWalkthrough(true);
+                        }}
+                        onHimrooOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowHimrooWalkthrough(true);
+                        }}
+                        onHmaramOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowHmaramWalkthrough(true);
+                        }}
+                        onHoysalaReliefOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowHoysalaReliefWalkthrough(true);
+                        }}
+                        onJaintiaTextileOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowJaintiaTextileWalkthrough(true);
+                        }}
+                        onJhabuaDollsOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowJhabuaDollsWalkthrough(true);
+                        }}
                         onEtikoppakaOpen={() => {
                             setOpenedFromAllStyles(false);
                             setShowWelcomeModal(false);
@@ -952,6 +1294,76 @@ const HomePage: React.FC = () => {
                             setOpenedFromAllStyles(false);
                             setShowWelcomeModal(false);
                             setShowUppadaWalkthrough(true);
+                        }}
+                        onMaheshwariOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowMaheshwariWalkthrough(true);
+                        }}
+                        onMashruWeavingOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowMashruweavingWalkthrough(true);
+                        }}
+                        onMoirangPheeOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowMoirangpheeWalkthrough(true);
+                        }}
+                        onMotiBharatOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowMotibharatWalkthrough(true);
+                        }}
+                        onMysorePaintingOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowMysorepaintingWalkthrough(true);
+                        }}
+                        onRosewoodInlayOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowRosewoodinlayWalkthrough(true);
+                        }}
+                        onNagaShawlOrdinaryOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowNagashawlordinaryWalkthrough(true);
+                        }}
+                        onNgotekherhOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowNgotekherhWalkthrough(true);
+                        }}
+                        onNironaLacquerOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowNironalacquerWalkthrough(true);
+                        }}
+                        onOpaqueWrapOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowOpaquewrapWalkthrough(true);
+                        }}
+                        onTawlhlohpuanOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowTawlhlohpuanWalkthrough(true);
+                        }}
+                        onWoodCarvingOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowWoodcarvingWalkthrough(true);
+                        }}
+                        onWroughtIronOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowWroughtironWalkthrough(true);
+                        }}
+                        onYakshaganaOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowYakshaganaWalkthrough(true);
                         }}
                         onAllStylesOpen={() => setShowAllStylesModal(true)}
                     />
@@ -1418,10 +1830,226 @@ const HomePage: React.FC = () => {
                 onClose={() => handleCloseWalkthrough(setShowSufEmbroideryWalkthrough)}
             />
 
-            <AllStylesModal
+            <GanjifaFullscreenWalkthrough
+                isOpen={showGanjifaWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowGanjifaWalkthrough)}
+            />
+
+            <GaroWeavingFullscreenWalkthrough
+                isOpen={showGaroWeavingWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowGaroWeavingWalkthrough)}
+            />
+
+            <NagaBodyClothFullscreenWalkthrough
+                isOpen={showNagaBodyClothWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowNagaBodyClothWalkthrough)}
+            />
+
+            <GondPaintingFullscreenWalkthrough
+                isOpen={showGondPaintingWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowGondPaintingWalkthrough)}
+            />
+
+            <HardOrnamentFullscreenWalkthrough
+                isOpen={showHardOrnamentWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowHardOrnamentWalkthrough)}
+            />
+
+            <HimrooFullscreenWalkthrough
+                isOpen={showHimrooWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowHimrooWalkthrough)}
+            />
+
+            <HmaramFullscreenWalkthrough
+                isOpen={showHmaramWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowHmaramWalkthrough)}
+            />
+
+            <HoysalaReliefFullscreenWalkthrough
+                isOpen={showHoysalaReliefWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowHoysalaReliefWalkthrough)}
+            />
+
+            <JaintiaTextileFullscreenWalkthrough
+                isOpen={showJaintiaTextileWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowJaintiaTextileWalkthrough)}
+            />
+
+            <JhabuaDollsFullscreenWalkthrough
+                isOpen={showJhabuaDollsWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowJhabuaDollsWalkthrough)}
+            />
+
+            <MaheshwariFullscreenWalkthrough
+                isOpen={showMaheshwariWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowMaheshwariWalkthrough)}
+            />
+
+            <MashruweavingFullscreenWalkthrough
+                isOpen={showMashruweavingWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowMashruweavingWalkthrough)}
+            />
+
+            <MoirangpheeFullscreenWalkthrough
+                isOpen={showMoirangpheeWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowMoirangpheeWalkthrough)}
+            />
+
+            <MotibharatFullscreenWalkthrough
+                isOpen={showMotibharatWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowMotibharatWalkthrough)}
+            />
+
+            <MysorepaintingFullscreenWalkthrough
+                isOpen={showMysorepaintingWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowMysorepaintingWalkthrough)}
+            />
+
+            <RosewoodinlayFullscreenWalkthrough
+                isOpen={showRosewoodinlayWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowRosewoodinlayWalkthrough)}
+            />
+
+            <NagashawlordinaryFullscreenWalkthrough
+                isOpen={showNagashawlordinaryWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowNagashawlordinaryWalkthrough)}
+            />
+
+            <NgotekherhFullscreenWalkthrough
+                isOpen={showNgotekherhWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowNgotekherhWalkthrough)}
+            />
+
+            <NironalacquerFullscreenWalkthrough
+                isOpen={showNironalacquerWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowNironalacquerWalkthrough)}
+            />
+
+            <OpaquewrapFullscreenWalkthrough
+                isOpen={showOpaquewrapWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowOpaquewrapWalkthrough)}
+            />
+
+            <TawlhlohpuanFullscreenWalkthrough
+                isOpen={showTawlhlohpuanWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowTawlhlohpuanWalkthrough)}
+            />
+
+            <WoodcarvingFullscreenWalkthrough
+                isOpen={showWoodcarvingWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowWoodcarvingWalkthrough)}
+            />
+
+            <WroughtironFullscreenWalkthrough
+                isOpen={showWroughtironWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowWroughtironWalkthrough)}
+            />
+
+            <YakshaganaFullscreenWalkthrough
+                isOpen={showYakshaganaWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowYakshaganaWalkthrough)}
+            />
+
+                        <AllStylesModal
                 isOpen={showAllStylesModal}
                 onClose={() => setShowAllStylesModal(false)}
-                onSelectStyle={handleStyleSelect}
+                onStyleSelect={handleStyleSelect}
+            />
+            <BaghEmbroideryFullscreenWalkthrough
+                isOpen={showBaghEmbroideryWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowBaghEmbroideryWalkthrough)}
+            />
+            <BagruPrintFullscreenWalkthrough
+                isOpen={showBagruPrintWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowBagruPrintWalkthrough)}
+            />
+            <BandhejFullscreenWalkthrough
+                isOpen={showBandhejWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowBandhejWalkthrough)}
+            />
+            <BerhampurPattaFullscreenWalkthrough
+                isOpen={showBerhampurPattaWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowBerhampurPattaWalkthrough)}
+            />
+            <BomkaiFullscreenWalkthrough
+                isOpen={showBomkaiWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowBomkaiWalkthrough)}
+            />
+            <BuddhistMaskFullscreenWalkthrough
+                isOpen={showBuddhistMaskWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowBuddhistMaskWalkthrough)}
+            />
+            <SikkimCarpetFullscreenWalkthrough
+                isOpen={showSikkimCarpetWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowSikkimCarpetWalkthrough)}
+            />
+            <DurrieFullscreenWalkthrough
+                isOpen={showDurrieWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowDurrieWalkthrough)}
+            />
+            <PunjabJuttiFullscreenWalkthrough
+                isOpen={showPunjabJuttiWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowPunjabJuttiWalkthrough)}
+            />
+            <KathputliFullscreenWalkthrough
+                isOpen={showKathputliWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowKathputliWalkthrough)}
+            />
+            <KhaddarFullscreenWalkthrough
+                isOpen={showKhaddarWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowKhaddarWalkthrough)}
+            />
+            <KhanduaFullscreenWalkthrough
+                isOpen={showKhanduaWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowKhanduaWalkthrough)}
+            />
+            <KhesFullscreenWalkthrough
+                isOpen={showKhesWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowKhesWalkthrough)}
+            />
+            <MalerkotlaZariFullscreenWalkthrough
+                isOpen={showMalerkotlaZariWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowMalerkotlaZariWalkthrough)}
+            />
+            <MolelaFullscreenWalkthrough
+                isOpen={showMolelaWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowMolelaWalkthrough)}
+            />
+            <PichhwaiFullscreenWalkthrough
+                isOpen={showPichhwaiNewWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowPichhwaiNewWalkthrough)}
+            />
+            <PattachitraFullscreenWalkthrough
+                isOpen={showPattachitraWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowPattachitraWalkthrough)}
+            />
+            <PipiliFullscreenWalkthrough
+                isOpen={showPipiliWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowPipiliWalkthrough)}
+            />
+            <RajasthaniMiniatureFullscreenWalkthrough
+                isOpen={showRajasthaniMiniatureWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowRajasthaniMiniatureWalkthrough)}
+            />
+            <SambalpuriBandhaFullscreenWalkthrough
+                isOpen={showSambalpuriBandhaWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowSambalpuriBandhaWalkthrough)}
+            />
+            <SanganerFullscreenWalkthrough
+                isOpen={showSanganerWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowSanganerWalkthrough)}
+            />
+            <UstaArtFullscreenWalkthrough
+                isOpen={showUstaArtWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowUstaArtWalkthrough)}
+            />
+            <PipiliAppliqueFullscreenWalkthrough
+                isOpen={showPipiliAppliqueWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowPipiliAppliqueWalkthrough)}
+            />
+            <SauraFullscreenWalkthrough
+                isOpen={showSauraWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowSauraWalkthrough)}
             />
 
             {/* Welcome Modal */}
