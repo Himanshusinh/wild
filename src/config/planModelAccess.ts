@@ -10,10 +10,6 @@ export type RawPlanId =
   | CanonicalPlanId
   | "FREE"
   | "STARTER"
-  | "PLAN_A"
-  | "PLAN_B"
-  | "PLAN_C"
-  | "PLAN_D"
   | string;
 
 export interface PlanModelAccessEntry {
@@ -39,14 +35,9 @@ export const PLAN_ID_ALIASES: Record<string, CanonicalPlanId> = {
   agency: "agency",
   FREE: "free",
   STARTER: "starter",
-  PLAN_A: "spark",
-  PLAN_B: "creator",
-  PLAN_C: "studio",
-  PLAN_D: "agency",
 
   // New billing codes (subscription variants)
   STARTER_MONTHLY: "starter",
-  STARTER_YEARLY: "starter",
   SPARK_MONTHLY: "spark",
   SPARK_YEARLY: "spark",
   CREATOR_MONTHLY: "creator",
@@ -57,8 +48,7 @@ export const PLAN_ID_ALIASES: Record<string, CanonicalPlanId> = {
   AGENCY_YEARLY: "agency",
 };
 
-// Temporary bypass for local testing while plan-based model restrictions are disabled.
-const DISABLE_PLAN_MODEL_ACCESS = true;
+const DISABLE_PLAN_MODEL_ACCESS = false;
 
 export function normalizePlanId(planId?: string | null): CanonicalPlanId {
   if (!planId) return "free";
