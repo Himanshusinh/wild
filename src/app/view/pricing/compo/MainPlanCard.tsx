@@ -277,7 +277,7 @@ export function MainPlanCard({
           />
           Unused credits expire at refresh.
         </li>
-        {plan.features.map((f) => (
+        {(plan.features || []).map((f) => (
           <li key={f} className="flex items-start gap-2.5 text-sm text-slate-300">
             <Check
               className={`w-4 h-4 shrink-0 mt-0.5 ${isHi ? 'text-[#60a5fa]' : 'text-slate-500'}`}
