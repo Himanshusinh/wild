@@ -19,6 +19,9 @@ const ImageCountDropdown = () => {
           normalizedModel === "seedream-5-lite" ||
           normalizedModel === "bytedance/seedream-5-lite"
         ? 15
+        : normalizedModel === "openai/gpt-image-2" ||
+            normalizedModel === "gpt-image-2"
+          ? 10
         : 4;
 
   const handleDecrease = () => {
