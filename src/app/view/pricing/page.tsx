@@ -42,7 +42,7 @@ const PricingPage: React.FC = () => {
       <div className="fixed inset-0 pointer-events-none z-0">
         <div
           className="absolute inset-0 opacity-[0.03] mix-blend-overlay"
-          style={{ backgroundImage: "url('https://grainy-gradients.vercel.app/noise.svg')" }}
+          style={{ backgroundImage: "url('/noise.svg')" }}
         />
         <div
           className="absolute inset-0"
