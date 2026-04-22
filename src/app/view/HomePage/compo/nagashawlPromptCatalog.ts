@@ -17,19 +17,39 @@ export const NAGASHAWL_PROMPT_FAMILIES: Record<NagaShawlVersion, NagaShawlPrompt
   V1: {
     version: "V1",
     chip: "AUTHENTIC",
-    title: "NagaShawl",
+    title: "Source-faithful Woven Logic",
     ...nagashawlPromptV1,
   },
   V2: {
     version: "V2",
-    chip: "TRIBE-SPECIFIC",
-    title: "NagaShawl Variations",
+    chip: "ARTISAN",
+    title: "Handcrafted Dimensional Weave",
     ...nagashawlPromptV2,
   },
   V3: {
     version: "V3",
-    chip: "WOVEN",
-    title: "Dimensional NagaShawl",
+    chip: "CINEMATIC",
+    title: "Full 3D Cinematic Woven World",
     ...nagashawlPromptV3,
   },
+};
+
+export interface NagaShawlPromptCatalog {
+  id: string;
+  name: string;
+  prompts: Record<NagaShawlVersion, { promptHard: string; promptVariable: string; promptI2I: string }>;
+  defaultPrompt: { promptHard: string; promptVariable: string; promptI2I: string };
+  promptI2I: { promptHard: string; promptVariable: string; promptI2I: string };
+}
+
+export const nagashawlPromptCatalog: NagaShawlPromptCatalog = {
+  id: "nagashawl",
+  name: "Naga Shawl",
+  prompts: {
+    V1: nagashawlPromptV1,
+    V2: nagashawlPromptV2,
+    V3: nagashawlPromptV3,
+  },
+  defaultPrompt: nagashawlPromptV1,
+  promptI2I: nagashawlPromptV1,
 };

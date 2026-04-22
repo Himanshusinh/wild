@@ -12,4 +12,3 @@ export default function GanjifaFullscreenWalkthrough({
 }) {
   return <GanjifaModal isOpen={isOpen} onClose={onClose} />;
 }
-

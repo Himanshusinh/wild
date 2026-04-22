@@ -1,120 +1,218 @@
 export const thangkaPromptV3 = {
-  promptHard: `Create a fully volumetric cinematic translation of Thangka Painting from Arunachal
-Pradesh, specifically the Monpa Buddhist thangka tradition of Tawang and West Kameng,
-converting the entire sacred image grammar into a believable three-dimensional
-image-world while keeping thangka law in control at every level. This must not become
-generic Buddhist fantasy art or realism with Tibetan motifs. It must feel like Arunachal
-Buddhist thangka intelligence became a real volumetric world.
+  promptHard: `Create an image in V3 = fully resolved believable real-world 3D translation of the same 
+source grammar of Himalayan sacred-image, thangka-related painting from Sikkim. 
+ 
+Keep the authentic Sikkim sacred-image style system unchanged and push it into its most 
+complete, most embodied, most scene-capable, most volumetric image-world. 
+ 
+This is maximum world-depth, not realism replacement. 
+ 
+Preserve the same unchanged deep sacred-image core: 
+iconographic proportion discipline, 
+deity-centered hierarchy, 
+symbolic placement, 
+sacred compositional order, 
+prepared cotton-or-silk scroll/surface logic, 
+mineral/vegetable/gold color intelligence, 
+brocade-object memory, 
+devotional and meditative image status, 
+and same-language extension into shrine, mural, wood, and architecture. 
+ 
+Important: 
+do not create normal humans, 
+do not create normal landscape realism, 
+do not create normal architecture, 
+do not create generic mystical atmosphere, 
+do not create generic environment with Buddhist motifs added later. 
+ 
+The entire world must be rebuilt through Sikkim sacred-image logic. 
+ 
+Every visible category must become source-born: 
+faces, 
+bodies, 
+hands, 
+feet, 
+hair logic if present, 
+gesture, 
+posture, 
+drapery, 
+ritual objects, 
+ground, 
+architecture, 
+shrine elements, 
+foreground, midground, background, 
+negative space, 
+and spatial rhythm. 
+ 
+Believable real-world 3D here means: 
+believable volume, 
+believable material behavior, 
 
-Keep the source grammar fully intact: sacred cloth-scroll identity in memory, exact
-iconographic figure construction, central-axis discipline, hierarchical sacred field order,
-doctrinal-symbolic function, and monastic Buddhist image-world logic. Then translate those
-into believable volume, richer spatial staging, stronger figure-ground separation, controlled
-light on form, and fuller environmental completion — but without surrendering the image to
-realism-first cinema.
+believable light on form, 
+believable spatial separation, 
+believable object presence, 
+believable scene-world logic. 
+ 
+But the style must still control: 
+figure design, 
+shape logic, 
+composition logic, 
+symbolic logic, 
+material identity, 
+environment logic, 
+and scene organization. 
+ 
+Increase: 
+full same-style world embodiment, 
+full spatial completion, 
+full object presence, 
+full environmental completion, 
+strong figure-ground separation through sacred-image logic, 
+strong readability through sacred-image logic, 
+strong whole-frame coherence through sacred-image logic. 
+ 
+Absolute rule: 
+the sacred-image system must not decorate the world. 
+the sacred-image system must generate the world. 
+ 
+The figures must not be real humans with sacred accessories. 
+The environment must not be generic realism with thangka motifs later. 
+The architecture must not be normal realism with Buddhist ornament panels. 
+Everything must feel reconstructed by the Sikkim sacred-image system itself. 
+ 
+Do not introduce: 
+generic realism, 
+generic cinematic illustration, 
+fantasy mysticism, 
+premium spiritual polish, 
+normal anatomy under sacred costume, 
+realistic environment with symbolic overlays, 
+or a second visual language stronger than the source grammar. 
+ 
+The final image must feel like: 
+the same Sikkim sacred-image style itself has become a fully embodied complete volumetric 
+scene-world.`,
+  promptVariable: `Create [SUBJECT / SCENE / WORLD] in V3 = fully resolved believable real-world 3D 
+translation of the same source grammar of Himalayan sacred-image, thangka-related 
+painting from Sikkim. 
+ 
+Keep the authentic Sikkim sacred-image style system unchanged and push it into maximum 
+world-depth. 
+ 
+Preserve the same unchanged deep sacred-image core: 
+iconographic proportion discipline, 
+deity hierarchy, 
+symbolic placement, 
+sacred compositional order, 
+scroll-object logic, 
+mineral/vegetable/gold color intelligence, 
+consecrated image status, 
+and same-language shrine-world construction. 
+ 
+Important: 
+the whole world must be rebuilt through Sikkim sacred-image logic. 
+Do not keep normal realism and then add sacred flavor later. 
+ 
+Build the image like this: 
+[MAIN FIGURES] must become source-born sacred-image figures, not normal humans 
+[FACES] must become iconographic, hieratic, and non-photoreal in logic 
+[BODIES / GESTURE / POSTURE] must become sacred-image-born and doctrinally 
+structured 
+[PROPS / OBJECTS] must become source-born ritual/symbolic objects, not normal objects 
+with sacred motifs 
+[GROUND / SURFACES] must become sacred-image space, not generic environment fill 
+[ARCHITECTURE / STRUCTURES] must become source-born shrine-world construction, 
+not normal realism 
+[ENVIRONMENT / BACKGROUND] must become same-language sacred world-space, not 
+generic cinematic or fantasy space 
+ 
+Believable real-world 3D here means: 
+believable volume, 
+believable material behavior, 
+believable light on form, 
+believable spatial separation, 
+believable object presence, 
+believable scene-world coherence. 
+ 
+Increase: 
+full world embodiment, 
+full spatial completion, 
 
-Figure logic: the central sacred figure must still be canonical, measured, and doctrinally
-controlled. The face must remain hieratic and spiritually legible, not psychologically
-naturalistic. The body must still obey sacred proportion. Even in full volume, the image must
-preserve the thangka distinction between sacred type and ordinary body realism. Attendants,
-objects, mandala structures, ritual supports, flora, fauna, and secondary symbolic forms
-must all remain subordinate to the sacred center.
+full object presence, 
+full environmental completion, 
+strong figure-ground separation, 
+strong scene readability, 
+strong whole-frame orchestration. 
+ 
+Keep unchanged: 
+sacred-image identity, 
+iconographic order, 
+symbolic color/material logic, 
+consecrated-object logic, 
+same-language shrine-world control. 
+ 
+Avoid: 
+generic realism, 
+fantasy mysticism, 
+poster deity art, 
+real humans with sacred motifs, 
+normal temple environment with thangka panels, 
+style only in halos or gold, 
+or any second visual language overpowering the source grammar. 
+ 
+The final image must feel like: 
+the same Sikkim sacred-image grammar itself has become a believable volumetric 
+scene-world.`,
+  promptI2I: `Convert this source image into V3 = fully resolved believable real-world 3D translation of the 
+same source grammar of Himalayan sacred-image, thangka-related painting from Sikkim. 
+ 
+Preserve the source image’s subject count, core action, scene purpose, and main 
+relationships, 
+but rebuild every visible element through Sikkim sacred-image intelligence fully embodied as 
+reality. 
+ 
+Keep the authentic sacred-image system unchanged and push it into maximum world-depth. 
+ 
+Replace ordinary realism with: 
+iconographic proportion discipline, 
+deity-centered hierarchy, 
+symbolic placement, 
+sacred compositional order, 
+source-born figure logic, 
+source-born object logic, 
+source-born shrine-world environment logic, 
+mineral/vegetable/gold image intelligence, 
 
-Space logic: the world may now feel fully dimensional, but it must still be organized by
-thangka hierarchy, not scenic realism. Sacred axis, center, symbolic supports, and
-compositional law must still structure the world. The image should feel like a thangka field
-expanded into reality, not like a realistic monastery scene with symbols added afterward.
-
-Material logic: preserve painted-cloth memory, sacred scroll-object discipline, and
-handcrafted iconographic finish, while translating those into believable material behavior,
-atmospheric separation, and richer cinematic legibility. The image must still remember that it
-came from a painted sacred scroll.
-
-Color and ornament logic: color must remain iconographically disciplined. Ornament must
-remain structural, symbolic, and hierarchically controlled. Light must reveal sacred form, not
-turn the piece into dramatic fantasy illustration.
-
-Do not create generic Himalayan Buddhist fantasy, deity concept art, realistic monastery
-cinema, glossy sacred concept painting, or decorative mandala realism. Do not break the
-axis. Do not naturalize the body into ordinary anatomy. Do not let cinematic atmosphere
-overpower sacred compositional law.`,
-  promptVariable: `Create [SUBJECT / SACRED FIGURE / THANGKA SCENE] as a fully volumetric
-cinematic translation of Thangka Painting from Arunachal Pradesh, specifically the
-Monpa Buddhist thangka tradition of Tawang and West Kameng.
-
-Treat the style as a sacred cloth-scroll image system governed by exact iconographic law,
-central-axis order, sacred figure-field hierarchy, and devotional-symbolic function. Then
-translate that entire system into a believable three-dimensional cinematic world without
-allowing realism to replace thangka structure.
-
-Preserve these non-negotiable style rules:
-● sacred scroll-image identity in memory
-● exact canonical sacred figure proportion
-● central-axis control
-● primary doctrinal center and subordinate field hierarchy
-● canonical face, body, and gesture logic
-● symbolic and devotional field order
-● structural ornament
-● monastic Buddhist image-world grounding
-● thangka-first, realism-second hierarchy
-
-Translate the subject like this:
-● [MAIN FIGURE / CENTRAL DEITY / DOCTRINAL CENTER] becomes the dominant
-volumetric sacred center while remaining fully canonical
-● [SECONDARY FIGURES / ATTENDANTS / SUPPORT FORMS] become
-dimensional but hierarchically subordinate sacred presences
-● [MANDALA / HALO / LOTUS / RITUAL OBJECTS / STUPA / FLOWERS /
-SYMBOLIC ELEMENTS] become volumetric but structurally ordered sacred
-supports
-● [ENVIRONMENT / FIELD / SPACE] becomes a believable dimensional world still
-governed by thangka axis, hierarchy, and doctrinal layout rather than by scenic
-realism
-
-Increase:
-● believable volume
-● figure-ground separation
-● sacred spatial staging
-● light-material interaction
-● environmental completion
-● cinematic readability
-
-Do not lose:
-● thangka source grammar
-● central-axis order
-● iconographic body law
-● sacred hierarchy
-● doctrinal-symbolic clarity
-● painted-scroll memory
-
-Avoid:
-● generic Buddhist fantasy cinema
-● realism with sacred motifs
-● monastery landscape replacing sacred field
-● poster-like deity concept art
-● atmospheric spectacle overpowering sacred law
-● decorative ornament taking over figure hierarchy`,
-  promptI2I: `Convert this source image into a fully volumetric cinematic translation of Thangka
-Painting from Arunachal Pradesh, specifically the Monpa Buddhist thangka tradition of
-Tawang and West Kameng.
-
-Preserve the source image’s subject count, core action, pose relationships, scene logic,
-and readability, but rebuild the entire frame as if Arunachal Buddhist thangka grammar
-became a believable three-dimensional world. Replace ordinary realism and ordinary picture
-composition with exact iconographic figure construction, central-axis discipline, sacred
-field hierarchy, canonical face and body law, doctrinal symbolic supports,
-painted-scroll memory, and monastic Buddhist sacred-image order.
-
-Then expand that thangka system into full volume: stronger figure-ground separation, richer
-sacred staging, more complete spatial depth, more believable material behavior, and clearer
-cinematic readability. But every part of the frame — the main figure, attendants, symbols,
-lotus, halo, objects, flora, fauna, supports, and environment — must still behave as one
-thangka-born sacred world. The result must feel like the source image was fully
-reconstructed through Arunachal Buddhist thangka intelligence, not like realism absorbed a
-few sacred motifs.
-
-Do not add brocade, mandalas, and halos onto a realistic image and call it done. Do not turn
-the scene into generic spiritual fantasy, deity cinema, or realistic Himalayan religious art. The
-final image must feel like a true Arunachal thangka became a fully volumetric cinematic
-reality while remaining governed by sacred scroll law.`,
+and consecrated image-object presence. 
+ 
+Do not keep normal humans and add sacred styling later. 
+Do not keep normal architecture and add thangka ornament later. 
+Do not keep generic landscapes and add Buddhist symbols later. 
+Do not let the style survive only as halos, lotuses, or gold accents. 
+ 
+Rebuild: 
+faces as sacred-image-born, 
+bodies as sacred-image-born, 
+objects as sacred-image-born, 
+ground as sacred-image-born, 
+architecture as sacred-image-born, 
+environment as sacred-image-born, 
+and the whole frame as one uninterrupted same-language sacred scene-world. 
+ 
+Expand the source into: 
+full volumetric embodiment, 
+full object presence, 
+full environmental completion, 
+coherent material-light behavior, 
+clear spatial separation, 
+and complete scene readability, 
+but only through Sikkim sacred-image grammar. 
+ 
+Absolute rule: 
+the sacred-image system must generate the world, not decorate the world. 
+ 
+The final result must feel like: 
+the same Sikkim sacred-image style itself has become a believable fully embodied 
+volumetric scene-world. 
+If it feels like reality coated with Buddhist sacred flavor, it has failed.`
 };
-

@@ -1,113 +1,157 @@
 export const thangkaPromptV1 = {
-  promptHard: `Create an image in the authentic source-faithful visual logic of Thangka Painting from
-Arunachal Pradesh, specifically the Buddhist thangka tradition associated with the Monpa
-cultural and monastic world of Tawang and West Kameng. Treat this as a sacred scroll
-painting on cloth, not as generic Tibetan spiritual décor, poster art, fantasy-Himalayan
-illustration, or free religious painting. Build the image as a devotional and didactic
-Buddhist image-system meant for meditation, teaching, and sacred transmission.
+  promptHard: `Create an image in the pure authentic source-truth visual logic of Himalayan sacred-image, 
+thangka-related painting from Sikkim. 
+ 
+Treat this as a real sacred-image system, not as generic Buddhist décor, not as mystical 
+fantasy art, not as poster-like deity illustration, and not as a realistic world with Buddhist 
+motifs added later. 
+ 
+Build the entire image as if it comes from true Sikkim sacred-image intelligence: 
+iconographic proportion discipline, 
+deity-centered hierarchy, 
+symbolic placement, 
+sacred compositional order, 
+prepared cotton-or-silk scroll support, 
+mineral/vegetable/gold color logic, 
+brocade-scroll object completion, 
+devotional and meditative image status, 
+and same-language extension into shrine, mural, wood, and architecture. 
+ 
+The style must control the whole frame: 
+face logic, 
+body logic, 
+gesture logic, 
+posture logic, 
+halo logic, 
+throne and support logic, 
+ornament logic, 
+symbolic object logic, 
+ground logic, 
+architectural logic, 
+spatial layering, 
+negative space, 
+and sacred-image hierarchy. 
+ 
+If figures appear, do not build them as normal realistic people first. 
+Build them as source-born sacred presences: 
+iconographic, 
+hieratic, 
 
-The image must behave like a real thangka: a painted cloth picture panel that belongs to a
-scroll tradition and is often mounted with silk or brocade support. The painted field must
-remain primary, sacred, and iconographically governed. The whole composition must be
-organized by exact canonical proportion, central-axis discipline, and hierarchical
-sacred image order. The central figure or doctrinal center must dominate the image, and
-every secondary figure, object, symbol, plant, flower, stupa, mandala element, halo, lotus
-base, or monastic accessory must support that central sacred order rather than compete
-with it.
+non-photoreal in logic, 
+doctrinally ordered, 
+and shaped by sacred-image grammar rather than by realism-first anatomy. 
+ 
+Do not treat the branch like generic Tibetan art. 
+Do not reduce it to mandala décor. 
+Do not turn it into fantasy mysticism. 
+Do not make it a beautiful painting without sacred order. 
+Do not let generic realism sit underneath the style. 
+ 
+The image must still feel like a Sikkim sacred image: 
+reverential, 
+ordered, 
+devotional, 
+symbolically charged, 
+scroll-born, 
+and capable of shrine-world extension. 
+ 
+Preserve true branch identity: 
+sacred-image-first, 
+iconographic-grid-first, 
+deity-hierarchy-first, 
+symbolic-color-first, 
+consecrated-object-first, 
+same-language world logic. 
+ 
+Do not make it: 
+generic Buddhist art, 
+mandala wallpaper, 
+mystical mountain fantasy, 
+poster deity illustration, 
+realistic humans with sacred accessories, 
+or realism with Buddhist symbols added later. 
+ 
+The final image must feel like the original Sikkim sacred-image system itself made this 
+image.`,
+  promptVariable: `Create [SUBJECT / SCENE / OBJECT / WORLD] in the pure authentic source-truth visual 
+logic of Himalayan sacred-image, thangka-related painting from Sikkim. 
+ 
+Treat the style as a sacred-image system built from: 
+iconographic proportion discipline, 
+deity-centered hierarchy, 
+symbolic placement, 
 
-Figure logic: construct the main sacred figure through exact iconographic body law, not
-portrait realism. The face must feel calm, hieratic, spiritually legible, and canonical rather
-than individualized. Eyes, nose, mouth, head shape, hands, torso, posture, and seated or
-standing balance must all feel measured and sacred rather than naturalistic. The body must
-be correctly aligned to the central axis, and the figure must read first as a doctrinal sacred
-presence, not as a person posing for illustration.
-
-Space logic: this is a sacred picture field on cloth, not a naturalistic scenic world. Depth
-may exist only in a controlled sacred sense. Composition must remain centered,
-iconographically ordered, and symbolically structured rather than cinematic or atmospheric.
-The border, mounting, and scroll identity should remain visible in spirit even when not heavily
-emphasized. The image should feel meant to be hung, viewed devotionally, and read
-symbolically.
-
-Material logic: the surface must feel like carefully painted cloth, not oil painting, glossy
-canvas, poster print, or digital concept art. Use a disciplined devotional finish, refined detail,
-and pigment-memory consistent with traditional thangka practice on cotton or silk. Ornament
-must remain structural and sacred, not decorative excess.
-
-Color logic: use a spiritually ordered, iconographically disciplined color system with
-pigment-memory and sacred hierarchy. Color must clarify doctrinal form and support
-symbolic order, not become trendy, cinematic, or merely decorative.
-
-Do not make this generic Tibetan/Himalayan spiritual art, deity poster art, fantasy monastery
-illustration, mandala décor design, expressive religious painting, or realism with Buddhist
-symbols added later. Do not break the central axis. Do not lose iconographic body law. Do
-not let border, ornament, or atmosphere replace sacred structure.`,
-  promptVariable: `Create [SUBJECT / SACRED FIGURE / THANGKA SCENE] in the authentic
-source-faithful visual logic of Thangka Painting from Arunachal Pradesh, specifically
-the Monpa Buddhist thangka tradition of Tawang and West Kameng.
-
-Treat the style as a sacred scroll painting on cloth used for meditation, teaching, and
-religious expression. This is not generic Buddhist décor. It is a cloth-based sacred
-image-system governed by exact iconographic proportion, central-axis order,
-hierarchical sacred composition, and devotional-symbolic function.
-
-Preserve these non-negotiable style rules:
-● painted cloth scroll identity
-● exact canonical sacred figure proportion
-● central-axis alignment
-● centered or hierarchically anchored sacred composition
-● calm, canonical, spiritually legible face construction
-● symbolic and doctrinal field order
-● refined devotional painted finish
-● border or mounted-scroll logic in spirit
-● ornament as sacred structure, not surface decoration
-
-Translate the subject like this:
-● [MAIN FIGURE / CENTRAL DEITY / DOCTRINAL CENTER] becomes the primary
-sacred center, built through exact iconographic proportion and axis discipline
-● [SECONDARY FIGURES / ATTENDANTS / SYMBOLIC SUPPORTS] become
-hierarchically ordered sacred support forms
-● [OBJECTS / LOTUS / HALO / MANDALA / STUPA / FLOWERS / ACCESSORIES]
-become meaningful doctrinal elements integrated into the sacred field
-● [BACKGROUND / FIELD / SUPPORT SPACE] becomes a controlled thangka field
-on cloth, not a scenic realistic environment
-
-Keep:
-● sacred scroll-object identity
-● iconographic exactness
-● central-axis control
-● symbolic hierarchy
-● devotional clarity
-● monastic Buddhist image-world logic
-
-Avoid:
-● generic Tibetan décor painting
-● expressive spiritual illustration
-● poster-art deity
-● atmospheric fantasy monastery scene
-● realism-first anatomy
-● decorative mandala styling
-● ornament replacing sacred structure`,
-  promptI2I: `Convert this source image into the authentic source-faithful visual logic of Thangka
-Painting from Arunachal Pradesh, specifically the Monpa Buddhist thangka tradition
-associated with Tawang and West Kameng.
-
-Preserve the source image’s subject count, central action, pose relationships, and main
-readability, but rebuild the entire image as a sacred cloth scroll painting governed by
-exact iconographic proportion, central-axis discipline, hierarchical sacred field order,
-and devotional-symbolic function. Replace portrait realism and casual illustration logic
-with canonical deity or sacred-figure construction, measured body proportion, calm spiritually
-legible face logic, sacred gesture control, doctrinal object placement, and a fully ordered
-thangka field.
-
-If the source contains people, objects, symbols, architecture, plants, flowers, or attendants,
-all of them must be translated into the same thangka grammar. The result must not be a
-normal image with Buddhist decoration placed on top. It must be a full reconstruction of
-figure law, field law, border logic, sacred hierarchy, and painted-cloth material identity.
-
-Do not add a brocade border to a generic illustration and call it thangka. Do not turn the
-image into fantasy-Himalayan spiritual art, poster-like deity art, or realistic painting with
-symbolic motifs. The final image must feel like a real Arunachal Buddhist thangka in its
-authentic source-faithful state.`,
+sacred compositional order, 
+prepared scroll support, 
+mineral/vegetable/gold color logic, 
+brocade-object completion, 
+and devotional image status. 
+ 
+Core style system to preserve: 
+sacred-image identity, 
+iconographic face and body grammar, 
+symbolic hierarchy, 
+ritual object logic, 
+same-language shrine-world intelligence, 
+whole-frame consistency. 
+ 
+Translate the image like this: 
+[MAIN FIGURES] must become sacred-image-born presences, not normal people 
+[FACES] must become iconographic, hieratic, and non-photoreal in logic 
+[BODIES / GESTURE / POSTURE] must obey doctrinal order and sacred-image 
+construction 
+[PROPS / OBJECTS] must become symbolic, ritual, and source-born rather than generic 
+realism 
+[GROUND / SURFACES] must become sacred-image space, not generic environment fill 
+[ARCHITECTURE / STRUCTURES] must become shrine-world compatible, not normal 
+realism 
+[ENVIRONMENT / BACKGROUND] must also inherit the same sacred-image language 
+ 
+Keep: 
+sacred hierarchy, 
+iconographic proportion, 
+symbolic color/material order, 
+consecrated scroll-object logic, 
+same-language shrine-world extension. 
+ 
+Avoid: 
+generic Buddhist décor, 
+mandala wallpaper, 
+fantasy mysticism, 
+poster illustration, 
+real humans with sacred motifs, 
+or one sacred icon inside an unstylized world. 
+ 
+The final result must feel like true Sikkim sacred-image logic itself generated the whole 
+image.`,
+  promptI2I: `Convert this source image into the pure authentic source-truth visual logic of Himalayan 
+sacred-image, thangka-related painting from Sikkim. 
+ 
+Preserve the source image’s subject count, main action, pose relationships, and basic 
+readability, 
+but rebuild the entire image through real Sikkim sacred-image intelligence. 
+ 
+Replace normal realism with: 
+iconographic proportion discipline, 
+deity-centered hierarchy, 
+symbolic placement, 
+sacred compositional order, 
+prepared scroll-surface logic, 
+mineral/vegetable/gold image logic, 
+and devotional object-world presence. 
+ 
+Do not merely add halos, lotuses, or Buddhist motifs. 
+Do not merely turn the image into a decorative scroll. 
+Do not keep realistic environment logic while only the central figure changes. 
+ 
+Rebuild: 
+faces as sacred-image faces, 
+bodies as sacred-image bodies, 
+objects as symbolic sacred objects, 
+ground as sacred image-space, 
+architecture as shrine-world structure, 
+and the whole frame as one Sikkim sacred-image-authored visual language. 
+ 
+The final result must feel like the source image has been completely re-authored by 
+authentic Sikkim sacred-image logic, not decorated with it.`
 };
-

@@ -17,20 +17,19 @@ export const THANGKA_PROMPT_FAMILIES: Record<ThangkaVersion, ThangkaPromptFamily
   V1: {
     version: "V1",
     chip: "AUTHENTIC",
-    title: "Thangka",
+    title: "Authentic Thangka",
     ...thangkaPromptV1,
   },
   V2: {
     version: "V2",
     chip: "ARTISAN",
-    title: "Handcrafted Dimensional",
+    title: "Dimensional Thangka",
     ...thangkaPromptV2,
   },
   V3: {
     version: "V3",
     chip: "CINEMATIC",
-    title: "Volumetric World",
+    title: "3D Cinematic Thangka",
     ...thangkaPromptV3,
   },
 };
-

@@ -66,6 +66,7 @@
     "eslint": "9.39.1",
     "eslint-config-next": "^15.1.0",
     "next-sitemap": "4.2.3",
+    "pdf-parse": "^2.4.5",
     "tailwindcss": "^4",
     "tsx": "^4.20.6",
     "typescript": "^5"
