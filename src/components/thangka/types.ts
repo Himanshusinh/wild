@@ -32,9 +32,9 @@ export const MODELS = [
 export const IMAGE_COUNTS: ImageCount[] = [1, 2, 4];
 
 export const STYLE_LABELS: Record<StyleFamily, { badge: string; title: string }> = {
-  V1: { badge: "AUTHENTIC", title: "Sacred Scroll Painting" },
-  V2: { badge: "ARTISAN", title: "Handcrafted Dimensional" },
-  V3: { badge: "CINEMATIC", title: "Volumetric World" },
+  V1: { badge: "AUTHENTIC", title: "Authentic Thangka" },
+  V2: { badge: "ARTISAN", title: "Dimensional Thangka" },
+  V3: { badge: "CINEMATIC", title: "3D Cinematic Thangka" },
 };
 
 export const INITIAL_STATE: ThangkaState = {
@@ -52,4 +52,3 @@ export const INITIAL_STATE: ThangkaState = {
   generatedImages: [],
   assembledPrompt: "",
 };
-

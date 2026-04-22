@@ -17,19 +17,19 @@ export const GANJIFA_PROMPT_FAMILIES: Record<GanjifaVersion, GanjifaPromptFamily
   V1: {
     version: "V1",
     chip: "AUTHENTIC",
-    title: "Ganjifa",
+    title: "Authentic Ganjifa Style",
     ...ganjifaPromptV1,
   },
   V2: {
     version: "V2",
-    chip: "CIRCULAR",
-    title: "Ganjifa Variations",
+    chip: "ARTISAN",
+    title: "Artisan Ganjifa Translation",
     ...ganjifaPromptV2,
   },
   V3: {
     version: "V3",
-    chip: "HAND-PAINTED",
-    title: "Dimensional Ganjifa",
+    chip: "CINEMATIC",
+    title: "3D Realistic Ganjifa World",
     ...ganjifaPromptV3,
   },
 };
