@@ -367,6 +367,17 @@ export const MODEL_MAPPING: ModelMapping[] = [
       quality: ["low", "medium", "high", "auto"],
     },
   },
+  {
+    frontendValue: "openai/gpt-image-2",
+    creditModelName: "gpt-image-2 auto",
+    generationType: "image",
+    provider: "replicate",
+    options: {
+      quality: ["low", "medium", "high", "auto"],
+      aspect_ratio: ["1:1", "3:2", "2:3"],
+      output_format: ["png", "jpeg", "webp"],
+    },
+  },
 
   // VIDEO GENERATION MODELS
   {
@@ -1621,6 +1632,14 @@ export const buildCreditModelName = (
   ) {
     const quality = String(options.quality).toLowerCase();
     modelName = `gpt-image-1.5 ${quality}`;
+  }
+  // Handle GPT Image 2 with quality
+  else if (
+    mapping.frontendValue === "openai/gpt-image-2" &&
+    options?.quality
+  ) {
+    const quality = String(options.quality).toLowerCase();
+    modelName = `gpt-image-2 ${quality}`;
   }
   // Handle FLUX.2 Pro with resolution
   else if (

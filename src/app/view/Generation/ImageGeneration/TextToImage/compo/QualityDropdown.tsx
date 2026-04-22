@@ -14,13 +14,15 @@ type QualityDropdownProps = {
   quality: QualityType;
   onQualityChange: (quality: QualityType) => void;
   dropdownId: string; // 'gptImage15Quality'
+  model?: 'openai/gpt-image-1.5' | 'openai/gpt-image-2';
 };
 
 const QualityDropdown = ({ 
   openDirection = 'up',
   quality,
   onQualityChange,
-  dropdownId
+  dropdownId,
+  model = 'openai/gpt-image-1.5'
 }: QualityDropdownProps) => {
   const dispatch = useAppDispatch();
   const activeDropdown = useAppSelector((state: any) => state.ui?.activeDropdown);
@@ -39,9 +41,9 @@ const QualityDropdown = ({
     'auto': 'Auto'
   };
 
-  // Get credits for each quality option (for GPT Image 1.5)
+  // Get credits for each quality option (for GPT Image models)
   const getQualityCredits = (qual: QualityType): number | null => {
-    return getCreditsForModel('openai/gpt-image-1.5', undefined, undefined, undefined, undefined, qual);
+    return getCreditsForModel(model, undefined, undefined, undefined, undefined, qual);
   };
 
   // Reset active instance when dropdown closes

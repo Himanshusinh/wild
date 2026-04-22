@@ -542,6 +542,7 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   "replicate-swin2sr": 43, // replicate/mv-lab/swin2sr
   "prunaai/p-image": 25, // P-Image (Replicate)
   "prunaai/p-image-edit": 25, // P-Image-Edit (I2I only, Replicate)
+  "openai/gpt-image-2": 102, // Default to auto quality
   // Crystal Upscaler variants
   "replicate-crystal-upscaler-1080p": 40,
   "replicate-crystal-upscaler-1440p": 80,
@@ -555,6 +556,10 @@ export const MODEL_CREDITS_MAPPING: Record<string, number> = {
   "gpt-image-1.5-low": 11,
   "gpt-image-1.5-medium": 40,
   "gpt-image-1.5-high": 109,
+  "gpt-image-2-auto": 102,
+  "gpt-image-2-low": 10,
+  "gpt-image-2-medium": 38,
+  "gpt-image-2-high": 102,
 };
 
 // Function to get credit cost for a model
@@ -1153,6 +1158,15 @@ export const getCreditsForModel = (
       MODEL_CREDITS_MAPPING[qualityKey] ||
       MODEL_CREDITS_MAPPING["gpt-image-1.5-auto"]
     ); // Default to auto if quality not found
+  }
+
+  // Handle GPT Image 2 with quality
+  if (modelValue === "openai/gpt-image-2" && quality) {
+    const qualityKey = `gpt-image-2-${quality.toLowerCase()}`;
+    return (
+      MODEL_CREDITS_MAPPING[qualityKey] ||
+      MODEL_CREDITS_MAPPING["gpt-image-2-auto"]
+    );
   }
 
   // Default lookup

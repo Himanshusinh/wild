@@ -458,6 +458,19 @@ export const getImageGenerationCreditCost = (
     return resolvedCost * Math.max(1, Math.min(count, 4));
   }
 
+  if (frontendModel === "openai/gpt-image-2") {
+    const cost = getCreditsForModel(
+      frontendModel,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      quality || "auto",
+    );
+    const resolvedCost = cost && cost > 0 ? cost : 102;
+    return resolvedCost * Math.max(1, Math.min(count, 10));
+  }
+
   // First try to get cost from MODEL_CREDITS_MAPPING (direct lookup)
   // This handles models like nano-banana-pro that may not be in creditDistributionData with exact name
   const directCost = MODEL_CREDITS_MAPPING[frontendModel];

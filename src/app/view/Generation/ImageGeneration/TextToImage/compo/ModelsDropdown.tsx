@@ -16,6 +16,8 @@ const MODEL_DESCRIPTIONS: Record<string, string> = {
     "Ultra-fast image generation for quick drafts and real-time applications.",
   "openai/gpt-image-1.5":
     "Balanced model for high-quality, general-purpose image generation.",
+  "openai/gpt-image-2":
+    "OpenAI's state-of-the-art image generation model with strong instruction following, sharp text rendering, and detailed editing.",
   "google/nano-banana-pro":
     "Premium creative image generation with strong detail and style control.",
   "flux-2-pro":
@@ -65,6 +67,11 @@ const MODEL_RESOLUTIONS: Record<string, string[]> = {
   ],
   "qwen-image-edit-2512": ["1K (60 credits)"],
   "seedream-4.5": ["1K / 2K / 4K (32 credits)"],
+  "openai/gpt-image-2": [
+    "Low (10 credits)",
+    "Medium (38 credits)",
+    "High / Auto (102 credits)",
+  ],
 };
 
 type ModelsDropdownProps = {
@@ -109,6 +116,7 @@ const ModelsDropdown = ({
   const hasInputImage = uploadedImages.length > 0;
 
   let models = [
+    { name: "GPT Image 2", value: "openai/gpt-image-2" },
     { name: "GPT Image 1.5", value: "openai/gpt-image-1.5" },
     { name: "Flux 2 Pro", value: "flux-2-pro" },
     // { name: 'Seedream v4 4k', value: 'seedream-v4' },
@@ -156,7 +164,11 @@ const ModelsDropdown = ({
   const modelsWithCredits = models.map((model) => {
     // For GPT Image 1.5, show minimum cost (low quality: 11 credits) in model dropdown
     // User can see actual credits per quality in the quality dropdown
-    const quality = model.value === "openai/gpt-image-1.5" ? "low" : undefined;
+    const quality =
+      model.value === "openai/gpt-image-1.5" ||
+      model.value === "openai/gpt-image-2"
+        ? "low"
+        : undefined;
     const creditInfo = getModelCreditInfo(
       model.value,
       undefined,
@@ -314,7 +326,8 @@ const ModelsDropdown = ({
         m.value === "qwen/qwen-image-2-pro" ||
         m.value === "prunaai/p-image" ||
         m.value === "qwen-image-edit-2512" ||
-        m.value === "openai/gpt-image-1.5",
+        m.value === "openai/gpt-image-1.5" ||
+        m.value === "openai/gpt-image-2",
     );
   } else {
     // Hide image-to-image only models when no image is uploaded or requested
@@ -561,6 +574,8 @@ const ModelsDropdown = ({
       >
         {(() => {
           const leftValues = [
+            "openai/gpt-image-2",
+            "openai/gpt-image-1.5",
             "new-turbo-model",
             "prunaai/p-image",
             "google/nano-banana-pro",
