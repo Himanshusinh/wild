@@ -2744,7 +2744,7 @@ export default function CreativeStyle({
           ref={railRef}
           className="scrollbar-hide flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 sm:gap-4 sm:px-6 lg:px-16 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
-          {STYLES.map((style, index) => (
+          {STYLES.slice(0, 12).map((style, index) => (
             <Link
               key={`${style.id}-${index}`}
               href={style.href}
@@ -2789,6 +2789,28 @@ export default function CreativeStyle({
               </div>
             </Link>
           ))}
+
+          {/* "See More" Card */}
+          <button
+            onClick={onAllStylesOpen}
+            className="w-full md:w-[340px] shrink-0 snap-start"
+          >
+            <div className="mb-2 h-[190px] sm:h-[220px] overflow-hidden rounded-xl border-2 border-dashed border-white/10 bg-white/[0.02] hover:bg-white/[0.05] hover:border-[#3B82F6]/30 transition-all group flex flex-col items-center justify-center gap-4">
+              <div className="p-4 rounded-full bg-white/5 border border-white/10 group-hover:scale-110 group-hover:bg-[#3B82F6]/10 group-hover:border-[#3B82F6]/20 transition-all">
+                <svg width="24" height="24" viewBox="0 0 12 12" fill="none" className="text-white/40 group-hover:text-[#3B82F6]">
+                  <path d="M2.5 6h7M6 2.5L9.5 6 6 9.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
+              <div className="text-center">
+                <div className="text-[18px] uppercase tracking-wider text-white/80 font-bold" style={{ fontFamily: "var(--font-bebas-neue), 'Bebas Neue', sans-serif" }}>
+                  Discover More
+                </div>
+                <div className="text-[10px] text-white/40 font-medium uppercase tracking-[0.1em] mt-1">
+                  Explore {STYLES.length}+ Regional Styles
+                </div>
+              </div>
+            </div>
+          </button>
         </div>
 
         <button
