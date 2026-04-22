@@ -34,7 +34,7 @@ const VideoGenerationGuide = () => {
 
             {/* --- Ambient Background --- */}
             {/* <div className="absolute inset-0 pointer-events-none">
-                <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] mix-blend-overlay"></div>
+                <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-[0.03] mix-blend-overlay"></div>
                 <div className="hidden md:block absolute top-1/2 left-[10%] right-[10%] h-px bg-gradient-to-r from-transparent via-[#60a5fa]/20 to-transparent blur-sm"></div>
             </div> */}
 

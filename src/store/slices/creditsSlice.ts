@@ -1,7 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { getApiClient } from '@/lib/axiosInstance';
-import { getMeCached } from '@/lib/me';
-import { RootState } from '@/store';
 
 function getClientPlanOverride(): string | null {
   if (typeof window === 'undefined') return null;
@@ -62,7 +60,7 @@ const initialState: CreditsState = {
 // Async thunks
 export const fetchUserCredits = createAsyncThunk(
   'credits/fetchUserCredits',
-  async (_, { rejectWithValue, getState }) => {
+  async (_, { rejectWithValue }) => {
     const startTime = Date.now();
     try {
       console.log('[CREDITS_FRONTEND] fetchUserCredits: Starting credit fetch...');
@@ -121,38 +119,10 @@ export const fetchUserCredits = createAsyncThunk(
           } as UserCredits;
         }
 
-        console.log('[CREDITS_FRONTEND] Falling back to auth/me...');
-        const state = getState() as RootState;
-        const authUser = state?.auth?.user;
-        if (authUser) {
-          const fallbackBalance = (authUser as any)?.creditBalance || (authUser as any)?.credits || 0;
-          console.log('[CREDITS_FRONTEND] Using auth user state:', {
-            creditBalance: fallbackBalance,
-            planCode: withTestPlanOverride((authUser as any)?.planCode)
-          });
-          return {
-            creditBalance: fallbackBalance,
-            planCode: withTestPlanOverride((authUser as any)?.planCode),
-            storageUsed: 0,
-            storageQuota: 0,
-            lastSync: new Date().toISOString(),
-          } as UserCredits;
-        }
-        // Fallback to cached /me endpoint
-        const userData = await getMeCached();
-        const cachedBalance = userData?.creditBalance || userData?.credits || 0;
-        console.log('[CREDITS_FRONTEND] Using cached /me endpoint:', {
-          creditBalance: cachedBalance,
-          planCode: withTestPlanOverride(userData?.planCode)
-        });
-
-        return {
-          creditBalance: cachedBalance,
-          planCode: withTestPlanOverride(userData?.planCode),
-          storageUsed: 0,
-          storageQuota: 0,
-          lastSync: new Date().toISOString(),
-        } as UserCredits;
+        // Strict mode: no fallback to auth/me or cached profile credits.
+        return rejectWithValue(
+          errorMessage || 'Failed to fetch credits from credit service',
+        );
       }
     } catch (error: any) {
       console.error('[CREDITS_FRONTEND] Failed to fetch credits:', {

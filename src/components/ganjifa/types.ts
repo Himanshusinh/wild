@@ -1,7 +1,6 @@
-import type { GanjifaVersion } from "@/app/view/HomePage/compo/ganjifaPromptCatalog";
-import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
+import type { WarliAspectRatioChoice } from "../warli/warliNanoAspect";
 
-export type StyleFamily = GanjifaVersion;
+export type StyleFamily = "V1" | "V2" | "V3";
 export type InputMode = "text" | "image";
 export type ModelId = "google/nano-banana-2" | "google/nano-banana-pro";
 export type ImageCount = 1 | 2 | 4;
@@ -24,17 +23,21 @@ export interface GanjifaState {
   assembledPrompt: string;
 }
 
-export const MODELS = [
-  { id: "google/nano-banana-2" as const, label: "Nano Banana 2", tag: "Google" },
-  { id: "google/nano-banana-pro" as const, label: "Nano Banana Pro", tag: "Google" },
+export interface ModelOption {
+  id: ModelId;
+  label: string;
+  tag: string;
+}
+
+export const MODELS: ModelOption[] = [
+  { id: "google/nano-banana-2", label: "Nano Banana 2", tag: "Google" },
+  { id: "google/nano-banana-pro", label: "Nano Banana Pro", tag: "Google" },
 ];
 
-export const IMAGE_COUNTS: ImageCount[] = [1, 2, 4];
-
 export const STYLE_LABELS: Record<StyleFamily, { badge: string; title: string }> = {
-  V1: { badge: "AUTHENTIC", title: "Source-faithful Woven Logic" },
-  V2: { badge: "ARTISAN", title: "Handcrafted Dimensional Weave" },
-  V3: { badge: "CINEMATIC", title: "Full 3D Cinematic Woven World" },
+  V1: { badge: "AUTHENTIC", title: "Authentic Ganjifa Style" },
+  V2: { badge: "ARTISAN", title: "Artisan Ganjifa Translation" },
+  V3: { badge: "CINEMATIC", title: "3D Realistic Ganjifa World" },
 };
 
 export const INITIAL_STATE: GanjifaState = {
@@ -52,4 +55,3 @@ export const INITIAL_STATE: GanjifaState = {
   generatedImages: [],
   assembledPrompt: "",
 };
-

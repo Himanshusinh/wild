@@ -3,6 +3,21 @@ import { getApiClient } from '@/lib/axiosInstance';
 import { extractFalErrorDetails } from '@/lib/falToast';
 import { extractReplicateErrorDetails } from '@/lib/replicateToast';
 
+function toApiRejectPayload(
+  error: any,
+  fallbackMessage: string,
+): { message: string; code?: string; status?: number } {
+  const code = error?.response?.data?.code;
+  return {
+    message:
+      error?.response?.data?.message || error?.message || fallbackMessage,
+    ...(typeof code === 'string' && code ? { code } : {}),
+    ...(typeof error?.response?.status === 'number'
+      ? { status: error.response.status }
+      : {}),
+  };
+}
+
 export const bflGenerate = createAsyncThunk(
   'generations/bflGenerate',
   async (
@@ -32,7 +47,7 @@ export const bflGenerate = createAsyncThunk(
       const res = await api.post('/api/bfl/generate', payload);
       return res.data?.data || res.data;
     } catch (e: any) {
-      return rejectWithValue(e?.response?.data?.message || e?.message || 'BFL generate failed');
+      return rejectWithValue(toApiRejectPayload(e, 'BFL generate failed'));
     }
   }
 );
@@ -54,7 +69,7 @@ export const runwayGenerate = createAsyncThunk(
       const res = await api.post('/api/runway/generate', body);
       return res.data?.data || res.data;
     } catch (e: any) {
-      return rejectWithValue(e?.response?.data?.message || e?.message || 'Runway generate failed');
+      return rejectWithValue(toApiRejectPayload(e, 'Runway generate failed'));
     }
   }
 );
@@ -67,7 +82,7 @@ export const runwayStatus = createAsyncThunk(
       const res = await api.get(`/api/runway/status/${encodeURIComponent(taskId)}`);
       return res.data?.data || res.data;
     } catch (e: any) {
-      return rejectWithValue(e?.response?.data?.message || e?.message || 'Runway status failed');
+      return rejectWithValue(toApiRejectPayload(e, 'Runway status failed'));
     }
   }
 );
@@ -80,7 +95,7 @@ export const runwayVideo = createAsyncThunk(
       const res = await api.post('/api/runway/video', body);
       return res.data?.data || res.data;
     } catch (e: any) {
-      return rejectWithValue(e?.response?.data?.message || e?.message || 'Runway video failed');
+      return rejectWithValue(toApiRejectPayload(e, 'Runway video failed'));
     }
   }
 );
@@ -99,7 +114,7 @@ export const minimaxGenerate = createAsyncThunk(
       const res = await api.post('/api/minimax/generate', payload);
       return res.data?.data || res.data;
     } catch (e: any) {
-      return rejectWithValue(e?.response?.data?.message || e?.message || 'MiniMax generate failed');
+      return rejectWithValue(toApiRejectPayload(e, 'MiniMax generate failed'));
     }
   }
 );
@@ -112,7 +127,7 @@ export const minimaxMusic = createAsyncThunk(
       const res = await api.post('/api/minimax/music', payload);
       return res.data?.data || res.data;
     } catch (e: any) {
-      return rejectWithValue(e?.response?.data?.message || e?.message || 'MiniMax music failed');
+      return rejectWithValue(toApiRejectPayload(e, 'MiniMax music failed'));
     }
   }
 );
@@ -126,7 +141,7 @@ export const listGenerations = createAsyncThunk(
       const res = await api.get('/api/generations', { params: reqParams });
       return res.data?.data || res.data;
     } catch (e: any) {
-      return rejectWithValue(e?.response?.data?.message || e?.message || 'List generations failed');
+      return rejectWithValue(toApiRejectPayload(e, 'List generations failed'));
     }
   }
 );
@@ -158,6 +173,7 @@ export const falGenerate = createAsyncThunk(
         detail: errorDetails?.detail,
         retryable: errorDetails?.retryable,
         status: errorDetails?.status || e?.response?.status,
+        code: e?.response?.data?.code,
         url: errorDetails?.detail?.[0]?.url,
         raw: e,
       };
@@ -191,7 +207,7 @@ export const falElevenTts = createAsyncThunk(
       const res = await api.post(endpoint, payload);
       return res.data?.data || res.data;
     } catch (e: any) {
-      return rejectWithValue(e?.response?.data?.message || e?.message || 'TTS generation failed');
+      return rejectWithValue(toApiRejectPayload(e, 'TTS generation failed'));
     }
   }
 );
@@ -232,6 +248,7 @@ export const replicateGenerate = createAsyncThunk(
           'Replicate generate failed',
         detail: errorDetails?.detail,
         status: errorDetails?.status || e?.response?.status,
+        code: e?.response?.data?.code,
         retryable: errorDetails?.retryable,
         raw: e,
       };

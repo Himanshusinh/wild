@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
@@ -158,7 +158,7 @@ function detectIntentFromReply(
 }
 
 function extractPrompt(aiReply: string, userMsg: string): string {
-  const quoted = aiReply.match(/(?:"|â€œ|â€)([^"â€œâ€]{15,})(?:"|â€œ|â€)/);
+  const quoted = aiReply.match(/(?:"|“|”)([^"“”]{15,})(?:"|“|”)/);
   if (quoted) return quoted[1].trim();
 
   const bulletMatch = aiReply.match(/(?:^|\n|\:\s*)\s*[-*]\s+([^\n]{15,})/);
@@ -880,7 +880,7 @@ const AssistantPanel: React.FC<AssistantPanelProps> = ({
         ...p,
         {
           role: "assistant",
-          content: "Something went wrong â€” please try again!",
+          content: "Something went wrong — please try again!",
           id: (Date.now() + 1).toString(),
         },
       ]);
@@ -1219,7 +1219,7 @@ const AssistantPanel: React.FC<AssistantPanelProps> = ({
                               </span>
                             </div>
                             <div className="w-full border-t border-white/20 pt-1.5 text-[10px] text-center text-white/90">
-                              Apply & Generate Image â†’
+                              Apply & Generate Image →
                             </div>
                           </motion.button>
                         )}
@@ -1285,7 +1285,7 @@ const AssistantPanel: React.FC<AssistantPanelProps> = ({
 
             <div className="relative rounded-lg backdrop-blur-3xl ring-1 ring-white/20 hover:ring-white/30 shadow-2xl bg-black/20 hover:bg-black/40 px-3 pt-3 pb-2 space-y-2 transition-all duration-300">
               <div className="flex items-center justify-between gap-3">
-                {/* Agent/Chat mode toggle â€“ agent mode commented out for now
+                {/* Agent/Chat mode toggle – agent mode commented out for now
               <div className="inline-flex items-center gap-1 rounded-full bg-black/40 border border-white/10 p-1">
                 <button
                   type="button"

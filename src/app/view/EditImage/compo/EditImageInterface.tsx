@@ -1061,20 +1061,6 @@ const EditImageInterface: React.FC = () => {
         };
         res = await axiosInstance.post("/api/replicate/generate", payload);
         out = parseOutputUrl(res);
-      } else if (liveModel === "google/nano-banana-2") {
-        const payload: any = {
-          prompt: livePrompt,
-          model: "google/nano-banana-2",
-          image_input: [imageUrl],
-          aspect_ratio: liveFrameSize,
-          resolution: liveResolution,
-          num_images: 1,
-          output_format: "jpg",
-          generationType: "live-chat",
-          isPublic: true,
-        };
-        res = await axiosInstance.post("/api/replicate/generate", payload);
-        out = parseOutputUrl(res);
       } else if (liveModel === "qwen-image-edit-2511") {
         const payload: any = {
           prompt: livePrompt,
@@ -1094,10 +1080,13 @@ const EditImageInterface: React.FC = () => {
           prompt: livePrompt,
           model: liveModel,
           n: 1,
+          num_images: 1,
           uploadedImages: [imageUrl],
           output_format: "jpeg",
           frameSize: liveFrameSize,
+          aspect_ratio: liveFrameSize,
           size: liveResolution,
+          resolution: liveResolution,
           generationType: "live-chat",
         };
         res = await axiosInstance.post("/api/fal/generate", payload);
