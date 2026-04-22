@@ -40,6 +40,7 @@ const QualityDropdown = ({
     'high': 'High',
     'auto': 'Auto'
   };
+  const hideClosedButtonCreditsOnMobile = model === 'openai/gpt-image-2';
 
   // Get credits for each quality option (for GPT Image models)
   const getQualityCredits = (qual: QualityType): number | null => {
@@ -263,11 +264,19 @@ const QualityDropdown = ({
             <span>{qualityLabels[quality]}</span>
             {(() => {
               const credits = getQualityCredits(quality);
-              return credits !== null ? (
-                <span className="md:text-[9px] text-[8px] -mt-0.5 opacity-75">
-                  {credits} credits
-                </span>
-              ) : null;
+              if (credits === null) return null;
+              return (
+                <>
+                  <span className="hidden md:inline md:text-[9px] -mt-0.5 opacity-75">
+                    {credits} credits
+                  </span>
+                  {!hideClosedButtonCreditsOnMobile && (
+                    <span className="md:hidden text-[8px] -mt-0.5 opacity-75">
+                      {credits} credits
+                    </span>
+                  )}
+                </>
+              );
             })()}
           </div>
           <ChevronUp className={`w-4 h-4 transition-transform ${activeDropdown === dropdownId ? 'rotate-180' : ''}`} />
