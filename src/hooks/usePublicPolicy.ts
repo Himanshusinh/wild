@@ -13,8 +13,8 @@ interface PublicPolicy {
  * Hook to fetch and cache public generation policy
  * Returns whether user can toggle public/private settings
  * 
- * Restricted plans (FREE, PLAN_A, PLAN_B): Cannot toggle (always public)
- * Unrestricted plans (PLAN_C, PLAN_D): Can toggle
+ * Restricted plans: Cannot toggle (always public)
+ * Unrestricted plans (Studio/Agency): Can toggle
  */
 export function usePublicPolicy(): PublicPolicy {
   const [policy, setPolicy] = useState<PublicPolicy>({
@@ -87,6 +87,6 @@ export function getPublicPolicyFromUser(user: any): {
     isRestricted,
     message: canToggle
       ? 'You can choose public or private generations'
-      : 'Your plan requires all generations to be public. Upgrade to Plan C or D for private generations.',
+      : 'Your plan requires all generations to be public. Upgrade to Studio or Agency for private generations.',
   };
 }
