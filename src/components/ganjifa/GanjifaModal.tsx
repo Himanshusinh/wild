@@ -17,7 +17,6 @@ import { SettingsPanel } from "@/components/warli/SettingsPanel";
 import { OutputGrid } from "@/components/warli/OutputGrid";
 import { PromptPreview } from "@/components/warli/PromptPreview";
 import { coerceStyleModalResolution, coerceWarliAspectRatio } from "@/components/warli/warliNanoAspect";
-<<<<<<< HEAD
 import { FullscreenImageViewer } from "@/components/common/FullscreenImageViewer";
 import { GanjifaHeader } from "./GanjifaHeader";
 import {
@@ -30,16 +29,10 @@ import {
   type AspectRatio,
   MODELS,
   STYLE_LABELS,
+  type RightPanelState,
 } from "./types";
 
-const STYLE_TAG = "Ganjifa";
-=======
-import { GanjifaHeader } from "./GanjifaHeader";
-import { FullscreenImageViewer } from "@/components/common/FullscreenImageViewer";
-import { INITIAL_STATE, GanjifaState, StyleFamily, InputMode, ModelId, ImageCount, AspectRatio, MODELS, STYLE_LABELS, RightPanelState } from "./types";
-
 const STYLE_TAG = "GANJIFA CARDS";
->>>>>>> 41f03ea4f3321f74f1a8a57e5e42f0b4b4cb3e8e
 
 function toAbsoluteFromProxy(url: string): string {
   try {
@@ -80,35 +73,21 @@ function extractImageUrls(result: unknown): string[] {
   const r = result as { images?: Array<{ url?: string } | string> };
   const imgs = r?.images;
   if (!Array.isArray(imgs)) return [];
-<<<<<<< HEAD
-  return imgs
-    .map((item) => (typeof item === "string" ? item : item?.url))
-    .filter((u): u is string => Boolean(u));
-=======
   return imgs.map((item) => (typeof item === "string" ? item : item?.url)).filter((u): u is string => Boolean(u));
->>>>>>> 41f03ea4f3321f74f1a8a57e5e42f0b4b4cb3e8e
 }
 
 type Action =
   | { type: "SET_STYLE"; payload: StyleFamily }
   | { type: "SET_MODE"; payload: InputMode }
   | { type: "SET_SCENE_TEXT"; payload: string }
-<<<<<<< HEAD
-  | { type: "SET_UPLOADED_IMAGE"; payload: string }
-=======
   | { type: "SET_UPLOADED_IMAGE"; payload: string | null }
->>>>>>> 41f03ea4f3321f74f1a8a57e5e42f0b4b4cb3e8e
   | { type: "SET_IMAGE_NOTE"; payload: string }
   | { type: "SET_MODEL"; payload: ModelId }
   | { type: "SET_RESOLUTION"; payload: string }
   | { type: "SET_COUNT"; payload: ImageCount }
   | { type: "SET_RATIO"; payload: AspectRatio }
   | { type: "SET_INCLUDE_VARIABLE"; payload: boolean }
-<<<<<<< HEAD
-  | { type: "SET_PANEL_STATE"; payload: GanjifaState["panelState"] }
-=======
   | { type: "SET_PANEL_STATE"; payload: RightPanelState }
->>>>>>> 41f03ea4f3321f74f1a8a57e5e42f0b4b4cb3e8e
   | { type: "SET_GENERATED_IMAGES"; payload: string[] }
   | { type: "SET_ASSEMBLED_PROMPT"; payload: string }
   | { type: "RESET" };
@@ -122,11 +101,7 @@ function reducer(state: GanjifaState, action: Action): GanjifaState {
     case "SET_SCENE_TEXT":
       return { ...state, sceneText: action.payload };
     case "SET_UPLOADED_IMAGE":
-<<<<<<< HEAD
-      return { ...state, uploadedImage: action.payload || null };
-=======
       return { ...state, uploadedImage: action.payload };
->>>>>>> 41f03ea4f3321f74f1a8a57e5e42f0b4b4cb3e8e
     case "SET_IMAGE_NOTE":
       return { ...state, imageNote: action.payload };
     case "SET_MODEL": {
@@ -160,18 +135,6 @@ function buildPrompt(state: GanjifaState): string {
   const family = GANJIFA_PROMPT_FAMILIES[state.style];
   const aspect = coerceWarliAspectRatio(state.ratio, state.model);
   const projectInputs = state.inputMode === "text" ? state.sceneText.trim() : state.imageNote.trim();
-<<<<<<< HEAD
-  const projectLine = projectInputs
-    ? `- ${projectInputs}`
-    : "- (none). Keep the GANJIFA textile language centered and coherent; avoid random motif drift.";
-  const variableBlock = state.includeVariable
-    ? `\n\nREFERENCE (OPTIONAL) — VARIABLE (slot-based):\n${family.promptVariable.trim()}\n`
-    : "";
-
-  return [
-    "PRIMARY DIRECTIVE (STYLE LOCK — follow strictly):",
-    family.promptHard.trim(),
-=======
   const projectLine = projectInputs ? `- ${projectInputs}` : "- (none). Keep structured logic intact.";
   const variableBlock = state.includeVariable
     ? `\n\nREFERENCE (OPTIONAL) - VARIABLE (slot-based):\n${family.promptVariable.trim()}\n`
@@ -180,31 +143,19 @@ function buildPrompt(state: GanjifaState): string {
   return [
     "PRIMARY DIRECTIVE (STYLE LOCK - follow strictly):",
     state.inputMode === "image" && state.uploadedImage ? family.promptI2I.trim() : family.promptHard.trim(),
->>>>>>> 41f03ea4f3321f74f1a8a57e5e42f0b4b4cb3e8e
     variableBlock.trimEnd(),
     "",
     "PROJECT INPUTS:",
     projectLine,
     "",
     "CONTENT CONSTRAINT (STRICT):",
-<<<<<<< HEAD
-    "- Keep the output within GANJIFA textile geometry and weaving logic.",
-    "- Preserve handwoven material truth and motif clarity.",
-=======
     "- Keep output in a 3D Realistic grammar.",
->>>>>>> 41f03ea4f3321f74f1a8a57e5e42f0b4b4cb3e8e
     "",
     "RENDER SETTINGS:",
     `- Preferred aspect ratio: ${aspect === "auto" ? "auto" : aspect}`,
     `- Preferred resolution: ${state.resolution}`,
     `- Preferred image count: ${state.imageCount}`,
-<<<<<<< HEAD
-  ]
-    .filter(Boolean)
-    .join("\n");
-=======
   ].filter(Boolean).join("\n");
->>>>>>> 41f03ea4f3321f74f1a8a57e5e42f0b4b4cb3e8e
 }
 
 export function GanjifaModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
@@ -223,26 +174,14 @@ export function GanjifaModal({ isOpen, onClose }: { isOpen: boolean; onClose: ()
       setIsVisible(false);
       return;
     }
-<<<<<<< HEAD
-
-=======
->>>>>>> 41f03ea4f3321f74f1a8a57e5e42f0b4b4cb3e8e
     dispatchLocal({ type: "RESET" });
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const openTimer = setTimeout(() => setIsVisible(true), 16);
-<<<<<<< HEAD
-
-=======
->>>>>>> 41f03ea4f3321f74f1a8a57e5e42f0b4b4cb3e8e
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
     window.addEventListener("keydown", onKeyDown);
-<<<<<<< HEAD
-
-=======
->>>>>>> 41f03ea4f3321f74f1a8a57e5e42f0b4b4cb3e8e
     return () => {
       clearTimeout(openTimer);
       window.removeEventListener("keydown", onKeyDown);
@@ -261,11 +200,7 @@ export function GanjifaModal({ isOpen, onClose }: { isOpen: boolean; onClose: ()
       dispatchLocal({ type: "SET_RATIO", payload: r });
       dispatch(setFrameSize(r));
     },
-<<<<<<< HEAD
-    [dispatch],
-=======
     [dispatch]
->>>>>>> 41f03ea4f3321f74f1a8a57e5e42f0b4b4cb3e8e
   );
 
   const handleGenerate = useCallback(async () => {
@@ -275,34 +210,21 @@ export function GanjifaModal({ isOpen, onClose }: { isOpen: boolean; onClose: ()
 
     const promptForModel = `${prompt} [Style: ${STYLE_TAG}]`;
     let uploadedForFal: string[] = [];
-<<<<<<< HEAD
-=======
 
->>>>>>> 41f03ea4f3321f74f1a8a57e5e42f0b4b4cb3e8e
     try {
       if (state.inputMode === "image" && state.uploadedImage?.trim()) {
         const hosted = await ensureHostedImageUrl(state.uploadedImage);
         uploadedForFal = hosted ? [hosted] : [];
       }
-<<<<<<< HEAD
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "Could not upload reference image";
-      toast.error(msg);
-=======
     } catch (e: any) {
       toast.error(e instanceof Error ? e.message : "Could not upload reference image");
->>>>>>> 41f03ea4f3321f74f1a8a57e5e42f0b4b4cb3e8e
       dispatchLocal({ type: "SET_PANEL_STATE", payload: "empty" });
       return;
     }
 
     const aspect = coerceWarliAspectRatio(state.ratio, state.model);
-<<<<<<< HEAD
-    const generationType = state.inputMode === "image" && uploadedForFal.length > 0 ? "image-to-image" : "text-to-image";
-=======
     const generationType =
       state.inputMode === "image" && uploadedForFal.length > 0 ? "image-to-image" : "text-to-image";
->>>>>>> 41f03ea4f3321f74f1a8a57e5e42f0b4b4cb3e8e
 
     try {
       const res = await dispatch(
@@ -324,25 +246,15 @@ export function GanjifaModal({ isOpen, onClose }: { isOpen: boolean; onClose: ()
           enable_web_search: nanoBananaGoogleSearch,
           limit_generations: nanoBananaLimitGenerations,
           ...(uploadedForFal.length ? { image_urls: uploadedForFal } : {}),
-<<<<<<< HEAD
-        }) as any,
-=======
         }) as any
->>>>>>> 41f03ea4f3321f74f1a8a57e5e42f0b4b4cb3e8e
       ).unwrap();
 
       const images = extractImageUrls((res as any)?.data ?? res);
       dispatchLocal({ type: "SET_GENERATED_IMAGES", payload: images });
       dispatchLocal({ type: "SET_PANEL_STATE", payload: images.length ? "results" : "empty" });
       if (!images.length) toast.error("No images returned");
-<<<<<<< HEAD
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "Generation failed";
-      toast.error(msg);
-=======
     } catch (e: any) {
       toast.error(e instanceof Error ? e.message : "Generation failed");
->>>>>>> 41f03ea4f3321f74f1a8a57e5e42f0b4b4cb3e8e
       dispatchLocal({ type: "SET_PANEL_STATE", payload: "empty" });
     }
   }, [dispatch, nanoBananaGoogleSearch, nanoBananaLimitGenerations, nanoBananaThinkingLevel, outputFormat, state]);
@@ -354,11 +266,7 @@ export function GanjifaModal({ isOpen, onClose }: { isOpen: boolean; onClose: ()
     try {
       await downloadAllImageUrls(urls, `ganjifa-${state.style}`);
       toast.dismiss(t);
-<<<<<<< HEAD
-      toast.success("All downloads started");
-=======
       toast.success("Downloads started");
->>>>>>> 41f03ea4f3321f74f1a8a57e5e42f0b4b4cb3e8e
     } catch {
       toast.dismiss(t);
       toast.error("Save all failed");
@@ -379,14 +287,6 @@ export function GanjifaModal({ isOpen, onClose }: { isOpen: boolean; onClose: ()
         toast.error("Save failed");
       }
     },
-<<<<<<< HEAD
-    [state.generatedImages, state.style],
-  );
-
-  if (!isOpen) return null;
-  const familyMeta = GANJIFA_PROMPT_FAMILIES[state.style];
-  const styleTitle = `${state.style} · ${familyMeta.chip}`;
-=======
     [state.generatedImages, state.style]
   );
 
@@ -394,7 +294,6 @@ export function GanjifaModal({ isOpen, onClose }: { isOpen: boolean; onClose: ()
 
   const familyMeta = GANJIFA_PROMPT_FAMILIES[state.style];
   const styleTitle = `${state.style} - ${familyMeta.chip}`;
->>>>>>> 41f03ea4f3321f74f1a8a57e5e42f0b4b4cb3e8e
 
   return (
     <div className="fixed inset-0 z-[160] flex items-center justify-center bg-black/45 p-3 sm:p-6 backdrop-blur-2xl">
@@ -402,11 +301,7 @@ export function GanjifaModal({ isOpen, onClose }: { isOpen: boolean; onClose: ()
       <div
         role="dialog"
         aria-modal="true"
-<<<<<<< HEAD
-        aria-label="GANJIFA Textile Generator"
-=======
         aria-label="Ganjifa Cards Generator"
->>>>>>> 41f03ea4f3321f74f1a8a57e5e42f0b4b4cb3e8e
         className={`relative flex w-[min(1080px,calc(100vw-24px))] h-[min(760px,calc(100vh-24px))] flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0E0E12]/95 shadow-[0_24px_70px_rgba(0,0,0,0.7)] ring-1 ring-white/[0.04] transition-all duration-300 ${
           isVisible ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-2 scale-[0.985]"
         }`}
@@ -416,10 +311,6 @@ export function GanjifaModal({ isOpen, onClose }: { isOpen: boolean; onClose: ()
           onStyleChange={(s) => dispatchLocal({ type: "SET_STYLE", payload: s })}
           onClose={onClose}
         />
-<<<<<<< HEAD
-
-=======
->>>>>>> 41f03ea4f3321f74f1a8a57e5e42f0b4b4cb3e8e
         <div className="grid min-h-0 flex-1 overflow-hidden lg:[grid-template-columns:420px_1fr]">
           <aside className="flex flex-col overflow-hidden border-r border-white/10 bg-[#0E0E12]">
             <div className="flex flex-1 flex-col gap-5 overflow-y-auto px-5 py-5 [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-white/[0.06] [&::-webkit-scrollbar]:w-1">
@@ -470,15 +361,6 @@ export function GanjifaModal({ isOpen, onClose }: { isOpen: boolean; onClose: ()
 
             <div className="border-t border-white/[0.06] bg-[#0E0E12] px-5 py-3">
               <div className="flex flex-wrap gap-2 text-[11px] text-white/35">
-<<<<<<< HEAD
-                <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1">{styleTitle}</span>
-                <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1">
-                  {MODELS.find((m) => m.id === state.model)?.label ?? state.model}
-                </span>
-                <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1">{state.imageCount} img</span>
-                <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1">{state.resolution}</span>
-                <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1">{ratioSummary}</span>
-=======
                 <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1">
                   {styleTitle}
                 </span>
@@ -494,7 +376,6 @@ export function GanjifaModal({ isOpen, onClose }: { isOpen: boolean; onClose: ()
                 <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1">
                   {ratioSummary}
                 </span>
->>>>>>> 41f03ea4f3321f74f1a8a57e5e42f0b4b4cb3e8e
               </div>
             </div>
 
@@ -505,11 +386,7 @@ export function GanjifaModal({ isOpen, onClose }: { isOpen: boolean; onClose: ()
                 disabled={state.panelState === "loading"}
                 className="w-full rounded-lg bg-[#2F6BFF] py-2.5 text-[12px] font-semibold text-white transition hover:bg-[#2F6BFF]/90 disabled:opacity-50"
               >
-<<<<<<< HEAD
-                Generate GANJIFA Textile
-=======
                 Generate GANJIFA CARDS
->>>>>>> 41f03ea4f3321f74f1a8a57e5e42f0b4b4cb3e8e
               </button>
             </div>
           </aside>
@@ -518,19 +395,12 @@ export function GanjifaModal({ isOpen, onClose }: { isOpen: boolean; onClose: ()
             <div className="flex items-center justify-between border-b border-white/[0.06] bg-[#0E0E12] px-5 py-3.5">
               <span className="text-xs font-medium text-white/25">
                 {state.panelState === "results"
-<<<<<<< HEAD
-                  ? `${state.imageCount} ${state.imageCount === 1 ? "image" : "images"} · ${STYLE_LABELS[state.style].title}`
-                  : state.panelState === "loading"
-                    ? "Generating..."
-                    : "Output will appear here"}
-=======
                   ? `${state.imageCount} ${state.imageCount === 1 ? "image" : "images"} - ${
                       STYLE_LABELS[state.style].title
                     }`
                   : state.panelState === "loading"
                   ? "Generating..."
                   : "Output will appear here"}
->>>>>>> 41f03ea4f3321f74f1a8a57e5e42f0b4b4cb3e8e
               </span>
               {state.panelState === "results" ? (
                 <div className="flex gap-1.5">
@@ -558,41 +428,29 @@ export function GanjifaModal({ isOpen, onClose }: { isOpen: boolean; onClose: ()
                 <div className="flex flex-1 flex-col items-center justify-center gap-2 p-10 text-center">
                   <p className="text-sm font-medium text-white/20">No output yet</p>
                   <p className="max-w-[320px] text-xs leading-relaxed text-white/10">
-<<<<<<< HEAD
-                    Describe an GANJIFA-inspired textile scene (or upload an image), then Generate.
-=======
                     Describe a scene (or upload an image), then Generate.
->>>>>>> 41f03ea4f3321f74f1a8a57e5e42f0b4b4cb3e8e
                   </p>
                 </div>
               ) : null}
 
               {state.panelState === "loading" ? (
                 <div className="flex flex-1 flex-col items-center justify-center gap-6 p-6">
-<<<<<<< HEAD
-                  <div className={`grid w-full gap-3 ${state.imageCount === 1 ? "grid-cols-1 max-w-lg" : "grid-cols-2"}`}>
-=======
                   <div
                     className={`grid w-full gap-3 ${
                       state.imageCount === 1 ? "grid-cols-1 max-w-lg" : "grid-cols-2"
                     }`}
                   >
->>>>>>> 41f03ea4f3321f74f1a8a57e5e42f0b4b4cb3e8e
                     {Array.from({ length: state.imageCount }).map((_, i) => (
                       <div
                         key={i}
                         className="relative flex aspect-square items-center justify-center overflow-hidden rounded-xl border border-white/[0.06] bg-[#111117]"
                       >
-<<<<<<< HEAD
-                        <img src="/styles/Logo.gif" alt="Generating..." className="h-16 w-16 object-contain opacity-40" draggable={false} />
-=======
                         <img
                           src="/styles/Logo.gif"
                           alt="Generating..."
                           className="h-16 w-16 object-contain opacity-40"
                           draggable={false}
                         />
->>>>>>> 41f03ea4f3321f74f1a8a57e5e42f0b4b4cb3e8e
                       </div>
                     ))}
                   </div>
@@ -620,13 +478,6 @@ export function GanjifaModal({ isOpen, onClose }: { isOpen: boolean; onClose: ()
         </div>
       </div>
 
-<<<<<<< HEAD
-      <FullscreenImageViewer isOpen={Boolean(fullscreenUrl)} src={fullscreenUrl || ""} onClose={() => setFullscreenUrl(null)} />
-    </div>
-  );
-}
-
-=======
       <FullscreenImageViewer
         isOpen={Boolean(fullscreenUrl)}
         src={fullscreenUrl || ""}
@@ -635,4 +486,3 @@ export function GanjifaModal({ isOpen, onClose }: { isOpen: boolean; onClose: ()
     </div>
   );
 }
->>>>>>> 41f03ea4f3321f74f1a8a57e5e42f0b4b4cb3e8e

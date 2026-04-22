@@ -142,6 +142,12 @@ const ThangkaFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => v
         ssr: false
     }
 )
+const ThangkaNewFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
+    () => import('./compo/ThangkaNewFullscreenWalkthrough'),
+    {
+        ssr: false
+    }
+)
 const WanchoFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
     () => import('./compo/WanchoFullscreenWalkthrough'),
     {
@@ -480,10 +486,7 @@ const MeritShawlFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () =
     () => import('./compo/MeritShawlFullscreenWalkthrough'),
     { ssr: false }
 )
-const GanjifaFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/GanjifaFullscreenWalkthrough'),
-    { ssr: false }
-)
+
 const GaroWeavingFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
     () => import('./compo/GaroWeavingFullscreenWalkthrough'),
     { ssr: false }
@@ -813,7 +816,7 @@ const HomePage: React.FC = () => {
     const [showNagaShawlWalkthrough, setShowNagaShawlWalkthrough] = useState(false);
     const [showWangkheiPheeWalkthrough, setShowWangkheiPheeWalkthrough] = useState(false);
     const [showMeritShawlWalkthrough, setShowMeritShawlWalkthrough] = useState(false);
-    const [showGanjifaWalkthrough, setShowGanjifaWalkthrough] = useState(false);
+
     const [showGaroWeavingWalkthrough, setShowGaroWeavingWalkthrough] = useState(false);
     const [showNagaBodyClothWalkthrough, setShowNagaBodyClothWalkthrough] = useState(false);
     const [showGondPaintingWalkthrough, setShowGondPaintingWalkthrough] = useState(false);
@@ -971,7 +974,7 @@ const HomePage: React.FC = () => {
             case "nagashawl": setShowNagaShawlWalkthrough(true); break;
             case "wangkheiphee": setShowWangkheiPheeWalkthrough(true); break;
             case "meritshawl": setShowMeritShawlWalkthrough(true); break;
-            case "ganjifa": setShowGanjifaWalkthrough(true); break;
+
             case "garoweaving": setShowGaroWeavingWalkthrough(true); break;
             case "nagabodycloth": setShowNagaBodyClothWalkthrough(true); break;
             case "gondpainting": setShowGondPaintingWalkthrough(true); break;
@@ -1564,7 +1567,12 @@ const HomePage: React.FC = () => {
                             setShowWelcomeModal(false);
                             setShowSankhedaWoodworkWalkthrough(true);
                         }}
-                        onGanjifaOpen={() => {
+                        onGanjifaSawantwadiOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowGanjifaWalkthrough(true);
+                        }}
+                        onGanjifaMysoreOpen={() => {
                             setOpenedFromAllStyles(false);
                             setShowWelcomeModal(false);
                             setShowGanjifaWalkthrough(true);
@@ -1589,7 +1597,7 @@ const HomePage: React.FC = () => {
                             setShowWelcomeModal(false);
                             setShowBodyAugmentationWalkthrough(true);
                         }}
-                        onTawlhlophuanOpen={() => {
+                        onTawlhlophuanMizoramOpen={() => {
                             setOpenedFromAllStyles(false);
                             setShowWelcomeModal(false);
                             setShowTawlhlophuanWalkthrough(true);
@@ -1619,11 +1627,7 @@ const HomePage: React.FC = () => {
                             setShowWelcomeModal(false);
                             setShowMeritShawlWalkthrough(true);
                         }}
-                        onGanjifaOpen={() => {
-                            setOpenedFromAllStyles(false);
-                            setShowWelcomeModal(false);
-                            setShowGanjifaWalkthrough(true);
-                        }}
+
                         onGaroWeavingOpen={() => {
                             setOpenedFromAllStyles(false);
                             setShowWelcomeModal(false);
@@ -1774,7 +1778,7 @@ const HomePage: React.FC = () => {
                             setShowWelcomeModal(false);
                             setShowOpaquewrapWalkthrough(true);
                         }}
-                        onTawlhlohpuanOpen={() => {
+                        onTawlhlohpuanCeremonialOpen={() => {
                             setOpenedFromAllStyles(false);
                             setShowWelcomeModal(false);
                             setShowTawlhlohpuanWalkthrough(true);
@@ -1793,6 +1797,11 @@ const HomePage: React.FC = () => {
                             setOpenedFromAllStyles(false);
                             setShowWelcomeModal(false);
                             setShowYakshaganaWalkthrough(true);
+                        }}
+                        onThangkaFolkOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowThangkaNewWalkthrough(true);
                         }}
                         onAllStylesOpen={() => setShowAllStylesModal(true)}
                     />
@@ -2057,6 +2066,10 @@ const HomePage: React.FC = () => {
             <ThangkaFullscreenWalkthrough
                 isOpen={showThangkaWalkthrough}
                 onClose={() => handleCloseWalkthrough(setShowThangkaWalkthrough)}
+            />
+            <ThangkaNewFullscreenWalkthrough
+                isOpen={showThangkaNewWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowThangkaNewWalkthrough)}
             />
 
             <WanchoFullscreenWalkthrough

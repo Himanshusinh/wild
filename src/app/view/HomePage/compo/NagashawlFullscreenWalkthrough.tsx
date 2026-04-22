@@ -15,7 +15,7 @@ const NagashawlFullscreenWalkthrough: React.FC<FullscreenWalkthroughProps> = ({
   onClose,
 }) => {
   const router = useRouter();
-  const [activeVersion, setActiveVersion] = useState<"v1" | "v2" | "v3">("v1");
+  const [activeVersion, setActiveVersion] = useState<"V1" | "V2" | "V3">("V1");
 
   if (!isOpen) return null;
 
@@ -32,7 +32,7 @@ const NagashawlFullscreenWalkthrough: React.FC<FullscreenWalkthroughProps> = ({
 
   const versions = [
     {
-      id: "v1",
+      id: "V1",
       title: "V1 — Authentic",
       desc: "Pure source-faithful visual grammar",
       icon: <Boxes className="w-4 h-4" />,
@@ -40,7 +40,7 @@ const NagashawlFullscreenWalkthrough: React.FC<FullscreenWalkthroughProps> = ({
       borderColor: "border-blue-500/30",
     },
     {
-      id: "v2",
+      id: "V2",
       title: "V2 — Artisan",
       desc: "Creative 2D + 3D translation",
       icon: <Palette className="w-4 h-4" />,
@@ -48,7 +48,7 @@ const NagashawlFullscreenWalkthrough: React.FC<FullscreenWalkthroughProps> = ({
       borderColor: "border-purple-500/30",
     },
     {
-      id: "v3",
+      id: "V3",
       title: "V3 — Cinematic",
       desc: "Realistic 3D dimensional world",
       icon: <Sparkles className="w-4 h-4" />,
@@ -153,7 +153,7 @@ const NagashawlFullscreenWalkthrough: React.FC<FullscreenWalkthroughProps> = ({
                   </span>
                 </div>
                 <p className="text-sm text-white/50 leading-relaxed italic pr-4">
-                  "{nagashawlPromptCatalog.prompts[activeVersion].substring(0, 300)}..."
+                  "{nagashawlPromptCatalog.prompts[activeVersion].promptHard.substring(0, 300)}..."
                 </p>
               </div>
 
