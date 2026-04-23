@@ -13,9 +13,14 @@ import {
     Box,
     Crop,
     MessageSquare,
-    PenTool
+    PenTool,
+    Zap,
+    Globe,
+    Cloud,
+    Rocket,
+    Bot
 } from 'lucide-react';
-import WSolid from '@/components/icons/WSolid';
+import { IconBrandOpenai, IconBrandGoogle } from '@tabler/icons-react';
 
 const FeatureItem = ({ href, icon: Icon, title, desc, onClick, isSoon }: any) => {
     const Element = isSoon ? 'div' : Link;
@@ -46,7 +51,7 @@ const FeatureItem = ({ href, icon: Icon, title, desc, onClick, isSoon }: any) =>
     );
 };
 
-const ModelItem = ({ href, tag, name, desc, onClick }: any) => (
+const ModelItem = ({ href, tag, name, desc, onClick, icon: Icon }: any) => (
     <Link
         href={href}
         onClick={onClick}
@@ -55,7 +60,7 @@ const ModelItem = ({ href, tag, name, desc, onClick }: any) => (
         <div className="absolute inset-0 bg-gradient-to-r from-white/[0.02] to-transparent opacity-0 group-hover/item:opacity-100 transition-opacity duration-300 pointer-events-none" />
         
         <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-gradient-to-br from-white/[0.05] to-transparent text-white p-2 shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)] transition-all duration-300 group-hover/item:scale-105 group-hover/item:border-white/20 group-hover/item:from-white/[0.08] group-hover/item:to-white/[0.01]">
-            <WSolid className="w-5 h-5 opacity-70 group-hover/item:opacity-100 group-hover/item:scale-110 transition-all duration-300" fill="currentColor" />
+            <Icon size={20} className="opacity-70 group-hover/item:opacity-100 group-hover/item:scale-110 transition-all duration-300" />
         </div>
         
         <div className="relative flex min-w-0 flex-1 flex-col gap-1 z-10">
@@ -150,14 +155,14 @@ export const ImagePopout = ({
                                 Models
                             </div>
                             <div className="flex flex-col gap-1 max-h-[480px] overflow-y-auto custom-scrollbar pr-2">
-                                <ModelItem href="/text-to-image?model=flux-2-pro" tag="TOP PICK" name="Flux.2 Pro" desc="Extreme detailing in ultra-detail" onClick={onMouseLeave} />
-                                <ModelItem href="/text-to-image?model=qwen/qwen-image-2-pro" tag="NEW" name="Qwen Image 2 Pro" desc="Premium high-fidelity generations" onClick={onMouseLeave} />
-                                <ModelItem href="/text-to-image?model=qwen/qwen-image-2" tag="NEW" name="Qwen Image 2" desc="State-of-the-art image creation" onClick={onMouseLeave} />
-                                <ModelItem href="/text-to-image?model=google/nano-banana-2" tag="LATEST" name="Nano Banana 2" desc="Google's next-gen image model" onClick={onMouseLeave} />
-                                <ModelItem href="/text-to-image?model=seedream-5-lite" tag="LATEST" name="Seedream 5 Lite" desc="Top tier text to image model" onClick={onMouseLeave} />
-                                <ModelItem href="/text-to-image?model=google/nano-banana-pro" tag="TRENDING" name="Nano Banana Pro" desc="Google's best image Gen model" onClick={onMouseLeave} />
-                                <ModelItem href="/text-to-image?model=new-turbo-model" tag="FAST" name="z-image-turbo" desc="Ultra-fast generation model" onClick={onMouseLeave} />
-                                <ModelItem href="/text-to-image?model=openai/gpt-image-1.5" tag="SMART" name="GPT Image 1.5" desc="Advanced reasoning for images" onClick={onMouseLeave} />
+                                <ModelItem href="/text-to-image?model=flux-2-pro" icon={Zap} tag="TOP PICK" name="Flux.2 Pro" desc="Extreme detailing in ultra-detail" onClick={onMouseLeave} />
+                                <ModelItem href="/text-to-image?model=qwen/qwen-image-2-pro" icon={Sparkles} tag="NEW" name="Qwen Image 2 Pro" desc="Premium high-fidelity generations" onClick={onMouseLeave} />
+                                <ModelItem href="/text-to-image?model=qwen/qwen-image-2" icon={Sparkles} tag="NEW" name="Qwen Image 2" desc="State-of-the-art image creation" onClick={onMouseLeave} />
+                                <ModelItem href="/text-to-image?model=google/nano-banana-2" icon={IconBrandGoogle} tag="LATEST" name="Nano Banana 2" desc="Google's next-gen image model" onClick={onMouseLeave} />
+                                <ModelItem href="/text-to-image?model=seedream-5-lite" icon={Cloud} tag="LATEST" name="Seedream 5 Lite" desc="Top tier text to image model" onClick={onMouseLeave} />
+                                <ModelItem href="/text-to-image?model=google/nano-banana-pro" icon={IconBrandGoogle} tag="TRENDING" name="Nano Banana Pro" desc="Google's best image Gen model" onClick={onMouseLeave} />
+                                <ModelItem href="/text-to-image?model=new-turbo-model" icon={Rocket} tag="FAST" name="z-image-turbo" desc="Ultra-fast generation model" onClick={onMouseLeave} />
+                                <ModelItem href="/text-to-image?model=openai/gpt-image-1.5" icon={IconBrandOpenai} tag="SMART" name="GPT Image 1.5" desc="Advanced reasoning for images" onClick={onMouseLeave} />
                             </div>
                         </div>
 

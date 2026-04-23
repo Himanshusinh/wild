@@ -8,7 +8,6 @@ import {
     MessageSquare,
     UserRound
 } from 'lucide-react';
-import WSolid from '@/components/icons/WSolid';
 
 const FeatureItem = ({ href, icon: Icon, title, desc, onClick, isSoon }: any) => {
     const Element = isSoon ? 'div' : Link;
@@ -39,7 +38,7 @@ const FeatureItem = ({ href, icon: Icon, title, desc, onClick, isSoon }: any) =>
     );
 };
 
-const ModelItem = ({ href, tag, name, desc, onClick }: any) => (
+const ModelItem = ({ href, tag, name, desc, onClick, icon: Icon }: any) => (
     <Link
         href={href}
         onClick={onClick}
@@ -48,7 +47,7 @@ const ModelItem = ({ href, tag, name, desc, onClick }: any) => (
         <div className="absolute inset-0 bg-gradient-to-r from-white/[0.02] to-transparent opacity-0 group-hover/item:opacity-100 transition-opacity duration-300 pointer-events-none" />
         
         <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-gradient-to-br from-white/[0.05] to-transparent text-white p-2 shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)] transition-all duration-300 group-hover/item:scale-105 group-hover/item:border-white/20 group-hover/item:from-white/[0.08] group-hover/item:to-white/[0.01]">
-            <WSolid className="w-5 h-5 opacity-70 group-hover/item:opacity-100 group-hover/item:scale-110 transition-all duration-300" fill="currentColor" />
+            <Icon size={20} className="opacity-70 group-hover/item:opacity-100 group-hover/item:scale-110 transition-all duration-300" />
         </div>
         
         <div className="relative flex min-w-0 flex-1 flex-col gap-1 z-10">
@@ -140,10 +139,10 @@ export const AudioPopout = ({
                                 Models
                             </div>
                             <div className="flex flex-col gap-1 max-h-[480px] overflow-y-auto custom-scrollbar pr-2">
-                                <ModelItem href="/text-to-music?type=tts&feature=music&model=minimax-music-2" tag="TOP PICK" name="MiniMax Music 2" desc="High quality full tracks" onClick={onMouseLeave} />
-                                <ModelItem href="/text-to-music?type=tts&feature=tts&model=elevenlabs-tts" tag="ULTRA" name="ElevenLabs TTS v3" desc="World's best voice AI" onClick={onMouseLeave} />
-                                <ModelItem href="/text-to-music?type=tts&feature=tts&model=chatterbox-multilingual" tag="QUICK" name="Chatterbox" desc="Multilingual expressive voices" onClick={onMouseLeave} />
-                                <ModelItem href="/text-to-music?type=tts&feature=tts&model=maya-tts" tag="" name="Maya TTS" desc="Fast and emotional TTS" onClick={onMouseLeave} />
+                                <ModelItem href="/text-to-music?type=tts&feature=music&model=minimax-music-2" icon={Music} tag="TOP PICK" name="MiniMax Music 2" desc="High quality full tracks" onClick={onMouseLeave} />
+                                <ModelItem href="/text-to-music?type=tts&feature=tts&model=elevenlabs-tts" icon={Mic} tag="ULTRA" name="ElevenLabs TTS v3" desc="World's best voice AI" onClick={onMouseLeave} />
+                                <ModelItem href="/text-to-music?type=tts&feature=tts&model=chatterbox-multilingual" icon={MessageSquare} tag="QUICK" name="Chatterbox" desc="Multilingual expressive voices" onClick={onMouseLeave} />
+                                <ModelItem href="/text-to-music?type=tts&feature=tts&model=maya-tts" icon={UserRound} tag="" name="Maya TTS" desc="Fast and emotional TTS" onClick={onMouseLeave} />
                             </div>
                         </div>
 

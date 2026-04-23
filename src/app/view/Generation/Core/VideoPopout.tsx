@@ -6,9 +6,10 @@ import {
     Video,
     Clapperboard,
     Scissors,
-    Users
+    Users,
+    PlaySquare
 } from 'lucide-react';
-import WSolid from '@/components/icons/WSolid';
+import { IconBrandGoogle } from '@tabler/icons-react';
 
 const FeatureItem = ({ href, icon: Icon, title, desc, onClick, isSoon }: any) => {
     const Element = isSoon ? 'div' : Link;
@@ -39,7 +40,7 @@ const FeatureItem = ({ href, icon: Icon, title, desc, onClick, isSoon }: any) =>
     );
 };
 
-const ModelItem = ({ href, tag, name, desc, onClick }: any) => (
+const ModelItem = ({ href, tag, name, desc, onClick, icon: Icon }: any) => (
     <Link
         href={href}
         onClick={onClick}
@@ -48,7 +49,7 @@ const ModelItem = ({ href, tag, name, desc, onClick }: any) => (
         <div className="absolute inset-0 bg-gradient-to-r from-white/[0.02] to-transparent opacity-0 group-hover/item:opacity-100 transition-opacity duration-300 pointer-events-none" />
         
         <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-gradient-to-br from-white/[0.05] to-transparent text-white p-2 shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)] transition-all duration-300 group-hover/item:scale-105 group-hover/item:border-white/20 group-hover/item:from-white/[0.08] group-hover/item:to-white/[0.01]">
-            <WSolid className="w-5 h-5 opacity-70 group-hover/item:opacity-100 group-hover/item:scale-110 transition-all duration-300" fill="currentColor" />
+            <Icon size={20} className="opacity-70 group-hover/item:opacity-100 group-hover/item:scale-110 transition-all duration-300" />
         </div>
         
         <div className="relative flex min-w-0 flex-1 flex-col gap-1 z-10">
@@ -140,11 +141,11 @@ export const VideoPopout = ({
                                 Models
                             </div>
                             <div className="flex flex-col gap-1 max-h-[480px] overflow-y-auto custom-scrollbar pr-2">
-                                <ModelItem href="/text-to-video?model=seedance-2.0-t2v" tag="CINEMATIC" name="Seedance 2.0" desc="Premium cinematic video from text, image, or reference" onClick={onMouseLeave} />
-                                <ModelItem href="/text-to-video?model=veo3.1-t2v-4s" tag="TOP PICK" name="Veo 3.1" desc="Google's most capable video model" onClick={onMouseLeave} />
-                                <ModelItem href="/text-to-video?model=veo3.1-lite-t2v-8s" tag="SMART" name="Veo 3.1 Lite" desc="Efficient cinematic generation with FFLF support" onClick={onMouseLeave} />
-                                <ModelItem href="/text-to-video?model=kling-v3-standard" tag="ULTRA" name="Kling 3.0" desc="Advanced motion and strong character consistency" onClick={onMouseLeave} />
-                                <ModelItem href="/text-to-video?model=pixverse-v6-t2v" tag="NEW" name="PixVerse V6" desc="Multishot sequences, synced audio, and cinematic style presets" onClick={onMouseLeave} />
+                                <ModelItem href="/text-to-video?model=seedance-2.0-t2v" icon={Film} tag="CINEMATIC" name="Seedance 2.0" desc="Premium cinematic video from text, image, or reference" onClick={onMouseLeave} />
+                                <ModelItem href="/text-to-video?model=veo3.1-t2v-4s" icon={IconBrandGoogle} tag="TOP PICK" name="Veo 3.1" desc="Google's most capable video model" onClick={onMouseLeave} />
+                                <ModelItem href="/text-to-video?model=veo3.1-lite-t2v-8s" icon={IconBrandGoogle} tag="SMART" name="Veo 3.1 Lite" desc="Efficient cinematic generation with FFLF support" onClick={onMouseLeave} />
+                                <ModelItem href="/text-to-video?model=kling-v3-standard" icon={Clapperboard} tag="ULTRA" name="Kling 3.0" desc="Advanced motion and strong character consistency" onClick={onMouseLeave} />
+                                <ModelItem href="/text-to-video?model=pixverse-v6-t2v" icon={PlaySquare} tag="NEW" name="PixVerse V6" desc="Multishot sequences, synced audio, and cinematic style presets" onClick={onMouseLeave} />
                             </div>
                         </div>
 

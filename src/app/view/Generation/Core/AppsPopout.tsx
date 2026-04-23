@@ -5,9 +5,15 @@ import {
     Wand2,
     Camera,
     Smile,
-    TrendingUp
+    TrendingUp,
+    Sparkles,
+    History,
+    Eraser,
+    RefreshCw,
+    Hourglass,
+    UserCircle,
+    Sticker
 } from 'lucide-react';
-import WSolid from '@/components/icons/WSolid';
 
 const FeatureItem = ({ href, icon: Icon, title, desc, onClick, isSoon }: any) => {
     const Element = isSoon ? 'div' : Link;
@@ -38,7 +44,7 @@ const FeatureItem = ({ href, icon: Icon, title, desc, onClick, isSoon }: any) =>
     );
 };
 
-const ModelItem = ({ href, tag, name, desc, onClick }: any) => (
+const ModelItem = ({ href, tag, name, desc, onClick, icon: Icon }: any) => (
     <Link
         href={href}
         onClick={onClick}
@@ -47,7 +53,7 @@ const ModelItem = ({ href, tag, name, desc, onClick }: any) => (
         <div className="absolute inset-0 bg-gradient-to-r from-white/[0.02] to-transparent opacity-0 group-hover/item:opacity-100 transition-opacity duration-300 pointer-events-none" />
         
         <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-gradient-to-br from-white/[0.05] to-transparent text-white p-2 shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)] transition-all duration-300 group-hover/item:scale-105 group-hover/item:border-white/20 group-hover/item:from-white/[0.08] group-hover/item:to-white/[0.01]">
-            <WSolid className="w-5 h-5 opacity-70 group-hover/item:opacity-100 group-hover/item:scale-110 transition-all duration-300" fill="currentColor" />
+            <Icon size={20} className="opacity-70 group-hover/item:opacity-100 group-hover/item:scale-110 transition-all duration-300" />
         </div>
         
         <div className="relative flex min-w-0 flex-1 flex-col gap-1 z-10">
@@ -138,14 +144,14 @@ export const AppsPopout = ({
                                 Popular Apps
                             </div>
                             <div className="flex flex-col gap-1 max-h-[480px] overflow-y-auto custom-scrollbar pr-2 pb-4">
-                                <ModelItem href="/view/workflows/general/creatively-upscale" tag="TRENDING" name="Creatively Upscale" desc="Crisp, high quality 4K upscaling" onClick={onMouseLeave} />
-                                <ModelItem href="/view/workflows/general/restore-old-photo" tag="TOP PICK" name="Restore Old Photo" desc="Bring old memories back" onClick={onMouseLeave} />
-                                <ModelItem href="/view/workflows/general/remove-element" tag="ULTRA" name="Remove Element" desc="Seamlessly erase objects" onClick={onMouseLeave} />
-                                <ModelItem href="/view/workflows/general/replace-element" tag="" name="Replace Element" desc="Swap objects naturally" onClick={onMouseLeave} />
-                                <ModelItem href="/view/workflows/fun/polaroid-style" tag="LATEST" name="Polaroid Style Photos" desc="Instant vintage aesthetic" onClick={onMouseLeave} />
-                                <ModelItem href="/view/workflows/fun/vintage-teleport" tag="" name="Vintage Image" desc="Travel back in time" onClick={onMouseLeave} />
-                                <ModelItem href="/view/workflows/fun/people-age" tag="QUICK" name="People Age" desc="See your future self" onClick={onMouseLeave} />
-                                <ModelItem href="/view/workflows/fun/custom-stickers" tag="" name="Create Custom Stickers" desc="Turn ideas to stickers" onClick={onMouseLeave} />
+                                <ModelItem href="/view/workflows/general/creatively-upscale" icon={Sparkles} tag="TRENDING" name="Creatively Upscale" desc="Crisp, high quality 4K upscaling" onClick={onMouseLeave} />
+                                <ModelItem href="/view/workflows/general/restore-old-photo" icon={History} tag="TOP PICK" name="Restore Old Photo" desc="Bring old memories back" onClick={onMouseLeave} />
+                                <ModelItem href="/view/workflows/general/remove-element" icon={Eraser} tag="ULTRA" name="Remove Element" desc="Seamlessly erase objects" onClick={onMouseLeave} />
+                                <ModelItem href="/view/workflows/general/replace-element" icon={RefreshCw} tag="" name="Replace Element" desc="Swap objects naturally" onClick={onMouseLeave} />
+                                <ModelItem href="/view/workflows/fun/polaroid-style" icon={Camera} tag="LATEST" name="Polaroid Style Photos" desc="Instant vintage aesthetic" onClick={onMouseLeave} />
+                                <ModelItem href="/view/workflows/fun/vintage-teleport" icon={Hourglass} tag="" name="Vintage Image" desc="Travel back in time" onClick={onMouseLeave} />
+                                <ModelItem href="/view/workflows/fun/people-age" icon={UserCircle} tag="QUICK" name="People Age" desc="See your future self" onClick={onMouseLeave} />
+                                <ModelItem href="/view/workflows/fun/custom-stickers" icon={Sticker} tag="" name="Create Custom Stickers" desc="Turn ideas to stickers" onClick={onMouseLeave} />
                             </div>
                         </div>
 
