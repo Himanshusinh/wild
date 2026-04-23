@@ -3233,7 +3233,7 @@ const InputBox = () => {
                     : selectedModel === "seedream-v4"
                       ? seedreamSize
                       : undefined;
-      return getImageGenerationCreditCost(
+      const cost = getImageGenerationCreditCost(
         selectedModel,
         imageCount,
         frameSize,
@@ -3245,6 +3245,15 @@ const InputBox = () => {
           ? gptImage15Quality
           : undefined,
       );
+
+      // Special case for z-image-turbo: show 0 credits for free plan users
+      const isFreeTurboModel = selectedModel === 'new-turbo-model' || selectedModel === 'z-image-turbo';
+      const isFreePlan = (userData as any)?.planCode === 'free';
+      if (isFreeTurboModel && isFreePlan) {
+        return 0;
+      }
+
+      return cost;
     } catch {
       return 0;
     }
