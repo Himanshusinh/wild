@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Cpu, ChevronUp, Infinity as InfinityIcon, Lock } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -115,82 +115,63 @@ const ModelsDropdown = ({
   const selectingRef = useRef(false);
   const hasInputImage = uploadedImages.length > 0;
 
-  let models = [
-    { name: "GPT Image 2", value: "openai/gpt-image-2" },
-    { name: "GPT Image 1.5", value: "openai/gpt-image-1.5" },
-    { name: "Flux 2 Pro", value: "flux-2-pro" },
-    // { name: 'Seedream v4 4k', value: 'seedream-v4' },
-    { name: "Seedream 4.5", value: "seedream-4.5" },
-    { name: "Seedream 5 Lite ", value: "seedream-5-lite" },
-    { name: "Recraft v4", value: "recraft-ai/recraft-v4" },
-    { name: "Qwen Image 2", value: "qwen/qwen-image-2" },
-    { name: "Qwen Image 2 Pro", value: "qwen/qwen-image-2-pro" },
-
-    { name: "Flux Kontext Pro", value: "flux-kontext-pro" },
-    { name: "Flux Kontext Max", value: "flux-kontext-max" },
-    // { name: "Flux Pro 1.1", value: "flux-pro-1.1" },
-    // { name: "FLUX.1 Pro", value: "flux-pro" },
-    // { name: 'FLUX.1 Dev', value: 'flux-dev' },
-    { name: "MiniMax Image-01", value: "minimax-image-01" },
-    { name: "Nano Banana", value: "gemini-25-flash-image" },
-    { name: "Nano Banana Pro", value: "google/nano-banana-pro" },
-    { name: "Nano Banana 2", value: "google/nano-banana-2" },
-    // { name: "Ideogram v3", value: "ideogram-ai/ideogram-v3" },
-    // { name: "Ideogram v3 Quality", value: "ideogram-ai/ideogram-v3-quality" },
-    // { name: 'Lucid Origin', value: 'leonardoai/lucid-origin' },
-    // { name: 'Phoenix 1.0', value: 'leonardoai/phoenix-1.0' },
-    { name: "Imagen 4 Ultra", value: "imagen-4-ultra" },
-    { name: "Imagen 4", value: "imagen-4" },
-    { name: "Imagen 4 Fast", value: "imagen-4-fast" },
-    // { name: "P-Image", value: "prunaai/p-image" },
-
-    // { name: "Qwen Image 2511", value: "qwen-image-2511" },
-    // { name: "Qwen Image  2512", value: "qwen-image-edit-2512" },
-    // TODO: Update model name and value with actual model identifier
-    // TODO: Update value with actual Replicate model identifier (format: owner/name or owner/name:version)
-    { name: "z-image-turbo", value: "new-turbo-model" },
-    // { name: "WILDMINDIMAGE", value: "wildmindimage" },
-    // Local models
-    // { name: 'Flux Schnell (Local)', value: 'flux-schnell' },
-    // { name: 'SD 3.5 Medium (Local)', value: 'stable-medium' },
-    // { name: 'SD 3.5 Large (Local)', value: 'stable-large' },
-    // { name: 'SD 3.5 Turbo (Local)', value: 'stable-turbo' },
-    // { name: 'SDXL 1.0 (Local)', value: 'stable-xl' },
-    // { name: 'Flux Krea (Local)', value: 'flux-krea' },
-    // { name: 'Playground SDXL (Local)', value: 'playground' },
-  ];
+  const models = useMemo(
+    () => [
+      { name: "GPT Image 2", value: "openai/gpt-image-2" },
+      { name: "GPT Image 1.5", value: "openai/gpt-image-1.5" },
+      { name: "Flux 2 Pro", value: "flux-2-pro" },
+      // { name: 'Seedream v4 4k', value: 'seedream-v4' },
+      { name: "Seedream 4.5", value: "seedream-4.5" },
+      { name: "Seedream 5 Lite ", value: "seedream-5-lite" },
+      { name: "Recraft v4", value: "recraft-ai/recraft-v4" },
+      { name: "Qwen Image 2", value: "qwen/qwen-image-2" },
+      { name: "Qwen Image 2 Pro", value: "qwen/qwen-image-2-pro" },
+      { name: "Flux Kontext Pro", value: "flux-kontext-pro" },
+      { name: "Flux Kontext Max", value: "flux-kontext-max" },
+      { name: "MiniMax Image-01", value: "minimax-image-01" },
+      { name: "Nano Banana", value: "gemini-25-flash-image" },
+      { name: "Nano Banana Pro", value: "google/nano-banana-pro" },
+      { name: "Nano Banana 2", value: "google/nano-banana-2" },
+      { name: "Imagen 4 Ultra", value: "imagen-4-ultra" },
+      { name: "Imagen 4", value: "imagen-4" },
+      { name: "Imagen 4 Fast", value: "imagen-4-fast" },
+      { name: "z-image-turbo", value: "new-turbo-model" },
+    ],
+    [],
+  );
 
   // Add credits information to models from distribution data
-  const modelsWithCredits = models.map((model) => {
-    // For GPT Image 1.5, show minimum cost (low quality: 11 credits) in model dropdown
-    // User can see actual credits per quality in the quality dropdown
-    const quality =
-      model.value === "openai/gpt-image-1.5" ||
-      model.value === "openai/gpt-image-2"
-        ? "low"
-        : undefined;
-    const creditInfo = getModelCreditInfo(
-      model.value,
-      undefined,
-      undefined,
-      undefined,
-      quality,
-    );
-    const isFree = model.value === "wildmindimage";
-    const creditLabel = isFree
-      ? "Free (0 credits)"
-      : creditInfo.displayText ||
-        (creditInfo.credits != null ? `${creditInfo.credits} credits` : null);
-
-    return {
-      ...model,
-      credits: creditInfo.credits,
-      displayText: creditInfo.displayText,
-      isFree,
-      displayName: model.name,
-      isLocked: !isModelAccessibleForPlan(currentPlanCode, "image", model.value),
-    };
-  });
+  const modelsWithCredits = useMemo(
+    () =>
+      models.map((model) => {
+        const quality =
+          model.value === "openai/gpt-image-1.5" ||
+          model.value === "openai/gpt-image-2"
+            ? "low"
+            : undefined;
+        const creditInfo = getModelCreditInfo(
+          model.value,
+          undefined,
+          undefined,
+          undefined,
+          quality,
+        );
+        const isFree = model.value === "wildmindimage";
+        return {
+          ...model,
+          credits: creditInfo.credits,
+          displayText: creditInfo.displayText,
+          isFree,
+          displayName: model.name,
+          isLocked: !isModelAccessibleForPlan(
+            currentPlanCode,
+            "image",
+            model.value,
+          ),
+        };
+      }),
+    [models, currentPlanCode],
+  );
 
   const renderTooltip = () => {
     if (!hoveredModel) return null;
@@ -309,34 +290,33 @@ const ModelsDropdown = ({
   }, [activeDropdown, dispatch, isActiveInstance]);
 
   // If imageOnly or user uploaded images, restrict to models which support image inputs
-  let filteredModels = modelsWithCredits;
   const restrictForImages = imageOnly || hasInputImage;
-  if (restrictForImages) {
-    filteredModels = modelsWithCredits.filter(
-      (m) =>
-        m.value.startsWith("flux-kontext") ||
-        m.value === "gemini-25-flash-image" ||
-        m.value === "google/nano-banana-pro" ||
-        m.value === "google/nano-banana-2" ||
-        m.value === "seedream-v4" ||
-        m.value === "seedream-4.5" ||
-        m.value === "seedream-5-lite" ||
-        m.value === "flux-2-pro" ||
-        m.value === "qwen/qwen-image-2" ||
-        m.value === "qwen/qwen-image-2-pro" ||
-        m.value === "prunaai/p-image" ||
-        m.value === "qwen-image-edit-2512" ||
-        m.value === "openai/gpt-image-1.5" ||
-        m.value === "openai/gpt-image-2",
-    );
-  } else {
-    // Hide image-to-image only models when no image is uploaded or requested
-    filteredModels = modelsWithCredits.filter(
+  const filteredModels = useMemo(() => {
+    if (restrictForImages) {
+      return modelsWithCredits.filter(
+        (m) =>
+          m.value.startsWith("flux-kontext") ||
+          m.value === "gemini-25-flash-image" ||
+          m.value === "google/nano-banana-pro" ||
+          m.value === "google/nano-banana-2" ||
+          m.value === "seedream-v4" ||
+          m.value === "seedream-4.5" ||
+          m.value === "seedream-5-lite" ||
+          m.value === "flux-2-pro" ||
+          m.value === "qwen/qwen-image-2" ||
+          m.value === "qwen/qwen-image-2-pro" ||
+          m.value === "prunaai/p-image" ||
+          m.value === "qwen-image-edit-2512" ||
+          m.value === "openai/gpt-image-1.5" ||
+          m.value === "openai/gpt-image-2",
+      );
+    }
+    return modelsWithCredits.filter(
       (m) =>
         m.value !== "qwen-image-edit-2511" &&
         m.value !== "qwen-image-edit-2512",
     );
-  }
+  }, [modelsWithCredits, restrictForImages]);
 
   // Set default model to z-image-turbo on mount if not set (only if no images uploaded)
   useEffect(() => {
@@ -353,7 +333,7 @@ const ModelsDropdown = ({
   // If a previously saved/legacy model is no longer available (e.g. removed from dropdown),
   // switch to a valid fallback.
   useEffect(() => {
-    const accessibleModels = modelsWithCredits.filter((m) => !m.isLocked);
+    const accessibleModels = filteredModels.filter((m) => !m.isLocked);
     const selectedModelIsAccessible = accessibleModels.some(
       (m) => m.value === selectedModel,
     );
@@ -365,10 +345,10 @@ const ModelsDropdown = ({
       accessibleModels.find((m) => m.value === "gemini-25-flash-image")?.value ||
       accessibleModels[0]?.value;
 
-    if (fallbackModel) {
+    if (fallbackModel && fallbackModel !== selectedModel) {
       dispatch(setSelectedModel(fallbackModel));
     }
-  }, [selectedModel, modelsWithCredits, dispatch]);
+  }, [selectedModel, filteredModels, dispatch]);
 
   // If user switches to image-to-image (uploaded images) while an unsupported model is selected, auto-switch to nano banana
   useEffect(() => {
