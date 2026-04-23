@@ -3240,7 +3240,10 @@ const InputBox = () => {
         style,
         resolution,
         getCombinedUploadedImages(),
-        selectedModel === "openai/gpt-image-1.5" ? gptImage15Quality : undefined,
+        selectedModel === "openai/gpt-image-1.5" ||
+          selectedModel === "openai/gpt-image-2"
+          ? gptImage15Quality
+          : undefined,
       );
     } catch {
       return 0;
@@ -3500,7 +3503,10 @@ const InputBox = () => {
               ? qwenResolution
               : undefined,
     quality:
-      selectedModel === "openai/gpt-image-1.5" ? gptImage15Quality : undefined,
+      selectedModel === "openai/gpt-image-1.5" ||
+      selectedModel === "openai/gpt-image-2"
+        ? gptImage15Quality
+        : undefined,
   });
 
   // Function to clear input after successful generation
@@ -7704,10 +7710,13 @@ const InputBox = () => {
             generationId,
           };
 
-          // For GPT Image 1.5, add quality and output_format parameters
-          if (selectedModel === "openai/gpt-image-1.5") {
+          // For GPT Image models, add quality and output_format parameters
+          if (
+            selectedModel === "openai/gpt-image-1.5" ||
+            selectedModel === "openai/gpt-image-2"
+          ) {
             generationPayload.quality = gptImage15Quality;
-            // Map 'jpg' to 'jpeg' for API (GPT Image 1.5 uses 'jpeg' in schema)
+            // Map 'jpg' to 'jpeg' for API (GPT Image models use 'jpeg' in schema)
             generationPayload.output_format =
               gptImage15OutputFormat === "jpg"
                 ? "jpeg"
@@ -10559,10 +10568,16 @@ const InputBox = () => {
                     />
                   </div>
                 )}
-                {selectedModel === "openai/gpt-image-1.5" && (
+                {(selectedModel === "openai/gpt-image-1.5" ||
+                  selectedModel === "openai/gpt-image-2") && (
                   <>
                     <div className="flex items-center gap-2 relative">
                       <QualityDropdown
+                        model={
+                          selectedModel as
+                            | "openai/gpt-image-1.5"
+                            | "openai/gpt-image-2"
+                        }
                         quality={gptImage15Quality}
                         onQualityChange={(val) =>
                           setGptImage15Quality(
@@ -10778,10 +10793,16 @@ const InputBox = () => {
                       />
                     </div>
                   )}
-                  {selectedModel === "openai/gpt-image-1.5" && (
+                  {(selectedModel === "openai/gpt-image-1.5" ||
+                    selectedModel === "openai/gpt-image-2") && (
                     <>
                       <div className="flex items-center gap-2 relative">
                         <QualityDropdown
+                          model={
+                            selectedModel as
+                              | "openai/gpt-image-1.5"
+                              | "openai/gpt-image-2"
+                          }
                           quality={gptImage15Quality}
                           onQualityChange={(val) =>
                             setGptImage15Quality(

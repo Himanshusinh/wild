@@ -1644,6 +1644,424 @@ export const STYLES: StyleItem[] = [
     href: "/text-to-image",
     imageFilter: "brightness(0.85) saturate(0.95)",
   },
+  {
+    id: "banarasmural",
+    name: "Uttar Pradesh",
+    title: "BANARAS MURAL",
+    desc: "A sacred wall-painting tradition where devotional imagery is embedded into architectural surfaces.",
+    image: "/HomePage/creativeStyle/4th-images/banaras-mural.avif",
+    tag: "Painting",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "banarasibrocade",
+    name: "Uttar Pradesh",
+    title: "BANARASI BROCADE",
+    desc: "A woven silk tradition where intricate patterns emerge directly from the loom using zari threads.",
+    image: "/HomePage/creativeStyle/4th-images/banarasi-brocade.avif",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "banjaraembroidery",
+    name: "Telangana",
+    title: "BANJARA EMBROIDERY",
+    desc: "A vibrant textile tradition where mirrors, stitches, and patchwork come together to create bold geometric surfaces.",
+    image: "/HomePage/creativeStyle/4th-images/banjara-embroidery.avif",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "patachitra",
+    name: "West Bengal",
+    title: "PATA CHITRA",
+    desc: "A storytelling painting tradition where vivid scenes unfold through bold lines and expressive figures.",
+    image: "/HomePage/creativeStyle/4th-images/pata-chitra.avif",
+    tag: "Painting",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "bhotiaweaving",
+    name: "Uttarakhand",
+    title: "BHOTIA WEAVING",
+    desc: "A high-altitude wool weaving tradition designed for warmth, durability, and rugged mountain life.",
+    image: "/HomePage/creativeStyle/4th-images/bhotia-weaving.avif",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "cheriyal",
+    name: "Telangana",
+    title: "CHERIYAL",
+    desc: "A painted scroll tradition where stories unfold through bold figures on a striking red background.",
+    image: "/HomePage/creativeStyle/4th-images/cheriyal.avif",
+    tag: "Art",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "chikankari",
+    name: "Uttar Pradesh",
+    title: "CHIKANKARI",
+    desc: "A delicate hand embroidery tradition known for its fine stitches and graceful white-on-white elegance.",
+    image: "/HomePage/creativeStyle/4th-images/chikankari.avif",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "cholabronze",
+    name: "Tamil Nadu",
+    title: "CHOLA BRONZE",
+    desc: "A sacred casting tradition where divine forms are shaped through precise proportions and timeless bronze craftsmanship.",
+    image: "/HomePage/creativeStyle/4th-images/chola-bronze.avif",
+    tag: "Sculpture",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "cholaoldbronze",
+    name: "Tamil Nadu",
+    title: "CHOLA OLD BRONZE",
+    desc: "A sacred casting tradition where divine forms emerge through precise proportions and ritual bronze craftsmanship.",
+    image: "/HomePage/creativeStyle/4th-images/chola-old-bronze.avif",
+    tag: "Sculpture",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "farrukhabadprint",
+    name: "Uttar Pradesh",
+    title: "FARRUKHABAD PRINT",
+    desc: "A hand block-printing tradition where patterns emerge through rhythmic repetition and carved motifs.",
+    image: "/HomePage/creativeStyle/4th-images/farrukhabad-print.avif",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "odishafiligree",
+    name: "Cuttack",
+    title: "ODISHA FILIGREE",
+    desc: "A delicate silver craft where intricate forms are built through fine wire and openwork precision.",
+    image: "/HomePage/creativeStyle/4th-images/odisha-filigree.avif",
+    tag: "Craft",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "gadwalsaree",
+    name: "Telangana",
+    title: "GADWAL SAREE",
+    desc: "A handloom tradition where sarees are constructed through bold contrasts and intricate woven joins.",
+    image: "/HomePage/creativeStyle/4th-images/gadwal-saree.avif",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "gollabhamasaree",
+    name: "Telangana (Siddipet)",
+    title: "GOLLABHAMA SAREE",
+    desc: "A handloom tradition where iconic milkmaid motifs are woven into the fabric through extra-weft craftsmanship.",
+    image: "/HomePage/creativeStyle/4th-images/gollabhama-saree.avif",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "gotazari",
+    name: "Rajasthan",
+    title: "GOTA ZARI",
+    desc: "A ceremonial textile craft where metallic elements are cut, folded, and stitched onto fabric to create radiant patterns.",
+    image: "/HomePage/creativeStyle/4th-images/gota-zari.avif",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "kaavad",
+    name: "Rajasthan",
+    title: "KAAVAD",
+    desc: "A portable storytelling shrine where narratives unfold through painted wooden panels and sacred reveals.",
+    image: "/HomePage/creativeStyle/4th-images/kaavad.avif",
+    tag: "Art",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "kalighatpainting",
+    name: "West Bengal",
+    title: "KALIGHAT PAINTING",
+    desc: "A bold urban painting style defined by sweeping brush strokes, simplified figures, and striking visual clarity.",
+    image: "/HomePage/creativeStyle/4th-images/kalighat-painting.avif",
+    tag: "Painting",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "karuppurkalamkari",
+    name: "Tamil Nadu",
+    title: "KARUPPUR KALAMKARI",
+    desc: "A ceremonial painted textile tradition where sacred imagery is created through kalam-drawn lines and natural dye processes.",
+    image: "/HomePage/creativeStyle/4th-images/karuppur-kalamkari.avif",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "kolamgeometry",
+    name: "Tamil Nadu",
+    title: "KOLAM GEOMETRY",
+    desc: "A ritual ground art where continuous lines flow through geometric grids to create auspicious threshold patterns.",
+    image: "/HomePage/creativeStyle/4th-images/kolam-geometry.avif",
+    tag: "Art",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "lacbangles",
+    name: "Telangana",
+    title: "LAC BANGLES",
+    desc: "A vibrant ornament tradition where heated lac is shaped into bangles and adorned with rhythmic stone patterns.",
+    image: "/HomePage/creativeStyle/4th-images/lac-bangles.avif",
+    tag: "Ornament",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "maduraisungudi",
+    name: "Tamil Nadu",
+    title: "MADURAI SUNGUDI",
+    desc: "A resist-dyed cotton tradition where tiny tied dots create rhythmic patterns across vibrant fabric.",
+    image: "/HomePage/creativeStyle/4th-images/madurai-sungudi.avif",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "mahabalipuramsculpture",
+    name: "Tamil Nadu",
+    title: "MAHABALIPURAM SCULPTURE",
+    desc: "A monumental stone tradition where sacred narratives are carved directly into living granite through rock-cut mastery.",
+    image: "/HomePage/creativeStyle/4th-images/mahabalipuram-sculpture.avif",
+    tag: "Sculpture",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "narayanpetsaree",
+    name: "Telangana",
+    title: "NARAYANPET SAREE",
+    desc: "A handloom saree tradition defined by woven checks, strong borders, and a distinct structural pallu.",
+    image: "/HomePage/creativeStyle/4th-images/narayanpet-saree.avif",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "nirmalart",
+    name: "Telangana",
+    title: "NIRMAL ART",
+    desc: "A refined painted-wood tradition known for its smooth surfaces, elegant motifs, and signature gold detailing.",
+    image: "/HomePage/creativeStyle/4th-images/nirmal-art.avif",
+    tag: "Art",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "bamboocanecraft",
+    name: "North East",
+    title: "BAMBOO & CANE CRAFT",
+    desc: "A traditional weaving craft where bamboo and cane are shaped into functional forms and rhythmic structures.",
+    image: "/HomePage/creativeStyle/4th-images/bamboo--cane-craft.avif",
+    tag: "Craft",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "odishastonecarving",
+    name: "Odisha",
+    title: "ODISHA STONE CARVING",
+    desc: "An ancient stone-carving tradition where sacred forms and temple narratives are sculpted in relief and monumental scale.",
+    image: "/HomePage/creativeStyle/4th-images/odisha-stone-carving.avif",
+    tag: "Sculpture",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "pachra",
+    name: "Tripura",
+    title: "PACHRA",
+    desc: "A traditional handwoven textile from Tripura, defined by its specific cultural motifs and rhythmic weaving patterns.",
+    image: "/HomePage/creativeStyle/4th-images/pachra.avif",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "pembarthimetalcraft",
+    name: "Telangana",
+    title: "PEMBARTHI METAL CRAFT",
+    desc: "An ancient metalwork tradition where brass and copper surfaces are adorned with intricate deep-relief hand carvings.",
+    image: "/HomePage/creativeStyle/4th-images/pembarthi-metal-craft.avif",
+    tag: "Metalwork",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "pilkhuwablockprint",
+    name: "Uttar Pradesh",
+    title: "PILKHUWA BLOCK PRINT",
+    desc: "A traditional hand-block printing style from Uttar Pradesh, known for its distinct rhythmic patterns and floral compositions.",
+    image: "/HomePage/creativeStyle/4th-images/pilkhuwa-block-print.avif",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "rangwalipichhoda",
+    name: "Uttarakhand",
+    title: "RANGWALI PICHHODA",
+    desc: "A traditional ceremonial veil from Uttarakhand, characteristically adorned with auspicious symbols and vibrant dotted patterns.",
+    image: "/HomePage/creativeStyle/4th-images/rangwali-pichhoda.avif",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "rignai",
+    name: "Tripura",
+    title: "RIGNAI",
+    desc: "A traditional handwoven lower garment from Tripura, featuring complex geometric patterns and cultural symbolism.",
+    image: "/HomePage/creativeStyle/4th-images/rignai.avif",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "risa",
+    name: "Tripura",
+    title: "RISA",
+    desc: "A traditional handwoven upper cloth from Tripura, used as ceremonial headgear and a symbol of cultural honor.",
+    image: "/HomePage/creativeStyle/4th-images/risa.avif",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "sanjhi",
+    name: "Uttar Pradesh",
+    title: "SANJHI",
+    desc: "A sacred paper-cutting tradition from Mathura, where intricate stencils are used to create devotional art and threshold patterns.",
+    image: "/HomePage/creativeStyle/4th-images/sanjhi.avif",
+    tag: "Art",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "tamilritualcraft",
+    name: "Tamil Nadu",
+    title: "TAMIL RITUAL CRAFT",
+    desc: "A broad category of ceremonial crafts from Tamil Nadu, designed for sacred temple rituals and festive processions.",
+    image: "/HomePage/creativeStyle/4th-images/tamil-ritual-craft.avif",
+    tag: "Craft",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "tanjorepainting",
+    name: "Tamil Nadu",
+    title: "TANJORE PAINTING",
+    desc: "A classical painting style from Tamil Nadu, known for its rich colors, gold-leaf embellishments, and sacred iconography.",
+    image: "/HomePage/creativeStyle/4th-images/tanjore-painting.avif",
+    tag: "Painting",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "thanjavurdoll",
+    name: "Tamil Nadu",
+    title: "THANJAVUR DOLL",
+    desc: "A traditional bobblehead craft from Tamil Nadu, featuring handmade terracotta forms that move with a distinct rhythmic grace.",
+    image: "/HomePage/creativeStyle/4th-images/thanjavur-doll.avif",
+    tag: "Craft",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "therukoothu",
+    name: "Tamil Nadu",
+    title: "THERUKOOTHU",
+    desc: "An ancient folk theatre tradition from Tamil Nadu, where sacred epics are enacted through music, dance, and vibrant costume design.",
+    image: "/HomePage/creativeStyle/4th-images/therukoothu.avif",
+    tag: "Folk Theatre",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "todaembroidery",
+    name: "Tamil Nadu",
+    title: "TODA EMBROIDERY",
+    desc: "A unique reversible embroidery tradition from the Nilgiris, featuring precise geometric patterns in red and black wool.",
+    image: "/HomePage/creativeStyle/4th-images/toda-embroidery.avif",
+    tag: "Embroidery",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "zardozi",
+    name: "Uttar Pradesh",
+    title: "ZARDOZI",
+    desc: "An opulent metallic embroidery tradition where gold and silver threads are used to create intricate surface patterns on rich fabrics.",
+    image: "/HomePage/creativeStyle/4th-images/zardozi.avif",
+    tag: "Embroidery",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
 ];
 
 
@@ -1797,6 +2215,44 @@ type CreativeStyleProps = {
   onUstaArtOpen?: () => void;
   onPipiliAppliqueOpen?: () => void;
   onSauraOpen?: () => void;
+  onBanarasMuralOpen?: () => void;
+  onBanarasiBrocadeOpen?: () => void;
+  onBanjaraEmbroideryOpen?: () => void;
+  onPataChitraOpen?: () => void;
+  onBhotiaWeavingOpen?: () => void;
+  onCheriyalOpen?: () => void;
+  onChikankariOpen?: () => void;
+  onCholaBronzeOpen?: () => void;
+  onCholaOldBronzeOpen?: () => void;
+  onFarrukhabadPrintOpen?: () => void;
+  onOdishaFiligreeOpen?: () => void;
+  onGadwalSareeOpen?: () => void;
+  onGollabhamaSareeOpen?: () => void;
+  onGotaZariOpen?: () => void;
+  onKaavadOpen?: () => void;
+  onKalighatPaintingOpen?: () => void;
+  onKaruppurKalamkariOpen?: () => void;
+  onKolamGeometryOpen?: () => void;
+  onLacBanglesOpen?: () => void;
+  onMaduraiSungudiOpen?: () => void;
+  onMahabalipuramSculptureOpen?: () => void;
+  onNarayanpetSareeOpen?: () => void;
+  onNirmalArtOpen?: () => void;
+  onBambooCaneCraftOpen?: () => void;
+  onOdishaStoneCarvingOpen?: () => void;
+  onPachraOpen?: () => void;
+  onPembarthiMetalCraftOpen?: () => void;
+  onPilkhuwaBlockPrintOpen?: () => void;
+  onRangwaliPichhodaOpen?: () => void;
+  onRignaiOpen?: () => void;
+  onRisaOpen?: () => void;
+  onSanjhiOpen?: () => void;
+  onTamilRitualCraftOpen?: () => void;
+  onTanjorePaintingOpen?: () => void;
+  onThanjavurDollOpen?: () => void;
+  onTherukoothuOpen?: () => void;
+  onTodaEmbroideryOpen?: () => void;
+  onZardoziOpen?: () => void;
   onAllStylesOpen?: () => void;
 };
 
@@ -1949,6 +2405,44 @@ export default function CreativeStyle({
   onUstaArtOpen,
   onPipiliAppliqueOpen,
   onSauraOpen,
+  onBanarasMuralOpen,
+  onBanarasiBrocadeOpen,
+  onBanjaraEmbroideryOpen,
+  onPataChitraOpen,
+  onBhotiaWeavingOpen,
+  onCheriyalOpen,
+  onChikankariOpen,
+  onCholaBronzeOpen,
+  onCholaOldBronzeOpen,
+  onFarrukhabadPrintOpen,
+  onOdishaFiligreeOpen,
+  onGadwalSareeOpen,
+  onGollabhamaSareeOpen,
+  onGotaZariOpen,
+  onKaavadOpen,
+  onKalighatPaintingOpen,
+  onKaruppurKalamkariOpen,
+  onKolamGeometryOpen,
+  onLacBanglesOpen,
+  onMaduraiSungudiOpen,
+  onMahabalipuramSculptureOpen,
+  onNarayanpetSareeOpen,
+  onNirmalArtOpen,
+  onBambooCaneCraftOpen,
+  onOdishaStoneCarvingOpen,
+  onPachraOpen,
+  onPembarthiMetalCraftOpen,
+  onPilkhuwaBlockPrintOpen,
+  onRangwaliPichhodaOpen,
+  onRignaiOpen,
+  onRisaOpen,
+  onSanjhiOpen,
+  onTamilRitualCraftOpen,
+  onTanjorePaintingOpen,
+  onThanjavurDollOpen,
+  onTherukoothuOpen,
+  onTodaEmbroideryOpen,
+  onZardoziOpen,
   onAllStylesOpen,
 }: CreativeStyleProps) {
   const railRef = useRef<HTMLDivElement | null>(null);
@@ -2345,6 +2839,196 @@ export default function CreativeStyle({
     if (style.id === "saura" && onSauraOpen) {
       event.preventDefault();
       onSauraOpen();
+      return;
+    }
+    if (style.id === "banarasmural" && onBanarasMuralOpen) {
+      event.preventDefault();
+      onBanarasMuralOpen();
+      return;
+    }
+    if (style.id === "banarasibrocade" && onBanarasiBrocadeOpen) {
+      event.preventDefault();
+      onBanarasiBrocadeOpen();
+      return;
+    }
+    if (style.id === "banjaraembroidery" && onBanjaraEmbroideryOpen) {
+      event.preventDefault();
+      onBanjaraEmbroideryOpen();
+      return;
+    }
+    if (style.id === "patachitra" && onPataChitraOpen) {
+      event.preventDefault();
+      onPataChitraOpen();
+      return;
+    }
+    if (style.id === "bhotiaweaving" && onBhotiaWeavingOpen) {
+      event.preventDefault();
+      onBhotiaWeavingOpen();
+      return;
+    }
+    if (style.id === "cheriyal" && onCheriyalOpen) {
+      event.preventDefault();
+      onCheriyalOpen();
+      return;
+    }
+    if (style.id === "chikankari" && onChikankariOpen) {
+      event.preventDefault();
+      onChikankariOpen();
+      return;
+    }
+    if (style.id === "cholabronze" && onCholaBronzeOpen) {
+      event.preventDefault();
+      onCholaBronzeOpen();
+      return;
+    }
+    if (style.id === "cholaoldbronze" && onCholaOldBronzeOpen) {
+      event.preventDefault();
+      onCholaOldBronzeOpen();
+      return;
+    }
+    if (style.id === "farrukhabadprint" && onFarrukhabadPrintOpen) {
+      event.preventDefault();
+      onFarrukhabadPrintOpen();
+      return;
+    }
+    if (style.id === "odishafiligree" && onOdishaFiligreeOpen) {
+      event.preventDefault();
+      onOdishaFiligreeOpen();
+      return;
+    }
+    if (style.id === "gadwalsaree" && onGadwalSareeOpen) {
+      event.preventDefault();
+      onGadwalSareeOpen();
+      return;
+    }
+    if (style.id === "gollabhamasaree" && onGollabhamaSareeOpen) {
+      event.preventDefault();
+      onGollabhamaSareeOpen();
+      return;
+    }
+    if (style.id === "gotazari" && onGotaZariOpen) {
+      event.preventDefault();
+      onGotaZariOpen();
+      return;
+    }
+    if (style.id === "kaavad" && onKaavadOpen) {
+      event.preventDefault();
+      onKaavadOpen();
+      return;
+    }
+    if (style.id === "kalighatpainting" && onKalighatPaintingOpen) {
+      event.preventDefault();
+      onKalighatPaintingOpen();
+      return;
+    }
+    if (style.id === "karuppurkalamkari" && onKaruppurKalamkariOpen) {
+      event.preventDefault();
+      onKaruppurKalamkariOpen();
+      return;
+    }
+    if (style.id === "kolamgeometry" && onKolamGeometryOpen) {
+      event.preventDefault();
+      onKolamGeometryOpen();
+      return;
+    }
+    if (style.id === "lacbangles" && onLacBanglesOpen) {
+      event.preventDefault();
+      onLacBanglesOpen();
+      return;
+    }
+    if (style.id === "maduraisungudi" && onMaduraiSungudiOpen) {
+      event.preventDefault();
+      onMaduraiSungudiOpen();
+      return;
+    }
+    if (style.id === "mahabalipuramsculpture" && onMahabalipuramSculptureOpen) {
+      event.preventDefault();
+      onMahabalipuramSculptureOpen();
+      return;
+    }
+    if (style.id === "narayanpetsaree" && onNarayanpetSareeOpen) {
+      event.preventDefault();
+      onNarayanpetSareeOpen();
+      return;
+    }
+    if (style.id === "nirmalart" && onNirmalArtOpen) {
+      event.preventDefault();
+      onNirmalArtOpen();
+      return;
+    }
+    if (style.id === "bamboocanecraft" && onBambooCaneCraftOpen) {
+      event.preventDefault();
+      onBambooCaneCraftOpen();
+      return;
+    }
+    if (style.id === "odishastonecarving" && onOdishaStoneCarvingOpen) {
+      event.preventDefault();
+      onOdishaStoneCarvingOpen();
+      return;
+    }
+    if (style.id === "pachra" && onPachraOpen) {
+      event.preventDefault();
+      onPachraOpen();
+      return;
+    }
+    if (style.id === "pembarthimetalcraft" && onPembarthiMetalCraftOpen) {
+      event.preventDefault();
+      onPembarthiMetalCraftOpen();
+      return;
+    }
+    if (style.id === "pilkhuwablockprint" && onPilkhuwaBlockPrintOpen) {
+      event.preventDefault();
+      onPilkhuwaBlockPrintOpen();
+      return;
+    }
+    if (style.id === "rangwalipichhoda" && onRangwaliPichhodaOpen) {
+      event.preventDefault();
+      onRangwaliPichhodaOpen();
+      return;
+    }
+    if (style.id === "rignai" && onRignaiOpen) {
+      event.preventDefault();
+      onRignaiOpen();
+      return;
+    }
+    if (style.id === "risa" && onRisaOpen) {
+      event.preventDefault();
+      onRisaOpen();
+      return;
+    }
+    if (style.id === "sanjhi" && onSanjhiOpen) {
+      event.preventDefault();
+      onSanjhiOpen();
+      return;
+    }
+    if (style.id === "tamilritualcraft" && onTamilRitualCraftOpen) {
+      event.preventDefault();
+      onTamilRitualCraftOpen();
+      return;
+    }
+    if (style.id === "tanjorepainting" && onTanjorePaintingOpen) {
+      event.preventDefault();
+      onTanjorePaintingOpen();
+      return;
+    }
+    if (style.id === "thanjavurdoll" && onThanjavurDollOpen) {
+      event.preventDefault();
+      onThanjavurDollOpen();
+      return;
+    }
+    if (style.id === "therukoothu" && onTherukoothuOpen) {
+      event.preventDefault();
+      onTherukoothuOpen();
+      return;
+    }
+    if (style.id === "todaembroidery" && onTodaEmbroideryOpen) {
+      event.preventDefault();
+      onTodaEmbroideryOpen();
+      return;
+    }
+    if (style.id === "zardozi" && onZardoziOpen) {
+      event.preventDefault();
+      onZardoziOpen();
       return;
     }
     if (style.id === "ruralfibercraft" && onRuralFiberCraftOpen) {
@@ -2744,7 +3428,7 @@ export default function CreativeStyle({
           ref={railRef}
           className="scrollbar-hide flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 sm:gap-4 sm:px-6 lg:px-16 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
-          {STYLES.slice(0, 12).map((style, index) => (
+          {STYLES.slice(0, 14).map((style, index) => (
             <Link
               key={`${style.id}-${index}`}
               href={style.href}

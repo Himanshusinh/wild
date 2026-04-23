@@ -6,6 +6,7 @@ const IMAGE_MODEL_ALIASES: Record<string, string> = {
   "bytedance/seedream-5-lite": "seedream-5-lite",
   "recraft-v4": "recraft-ai/recraft-v4",
   "replicate/recraft-ai/recraft-v4": "recraft-ai/recraft-v4",
+  "gpt-image-2": "openai/gpt-image-2",
   "nano-banana-pro": "google/nano-banana-pro",
   "qwen/qwen-image-edit-2511": "qwen-image-edit-2511",
   "qwen/qwen-image-edit-2512": "qwen-image-edit-2512",

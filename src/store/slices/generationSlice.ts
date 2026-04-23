@@ -115,6 +115,12 @@ const getMaxOutputImageCountForModel = (model?: string): number => {
   ) {
     return 15;
   }
+  if (
+    normalizedModel === 'openai/gpt-image-2' ||
+    normalizedModel === 'gpt-image-2'
+  ) {
+    return 10;
+  }
   return 4;
 };
 
@@ -288,14 +294,17 @@ export const generateImages = createAsyncThunk(
         if (frameSize) body.aspect_ratio = frameSize;
       }
       // For GPT Image 1.5 (Replicate), use aspect_ratio from frameSize
-      if (model === 'openai/gpt-image-1.5' && frameSize) {
+      if (
+        (model === 'openai/gpt-image-1.5' || model === 'openai/gpt-image-2') &&
+        frameSize
+      ) {
         // GPT Image 1.5 schema only supports: 1:1 | 3:2 | 2:3
         // Coerce common wides (e.g. 16:9) to the closest supported landscape ratio (3:2).
         const coerced = coerceGptImage15AspectRatio(frameSize);
         if (coerced) body.aspect_ratio = coerced;
       }
-      // For GPT Image 1.5 (Replicate), schema uses `number_of_images`.
-      if (model === 'openai/gpt-image-1.5') {
+      // For GPT Image models (Replicate), schema uses `number_of_images`.
+      if (model === 'openai/gpt-image-1.5' || model === 'openai/gpt-image-2') {
         body.number_of_images = requestedCount;
       }
 
