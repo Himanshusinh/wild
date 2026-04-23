@@ -528,6 +528,7 @@ const InputBox = (props: InputBoxProps = {}) => {
   const [uploadedUrlByLocalUrl, setUploadedUrlByLocalUrl] = useState<
     Record<string, string>
   >({});
+  const trackedVideoUrlsRef = useRef<string[]>([]);
   // Backup of uploaded video specifically for Gen-4 Aleph (V2V)
   const [alephVideoBackup, setAlephVideoBackup] = usePersistedGenerationState(
     "alephVideoBackup",
@@ -562,6 +563,58 @@ const InputBox = (props: InputBoxProps = {}) => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [uploadedVideo]);
+
+  const clearTrackedVideoUrl = useCallback((url: string) => {
+    if (!url) return;
+    setLocalVideoFilesByUrl((prev) => {
+      if (!(url in prev)) return prev;
+      const next = { ...prev };
+      delete next[url];
+      return next;
+    });
+    setUploadedUrlByLocalUrl((prev) => {
+      if (!(url in prev)) return prev;
+      const next = { ...prev };
+      delete next[url];
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    const currentTracked = Array.from(
+      new Set(
+        [uploadedVideo, ...(Array.isArray(uploadedVideos) ? uploadedVideos : [])].filter(
+          (value): value is string => Boolean(value),
+        ),
+      ),
+    );
+    const previousTracked = trackedVideoUrlsRef.current;
+    const removedBlobUrls = previousTracked.filter(
+      (value) => value.startsWith("blob:") && !currentTracked.includes(value),
+    );
+
+    if (removedBlobUrls.length > 0) {
+      removedBlobUrls.forEach((value) => {
+        try {
+          URL.revokeObjectURL(value);
+        } catch {}
+        clearTrackedVideoUrl(value);
+      });
+    }
+
+    trackedVideoUrlsRef.current = currentTracked;
+  }, [uploadedVideo, uploadedVideos, clearTrackedVideoUrl]);
+
+  useEffect(() => {
+    return () => {
+      trackedVideoUrlsRef.current.forEach((value) => {
+        if (!value?.startsWith("blob:")) return;
+        try {
+          URL.revokeObjectURL(value);
+        } catch {}
+      });
+    };
+  }, []);
 
   const isLocalImageUrl = useCallback((value?: string | null): boolean => {
     const url = String(value || "").trim();
@@ -947,6 +1000,8 @@ const InputBox = (props: InputBoxProps = {}) => {
     setUploadedImages,
     setUploadedVideo,
     setLocalVideoFilesByUrl,
+    currentUploadedVideo: uploadedVideo,
+    clearTrackedVideoUrl,
   });
 
   // Credits management - after all state declarations

@@ -17,6 +17,7 @@ const AdGenerationInputBox: React.FC = () => {
   const dispatch = useAppDispatch();
   const [prompt, setPrompt] = useState('');
   const [productImage, setProductImage] = useState<File | null>(null);
+  const [productImagePreviewUrl, setProductImagePreviewUrl] = useState<string>('');
   const [script, setScript] = useState('');
   const [specialRequests, setSpecialRequests] = useState('');
   const [engine, setEngine] = useState<'veo3_fast' | 'veo3'>('veo3_fast');
@@ -53,6 +54,18 @@ const AdGenerationInputBox: React.FC = () => {
   const sortedDates = Object.keys(groupedByDate).sort((a, b) => 
     new Date(b).getTime() - new Date(a).getTime()
   );
+
+  useEffect(() => {
+    if (!productImage) {
+      setProductImagePreviewUrl('');
+      return;
+    }
+    const objectUrl = URL.createObjectURL(productImage);
+    setProductImagePreviewUrl(objectUrl);
+    return () => {
+      try { URL.revokeObjectURL(objectUrl); } catch {}
+    };
+  }, [productImage]);
 
   useEffect(() => {
     // Mark user scroll to prevent auto-triggering IO before user interacts
@@ -547,7 +560,7 @@ const AdGenerationInputBox: React.FC = () => {
              {productImage && (
                <div className="flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded-full">
                  <img
-                   src={URL.createObjectURL(productImage)}
+                   src={productImagePreviewUrl}
                    alt="Product"
                    className="w-6 h-6 object-cover rounded"
                  />

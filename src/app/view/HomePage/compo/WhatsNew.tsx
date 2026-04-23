@@ -141,6 +141,7 @@ export default function WhatsNew() {
   useEffect(() => {
     const el = railRef.current;
     if (!el) return;
+    let rafId: number | null = null;
 
     const updateArrows = () => {
       const firstCard = el.firstElementChild as HTMLElement | null;
@@ -160,15 +161,24 @@ export default function WhatsNew() {
       setShowRightArrow(hasHiddenContentOnRight);
     };
 
+    const scheduleUpdateArrows = () => {
+      if (rafId != null) return;
+      rafId = window.requestAnimationFrame(() => {
+        rafId = null;
+        updateArrows();
+      });
+    };
+
     el.scrollTo({ left: 0, behavior: "auto" });
     const frameId = window.requestAnimationFrame(updateArrows);
-    el.addEventListener("scroll", updateArrows, { passive: true });
-    window.addEventListener("resize", updateArrows);
+    el.addEventListener("scroll", scheduleUpdateArrows, { passive: true });
+    window.addEventListener("resize", scheduleUpdateArrows);
 
     return () => {
       window.cancelAnimationFrame(frameId);
-      el.removeEventListener("scroll", updateArrows);
-      window.removeEventListener("resize", updateArrows);
+      if (rafId != null) window.cancelAnimationFrame(rafId);
+      el.removeEventListener("scroll", scheduleUpdateArrows);
+      window.removeEventListener("resize", scheduleUpdateArrows);
     };
   }, [arrowThreshold]);
 

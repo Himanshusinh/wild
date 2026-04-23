@@ -9,7 +9,23 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "**",
+        hostname: "firebasestorage.googleapis.com",
+      },
+      {
+        protocol: "https",
+        hostname: "idr01.zata.ai",
+      },
+      {
+        protocol: "https",
+        hostname: "editor-image.wildmindai.com",
+      },
+      {
+        protocol: "https",
+        hostname: "wildmindai.com",
+      },
+      {
+        protocol: "https",
+        hostname: "www.wildmindai.com",
       },
       // MiniMax image domains
       {

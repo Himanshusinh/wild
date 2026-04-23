@@ -1153,23 +1153,25 @@ const HomePage: React.FC = () => {
 
     // Check for first-time user and show welcome modal
     useEffect(() => {
+        let timer: ReturnType<typeof setTimeout> | null = null;
         const checkFirstTimeUser = () => {
             // Check if user has seen the welcome modal before
             const hasSeenWelcome = localStorage.getItem('hasSeenWelcomeModal');
 
             if (!hasSeenWelcome) {
                 // Show welcome modal after a short delay
-                const timer = setTimeout(() => {
+                timer = setTimeout(() => {
                     setShowWelcomeModal(true);
                     // Mark as seen
                     localStorage.setItem('hasSeenWelcomeModal', 'true');
                 }, 2000); // 2 second delay
-
-                return () => clearTimeout(timer);
             }
         };
 
         checkFirstTimeUser();
+        return () => {
+            if (timer) clearTimeout(timer);
+        };
     }, []);
 
     // Show deferred toast from login (set in signup/signin flow)
