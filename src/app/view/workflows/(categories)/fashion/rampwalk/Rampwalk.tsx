@@ -233,6 +233,7 @@ export default function Rampwalk() {
                     beforeLabel="Before"
                     afterLabel="Result"
                     imageFit="object-cover"
+                    imagePosition="object-center"
                   />
                   <button
                     onClick={handleDownload}
@@ -260,11 +261,12 @@ export default function Rampwalk() {
               ) : (
                 <div className="relative w-full h-full flex items-center justify-center p-8">
                   <ImageComparisonSlider
-                    beforeImage="/workflow-samples/rampwalk-before.jpg"
-                    afterImage="/workflow-samples/rampwalk-after.jpg"
+                    beforeImage="/workflow-samples/rampwalk-final-before.jpg"
+                    afterImage="/workflow-samples/rampwalk-final-after.jpg"
                     beforeLabel="Before"
                     afterLabel="Result"
                     imageFit="object-cover"
+                    imagePosition="object-center"
                   />
                 </div>
               )}

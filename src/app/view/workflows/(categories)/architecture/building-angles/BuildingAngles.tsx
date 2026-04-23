@@ -216,7 +216,8 @@ export default function BuildingAngles() {
                     afterImage={generatedImage}
                     beforeLabel="Reference"
                     afterLabel="New Angle"
-                    imageFit="object-contain"
+                    imageFit="object-cover"
+                    imagePosition="object-center"
                   />
                   <button
                     onClick={handleDownload}
@@ -247,6 +248,7 @@ export default function BuildingAngles() {
                     beforeLabel="Before"
                     afterLabel="After"
                     imageFit="object-contain"
+                    imagePosition="object-center"
                   />
 
                 </div>

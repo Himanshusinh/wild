@@ -220,7 +220,7 @@ export default function ExpressionSheet() {
                     afterImage={generatedImage}
                     beforeLabel="Before"
                     afterLabel="After"
-                    imageFit="object-contain"
+                    imageFit="object-cover"
                     imagePosition="object-center"
                   />
                   <button

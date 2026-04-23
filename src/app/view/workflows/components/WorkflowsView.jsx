@@ -355,7 +355,7 @@ function WorkflowCard({ wf, router }) {
       className={`group relative flex flex-col p-[10px] pb-3 bg-[#161616] border border-white/5 rounded-[20px] transition-all duration-300 hover:bg-[#1A1A1A] hover:border-white/10 ${isComingSoon ? 'cursor-not-allowed opacity-80' : 'cursor-pointer shadow-lg hover:shadow-2xl'}`}
       whileHover={!isComingSoon ? { y: -5 } : {}}
     >
-      <div className="relative aspect-[16/10] sm:aspect-[4/3] rounded-[14px] overflow-hidden bg-white/5 border border-white/5 mb-3 shadow-inner">
+      <div className="relative aspect-[4/5] rounded-[14px] overflow-hidden bg-white/5 border border-white/5 mb-3 shadow-inner">
         {/* Thumbnail (Visible by default) */}
         <img
           src={wf.thumbnail}
@@ -410,11 +410,11 @@ function WorkflowCard({ wf, router }) {
           {wf.title}
         </h3>
         {wf.description ? (
-          <p className={`text-[12px] sm:text-[13px] mt-1 leading-[1.4] line-clamp-2 pr-10 ${isComingSoon ? 'text-white/20' : 'text-[#87878C]'}`}>
+          <p className={`text-[12px] sm:text-[13px] mt-1 leading-[1.4] line-clamp-1 pr-10 ${isComingSoon ? 'text-white/20' : 'text-[#87878C]'}`}>
             {wf.description}
           </p>
         ) : (
-          <p className={`text-[12px] sm:text-[13px] mt-1 leading-[1.4] line-clamp-2 pr-10 ${isComingSoon ? 'text-white/20' : 'text-[#87878C]'}`}>
+          <p className={`text-[12px] sm:text-[13px] mt-1 leading-[1.4] line-clamp-1 pr-10 ${isComingSoon ? 'text-white/20' : 'text-[#87878C]'}`}>
             {`Create beautiful ${wf.category.toLowerCase()} content with AI.`}
           </p>
         )}

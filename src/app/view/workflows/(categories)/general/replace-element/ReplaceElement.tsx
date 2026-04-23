@@ -264,8 +264,9 @@ export default function ReplaceElement() {
                                         afterImage={generatedImage}
                                         beforeLabel="Before"
                                         afterLabel="Result"
-                                        imageFit="object-contain" // Use object-contain to see full images properly
-                                    />
+                                        imageFit="object-cover" // Use object-contain to see full images properly
+                    imagePosition="object-center"
+                  />
                                     <button
                                         onClick={handleDownload}
                                         className="absolute bottom-10 right-10 z-30 flex items-center gap-2 px-5 py-2.5 bg-black/50 hover:bg-black/70 backdrop-blur-md border border-white/10 rounded-full text-white text-sm font-medium transition-all active:scale-95 group"
@@ -292,7 +293,8 @@ export default function ReplaceElement() {
                                         beforeLabel="Before"
                                         afterLabel="After"
                                         imageFit="object-cover"
-                                    />
+                    imagePosition="object-center"
+                  />
 
                                 </div>
                             )}

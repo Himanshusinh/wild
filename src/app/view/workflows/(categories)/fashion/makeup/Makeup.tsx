@@ -336,7 +336,8 @@ export default function Makeup() {
                     afterImage={generatedImage}
                     beforeLabel="Before"
                     afterLabel="Result"
-                    imageFit="object-contain"
+                    imageFit="object-cover"
+                    imagePosition="object-center"
                   />
                   <button
                     onClick={handleDownload}
@@ -364,11 +365,12 @@ export default function Makeup() {
               ) : (
                 <div className="relative w-full h-full flex items-center justify-center p-8">
                   <ImageComparisonSlider
-                    beforeImage="/workflow-samples/makeup-before.jpg"
-                    afterImage="/workflow-samples/makeup-after.jpg"
+                    beforeImage="/workflow-samples/makeup-final-before.jpg"
+                    afterImage="/workflow-samples/makeup-final-after.jpg"
                     beforeLabel="Before"
                     afterLabel="Result"
                     imageFit="object-cover"
+                    imagePosition="object-center"
                   />
                 </div>
               )}
