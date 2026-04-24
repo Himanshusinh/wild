@@ -8330,7 +8330,7 @@ const InputBox = () => {
         <div className="md:py-0  py-0 md:pl-0  ">
           {/* History Header - Fixed during scroll */}
           <div className="fixed top-0 left-0 right-0 z-50 bg-[#0E0E12]/80 backdrop-blur-xl border-b border-white/5 shadow-xl transition-all duration-300 md:py-0 md:pl-20">
-            <div className="mb-0 flex min-h-10 md:min-h-12 items-center justify-between pl-2 pr-2 md:h-auto md:pl-0">
+            <div className="mb-1 flex min-h-10 md:min-h-12 items-center justify-between pl-2 pr-2 md:h-auto md:pl-0">
               <div className="flex w-full min-w-0 items-center gap-1.5 md:mt-3 md:w-auto md:gap-2">
                 <button
                   onClick={() => dispatch(setSidebarExpanded(true))}

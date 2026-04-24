@@ -118,7 +118,7 @@ export const EditImageExpandControls: React.FC<
   return (
     <div className="flex flex-col gap-2 w-full">
       <div className="flex items-center justify-between">
-        <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-0 pt-1">
+        <p className="text-[12px] md:text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1 pt-2 md:pt-1">
           Expand Image
         </p>
       </div>
@@ -131,7 +131,7 @@ export const EditImageExpandControls: React.FC<
         >
           <button
             onClick={() => setIsPresetDropdownOpen((prev) => !prev)}
-            className="h-[38px] w-full px-4 rounded-xl text-[13px] font-medium border border-white/12 hover:bg-white/3 transition flex items-center justify-between bg-transparent text-white/90"
+          className="h-[42px] md:h-[38px] w-full px-4 rounded-xl text-[13px] font-medium border border-white/12 hover:bg-white/3 transition flex items-center justify-between bg-transparent text-white/90"
           >
             <span className="truncate">{selectedPresetLabel}</span>
             <ChevronUp
@@ -140,7 +140,7 @@ export const EditImageExpandControls: React.FC<
           </button>
 
           {isPresetDropdownOpen && (
-            <div className="absolute top-full mt-1 z-30 left-0 w-full bg-black backdrop-blur-xl rounded-xl ring-1 ring-white/15 py-1 max-h-64 overflow-y-auto dropdown-scrollbar">
+            <div className="absolute top-full mt-1 z-30 left-0 w-full bg-black backdrop-blur-xl rounded-xl ring-1 ring-white/15 py-1 max-h-35 overflow-y-auto dropdown-scrollbar">
               {Object.entries(availablePresets)
                 .filter(([key]) => key !== "custom")
                 .map(([key, config]) => {
@@ -205,7 +205,7 @@ export const EditImageExpandControls: React.FC<
             min={minWidth}
             max={5000}
             placeholder="W"
-            className={`h-[38px] w-[78px] px-3 rounded-xl border border-white/12 text-white text-[13px] focus:outline-none ${aspectPreset === "custom" ? "bg-white/3" : "bg-white/3 opacity-50 cursor-not-allowed"}`}
+            className={`h-[42px] md:h-[38px] w-[84px] md:w-[78px] px-3 rounded-xl border border-white/12 text-white text-[13px] focus:outline-none ${aspectPreset === "custom" ? "bg-white/3" : "bg-white/3 opacity-50 cursor-not-allowed"}`}
           />
 
           {/* Height Input */}
@@ -228,7 +228,7 @@ export const EditImageExpandControls: React.FC<
             min={minHeight}
             max={5000}
             placeholder="H"
-            className={`h-[38px] w-[78px] px-3 rounded-xl border border-white/12 text-white text-[13px] focus:outline-none ${aspectPreset === "custom" ? "bg-white/3" : "bg-white/3 opacity-50 cursor-not-allowed"}`}
+            className={`h-[42px] md:h-[38px] w-[84px] md:w-[78px] px-3 rounded-xl border border-white/12 text-white text-[13px] focus:outline-none ${aspectPreset === "custom" ? "bg-white/3" : "bg-white/3 opacity-50 cursor-not-allowed"}`}
           />
         </div>
 
@@ -239,7 +239,7 @@ export const EditImageExpandControls: React.FC<
               onAspectPresetChange("custom");
               setShowCustomInput(!showCustomInput);
             }}
-            className={`h-[38px] px-4 rounded-xl border border-white/12 text-[13px] font-medium transition-colors ${aspectPreset === "custom" ? "bg-[#2F6BFF] text-white" : "bg-white/3 text-white/80 hover:bg-white/10"}`}
+            className={`h-[42px] md:h-[38px] px-4 rounded-xl border border-white/12 text-[13px] font-medium transition-colors ${aspectPreset === "custom" ? "bg-[#2F6BFF] text-white shadow-[0_4px_16px_rgba(47,107,255,0.28)]" : "bg-white/3 text-white/80 hover:bg-white/10"}`}
           >
             Custom
           </button>
