@@ -180,13 +180,35 @@ function Typewriter({ text }: { text: string }) {
 function ImageDragSimulation() {
     const [dragState, setDragState] = useState(0);
     useEffect(() => {
+        let cancelled = false;
+        const timers = new Set<ReturnType<typeof setTimeout>>();
+        const wait = (ms: number) =>
+            new Promise<void>((resolve) => {
+                const timer = setTimeout(() => {
+                    timers.delete(timer);
+                    resolve();
+                }, ms);
+                timers.add(timer);
+            });
         const sequence = async () => {
-            await new Promise(r => setTimeout(r, 2000));
-            setDragState(1); await new Promise(r => setTimeout(r, 1500));
-            setDragState(2); await new Promise(r => setTimeout(r, 4000));
-            setDragState(0); sequence();
+            while (!cancelled) {
+                await wait(2000);
+                if (cancelled) break;
+                setDragState(1);
+                await wait(1500);
+                if (cancelled) break;
+                setDragState(2);
+                await wait(4000);
+                if (cancelled) break;
+                setDragState(0);
+            }
         };
         sequence();
+        return () => {
+            cancelled = true;
+            timers.forEach((timer) => clearTimeout(timer));
+            timers.clear();
+        };
     }, []);
 
     return (
@@ -222,24 +244,39 @@ function Step2_ConfigPanel() {
     const [ratio, setRatio] = useState('Square');
 
     useEffect(() => {
+        let cancelled = false;
+        const timers = new Set<ReturnType<typeof setTimeout>>();
+        const wait = (ms: number) =>
+            new Promise<void>((resolve) => {
+                const timer = setTimeout(() => {
+                    timers.delete(timer);
+                    resolve();
+                }, ms);
+                timers.add(timer);
+            });
         const sequence = async () => {
-            const wait = (ms: number) => new Promise(res => setTimeout(res, ms));
-            setStep(0); setModel('Flux 1.1 Pro'); setCount(1); setRatio('Square'); await wait(1000);
-
-            // 1. Model
-            setStep(1); await wait(600); setStep(2); await wait(600); setStep(3); await wait(600);
-            setModel('Nano Banana Pro'); setStep(4); await wait(400);
-
-            // 2. Count
-            setStep(5); await wait(600); setStep(6); setCount(2); await wait(200); setStep(7); await wait(400);
-
-            // 3. Ratio
-            setStep(8); await wait(600); setStep(9); await wait(600); setStep(10); await wait(600);
-            setRatio('Portrait 3:4'); setStep(11); await wait(4000);
-
-            sequence();
+            while (!cancelled) {
+                setStep(0); setModel('Flux 1.1 Pro'); setCount(1); setRatio('Square'); await wait(1000);
+                if (cancelled) break;
+                setStep(1); await wait(600); if (cancelled) break;
+                setStep(2); await wait(600); if (cancelled) break;
+                setStep(3); await wait(600); if (cancelled) break;
+                setModel('Nano Banana Pro'); setStep(4); await wait(400); if (cancelled) break;
+                setStep(5); await wait(600); if (cancelled) break;
+                setStep(6); setCount(2); await wait(200); if (cancelled) break;
+                setStep(7); await wait(400); if (cancelled) break;
+                setStep(8); await wait(600); if (cancelled) break;
+                setStep(9); await wait(600); if (cancelled) break;
+                setStep(10); await wait(600); if (cancelled) break;
+                setRatio('Portrait 3:4'); setStep(11); await wait(4000);
+            }
         };
         sequence();
+        return () => {
+            cancelled = true;
+            timers.forEach((timer) => clearTimeout(timer));
+            timers.clear();
+        };
     }, []);
 
     const getCursorStyle = (s: number) => {
@@ -316,16 +353,31 @@ function Step3_GenerateProcess() {
     const [genState, setGenState] = useState(0);
 
     useEffect(() => {
+        let cancelled = false;
+        const timers = new Set<ReturnType<typeof setTimeout>>();
+        const wait = (ms: number) =>
+            new Promise<void>((resolve) => {
+                const timer = setTimeout(() => {
+                    timers.delete(timer);
+                    resolve();
+                }, ms);
+                timers.add(timer);
+            });
         const sequence = async () => {
-            const wait = (ms: number) => new Promise(r => setTimeout(r, ms));
-            setGenState(0); await wait(1000);
-            setGenState(1); await wait(800);
-            setGenState(2); await wait(200);
-            setGenState(3); await wait(2000);
-            setGenState(4); await wait(4000);
-            sequence();
+            while (!cancelled) {
+                setGenState(0); await wait(1000); if (cancelled) break;
+                setGenState(1); await wait(800); if (cancelled) break;
+                setGenState(2); await wait(200); if (cancelled) break;
+                setGenState(3); await wait(2000); if (cancelled) break;
+                setGenState(4); await wait(4000);
+            }
         };
         sequence();
+        return () => {
+            cancelled = true;
+            timers.forEach((timer) => clearTimeout(timer));
+            timers.clear();
+        };
     }, []);
 
     return (

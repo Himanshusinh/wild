@@ -59,6 +59,7 @@ const VideoEditor: React.FC<VideoEditorProps> = () => {
 
     // Uploads
     const [uploads, setUploads] = useState<Array<{ id: string, type: 'image' | 'video' | 'audio', src: string, name: string, thumbnail?: string, duration?: string }>>([]);
+    const uploadBlobUrlsRef = useRef<string[]>([]);
 
     // Transition Editing State
     const [transitionEditTarget, setTransitionEditTarget] = useState<{ trackId: string, itemId: string } | null>(null);
@@ -265,10 +266,16 @@ const VideoEditor: React.FC<VideoEditorProps> = () => {
     const getAudioDuration = (file: File): Promise<number> => {
         return new Promise((resolve) => {
             const audio = document.createElement('audio');
+            const objectUrl = URL.createObjectURL(file);
             audio.onloadedmetadata = () => {
+                try { URL.revokeObjectURL(objectUrl); } catch {}
                 resolve(audio.duration);
             };
-            audio.src = URL.createObjectURL(file);
+            audio.onerror = () => {
+                try { URL.revokeObjectURL(objectUrl); } catch {}
+                resolve(0);
+            };
+            audio.src = objectUrl;
         });
     };
 
@@ -278,6 +285,7 @@ const VideoEditor: React.FC<VideoEditorProps> = () => {
         return new Promise((resolve) => {
             const video = document.createElement('video');
             video.preload = 'metadata';
+            const objectUrl = URL.createObjectURL(file);
             video.onloadedmetadata = () => {
                 video.currentTime = 1; // Seek to 1s
             };
@@ -287,11 +295,36 @@ const VideoEditor: React.FC<VideoEditorProps> = () => {
                 canvas.height = video.videoHeight;
                 const ctx = canvas.getContext('2d');
                 ctx?.drawImage(video, 0, 0, canvas.width, canvas.height);
+                try { URL.revokeObjectURL(objectUrl); } catch {}
                 resolve({ thumbnail: canvas.toDataURL('image/jpeg'), duration: video.duration });
             };
-            video.src = URL.createObjectURL(file);
+            video.onerror = () => {
+                try { URL.revokeObjectURL(objectUrl); } catch {}
+                resolve({ thumbnail: '', duration: 0 });
+            };
+            video.src = objectUrl;
         });
     };
+
+    useEffect(() => {
+        const currentBlobUrls = uploads
+            .map((upload) => upload.src)
+            .filter((src) => src.startsWith('blob:'));
+        const previousBlobUrls = uploadBlobUrlsRef.current;
+        const removedBlobUrls = previousBlobUrls.filter((src) => !currentBlobUrls.includes(src));
+        removedBlobUrls.forEach((src) => {
+            try { URL.revokeObjectURL(src); } catch {}
+        });
+        uploadBlobUrlsRef.current = currentBlobUrls;
+    }, [uploads]);
+
+    useEffect(() => {
+        return () => {
+            uploadBlobUrlsRef.current.forEach((src) => {
+                try { URL.revokeObjectURL(src); } catch {}
+            });
+        };
+    }, []);
 
     const handleUpload = () => {
         const input = document.createElement('input');

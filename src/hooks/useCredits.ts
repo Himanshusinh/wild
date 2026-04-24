@@ -125,6 +125,15 @@ export const useCredits = () => {
       return { requiredCredits: 0, validation: null as any };
     }
 
+    // Special case for z-image-turbo: allow free plan users to generate even with 0 credits
+    const isFreeTurboModel = model === 'new-turbo-model' || model === 'z-image-turbo';
+    const isFreePlan = credits?.planCode === 'free';
+    
+    if (isFreeTurboModel && isFreePlan && creditBalance === 0) {
+      console.log('[useCredits] Allowing free-tier z-image-turbo generation with 0 credits');
+      return { requiredCredits: 0, validation: { hasEnoughCredits: true, requiredCredits: 0, currentBalance: 0 } as any };
+    }
+
     if (requiredCredits === 0) {
       throw new Error(`Unknown model: ${model}`);
     }
@@ -139,7 +148,7 @@ export const useCredits = () => {
     }
 
     return { requiredCredits, validation: result.payload };
-  }, [dispatch, creditBalance]);
+  }, [dispatch, creditBalance, credits?.planCode]);
 
   const validateMusicCredits = useCallback(async (
     model: string,

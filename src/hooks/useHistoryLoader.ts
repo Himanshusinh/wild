@@ -27,6 +27,37 @@ interface UseHistoryLoaderOptions {
 const inFlightTypeLocks: Record<string, boolean> = {};
 const lastLoadTimestamps: Record<string, number> = {};
 
+const normalizeTypeToken = (t: string): string =>
+  String(t || '').replace(/[_-]/g, '-').toLowerCase();
+
+const normalizeFilterValue = (value: any): any => {
+  if (Array.isArray(value)) {
+    return [...value].map((v) => normalizeTypeToken(String(v))).sort();
+  }
+  if (typeof value === 'string') {
+    return normalizeTypeToken(value);
+  }
+  return value ?? undefined;
+};
+
+const areHistoryFiltersEquivalent = (a: any, b: any): boolean => {
+  const keys = Array.from(new Set([...Object.keys(a || {}), ...Object.keys(b || {})]));
+  for (const key of keys) {
+    const av = normalizeFilterValue((a || {})[key]);
+    const bv = normalizeFilterValue((b || {})[key]);
+    if (Array.isArray(av) || Array.isArray(bv)) {
+      if (!Array.isArray(av) || !Array.isArray(bv)) return false;
+      if (av.length !== bv.length) return false;
+      for (let i = 0; i < av.length; i += 1) {
+        if (av[i] !== bv[i]) return false;
+      }
+      continue;
+    }
+    if (av !== bv) return false;
+  }
+  return true;
+};
+
 export const useHistoryLoader = ({
   generationType,
   generationTypes,
@@ -51,10 +82,11 @@ export const useHistoryLoader = ({
   const mountedRef = useRef(false);
   const lastGenerationTypeRef = useRef<string>(generationType);
   const lastUIGenerationTypeRef = useRef<string>(currentUIGenerationType);
+  const forceInitialConsumedRef = useRef<Record<string, boolean>>({});
 
   // Guarded initial load - reload when generationType changes or when switching features
   useEffect(() => {
-    const norm = (t: string) => t.replace(/[_-]/g, '-').toLowerCase();
+    const norm = normalizeTypeToken;
     const entryMatchesMode = (e: any, wantedMode?: string): boolean => {
       if (!wantedMode) return true;
       const m = norm(String(wantedMode));
@@ -206,7 +238,15 @@ export const useHistoryLoader = ({
     const mustLoad = !hasTypeEntries || mustReloadDueToFilters;
 
     // If generation type changed, UI switched to this feature, filters don't match, or no entries exist, force reload
-    const shouldSkipInitial = !forceInitial && !generationTypeChanged && !switchedToThisFeature && !mustLoad && hasTypeEntries && filtersMatch && modeMatches;
+    const forceInitialKey = [
+      generationType,
+      (generationTypes || []).join('|'),
+      mode || '',
+      sortOrder || '',
+      skipBackendGenerationFilter ? 'skip' : 'strict',
+    ].join('::');
+    const shouldForceInitialOnce = forceInitial && !forceInitialConsumedRef.current[forceInitialKey];
+    const shouldSkipInitial = !shouldForceInitialOnce && !generationTypeChanged && !switchedToThisFeature && !mustLoad && hasTypeEntries && filtersMatch && modeMatches;
     console.log('[useHistoryLoader] Initial load conditions:', {
       hasTypeEntries,
       filtersMatch,
@@ -217,6 +257,7 @@ export const useHistoryLoader = ({
       currentFilterMode,
       expectedMode: mode,
       forceInitial,
+      shouldForceInitialOnce,
       modeMatches,
       generationTypeChanged,
       switchedToThisFeature,
@@ -234,7 +275,9 @@ export const useHistoryLoader = ({
     if (shouldSkipInitial) {
       console.log('[useHistoryLoader] ⚠️ Already loaded, skipping initial load');
       // Still set filters to ensure UI state is correct, but skip API call
-      dispatch(setFilters(genFilter as any));
+      if (!areHistoryFiltersEquivalent(currentFilters, genFilter)) {
+        dispatch(setFilters(genFilter as any));
+      }
       return; // already loaded - cached data will show immediately
     }
 
@@ -257,7 +300,9 @@ export const useHistoryLoader = ({
       skipBackendGenerationFilter,
     });
 
-    dispatch(setFilters(genFilter as any));
+    if (!areHistoryFiltersEquivalent(currentFilters, genFilter)) {
+      dispatch(setFilters(genFilter as any));
+    }
     const dispatchPromise = (dispatch as any)(loadHistory({
       filters: genFilter,
       backendFilters,
@@ -271,11 +316,14 @@ export const useHistoryLoader = ({
 
     console.log('[useHistoryLoader] Initial load dispatch promise created');
 
-    dispatchPromise.finally(() => {
-      console.log('[useHistoryLoader] Initial load dispatch completed, releasing lock');
-      inFlightTypeLocks[generationType] = false;
+    dispatchPromise.then(() => {
+      if (shouldForceInitialOnce) {
+        forceInitialConsumedRef.current[forceInitialKey] = true;
+      }
     }).catch((err: any) => {
       console.error('[useHistoryLoader] ❌ Initial load dispatch error:', err);
+    }).finally(() => {
+      console.log('[useHistoryLoader] Initial load dispatch completed, releasing lock');
       inFlightTypeLocks[generationType] = false;
     });
   }, [generationType, generationTypes, currentUIGenerationType, dispatch, initialLimit, mode, skipBackendGenerationFilter, forceInitial, entries, loading, currentFilters, entries.length, sortOrder, user]);
@@ -349,7 +397,9 @@ export const useHistoryLoader = ({
     const backendFilters: any = skipBackendGenerationFilter ? { ...genFilter } : genFilter;
 
     // Update filters first to ensure fresh state
-    dispatch(setFilters(genFilter as any));
+    if (!areHistoryFiltersEquivalent(currentFilters, genFilter)) {
+      dispatch(setFilters(genFilter as any));
+    }
 
     console.log('[useHistoryLoader] Dispatching loadHistory with FORCE REFRESH:', {
       filters: genFilter,
@@ -381,7 +431,7 @@ export const useHistoryLoader = ({
       console.error('[useHistoryLoader] ❌ loadHistory dispatch error:', err);
       inFlightTypeLocks[generationType] = false;
     });
-  }, [generationType, generationTypes, dispatch, loading, initialLimit, mode, skipBackendGenerationFilter, sortOrder]);
+  }, [generationType, generationTypes, dispatch, loading, initialLimit, mode, skipBackendGenerationFilter, sortOrder, currentFilters]);
 
   return {
     refresh,

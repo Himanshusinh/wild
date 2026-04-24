@@ -18,9 +18,9 @@ import { Toaster } from "react-hot-toast";
 import { Toaster as SonnerToaster } from "sonner";
 import ToastMount from "./toast-mount";
 import ConsoleSilencer from "@/components/ConsoleSilencer";
-import ChromeMount from "./chrome-mount";
 import DownloadStatusIndicator from "@/components/DownloadStatusIndicator";
 import ModalsContainer from "@/components/modals/ModalsContainer";
+import ChromeMountClient from "./ChromeMountClient";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -261,7 +261,7 @@ export default function RootLayout({
           <SubscriptionBootstrap />
           <ConsoleSilencer />
           {/* App chrome (Nav + SidePanel) mounted conditionally; hidden on landing page */}
-          <ChromeMount />
+          <ChromeMountClient />
           {children}
           <Toaster
             position="top-center"

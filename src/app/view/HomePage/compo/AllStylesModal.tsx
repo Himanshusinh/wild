@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Image from "next/image";
 import { X } from "lucide-react";
 import { STYLES } from "./CreativeStyle";
 
@@ -11,6 +12,21 @@ interface AllStylesModalProps {
 }
 
 export default function AllStylesModal({ isOpen, onClose, onStyleSelect }: AllStylesModalProps) {
+  const [visibleCount, setVisibleCount] = React.useState(40);
+  const listRef = React.useRef<HTMLDivElement | null>(null);
+
+  React.useEffect(() => {
+    if (isOpen) setVisibleCount(40);
+  }, [isOpen]);
+
+  const handleGridScroll = React.useCallback(() => {
+    const el = listRef.current;
+    if (!el) return;
+    const nearBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 320;
+    if (!nearBottom) return;
+    setVisibleCount((prev) => Math.min(STYLES.length, prev + 40));
+  }, []);
+
   if (!isOpen) return null;
 
   return (
@@ -36,20 +52,27 @@ export default function AllStylesModal({ isOpen, onClose, onStyleSelect }: AllSt
         </div>
 
         {/* Grid Content */}
-        <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-white/[0.06] [&::-webkit-scrollbar]:w-1.5">
+        <div
+          ref={listRef}
+          onScroll={handleGridScroll}
+          className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-white/[0.06] [&::-webkit-scrollbar]:w-1.5"
+        >
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
-            {STYLES.map((style) => (
+            {STYLES.slice(0, visibleCount).map((style) => (
               <button
                 key={style.id}
                 onClick={() => onStyleSelect(style.id)}
                 className="group flex flex-col text-left transition-all hover:-translate-y-1"
               >
                 <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl border border-white/10 bg-[#18181f] transition-colors group-hover:border-white/20">
-                  <img
+                  <Image
                     src={style.image}
                     alt={style.title}
+                    fill
+                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 20vw"
+                    loading="lazy"
                     className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-                    style={{ filter: style.imageFilter }}
+                    style={{ filter: style.imageFilter as React.CSSProperties["filter"] }}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-80" />
                   
