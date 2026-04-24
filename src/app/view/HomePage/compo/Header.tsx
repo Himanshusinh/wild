@@ -8,7 +8,6 @@ const Header = () => {
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [videoStartTime, setVideoStartTime] = useState<number>(Date.now());
   const [isVideoLoading, setIsVideoLoading] = useState(true);
-  const [preloadedVideos, setPreloadedVideos] = useState<Set<number>>(new Set());
   const videoRef = useRef<HTMLVideoElement>(null);
   const transitionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isTransitioningRef = useRef(false);
@@ -35,34 +34,35 @@ const Header = () => {
     }
   ], []); // Empty deps - video data is static
 
-  // Preload all videos immediately for better performance (optimized)
+  // Preload current + next video only to limit decode/memory pressure
   useEffect(() => {
-    const preloadAllVideos = () => {
-      videoData.forEach((videoItem, index) => {
-        if (!preloadedVideos.has(index) && videoItem.videoSrc) {
-          const video = document.createElement('video');
-          video.src = videoItem.videoSrc;
-          video.preload = 'auto';
-          video.muted = true;
-          video.load();
+    const preloadTargets = [
+      currentVideoIndex,
+      (currentVideoIndex + 1) % videoData.length,
+    ];
+    const preloadNodes: HTMLVideoElement[] = [];
 
-          const handleCanPlayThrough = () => {
-            setPreloadedVideos(prev => {
-              const next = new Set(prev);
-              next.add(index);
-              return next;
-            });
-            video.removeEventListener('canplaythrough', handleCanPlayThrough);
-          };
+    preloadTargets.forEach((index) => {
+      const src = videoData[index]?.videoSrc;
+      if (!src) return;
+      const preloadVideo = document.createElement('video');
+      preloadVideo.src = src;
+      preloadVideo.preload = 'metadata';
+      preloadVideo.muted = true;
+      preloadVideo.load();
+      preloadNodes.push(preloadVideo);
+    });
 
-          video.addEventListener('canplaythrough', handleCanPlayThrough);
-        }
+    return () => {
+      preloadNodes.forEach((node) => {
+        try {
+          node.pause();
+          node.removeAttribute('src');
+          node.load();
+        } catch {}
       });
     };
-
-    preloadAllVideos();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only run once on mount
+  }, [currentVideoIndex, videoData]);
 
   // Safe transition function to prevent race conditions (memoized)
   const safeTransition = useCallback((fromIndex: number, toIndex: number, source: string) => {
@@ -146,7 +146,7 @@ const Header = () => {
   return (
     <div className="w-full relative">
       {/* Video wrapper with right padding */}
-      <div className="px-4 md:pr-0 md:pl-0 md:mt-0 md:ml-0 md:mt-10">
+      <div className="px-4 md:pr-0 md:pl-0 md:ml-0 md:mt-10">
         <div className="relative overflow-hidden md:px-4 w-full rounded-2xl md:rounded-3xl md:mt-0 mt-10 min-h-[20vh] md:min-h-[50vh] max-h-[80vh]" style={{ aspectRatio: '16/9' }}>
           {currentVideo.videoSrc && (
             <video

@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 export default function NoCreditsModal() {
   const dispatch = useAppDispatch();
   const router = useRouter();
+  const creditsMessage = useAppSelector((state) => state.ui.creditsMessage);
   const isOpen = useAppSelector((state) => state.ui.modals?.noCredits);
 
   if (!isOpen) return null;
@@ -35,10 +36,12 @@ export default function NoCreditsModal() {
             <Zap className="h-8 w-8 text-yellow-500" />
           </div>
           
-          <h2 className="mb-2 text-xl font-bold text-white">Out of Credits</h2>
+          <h2 className="mb-2 text-xl font-bold text-white">
+            {creditsMessage ? "Limit Reached" : "Out of Credits"}
+          </h2>
           
           <p className="mb-6 text-sm text-gray-400">
-            You don't have enough credits to perform this action. Upgrade your plan to get more credits and continue creating!
+            {creditsMessage || "You don't have enough credits to perform this action. Upgrade your plan to get more credits and continue creating!"}
           </p>
           
           <div className="flex flex-col gap-3">

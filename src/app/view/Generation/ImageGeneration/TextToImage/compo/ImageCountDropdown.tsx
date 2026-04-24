@@ -3,6 +3,8 @@ import React from "react";
 import { Minus, Plus } from "lucide-react";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import { setImageCount } from "@/store/slices/generationSlice";
+import { useCredits } from "@/hooks/useCredits";
+import { getImageGenerationCreditCost } from "@/utils/creditValidation";
 
 const ImageCountDropdown = () => {
   const dispatch = useAppDispatch();
@@ -24,6 +26,12 @@ const ImageCountDropdown = () => {
           ? 10
         : 4;
 
+  const { creditBalance, credits, planCode } = useCredits();
+  const costPerImage = getImageGenerationCreditCost(selectedModel, 1);
+  const isFreeTurboModel = normalizedModel === 'new-turbo-model' || normalizedModel === 'z-image-turbo';
+  const isFreePlan = planCode === 'free';
+  const isFreeAllowed = isFreeTurboModel && isFreePlan;
+
   const handleDecrease = () => {
     if (imageCount > 1) {
       dispatch(setImageCount(imageCount - 1));
@@ -32,6 +40,13 @@ const ImageCountDropdown = () => {
 
   const handleIncrease = () => {
     if (imageCount < maxCount) {
+      // If not the free-tier exception, check if user has enough credits for one more image
+      if (!isFreeAllowed) {
+        const nextTotalCost = costPerImage * (imageCount + 1);
+        if (nextTotalCost > creditBalance) {
+          return;
+        }
+      }
       dispatch(setImageCount(imageCount + 1));
     }
   };
@@ -56,10 +71,10 @@ const ImageCountDropdown = () => {
 
       <button
         onClick={handleIncrease}
-        disabled={imageCount >= maxCount}
+        disabled={imageCount >= maxCount || (!isFreeAllowed && (imageCount + 1) * costPerImage > creditBalance)}
         className={`w-4 h-4 rounded-full flex items-center justify-center transition md:mr-2 mr-0 ${
-          imageCount >= maxCount
-            ? " text-white cursor-not-allowed"
+          (imageCount >= maxCount || (!isFreeAllowed && (imageCount + 1) * costPerImage > creditBalance))
+            ? " text-white/30 cursor-not-allowed"
             : " text-white hover:bg-white/20"
         }`}
       >
