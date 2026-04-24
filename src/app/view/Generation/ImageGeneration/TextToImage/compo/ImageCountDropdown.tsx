@@ -26,10 +26,10 @@ const ImageCountDropdown = () => {
           ? 10
         : 4;
 
-  const { creditBalance, credits } = useCredits();
+  const { creditBalance, credits, planCode } = useCredits();
   const costPerImage = getImageGenerationCreditCost(selectedModel, 1);
   const isFreeTurboModel = normalizedModel === 'new-turbo-model' || normalizedModel === 'z-image-turbo';
-  const isFreePlan = credits?.planCode === 'free';
+  const isFreePlan = planCode === 'free';
   const isFreeAllowed = isFreeTurboModel && isFreePlan;
 
   const handleDecrease = () => {
