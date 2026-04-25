@@ -113,6 +113,7 @@ export default function AllStylesModal({ isOpen, onClose, onStyleSelect }: AllSt
                     src={style.image}
                     alt={style.title}
                     fill
+                    unoptimized
                     sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 20vw"
                     loading="lazy"
                     className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
