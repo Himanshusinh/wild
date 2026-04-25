@@ -81,6 +81,10 @@ import {
 import useHistoryLoader from "@/hooks/useHistoryLoader";
 import axiosInstance, { getApiClient } from "@/lib/axiosInstance";
 import {
+  incrementFreeTurboUsedOptimistic,
+  decrementFreeTurboUsedOptimistic,
+} from "@/store/slices/creditsSlice";
+import {
   saveAutoResumeIntent,
   getAutoResumeIntent,
   clearAutoResumeIntent,
@@ -3248,7 +3252,7 @@ const InputBox = () => {
 
       // Special case for z-image-turbo: show 0 credits for free plan users
       const isFreeTurboModel = selectedModel === 'new-turbo-model' || selectedModel === 'z-image-turbo';
-      const isFreePlan = (userData as any)?.planCode === 'free';
+      const isFreePlan = planCode === 'free';
       if (isFreeTurboModel && isFreePlan) {
         return 0;
       }
@@ -3496,7 +3500,10 @@ const InputBox = () => {
     handleGenerationSuccess,
     handleGenerationFailure,
     creditBalance,
+    credits,
+    planCode,
     clearCreditsError,
+    refreshCredits,
   } = useGenerationCredits("image", selectedModel, {
     frameSize,
     count: imageCount,
@@ -3965,6 +3972,13 @@ const InputBox = () => {
         "[DEBUG handleGenerate] Credits reserved, transactionId:",
         transactionId,
       );
+
+      // Optimistic update for promotional turbo counter
+      const isFreeTurboModel = selectedModel === 'z-image-turbo' || selectedModel === 'new-turbo-model';
+      const isFreePlan = (planCode?.toLowerCase() || 'free') === 'free';
+      if (isFreeTurboModel && isFreePlan) {
+        dispatch(incrementFreeTurboUsedOptimistic(imageCount));
+      }
     } catch (creditError: any) {
       toast.error(creditError.message || "Insufficient credits for generation");
       setIsGeneratingLocally(false);
@@ -7908,6 +7922,7 @@ const InputBox = () => {
           if (transactionId) {
             await handleGenerationSuccess(transactionId);
           }
+          await refreshCredits();
         }
 
         // Reset local generation state on success
@@ -7915,6 +7930,13 @@ const InputBox = () => {
       }
     } catch (error) {
       console.error("Error generating images:", error);
+
+      // Rollback optimistic turbo counter if it was incremented
+      const isFreeTurboModel = selectedModel === 'z-image-turbo' || selectedModel === 'new-turbo-model';
+      const isFreePlan = (planCode?.toLowerCase() || 'free') === 'free';
+      if (isFreeTurboModel && isFreePlan) {
+        dispatch(decrementFreeTurboUsedOptimistic(imageCount));
+      }
 
       // Check if this is a FAL or Replicate error (has structured error details)
       const falErrorDetails = extractFalErrorDetails(error);
@@ -10186,6 +10208,15 @@ const InputBox = () => {
                     </span>
                   </div>
                 )}
+                {/* Promotional Turbo Counter */}
+                {(selectedModel === 'z-image-turbo' || selectedModel === 'new-turbo-model') && (planCode?.toLowerCase() || 'free') === 'free' && (
+                  <div className="text-white/60 text-[11px] pr-1">
+                    Generations:{" "}
+                    <span className="font-medium text-white/80">
+                      {credits?.freeTurboUsed || 0}/{credits?.freeTurboLimit || 10}
+                    </span>
+                  </div>
+                )}
                 <button
                   onClick={async () => {
                     if (!userData) {
@@ -10280,9 +10311,15 @@ const InputBox = () => {
                 </div>
 
                 <div className="flex-1 min-w-0" />
-{expectedCredits > 0 && (
+                {expectedCredits > 0 && (
                   <div className="text-[11px] text-white/40 whitespace-nowrap px-1">
                     {Math.round(expectedCredits).toLocaleString()} credits
+                  </div>
+                )}
+                {/* Promotional Turbo Counter (Mobile) */}
+                {(selectedModel === 'z-image-turbo' || selectedModel === 'new-turbo-model') && (planCode?.toLowerCase() || 'free') === 'free' && (
+                  <div className="text-[11px] text-white/40 whitespace-nowrap px-1">
+                    {credits?.freeTurboUsed || 0}/{credits?.freeTurboLimit || 10} Gens
                   </div>
                 )}
                 <button
