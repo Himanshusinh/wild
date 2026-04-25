@@ -1,0 +1,1 @@
+export { LikhaiwoodcarvingModal } from "./LikhaiwoodcarvingModal";

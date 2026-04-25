@@ -12,22 +12,66 @@ interface AllStylesModalProps {
 }
 
 export default function AllStylesModal({ isOpen, onClose, onStyleSelect }: AllStylesModalProps) {
-  const [visibleCount, setVisibleCount] = React.useState(40);
+  const [visibleCount, setVisibleCount] = React.useState(STYLES.length);
+  const [scrollTop, setScrollTop] = React.useState(0);
+  const [scrollMetrics, setScrollMetrics] = React.useState({ clientHeight: 1, scrollHeight: 1 });
+  const [isDraggingThumb, setIsDraggingThumb] = React.useState(false);
   const listRef = React.useRef<HTMLDivElement | null>(null);
+  const dragStateRef = React.useRef<{ startY: number; startTop: number } | null>(null);
 
   React.useEffect(() => {
-    if (isOpen) setVisibleCount(40);
+    if (!isOpen) return;
+    setVisibleCount(STYLES.length);
+    if (listRef.current) {
+      listRef.current.scrollTop = 0;
+      setScrollTop(0);
+      setScrollMetrics({
+        clientHeight: listRef.current.clientHeight || 1,
+        scrollHeight: listRef.current.scrollHeight || 1,
+      });
+    }
   }, [isOpen]);
 
   const handleGridScroll = React.useCallback(() => {
     const el = listRef.current;
     if (!el) return;
+    setScrollTop(el.scrollTop);
+    setScrollMetrics({ clientHeight: el.clientHeight, scrollHeight: el.scrollHeight });
     const nearBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 320;
     if (!nearBottom) return;
     setVisibleCount((prev) => Math.min(STYLES.length, prev + 40));
   }, []);
 
   if (!isOpen) return null;
+  const maxScroll = Math.max(1, scrollMetrics.scrollHeight - scrollMetrics.clientHeight);
+  const thumbHeight = Math.max(36, (scrollMetrics.clientHeight / scrollMetrics.scrollHeight) * 100);
+  const thumbTop = (scrollTop / maxScroll) * (100 - thumbHeight);
+
+  const handleThumbPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    dragStateRef.current = { startY: e.clientY, startTop: scrollTop };
+    setIsDraggingThumb(true);
+    e.currentTarget.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  };
+
+  const handleThumbPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDraggingThumb || !dragStateRef.current || !listRef.current) return;
+    const { startY, startTop } = dragStateRef.current;
+    const deltaY = e.clientY - startY;
+    const trackHeight = scrollMetrics.clientHeight;
+    const scrollable = Math.max(1, scrollMetrics.scrollHeight - scrollMetrics.clientHeight);
+    const scrollDelta = (deltaY / Math.max(1, trackHeight)) * scrollable;
+    const next = Math.max(0, Math.min(scrollable, startTop + scrollDelta));
+    listRef.current.scrollTop = next;
+  };
+
+  const handleThumbPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
+    dragStateRef.current = null;
+    setIsDraggingThumb(false);
+  };
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-xl p-3 sm:p-6" onClick={onClose}>
@@ -55,7 +99,7 @@ export default function AllStylesModal({ isOpen, onClose, onStyleSelect }: AllSt
         <div
           ref={listRef}
           onScroll={handleGridScroll}
-          className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-white/[0.06] [&::-webkit-scrollbar]:w-1.5"
+          className="flex-1 min-h-0 overflow-y-scroll p-4 pr-4 sm:p-6 sm:pr-5 [scrollbar-width:none] [&::-webkit-scrollbar]:w-0"
         >
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
             {STYLES.slice(0, visibleCount).map((style) => (
@@ -102,6 +146,22 @@ export default function AllStylesModal({ isOpen, onClose, onStyleSelect }: AllSt
               </button>
             ))}
           </div>
+        </div>
+        <div className="absolute right-1.5 top-[76px] bottom-3 w-2 rounded-full bg-white/10">
+          <div
+            role="scrollbar"
+            aria-valuemin={0}
+            aria-valuemax={Math.round(maxScroll)}
+            aria-valuenow={Math.round(scrollTop)}
+            onPointerDown={handleThumbPointerDown}
+            onPointerMove={handleThumbPointerMove}
+            onPointerUp={handleThumbPointerUp}
+            onPointerCancel={handleThumbPointerUp}
+            className={`absolute left-0 right-0 rounded-full bg-[#3B82F6]/90 shadow-[0_0_10px_rgba(59,130,246,0.35)] ${
+              isDraggingThumb ? "cursor-grabbing" : "cursor-grab"
+            }`}
+            style={{ height: `${thumbHeight}%`, top: `${thumbTop}%` }}
+          />
         </div>
       </div>
     </div>
