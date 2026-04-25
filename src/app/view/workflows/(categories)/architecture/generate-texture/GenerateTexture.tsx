@@ -216,7 +216,8 @@ export default function GenerateTexture() {
                     afterImage={generatedImage}
                     beforeLabel="Reference"
                     afterLabel="New Texture"
-                    imageFit="object-contain"
+                    imageFit="object-cover"
+                    imagePosition="object-center"
                   />
                   <button
                     onClick={handleDownload}
@@ -247,6 +248,7 @@ export default function GenerateTexture() {
                     beforeLabel="Before"
                     afterLabel="After"
                     imageFit="object-contain"
+                    imagePosition="object-center"
                   />
 
                 </div>

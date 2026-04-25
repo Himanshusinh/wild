@@ -314,6 +314,7 @@ export default function HairStyle() {
                     beforeLabel="Before"
                     afterLabel="Result"
                     imageFit="object-cover"
+                    imagePosition="object-center"
                   />
                   <button
                     onClick={handleDownload}
@@ -339,11 +340,12 @@ export default function HairStyle() {
               ) : (
                 <div className="relative w-full h-full flex items-center justify-center p-8">
                   <ImageComparisonSlider
-                    beforeImage="/workflow-samples/hairstyle-before.jpg"
-                    afterImage="/workflow-samples/hairstyle-after.jpg"
+                    beforeImage="/workflow-samples/hair-style-before.jpg"
+                    afterImage="/workflow-samples/hair-style-after.jpg"
                     beforeLabel="Before"
                     afterLabel="Result"
                     imageFit="object-cover"
+                    imagePosition="object-center"
                   />
                 </div>
               )}

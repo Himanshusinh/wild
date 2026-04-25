@@ -319,6 +319,7 @@ export default function LineDrawingToPhoto() {
                     beforeLabel="Line Drawing"
                     afterLabel="Photorealistic"
                     imageFit="object-cover"
+                    imagePosition="object-center"
                   />
                   <button
                     onClick={handleDownload}
@@ -359,6 +360,7 @@ export default function LineDrawingToPhoto() {
                     beforeLabel="Line Drawing"
                     afterLabel="Photorealistic"
                     imageFit="object-cover"
+                    imagePosition="object-center"
                   />
                 </div>
               )}

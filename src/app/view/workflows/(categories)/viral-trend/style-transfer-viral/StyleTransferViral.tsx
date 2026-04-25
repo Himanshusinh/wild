@@ -208,6 +208,7 @@ export default function StyleTransferViral() {
                     beforeLabel="Before"
                     afterLabel="Result"
                     imageFit="object-cover"
+                    imagePosition="object-center"
                   />
                   <button
                     onClick={handleDownload}
@@ -238,6 +239,7 @@ export default function StyleTransferViral() {
                     beforeLabel="Before"
                     afterLabel="Result"
                     imageFit="object-cover"
+                    imagePosition="object-center"
                   />
                 </div>
               )}

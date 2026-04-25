@@ -531,7 +531,7 @@ export const WORKFLOWS_DATA = [
     "sampleBefore": "/workflow-samples/hair-style-before.jpg",
     "sampleAfter": "/workflow-samples/hair-style-after.jpg",
     "imageFit": "object-cover",
-    "imagePosition": "object-center",
+    "imagePosition": "object-top",
     "cost": 90
   },
   {
@@ -544,7 +544,7 @@ export const WORKFLOWS_DATA = [
     "sampleBefore": "/workflow-samples/fashion-modeling-final-before.jpg",
     "sampleAfter": "/workflow-samples/fashion-modeling-final-after.jpg",
     "imageFit": "object-cover",
-    "imagePosition": "object-center",
+    "imagePosition": "object-top",
     "cost": 90
   },
   {
@@ -557,7 +557,7 @@ export const WORKFLOWS_DATA = [
     "sampleBefore": "/workflow-samples/rampwalk-final-before.jpg",
     "sampleAfter": "/workflow-samples/rampwalk-final-after.jpg",
     "imageFit": "object-cover",
-    "imagePosition": "object-center",
+    "imagePosition": "object-top",
     "cost": 90
   },
   {
@@ -570,7 +570,7 @@ export const WORKFLOWS_DATA = [
     "sampleBefore": "/workflow-samples/makeup-final-before.jpg",
     "sampleAfter": "/workflow-samples/makeup-final-after.jpg",
     "imageFit": "object-cover",
-    "imagePosition": "object-center",
+    "imagePosition": "object-top",
     "cost": 90
   },
   {
@@ -583,7 +583,7 @@ export const WORKFLOWS_DATA = [
     "sampleBefore": "/workflow-samples/deconstruct-outfit-before.jpg",
     "sampleAfter": "/workflow-samples/deconstruct-outfit-after.jpg",
     "imageFit": "object-cover",
-    "imagePosition": "object-center",
+    "imagePosition": "object-top",
     "cost": 90
   },
   {

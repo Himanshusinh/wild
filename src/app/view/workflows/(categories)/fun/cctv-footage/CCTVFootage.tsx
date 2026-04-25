@@ -246,7 +246,7 @@ export default function CCTVFootage() {
                 <div className="relative w-full h-full flex items-center justify-center p-8">
                   <ImageComparisonSlider
                     beforeImage="/workflow-samples/cctv-footage.jpg"
-                    afterImage="/workflow-samples/cctv-footage-after.jpg"
+                    afterImage="/workflow-samples/cctv-footage.jpg"
                     beforeLabel="Before"
                     afterLabel="After"
                     imageFit="object-contain"
