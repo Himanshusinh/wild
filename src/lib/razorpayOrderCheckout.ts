@@ -9,6 +9,7 @@ type OpenOrderCheckoutParams = {
   amountInPaise: number;
   packName: string;
   prefill?: RazorpayBillingPrefill;
+  disableUpi?: boolean;
   onSuccess: (payload: {
     razorpayOrderId: string;
     razorpayPaymentId: string;
@@ -37,6 +38,7 @@ export async function openRazorpayOrderCheckout(
     amountInPaise,
     packName,
     prefill,
+    disableUpi,
     onSuccess,
     onFailure,
     onDismiss,
@@ -71,6 +73,18 @@ export async function openRazorpayOrderCheckout(
       email: prefill?.email,
       contact: prefill?.contact,
     },
+    ...(disableUpi
+      ? {
+          method: {
+            upi: false,
+          },
+          config: {
+            display: {
+              hide: [{ method: "upi" }],
+            },
+          },
+        }
+      : {}),
   };
 
   const rzp = new window.Razorpay(options);

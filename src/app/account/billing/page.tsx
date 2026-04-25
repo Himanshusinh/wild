@@ -268,13 +268,14 @@ export default function BillingPage() {
     if (!selectedPlan) return;
 
     try {
-      // Check if user has an active subscription to upgrade/downgrade
-      const status = subscription?.status?.toUpperCase();
-      const currentPlanCodeFromCredits = credits?.planCode?.toUpperCase();
-
-      // If we have an active/past_due subscription, OR if credits slice shows they are on a paid plan (not FREE)
-      const isPaidUser = (subscription && (status === 'ACTIVE' || status === 'PAST_DUE')) ||
-        (currentPlanCodeFromCredits && currentPlanCodeFromCredits !== 'FREE');
+      // Use both subscription and credits state, because either one can lag briefly during hydration.
+      const status = String(subscription?.status || "").toUpperCase();
+      const normalizedCurrentPlanCode = normalizePlanCode(
+        subscription?.planCode || credits?.planCode || currentPlanCode,
+      );
+      const isPaidUser =
+        ["ACTIVE", "PAST_DUE", "HALTED"].includes(status) ||
+        (!!normalizedCurrentPlanCode && normalizedCurrentPlanCode !== "FREE");
 
       if (isPaidUser) {
         console.log("🔄 Processing plan change to:", selectedPlan.code);
@@ -289,6 +290,9 @@ export default function BillingPage() {
           | {
               requiresCheckout?: boolean;
               razorpaySubscriptionId?: string;
+              orderId?: string;
+              amount?: number;
+              currency?: string;
               keyId?: string;
               upiNotSupportedForPlan?: boolean;
               maxUpiRecurringPaise?: number;
@@ -300,6 +304,77 @@ export default function BillingPage() {
               };
             }
           | undefined;
+
+        if (
+          payload?.requiresCheckout &&
+          payload.orderId &&
+          payload.keyId &&
+          typeof payload.amount === "number"
+        ) {
+          const upgradeOrderId = payload.orderId;
+          const upgradeOrderAmount = payload.amount;
+          const upgradeKeyId = payload.keyId;
+          const openPlanChangeOrderCheckout = async () => {
+            await openRazorpayOrderCheckout({
+              keyId: upgradeKeyId,
+              orderId: upgradeOrderId,
+              amountInPaise: upgradeOrderAmount,
+              packName: `${selectedPlan.name} plan upgrade`,
+              prefill: {
+                name: billingDetails?.name || userName,
+                email: billingDetails?.email || userEmail,
+              },
+              onSuccess: async ({ razorpayPaymentId }) => {
+                const api = getApiClient();
+                await api.post("/api/subscriptions/verify-upgrade-order", {
+                  razorpayPaymentId,
+                });
+                setShowCheckout(false);
+                setShowCelebration(true);
+                dispatch(fetchCurrentSubscription());
+                dispatch(fetchUserCredits());
+                window.history.replaceState(
+                  {},
+                  document.title,
+                  window.location.pathname,
+                );
+              },
+              onFailure: (msg) => {
+                setBillingMessage({
+                  title: "Payment failed",
+                  body: msg,
+                  variant: "error",
+                });
+                setShowCheckout(false);
+              },
+              onDismiss: () => setShowCheckout(false),
+            });
+          };
+
+          const p = (payload as any)?.proration;
+          const hasProration =
+            p &&
+            typeof p.remainingValuePaise === "number" &&
+            typeof p.newCostPaise === "number" &&
+            typeof p.payablePaise === "number";
+
+          if (hasProration) {
+            const r = (p.remainingValuePaise / 100).toFixed(2);
+            const n = (p.newCostPaise / 100).toFixed(2);
+            const z = (p.payablePaise / 100).toFixed(2);
+            setBillingMessage({
+              title: "Yearly upgrade breakdown",
+              body: `Remaining value: ₹${r}\nNew plan cost (remaining period): ₹${n}\nYou pay now: ₹${z}`,
+              variant: "info",
+              onContinue: () => {
+                void openPlanChangeOrderCheckout();
+              },
+            });
+          } else {
+            await openPlanChangeOrderCheckout();
+          }
+          return;
+        }
 
         if (
           payload?.requiresCheckout &&
@@ -812,7 +887,7 @@ export default function BillingPage() {
             <button
               type="button"
               onClick={() => router.push("/account/invoices")}
-              className="rounded-lg bg-[#2F6BFF] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_4px_16px_rgba(47,107,255,0.4)] transition hover:bg-[#2a5fe3]"
+              className="rounded-lg border border-white/[0.14] bg-white/[0.04] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-white/[0.08]"
             >
               View invoices
             </button>
@@ -829,7 +904,7 @@ export default function BillingPage() {
                 setShowCreditsModal(true);
                 void fetchCreditPacks();
               }}
-              className="rounded-lg border border-blue-500/35 bg-blue-500/10 px-5 py-2.5 text-sm font-semibold text-blue-100 transition hover:bg-blue-500/20"
+              className="rounded-lg border border-white/[0.14] bg-white/[0.04] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-white/[0.08]"
             >
               Buy additional credits
             </button>
