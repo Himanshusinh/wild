@@ -34,26 +34,26 @@ export const EditImageEraseControls: React.FC<EditImageEraseControlsProps> = ({
   onBrushAdjustEnd,
 }) => {
   return (
-    <div className="flex flex-col gap-3 w-full">
+    <div className="flex flex-col gap-2 w-full">
       {/* Mode toggle */}
       <div className="flex bg-[#1c1c22] border border-[#2a2a34] rounded-[10px] p-1 w-full">
         <button
           onClick={() => setMode("replace")}
-          className={`flex-1 px-3 py-2 text-[13px] font-semibold rounded-[8px] transition-colors ${mode === "replace" ? "bg-[#3B6BFF] text-white shadow-[0_4px_16px_rgba(59,107,255,0.28)]" : "text-white/60 hover:bg-white/5"}`}
+          className={`flex-1 px-3 py-2 text-[13px] font-semibold rounded-xl transition-colors ${mode === "replace" ? "bg-white text-black shadow-[0_4px_16px_rgba(59,107,255,0.28)]" : "text-white/60 hover:bg-white/5"}`}
         >
           Replace
         </button>
         <button
           onClick={() => setMode("erase")}
-          className={`flex-1 px-3 py-2 text-[13px] font-semibold rounded-[8px] transition-colors ${mode === "erase" ? "bg-[#3B6BFF] text-white shadow-[0_4px_16px_rgba(59,107,255,0.28)]" : "text-white/60 hover:bg-white/5"}`}
+          className={`flex-1 px-3 py-2 text-[13px] font-semibold rounded-xl transition-colors ${mode === "erase" ? "bg-white text-black shadow-[0_4px_16px_rgba(59,107,255,0.28)]" : "text-white/60 hover:bg-white/5"}`}
         >
           Erase
         </button>
       </div>
 
       {/* Brush Size */}
-      <div className="flex flex-col gap-1.5">
-        <div className="flex items-center justify-between mb-1">
+      <div className="flex flex-col gap-1.5 md:gap-1.5">
+        <div className="flex items-center justify-between mb-1 md:mb-0">
           <span className="text-[10px] font-semibold tracking-widest text-white/40 uppercase">
             Brush Size
           </span>
@@ -64,7 +64,7 @@ export const EditImageEraseControls: React.FC<EditImageEraseControlsProps> = ({
         <div className="flex items-center gap-2">
           <button
             onClick={() => setBrushSize(Math.max(5, brushSize - 5))}
-            className="w-8 h-8 rounded-full bg-[#1c1c22] border border-[#2a2a34] hover:bg-white/5 flex items-center justify-center text-white/80 text-xs transition active:scale-95"
+            className="w-7 h-7 rounded-full bg-[#1c1c22] border border-[#2a2a34] hover:bg-white/5 flex items-center justify-center text-white/80 text-xs transition active:scale-95"
           >
             -
           </button>
@@ -82,7 +82,7 @@ export const EditImageEraseControls: React.FC<EditImageEraseControlsProps> = ({
           />
           <button
             onClick={() => setBrushSize(Math.min(200, brushSize + 5))}
-            className="w-8 h-8 rounded-full bg-[#1c1c22] border border-[#2a2a34] hover:bg-white/5 flex items-center justify-center text-white/80 text-xs transition active:scale-95"
+            className="w-7 h-7 rounded-full bg-[#1c1c22] border border-[#2a2a34] hover:bg-white/5 flex items-center justify-center text-white/80 text-xs transition active:scale-95"
           >
             +
           </button>
@@ -111,3 +111,5 @@ export const EditImageEraseControls: React.FC<EditImageEraseControlsProps> = ({
     </div>
   );
 };
+
+

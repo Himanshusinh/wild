@@ -116,7 +116,7 @@ export const EditImageExpandControls: React.FC<
   }, []);
 
   return (
-    <div className="flex flex-col gap-2 w-full">
+    <div className="flex flex-col gap-1 w-full">
       <div className="flex items-center justify-between">
         <p className="text-[12px] md:text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1 pt-2 md:pt-1">
           Expand Image
@@ -131,7 +131,7 @@ export const EditImageExpandControls: React.FC<
         >
           <button
             onClick={() => setIsPresetDropdownOpen((prev) => !prev)}
-          className="h-[42px] md:h-[38px] w-full px-4 rounded-xl text-[13px] font-medium border border-white/12 hover:bg-white/3 transition flex items-center justify-between bg-transparent text-white/90"
+          className="h-[38px] w-full px-4 rounded-xl text-[13px] font-medium border border-white/12 hover:bg-white/3 transition flex items-center justify-between bg-transparent text-white/90"
           >
             <span className="truncate">{selectedPresetLabel}</span>
             <ChevronUp
@@ -205,7 +205,7 @@ export const EditImageExpandControls: React.FC<
             min={minWidth}
             max={5000}
             placeholder="W"
-            className={`h-[42px] md:h-[38px] w-[84px] md:w-[78px] px-3 rounded-xl border border-white/12 text-white text-[13px] focus:outline-none ${aspectPreset === "custom" ? "bg-white/3" : "bg-white/3 opacity-50 cursor-not-allowed"}`}
+            className={`h-[30px] w-[84px] md:w-[78px] px-3 rounded-xl border border-white/12 text-white text-[13px] focus:outline-none ${aspectPreset === "custom" ? "bg-white/3" : "bg-white/3 opacity-50 cursor-not-allowed"}`}
           />
 
           {/* Height Input */}
@@ -228,7 +228,7 @@ export const EditImageExpandControls: React.FC<
             min={minHeight}
             max={5000}
             placeholder="H"
-            className={`h-[42px] md:h-[38px] w-[84px] md:w-[78px] px-3 rounded-xl border border-white/12 text-white text-[13px] focus:outline-none ${aspectPreset === "custom" ? "bg-white/3" : "bg-white/3 opacity-50 cursor-not-allowed"}`}
+            className={`h-[30px] w-[84px] md:w-[78px] px-3 rounded-xl border border-white/12 text-white text-[13px] focus:outline-none ${aspectPreset === "custom" ? "bg-white/3" : "bg-white/3 opacity-50 cursor-not-allowed"}`}
           />
         </div>
 
@@ -239,7 +239,7 @@ export const EditImageExpandControls: React.FC<
               onAspectPresetChange("custom");
               setShowCustomInput(!showCustomInput);
             }}
-            className={`h-[42px] md:h-[38px] px-4 rounded-xl border border-white/12 text-[13px] font-medium transition-colors ${aspectPreset === "custom" ? "bg-[#2F6BFF] text-white shadow-[0_4px_16px_rgba(47,107,255,0.28)]" : "bg-white/3 text-white/80 hover:bg-white/10"}`}
+            className={`h-[30px] px-4 rounded-xl border border-white/12 text-[13px] font-medium transition-colors ${aspectPreset === "custom" ? "bg-[#2F6BFF] text-white shadow-[0_4px_16px_rgba(47,107,255,0.28)]" : "bg-white/3 text-white/80 hover:bg-white/10"}`}
           >
             Custom
           </button>
@@ -265,9 +265,11 @@ export const EditImageExpandControls: React.FC<
           value={expandPrompt}
           onChange={(e) => onExpandPromptChange(e.target.value)}
           placeholder="Prompt (optional)"
-          className="w-full h-[32px] px-3 rounded-lg bg-white/5 border border-white/20 text-white text-xs focus:outline-none placeholder-white/40"
+          className="w-full h-[32px] px-3 rounded-xl bg-white/5 border border-white/20 text-white text-xs focus:outline-none placeholder-white/40"
         />
       </div> */}
     </div>
   );
 };
+
+
