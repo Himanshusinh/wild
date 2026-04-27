@@ -136,7 +136,7 @@ export default function BlogSection({ blogPosts }: BlogSectionProps) {
 
               {isCategoryOpen && (
                 <div className="custom-dropdown-list">
-                  {categories.map((category) => (
+                  {categories.filter(c => c !== 'all').map((category) => (
                     <button
                       key={category}
                       className={`dropdown-item ${selectedCategory === category ? 'active' : ''}`}
@@ -145,7 +145,7 @@ export default function BlogSection({ blogPosts }: BlogSectionProps) {
                         setIsCategoryOpen(false);
                       }}
                     >
-                      {category === 'all' ? 'All Categories' : category}
+                      {category}
                     </button>
                   ))}
                 </div>
