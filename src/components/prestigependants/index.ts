@@ -1,0 +1,2 @@
+export { PrestigePendantsModal } from "./PrestigePendantsModal";
+

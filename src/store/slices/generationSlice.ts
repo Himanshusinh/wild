@@ -63,10 +63,32 @@ const sanitizeErrorMessage = (msg: string | undefined | null, fallback = "Genera
   return msg;
 };
 
+const mapGenerationErrorCodeToMessage = (
+  code: string | undefined | null,
+): string | null => {
+  const normalized = String(code || "").trim().toUpperCase();
+  if (!normalized) return null;
+  if (normalized === "FREE_Z_IMAGE_TURBO_LIMIT_REACHED") {
+    return "Free users can generate up to 10 lifetime z-image-turbo images. Upgrade your plan to continue.";
+  }
+  return null;
+};
+
 const extractRejectedMessage = (
   payload: unknown,
   fallback?: string,
 ): string => {
+  const codeCandidates = [
+    (payload as any)?.code,
+    (payload as any)?.responseData?.code,
+  ];
+  const mappedMessage = mapGenerationErrorCodeToMessage(
+    codeCandidates.find((value) => typeof value === "string"),
+  );
+  if (mappedMessage) {
+    return mappedMessage;
+  }
+
   const candidates = [
     (payload as any)?.message,
     (payload as any)?.detail,
@@ -93,12 +115,18 @@ const getMaxOutputImageCountForModel = (model?: string): number => {
   ) {
     return 15;
   }
+  if (
+    normalizedModel === 'openai/gpt-image-2' ||
+    normalizedModel === 'gpt-image-2'
+  ) {
+    return 10;
+  }
   return 4;
 };
 
 const initialState: GenerationState = {
   prompt: '',
-  selectedModel: 'new-turbo-model', // Default to Infinite (z-image-turbo) - free unlimited
+  selectedModel: 'new-turbo-model', // Default free-tier image model (lifetime cap enforced by backend)
   imageCount: 1,
   frameSize: '1:1',
   style: 'none',
@@ -266,14 +294,17 @@ export const generateImages = createAsyncThunk(
         if (frameSize) body.aspect_ratio = frameSize;
       }
       // For GPT Image 1.5 (Replicate), use aspect_ratio from frameSize
-      if (model === 'openai/gpt-image-1.5' && frameSize) {
+      if (
+        (model === 'openai/gpt-image-1.5' || model === 'openai/gpt-image-2') &&
+        frameSize
+      ) {
         // GPT Image 1.5 schema only supports: 1:1 | 3:2 | 2:3
         // Coerce common wides (e.g. 16:9) to the closest supported landscape ratio (3:2).
         const coerced = coerceGptImage15AspectRatio(frameSize);
         if (coerced) body.aspect_ratio = coerced;
       }
-      // For GPT Image 1.5 (Replicate), schema uses `number_of_images`.
-      if (model === 'openai/gpt-image-1.5') {
+      // For GPT Image models (Replicate), schema uses `number_of_images`.
+      if (model === 'openai/gpt-image-1.5' || model === 'openai/gpt-image-2') {
         body.number_of_images = requestedCount;
       }
 
@@ -737,7 +768,7 @@ const generationSlice = createSlice({
       })
       .addCase(generateLiveChatImage.rejected, (state, action) => {
         state.isGenerating = false;
-        state.error = sanitizeErrorMessage(action.payload as string);
+        state.error = extractRejectedMessage(action.payload, action.error?.message);
       })
       // BFL Generate
       .addCase(bflGenerate.pending, (state, action) => {
@@ -770,7 +801,7 @@ const generationSlice = createSlice({
       })
       .addCase(bflGenerate.rejected, (state, action) => {
         state.isGenerating = false;
-        state.error = sanitizeErrorMessage(action.payload as string);
+        state.error = extractRejectedMessage(action.payload, action.error?.message);
         const genId = (action.meta as any).arg?.generationId;
         if (genId) {
           const idx = state.activeGenerations.findIndex(g => g.id === genId);
@@ -813,7 +844,7 @@ const generationSlice = createSlice({
       })
       .addCase(falGenerate.rejected, (state, action) => {
         state.isGenerating = false;
-        state.error = sanitizeErrorMessage((action.payload as any)?.message || action.payload as string);
+        state.error = extractRejectedMessage(action.payload, action.error?.message);
         const genId = (action.meta as any).arg?.generationId;
         if (genId) {
           const idx = state.activeGenerations.findIndex(g => g.id === genId);
@@ -856,7 +887,7 @@ const generationSlice = createSlice({
       })
       .addCase(replicateGenerate.rejected, (state, action) => {
         state.isGenerating = false;
-        state.error = sanitizeErrorMessage((action.payload as any)?.message || action.payload as string);
+        state.error = extractRejectedMessage(action.payload, action.error?.message);
         const genId = (action.meta as any).arg?.generationId;
         if (genId) {
           const idx = state.activeGenerations.findIndex(g => g.id === genId);
@@ -899,7 +930,7 @@ const generationSlice = createSlice({
       })
       .addCase(minimaxGenerate.rejected, (state, action) => {
         state.isGenerating = false;
-        state.error = sanitizeErrorMessage(action.payload as string);
+        state.error = extractRejectedMessage(action.payload, action.error?.message);
         const genId = (action.meta as any).arg?.generationId;
         if (genId) {
           const idx = state.activeGenerations.findIndex(g => g.id === genId);
@@ -1042,7 +1073,10 @@ const generationSlice = createSlice({
         if (genId) {
           const idx = state.activeGenerations.findIndex(g => g.id === genId);
           if (idx !== -1) {
-            const errorMessage = sanitizeErrorMessage(action.payload as string);
+            const errorMessage = extractRejectedMessage(
+              action.payload,
+              action.error?.message,
+            );
             const isCancelled = errorMessage?.includes('cancelled') ||
               errorMessage?.includes('canceled') ||
               errorMessage?.includes('aborted') ||
@@ -1103,13 +1137,16 @@ const generationSlice = createSlice({
       })
       .addCase(runwayGenerate.rejected, (state, action) => {
         state.isGenerating = false;
-        state.error = sanitizeErrorMessage(action.payload as string);
+        state.error = extractRejectedMessage(action.payload, action.error?.message);
         state.generationProgress = null;
         const genId = (action.meta as any).arg?.generationId;
         if (genId) {
           const idx = state.activeGenerations.findIndex(g => g.id === genId);
           if (idx !== -1) {
-            const errorMessage = sanitizeErrorMessage(action.payload as string);
+            const errorMessage = extractRejectedMessage(
+              action.payload,
+              action.error?.message,
+            );
             const isCancelled = errorMessage?.includes('cancelled') ||
               errorMessage?.includes('canceled') ||
               errorMessage?.includes('aborted') ||
@@ -1170,13 +1207,16 @@ const generationSlice = createSlice({
       })
       .addCase(runwayVideo.rejected, (state, action) => {
         state.isGenerating = false;
-        state.error = sanitizeErrorMessage(action.payload as string);
+        state.error = extractRejectedMessage(action.payload, action.error?.message);
         state.generationProgress = null;
         const genId = (action.meta as any).arg?.generationId;
         if (genId) {
           const idx = state.activeGenerations.findIndex(g => g.id === genId);
           if (idx !== -1) {
-            const errorMessage = sanitizeErrorMessage(action.payload as string);
+            const errorMessage = extractRejectedMessage(
+              action.payload,
+              action.error?.message,
+            );
             const isCancelled = errorMessage?.includes('cancelled') ||
               errorMessage?.includes('canceled') ||
               errorMessage?.includes('aborted') ||
@@ -1215,7 +1255,7 @@ const generationSlice = createSlice({
       })
       .addCase(generateMiniMaxImages.rejected, (state, action) => {
         state.isGenerating = false;
-        state.error = sanitizeErrorMessage(action.payload as string);
+        state.error = extractRejectedMessage(action.payload, action.error?.message);
         state.generationProgress = null;
       });
   },

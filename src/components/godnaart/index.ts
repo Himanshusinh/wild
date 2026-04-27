@@ -1,0 +1,2 @@
+export { GodnaArtModal } from "./GodnaArtModal";
+

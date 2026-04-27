@@ -6,9 +6,17 @@ interface UseFileHandlerProps {
   setUploadedImages: (update: (prev: string[]) => string[]) => void;
   setUploadedVideo: (video: string) => void;
   setLocalVideoFilesByUrl?: (update: (prev: Record<string, File>) => Record<string, File>) => void;
+  currentUploadedVideo?: string;
+  clearTrackedVideoUrl?: (url: string) => void;
 }
 
-export const useFileHandler = ({ setUploadedImages, setUploadedVideo, setLocalVideoFilesByUrl }: UseFileHandlerProps) => {
+export const useFileHandler = ({
+  setUploadedImages,
+  setUploadedVideo,
+  setLocalVideoFilesByUrl,
+  currentUploadedVideo,
+  clearTrackedVideoUrl,
+}: UseFileHandlerProps) => {
   const processFiles = useCallback(async (files: File[]) => {
     // 1. Separate images and videos
     const imageFiles = files.filter(f => f.type.startsWith('image/'));
@@ -59,6 +67,10 @@ export const useFileHandler = ({ setUploadedImages, setUploadedVideo, setLocalVi
       } else {
         // Use Blob URL instead of Data URL for better performance and memory management
         const url = URL.createObjectURL(file);
+        if (currentUploadedVideo && currentUploadedVideo.startsWith('blob:') && currentUploadedVideo !== url) {
+          try { URL.revokeObjectURL(currentUploadedVideo); } catch {}
+          clearTrackedVideoUrl?.(currentUploadedVideo);
+        }
         setUploadedVideo(url);
         
         // Track the File object so it can be uploaded to Zata later
@@ -69,7 +81,13 @@ export const useFileHandler = ({ setUploadedImages, setUploadedVideo, setLocalVi
         toast.success('Video added');
       }
     }
-  }, [setUploadedImages, setUploadedVideo, setLocalVideoFilesByUrl]);
+  }, [
+    setUploadedImages,
+    setUploadedVideo,
+    setLocalVideoFilesByUrl,
+    currentUploadedVideo,
+    clearTrackedVideoUrl,
+  ]);
 
   return { processFiles };
 };

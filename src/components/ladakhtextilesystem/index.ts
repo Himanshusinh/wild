@@ -1,0 +1,1 @@
+export { LadakhtextilesystemModal } from "./LadakhtextilesystemModal";

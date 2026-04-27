@@ -18,12 +18,8 @@ export function getPlanLabel(planCode?: string | null): PlanLabelResult {
 
   const upper = raw.toUpperCase();
 
-  // Legacy/static aliases
+  // Canonical static alias
   if (upper === "FREE") return { raw, label: "Free" };
-  if (upper === "PLAN_A") return { raw, label: "Spark" };
-  if (upper === "PLAN_B") return { raw, label: "Creator" };
-  if (upper === "PLAN_C") return { raw, label: "Studio" };
-  if (upper === "PLAN_D") return { raw, label: "Agency" };
 
   // New billing codes, like AGENCY_YEARLY / STUDIO_MONTHLY, etc.
   const parts = upper.split("_").filter(Boolean);

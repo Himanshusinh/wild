@@ -340,12 +340,17 @@
   width: 100%;
   display: flex;
   align-items: center;
-  background: rgba(12, 19, 33, 0.7);
-  border: none;
-  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.25);
+  background: transparent;
+  border: 1px solid rgba(148, 163, 184, 0.2);
   border-radius: 0.875rem;
   padding: 0.25rem 0.9rem;
-  transition: box-shadow 0.2s ease;
+  transition: all 0.2s ease;
+}
+
+.search-field:hover,
+.category-field:hover {
+  border-color: rgba(148, 163, 184, 0.4);
+  background: transparent;
 }
 
 .search-field:focus-within,
@@ -379,26 +384,83 @@
   color: rgba(248, 250, 252, 0.7);
 }
 
-.category-field select {
+.custom-dropdown-container {
+  position: relative;
   width: 100%;
+}
+
+.category-field-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   background: transparent;
-  border: none;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 0.875rem;
+  padding: 0.85rem 1.25rem;
   color: #f8fafc;
   font-size: 1rem;
-  padding: 0.85rem 2.5rem 0.85rem 0.25rem;
-  appearance: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
   font-family: inherit;
 }
 
-.category-field select:focus {
-  outline: none;
+.category-field-trigger:hover {
+  border-color: rgba(148, 163, 184, 0.4);
+}
+
+.category-field-trigger .current-category {
+  flex: 1;
+  text-align: left;
 }
 
 .chevron-icon {
-  position: absolute;
-  right: 1rem;
   color: rgba(248, 250, 252, 0.7);
-  pointer-events: none;
+  transition: transform 0.3s ease;
+}
+
+.chevron-icon.open {
+  transform: rotate(180deg);
+}
+
+.custom-dropdown-list {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  left: 0;
+  right: 0;
+  background: #0e0e12;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1rem;
+  padding: 0.5rem;
+  z-index: 50;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+
+.dropdown-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  color: #94a3b8;
+  font-size: 0.95rem;
+  text-align: left;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 0.625rem;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.dropdown-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #ffffff;
+}
+
+.dropdown-item.active {
+  color: #ffffff;
+  font-weight: 600;
 }
 
 .visually-hidden {

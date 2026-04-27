@@ -257,7 +257,7 @@ export default function PeopleAge() {
                     afterImage={generatedImage}
                     beforeLabel="Before"
                     afterLabel="Result"
-                    imageFit="object-contain"
+                    imageFit="object-cover"
                     imagePosition="object-center"
                   />
                   <button

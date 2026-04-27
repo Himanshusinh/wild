@@ -1110,7 +1110,16 @@ axiosInstance.interceptors.response.use(
       // Handle specific error codes for modals
       if (status === 402) {
         // Payment Required -> No Credits
-        store.dispatch(setModalOpen({ modal: "noCredits", isOpen: true }));
+        const errorCode = errorData?.code as string | undefined;
+        let customMessage = errorData?.message || null;
+        if (errorCode === "FREE_Z_IMAGE_TURBO_LIMIT_REACHED") {
+          customMessage = "Promotional generation limit reached for free plan. To continue creating amazing images with our Turbo models, please upgrade your plan.";
+          if (error.response?.data) {
+            (error.response.data as any).message = customMessage;
+          }
+        }
+        store.dispatch(setModalOpen({ modal: "noCredits", isOpen: true, message: customMessage }));
+
       } else if (status === 507 || status === 413) {
         // Insufficient Storage / Payload Too Large -> Storage Full
         store.dispatch(setModalOpen({ modal: "storageFull", isOpen: true }));

@@ -1,0 +1,2 @@
+export { KolhapurJewelleryModal } from "./KolhapurJewelleryModal";
+

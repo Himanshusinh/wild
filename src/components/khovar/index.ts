@@ -1,0 +1,1 @@
+export { KhovarModal } from "./KhovarModal";

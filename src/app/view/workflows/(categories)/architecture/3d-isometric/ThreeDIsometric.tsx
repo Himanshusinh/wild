@@ -216,7 +216,8 @@ export default function ThreeDIsometric() {
                     afterImage={generatedImage}
                     beforeLabel="Original"
                     afterLabel="Isometric"
-                    imageFit="object-contain"
+                    imageFit="object-cover"
+                    imagePosition="object-center"
                   />
                   <button
                     onClick={handleDownload}
@@ -247,6 +248,7 @@ export default function ThreeDIsometric() {
                     beforeLabel="Before"
                     afterLabel="After"
                     imageFit="object-contain"
+                    imagePosition="object-center"
                   />
 
                 </div>

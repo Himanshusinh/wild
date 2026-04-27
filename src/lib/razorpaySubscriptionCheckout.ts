@@ -12,6 +12,7 @@ export type OpenSubscriptionCheckoutParams = {
   subscriptionId: string;
   planName: string;
   prefill?: RazorpayBillingPrefill;
+  disableUpi?: boolean;
   onSuccess: () => void;
   onFailure: (message: string) => void;
   onDismiss?: () => void;
@@ -48,6 +49,7 @@ export function openRazorpaySubscriptionCheckout(
     subscriptionId,
     planName,
     prefill,
+    disableUpi,
     onSuccess,
     onFailure,
     onDismiss,
@@ -71,6 +73,18 @@ export function openRazorpaySubscriptionCheckout(
       email: prefill?.email,
       contact: prefill?.contact,
     },
+    ...(disableUpi
+      ? {
+          method: {
+            upi: false,
+          },
+          config: {
+            display: {
+              hide: [{ method: "upi" }],
+            },
+          },
+        }
+      : {}),
   };
 
   const rzp = new window.Razorpay(options);

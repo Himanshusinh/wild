@@ -1,0 +1,2 @@
+export { AzulejosModal } from "./AzulejosModal";
+

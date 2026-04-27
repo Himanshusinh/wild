@@ -4,17 +4,20 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { X, Camera, Zap, Download } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
+import axiosInstance from '@/lib/axiosInstance';
 import UploadModal from '@/app/view/Generation/ImageGeneration/TextToImage/compo/UploadModal';
 import ImageComparisonSlider from '@/app/view/workflows/components/ImageComparisonSlider';
 import { downloadFileWithNaming } from '@/utils/downloadUtils';
 import { useCredits } from '@/hooks/useCredits';
+import { getSignInUrl } from '@/routes/routes';
 
 export default function DeconstructOutfit() {
   const router = useRouter();
   const {
     creditBalance,
     deductCreditsOptimisticForGeneration,
-    rollbackOptimisticDeduction
+    rollbackOptimisticDeduction,
+    user
   } = useCredits();
 
   // State
@@ -23,16 +26,18 @@ export default function DeconstructOutfit() {
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-  const [description, setDescription] = useState("");
+  const [additionalNotes, setAdditionalNotes] = useState("");
 
   // Workflow Data
   const workflowData = {
     id: "deconstruct-outfit",
     title: "Deconstruct an outfit",
     category: "Fashion",
-    description: "Automatically separate and display individual items from a full outfit photo.",
+    description: "Automatically separate and display individual items from a full outfit photo using a professional knolling layout.",
     cost: 90
   };
+
+  const CREDIT_COST = 90;
 
   useEffect(() => {
     // Open modal animation on mount
@@ -57,12 +62,16 @@ export default function DeconstructOutfit() {
   };
 
   const handleRun = async () => {
+    if (!user) {
+      router.push(getSignInUrl());
+      return;
+    }
+
     if (!uploadedImage) {
       toast.error('Please upload an image first');
       return;
     }
 
-    const CREDIT_COST = 90;
     if (creditBalance < CREDIT_COST) {
       toast.error(`Insufficient credits. You need ${CREDIT_COST} credits.`);
       return;
@@ -72,11 +81,19 @@ export default function DeconstructOutfit() {
       deductCreditsOptimisticForGeneration(CREDIT_COST);
       setIsGenerating(true);
 
-      // Simulation for now
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      // Use the sample after image as a simulation result
-      setGeneratedImage("/workflow-samples/deconstruct-outfit-after.jpg");
-      toast.success('Outfit deconstructed!');
+      const response = await axiosInstance.post('/api/workflows/fashion/deconstruct-outfit', {
+        image: uploadedImage,
+        additionalNotes: additionalNotes.trim(),
+        isPublic: true,
+        size: '2K', // Seedream 5 Lite best results
+      });
+
+      if (response.data?.responseStatus === 'success' && response.data?.data?.images?.[0]?.url) {
+        setGeneratedImage(response.data.data.images[0].url);
+        toast.success('Outfit deconstructed successfully!');
+      } else {
+        throw new Error(response.data?.message || 'Invalid response from server');
+      }
 
     } catch (error: any) {
       console.error('Generation error:', error);
@@ -90,7 +107,7 @@ export default function DeconstructOutfit() {
   const handleDownload = async () => {
     if (!generatedImage) return;
     try {
-      await downloadFileWithNaming(generatedImage, null, 'image', 'deconstructed-outfit');
+      await downloadFileWithNaming(generatedImage, null, 'image', 'deconstruct-result');
       toast.success('Downloading...');
     } catch (error) {
       toast.error('Failed to download image');
@@ -126,7 +143,7 @@ export default function DeconstructOutfit() {
                   <span className="text-[10px] font-bold uppercase tracking-wider text-[#60a5fa] border border-[#60a5fa]/30 px-2 py-1 rounded-full">{workflowData.category}</span>
                 </div>
                 <h2 className="text-2xl md:text-4xl font-medium text-white mb-4 tracking-tight">{workflowData.title}</h2>
-                <p className="text-slate-400 text-lg mb-8">{workflowData.description}</p>
+                <p className="text-slate-400 text-lg mb-8 leading-relaxed">{workflowData.description}</p>
 
                 <div className="mb-8">
                   <div className="border border-dashed border-white/15 rounded-xl bg-black/20 h-48 flex flex-col items-center justify-center gap-4 cursor-pointer hover:bg-[#60a5fa]/5 transition-colors relative overflow-hidden group"
@@ -142,7 +159,7 @@ export default function DeconstructOutfit() {
                       <>
                         <div className="w-12 h-12 rounded-full bg-[#111] flex items-center justify-center text-slate-400"><Camera size={24} /></div>
                         <div className="text-center">
-                          <span className="text-sm text-slate-300 block font-medium">Upload Image</span>
+                          <span className="text-sm text-slate-300 block font-medium">Upload Full Outfit Photo</span>
                           <span className="text-xs text-slate-500">JPG, PNG, WebP up to 25MB</span>
                         </div>
                       </>
@@ -153,11 +170,14 @@ export default function DeconstructOutfit() {
                 <div className="mb-8">
                   <label className="text-xs font-bold uppercase text-slate-500 mb-2 block tracking-wider">ADDITIONAL NOTES (OPTIONAL)</label>
                   <textarea
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    className="w-full bg-black/20 border border-white/10 rounded-xl p-4 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-[#60a5fa]/50 focus:bg-black/30 transition-all resize-none h-32"
-                    placeholder="Any specific details about the outfit items..."
+                    value={additionalNotes}
+                    onChange={(e) => setAdditionalNotes(e.target.value)}
+                    className="w-full bg-black/20 border border-white/10 rounded-xl p-4 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-[#60a5fa]/50 focus:bg-black/30 transition-all resize-none h-40"
+                    placeholder="Any specific details about the outfit items (e.g. 'Focus on the velvet texture of the coat')..."
                   ></textarea>
+                  <p className="text-[10px] text-slate-600 mt-2 px-1 leading-relaxed">
+                    The AI will automatically identify all components of the outfit and arrange them professionally. Individual textures and details will be preserved.
+                  </p>
                 </div>
 
               </div>
@@ -182,11 +202,11 @@ export default function DeconstructOutfit() {
                   {isGenerating ? (
                     <>
                       <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin"></div>
-                      Processing...
+                      Deconstructing Outfit...
                     </>
                   ) : (
                     <>
-                      <Zap size={16} className={(!uploadedImage) ? "fill-slate-500" : "fill-black"} />
+                      <Zap size={16} className={!uploadedImage ? "fill-slate-500" : "fill-black"} />
                       Run Workflow
                     </>
                   )}
@@ -202,13 +222,14 @@ export default function DeconstructOutfit() {
               </div>
 
               {uploadedImage && generatedImage ? (
-                <div className="relative w-full h-full">
+                <div className="relative w-full h-full flex items-center justify-center p-8">
                   <ImageComparisonSlider
                     beforeImage={uploadedImage}
                     afterImage={generatedImage}
-                    beforeLabel="Before"
-                    afterLabel="Result"
-                    imageFit="object-contain"
+                    beforeLabel="Full Outfit"
+                    afterLabel="Deconstructed"
+                    imageFit="object-cover"
+                    imagePosition="object-center"
                   />
                   <button
                     onClick={handleDownload}
@@ -218,27 +239,30 @@ export default function DeconstructOutfit() {
                     Download
                   </button>
                 </div>
-              ) : uploadedImage ? (
-                <div className="relative w-full h-full">
-                  <img src={uploadedImage} className="w-full h-full object-contain" alt="Preview" />
-                  {isGenerating && (
-                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-10 transition-all duration-500">
-                      <div className="relative w-20 h-20 mb-4">
-                        <div className="absolute inset-0 border-4 border-[#60a5fa]/20 rounded-full"></div>
-                        <div className="absolute inset-0 border-4 border-[#60a5fa] rounded-full border-t-transparent animate-spin"></div>
-                      </div>
-                      <p className="text-white font-medium text-lg animate-pulse">Analyzing outfit...</p>
+              ) : (uploadedImage && isGenerating) ? (
+                <div className="relative w-full h-full flex items-center justify-center p-8">
+                  <img src={uploadedImage} className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" alt="Preview" />
+                  <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-10 transition-all duration-500">
+                    <div className="relative w-20 h-20 mb-4">
+                      <div className="absolute inset-0 border-4 border-[#60a5fa]/20 rounded-full"></div>
+                      <div className="absolute inset-0 border-4 border-[#60a5fa] rounded-full border-t-transparent animate-spin"></div>
                     </div>
-                  )}
+                    <p className="text-white font-medium text-lg animate-pulse">Deconstructing outfit...</p>
+                  </div>
+                </div>
+              ) : uploadedImage ? (
+                <div className="relative w-full h-full flex items-center justify-center p-8">
+                  <img src={uploadedImage} className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" alt="Preview" />
                 </div>
               ) : (
-                <div className="relative w-full h-full">
+                <div className="relative w-full h-full flex items-center justify-center p-8">
                   <ImageComparisonSlider
                     beforeImage="/workflow-samples/deconstruct-outfit-before.jpg"
                     afterImage="/workflow-samples/deconstruct-outfit-after.jpg"
                     beforeLabel="Before"
                     afterLabel="Result"
-                    imageFit="object-contain"
+                    imageFit="object-cover"
+                    imagePosition="object-center"
                   />
                 </div>
               )}
@@ -263,4 +287,3 @@ export default function DeconstructOutfit() {
     </>
   );
 }
-

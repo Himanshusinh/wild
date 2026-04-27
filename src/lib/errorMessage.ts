@@ -27,3 +27,16 @@ export function getErrorMessage(
   }
   return fallback;
 }
+
+export function getErrorCode(error: unknown): string | null {
+  if (!error || typeof error !== "object") return null;
+  const any = error as {
+    code?: string;
+    response?: { data?: { code?: string } };
+  };
+  if (typeof any.code === "string" && any.code) {
+    return any.code;
+  }
+  const code = any.response?.data?.code;
+  return typeof code === "string" && code ? code : null;
+}

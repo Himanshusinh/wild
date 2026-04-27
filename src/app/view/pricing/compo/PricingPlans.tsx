@@ -64,7 +64,8 @@ export default function PricingPlans({ isAuthenticated }: PricingPlansProps) {
   };
 
   const yearlyPrimaryDiscountPercent = useMemo(() => {
-    const planWithYearly = catalog?.plans.find(
+    const plans = catalog?.plans || [];
+    const planWithYearly = plans.find(
       (plan) => plan.monthly && plan.yearly && plan.monthly.priceInPaise > 0,
     );
     if (!planWithYearly?.monthly || !planWithYearly.yearly) {
@@ -85,8 +86,12 @@ export default function PricingPlans({ isAuthenticated }: PricingPlansProps) {
       (catalog?.plans || [])
         .map((plan) => {
           if (!plan.monthly) return null;
+          const family = String(plan.family || '').toLowerCase();
+          // Only process IDs that we actually have UI config for (spark, creator, studio, agency)
+          if (!['spark', 'creator', 'studio', 'agency'].includes(family)) return null;
+
           return buildMainPlanConfig({
-            id: plan.family as MainPlanId,
+            id: family as MainPlanId,
             name: plan.name,
             monthlyINR: plan.monthly.priceInPaise / 100,
             yearlyINR: plan.yearly ? plan.yearly.priceInPaise / 100 : null,

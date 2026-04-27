@@ -1044,7 +1044,7 @@ export default function WorkflowModal({ isOpen, onClose, workflowData }) {
                 <div className="w-full h-full rounded-2xl overflow-hidden border border-white/10 shadow-2xl relative group">
                   <img
                     src={result}
-                    className="w-full h-full object-contain"
+                    className={`w-full h-full ${workflowData.imageFit || 'object-cover'} ${workflowData.imagePosition || 'object-top'}`}
                     alt="Result"
                   />
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
@@ -1067,7 +1067,7 @@ export default function WorkflowModal({ isOpen, onClose, workflowData }) {
                   ) ? (
                     <img
                       src={workflowData.sampleAfter}
-                      className={`w-full h-full ${workflowData.id === "id-card" ? "object-cover" : "object-contain"}`}
+                      className={`w-full h-full ${workflowData.imageFit || (workflowData.id === "id-card" ? "object-cover" : "object-contain")} ${workflowData.imagePosition || 'object-top'}`}
                       alt={`${workflowData.title} Example`}
                     />
                   ) : (
@@ -1076,8 +1076,8 @@ export default function WorkflowModal({ isOpen, onClose, workflowData }) {
                       afterImage={workflowData.sampleAfter}
                       beforeLabel="Before"
                       afterLabel="After"
-                      imageFit={workflowData.imageFit}
-                      imagePosition={workflowData.imagePosition}
+                      imageFit={workflowData.imageFit || 'object-cover'}
+                      imagePosition={workflowData.imagePosition || 'object-top'}
                     />
                   )}
                 </div>

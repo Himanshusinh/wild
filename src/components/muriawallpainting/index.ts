@@ -1,0 +1,2 @@
+export { MuriaWallPaintingModal } from "./MuriaWallPaintingModal";
+

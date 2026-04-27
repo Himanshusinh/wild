@@ -1,0 +1,2 @@
+export { GharcholaModal } from "./GharcholaModal";
+

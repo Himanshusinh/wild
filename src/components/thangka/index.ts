@@ -1,3 +1,1 @@
-export { ThangkaModal } from "./ThangkaModal";
-export * from "./types";
-
+export * from "./ThangkaModal";

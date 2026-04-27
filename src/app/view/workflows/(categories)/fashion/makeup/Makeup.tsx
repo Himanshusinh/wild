@@ -4,17 +4,20 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { X, Camera, Zap, Download } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
+import axiosInstance from '@/lib/axiosInstance';
 import UploadModal from '@/app/view/Generation/ImageGeneration/TextToImage/compo/UploadModal';
 import ImageComparisonSlider from '@/app/view/workflows/components/ImageComparisonSlider';
 import { downloadFileWithNaming } from '@/utils/downloadUtils';
 import { useCredits } from '@/hooks/useCredits';
+import { getSignInUrl } from '@/routes/routes';
 
 export default function Makeup() {
   const router = useRouter();
   const {
     creditBalance,
     deductCreditsOptimisticForGeneration,
-    rollbackOptimisticDeduction
+    rollbackOptimisticDeduction,
+    user
   } = useCredits();
 
   // State
@@ -23,18 +26,18 @@ export default function Makeup() {
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-  const [prompt, setPrompt] = useState("");
-  const [selectedStyle, setSelectedStyle] = useState<string | null>(null);
-  const [selectedFinish, setSelectedFinish] = useState<string | null>(null);
+  const [additionalPrompt, setAdditionalPrompt] = useState("");
+  const [selectedStyle, setSelectedStyle] = useState<string>("Natural");
+  const [selectedFinish, setSelectedFinish] = useState<string>("Satin");
   const [intensity, setIntensity] = useState(50);
   const [focusArea, setFocusArea] = useState("Full Makeup");
 
   const makeupStyles = [
     "Natural",
-    "Soft Glam",
-    "Glam",
-    "Bridal",
-    "Editorial"
+    "Glamour",
+    "Matte",
+    "Glossy",
+    "Bronzed"
   ];
 
   const skinFinishes = [
@@ -59,6 +62,8 @@ export default function Makeup() {
     cost: 90
   };
 
+  const CREDIT_COST = 90;
+
   useEffect(() => {
     // Open modal animation on mount
     setTimeout(() => setIsOpen(true), 50);
@@ -82,18 +87,16 @@ export default function Makeup() {
   };
 
   const handleRun = async () => {
+    if (!user) {
+      router.push(getSignInUrl());
+      return;
+    }
+
     if (!uploadedImage) {
       toast.error('Please upload an image first');
       return;
     }
-    // Rampwalk might not strictly need a prompt, but let's keep it optional or mandatory based on user need.
-    // Assuming simple mandatory for now as per other workflows
-    if (!prompt.trim() && !selectedStyle) {
-      toast.error('Please describe the makeup style or select one');
-      return;
-    }
 
-    const CREDIT_COST = 90;
     if (creditBalance < CREDIT_COST) {
       toast.error(`Insufficient credits. You need ${CREDIT_COST} credits.`);
       return;
@@ -103,16 +106,28 @@ export default function Makeup() {
       deductCreditsOptimisticForGeneration(CREDIT_COST);
       setIsGenerating(true);
 
-      // Simulation for now
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      // Use the sample after image as a simulation result
-      setGeneratedImage("/workflow-samples/makeup-after.jpg");
-      toast.success('Makeup generated!');
+      const response = await axiosInstance.post('/api/workflows/fashion/makeup', {
+        image: uploadedImage,
+        focusArea,
+        style: selectedStyle,
+        finish: selectedFinish,
+        intensity,
+        additionalPrompt: additionalPrompt.trim(),
+        isPublic: true,
+        size: '2K', // Seedream 5 Lite best results
+      });
+
+      if (response.data?.responseStatus === 'success' && response.data?.data?.images?.[0]?.url) {
+        setGeneratedImage(response.data.data.images[0].url);
+        toast.success('Makeup applied successfully!');
+      } else {
+        throw new Error(response.data?.message || 'Invalid response from server');
+      }
 
     } catch (error: any) {
       console.error('Generation error:', error);
       rollbackOptimisticDeduction(CREDIT_COST);
-      toast.error(error.response?.data?.message || error.message || 'Failed to generate makeup');
+      toast.error(error.response?.data?.message || error.message || 'Failed to apply makeup');
     } finally {
       setIsGenerating(false);
     }
@@ -157,7 +172,7 @@ export default function Makeup() {
                   <span className="text-[10px] font-bold uppercase tracking-wider text-[#60a5fa] border border-[#60a5fa]/30 px-2 py-1 rounded-full">{workflowData.category}</span>
                 </div>
                 <h2 className="text-2xl md:text-4xl font-medium text-white mb-4 tracking-tight">{workflowData.title}</h2>
-                <p className="text-slate-400 text-lg mb-8">{workflowData.description}</p>
+                <p className="text-slate-400 text-lg mb-8 leading-relaxed">{workflowData.description}</p>
 
                 <div className="mb-8">
                   <div className="border border-dashed border-white/15 rounded-xl bg-black/20 h-48 flex flex-col items-center justify-center gap-4 cursor-pointer hover:bg-[#60a5fa]/5 transition-colors relative overflow-hidden group"
@@ -173,7 +188,7 @@ export default function Makeup() {
                       <>
                         <div className="w-12 h-12 rounded-full bg-[#111] flex items-center justify-center text-slate-400"><Camera size={24} /></div>
                         <div className="text-center">
-                          <span className="text-sm text-slate-300 block font-medium">Upload Image</span>
+                          <span className="text-sm text-slate-300 block font-medium">Upload Model Photo</span>
                           <span className="text-xs text-slate-500">JPG, PNG, WebP up to 25MB</span>
                         </div>
                       </>
@@ -181,81 +196,96 @@ export default function Makeup() {
                   </div>
                 </div>
 
-                <div className="mb-8">
-                  <label className="text-xs font-bold uppercase text-slate-500 mb-3 block tracking-wider">FOCUS AREA</label>
-                  <div className="flex flex-wrap gap-2 mb-6">
-                    {focusAreas.map((area) => (
-                      <button
-                        key={area}
-                        onClick={() => setFocusArea(area)}
-                        className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${focusArea === area
-                          ? 'bg-[#60a5fa] text-black shadow-[0_0_15px_rgba(96,165,250,0.4)]'
-                          : 'bg-white/5 text-slate-300 hover:bg-white/10 border border-white/10'
-                          }`}
-                      >
-                        {area}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="mb-8">
-                  <label className="text-xs font-bold uppercase text-slate-500 mb-3 block tracking-wider">CHOOSE STYLE</label>
-                  <div className="flex flex-wrap gap-2 mb-6">
-                    {makeupStyles.map((style) => (
-                      <button
-                        key={style}
-                        onClick={() => setSelectedStyle(style === selectedStyle ? null : style)}
-                        className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${selectedStyle === style
-                          ? 'bg-[#60a5fa] text-black shadow-[0_0_15px_rgba(96,165,250,0.4)]'
-                          : 'bg-white/5 text-slate-300 hover:bg-white/10 border border-white/10'
-                          }`}
-                      >
-                        {style}
-                      </button>
-                    ))}
-                  </div>
-
-                  <label className="text-xs font-bold uppercase text-slate-500 mb-3 block tracking-wider">SKIN FINISH</label>
-                  <div className="flex flex-wrap gap-2 mb-6">
-                    {skinFinishes.map((finish) => (
-                      <button
-                        key={finish}
-                        onClick={() => setSelectedFinish(finish === selectedFinish ? null : finish)}
-                        className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${selectedFinish === finish
-                          ? 'bg-[#60a5fa] text-black shadow-[0_0_15px_rgba(96,165,250,0.4)]'
-                          : 'bg-white/5 text-slate-300 hover:bg-white/10 border border-white/10'
-                          }`}
-                      >
-                        {finish}
-                      </button>
-                    ))}
-                  </div>
-
-                  <label className="text-xs font-bold uppercase text-slate-500 mb-3 block tracking-wider">MAKEUP INTENSITY</label>
-                  <div className="mb-8">
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      value={intensity}
-                      onChange={(e) => setIntensity(parseInt(e.target.value))}
-                      className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-[#60a5fa] hover:bg-white/20 transition-colors"
-                    />
-                    <div className="flex justify-between text-[10px] uppercase font-bold text-slate-500 mt-2 tracking-wider">
-                      <span>Soft</span>
-                      <span>Balanced</span>
-                      <span>Bold</span>
+                {/* Makeup Options */}
+                <div className="space-y-8">
+                  <div>
+                    <label className="text-xs font-bold uppercase text-slate-500 mb-3 block tracking-wider">FOCUS AREA</label>
+                    <div className="flex flex-wrap gap-2">
+                      {focusAreas.map((area) => (
+                        <button
+                          key={area}
+                          onClick={() => setFocusArea(area)}
+                          className={`px-4 py-2 rounded-full text-xs font-medium transition-all ${focusArea === area
+                            ? 'bg-[#60a5fa] text-black shadow-[0_0_15px_rgba(96,165,250,0.4)] border-transparent'
+                            : 'bg-white/5 text-slate-300 hover:bg-white/10 border border-white/10'
+                            }`}
+                        >
+                          {area}
+                        </button>
+                      ))}
                     </div>
                   </div>
 
-                  <label className="text-xs font-bold uppercase text-slate-500 mb-2 block tracking-wider">ADDITIONAL DETAILS (OPTIONAL)</label>
-                  <textarea
-                    value={prompt}
-                    onChange={(e) => setPrompt(e.target.value)}
-                    className="w-full bg-black/20 border border-white/10 rounded-xl p-4 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-[#60a5fa]/50 focus:bg-black/30 transition-all resize-none h-32"
-                    placeholder="Describe the makeup style (e.g. 'Smokey eyes with red lipstick, evening look')..."
-                  ></textarea>
+                  <div>
+                    <label className="text-xs font-bold uppercase text-slate-500 mb-3 block tracking-wider">CHOOSE STYLE</label>
+                    <div className="flex flex-wrap gap-2">
+                      {makeupStyles.map((style) => (
+                        <button
+                          key={style}
+                          onClick={() => setSelectedStyle(style)}
+                          className={`px-4 py-2 rounded-full text-xs font-medium transition-all ${selectedStyle === style
+                            ? 'bg-[#60a5fa] text-black shadow-[0_0_15px_rgba(96,165,250,0.4)] border-transparent'
+                            : 'bg-white/5 text-slate-300 hover:bg-white/10 border border-white/10'
+                            }`}
+                        >
+                          {style}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold uppercase text-slate-500 mb-3 block tracking-wider">FINISH</label>
+                    <div className="flex flex-wrap gap-2">
+                      {skinFinishes.map((finish) => (
+                        <button
+                          key={finish}
+                          onClick={() => setSelectedFinish(finish)}
+                          className={`px-4 py-2 rounded-full text-xs font-medium transition-all ${selectedFinish === finish
+                            ? 'bg-[#60a5fa] text-black shadow-[0_0_15px_rgba(96,165,250,0.4)] border-transparent'
+                            : 'bg-white/5 text-slate-300 hover:bg-white/10 border border-white/10'
+                            }`}
+                        >
+                          {finish}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold uppercase text-slate-500 mb-3 block tracking-wider flex justify-between">
+                      MAKEUP INTENSITY
+                      <span className="text-[#60a5fa] text-[10px]">{intensity}%</span>
+                    </label>
+                    <div className="px-1">
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={intensity}
+                        onChange={(e) => setIntensity(parseInt(e.target.value))}
+                        className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-[#60a5fa] hover:bg-white/20 transition-colors"
+                      />
+                      <div className="flex justify-between text-[8px] uppercase font-bold text-slate-600 mt-2 tracking-widest">
+                        <span>Soft</span>
+                        <span>Moderate</span>
+                        <span>Bold</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold uppercase text-slate-500 mb-2 block tracking-wider">ADDITIONAL DETAILS (OPTIONAL)</label>
+                    <textarea
+                      value={additionalPrompt}
+                      onChange={(e) => setAdditionalPrompt(e.target.value)}
+                      className="w-full bg-black/20 border border-white/10 rounded-xl p-4 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-[#60a5fa]/50 focus:bg-black/30 transition-all resize-none h-32"
+                      placeholder="Describe specific makeup details (e.g. 'Red lipstick, winged eyeliner')..."
+                    ></textarea>
+                    <p className="text-[10px] text-slate-600 mt-2 px-1 leading-relaxed">
+                      Identity and facial features will be preserved. Custom details will override default styles if specified.
+                    </p>
+                  </div>
                 </div>
 
               </div>
@@ -270,9 +300,9 @@ export default function Makeup() {
                 </div>
                 <button
                   onClick={handleRun}
-                  disabled={isGenerating || !uploadedImage || (!prompt && !selectedStyle)}
+                  disabled={isGenerating || !uploadedImage}
                   className={`w-full py-4 rounded-xl font-bold text-sm tracking-wide transition-all flex items-center justify-center gap-2
-                    ${isGenerating || !uploadedImage || (!prompt && !selectedStyle)
+                    ${isGenerating || !uploadedImage
                       ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
                       : 'bg-[#60a5fa] text-black hover:bg-[#60a5fa]/90 shadow-[0_0_20px_rgba(96,165,250,0.3)] hover:shadow-[0_0_30px_rgba(96,165,250,0.5)]'
                     }`}
@@ -280,11 +310,11 @@ export default function Makeup() {
                   {isGenerating ? (
                     <>
                       <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin"></div>
-                      Running Workflow...
+                      Applying Makeup...
                     </>
                   ) : (
                     <>
-                      <Zap size={16} className={(!uploadedImage) ? "fill-slate-500" : "fill-black"} />
+                      <Zap size={16} className={!uploadedImage ? "fill-slate-500" : "fill-black"} />
                       Run Workflow
                     </>
                   )}
@@ -306,7 +336,8 @@ export default function Makeup() {
                     afterImage={generatedImage}
                     beforeLabel="Before"
                     afterLabel="Result"
-                    imageFit="object-contain" // Kept consistent with Rampwalk request for safety
+                    imageFit="object-cover"
+                    imagePosition="object-center"
                   />
                   <button
                     onClick={handleDownload}
@@ -316,18 +347,20 @@ export default function Makeup() {
                     Download
                   </button>
                 </div>
+              ) : (uploadedImage && isGenerating) ? (
+                <div className="relative w-full h-full flex items-center justify-center p-8">
+                  <img src={uploadedImage} className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" alt="Preview" />
+                  <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-10 transition-all duration-500">
+                    <div className="relative w-20 h-20 mb-4">
+                      <div className="absolute inset-0 border-4 border-[#60a5fa]/20 rounded-full"></div>
+                      <div className="absolute inset-0 border-4 border-[#60a5fa] rounded-full border-t-transparent animate-spin"></div>
+                    </div>
+                    <p className="text-white font-medium text-lg animate-pulse">Applying makeup...</p>
+                  </div>
+                </div>
               ) : uploadedImage ? (
                 <div className="relative w-full h-full flex items-center justify-center p-8">
                   <img src={uploadedImage} className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" alt="Preview" />
-                  {isGenerating && (
-                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-10 transition-all duration-500">
-                      <div className="relative w-20 h-20 mb-4">
-                        <div className="absolute inset-0 border-4 border-[#60a5fa]/20 rounded-full"></div>
-                        <div className="absolute inset-0 border-4 border-[#60a5fa] rounded-full border-t-transparent animate-spin"></div>
-                      </div>
-                      <p className="text-white font-medium text-lg animate-pulse">Generating makeup...</p>
-                    </div>
-                  )}
                 </div>
               ) : (
                 <div className="relative w-full h-full flex items-center justify-center p-8">
@@ -337,6 +370,7 @@ export default function Makeup() {
                     beforeLabel="Before"
                     afterLabel="Result"
                     imageFit="object-cover"
+                    imagePosition="object-center"
                   />
                 </div>
               )}
@@ -361,4 +395,3 @@ export default function Makeup() {
     </>
   );
 }
-

@@ -258,7 +258,7 @@ export default function BecomeCelebrity() {
                                         afterImage={generatedImage}
                                         beforeLabel="Original"
                                         afterLabel="Celebrity Vibe"
-                                        imageFit="object-contain"
+                                        imageFit="object-cover"
                                         imagePosition="object-center"
                                     />
                                     <button

@@ -1,0 +1,2 @@
+export { TempleMuralModal } from "./TempleMuralModal";
+

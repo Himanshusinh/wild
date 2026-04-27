@@ -285,7 +285,9 @@ const FrameSizeDropdown = ({
     selectedModel === "ideogram-ai/ideogram-v3-quality";
   const isZTurbo = selectedModel === "new-turbo-model";
   const isPImage = selectedModel === "prunaai/p-image";
-  const isGptImage15 = selectedModel === "openai/gpt-image-1.5";
+  const isGptImageModel =
+    selectedModel === "openai/gpt-image-1.5" ||
+    selectedModel === "openai/gpt-image-2";
   const isQwenImageEdit =
     selectedModel === "qwen-image-edit-2511" ||
     selectedModel === "qwen-image-edit" ||
@@ -349,8 +351,8 @@ const FrameSizeDropdown = ({
       }
       return allowed;
     }
-    if (isGptImage15) {
-      // GPT Image 1.5: only supports 1:1, 3:2, 2:3 per schema
+    if (isGptImageModel) {
+      // GPT Image models: only support 1:1, 3:2, 2:3 per schema
       const allowed = new Set(["1:1", "3:2", "2:3"]);
       return baseSizes.filter((s) => allowed.has(s.value));
     }

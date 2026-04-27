@@ -1,0 +1,2 @@
+export { TangaliyaModal } from "./TangaliyaModal";
+

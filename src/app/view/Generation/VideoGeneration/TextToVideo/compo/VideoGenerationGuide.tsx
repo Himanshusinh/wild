@@ -34,7 +34,7 @@ const VideoGenerationGuide = () => {
 
             {/* --- Ambient Background --- */}
             {/* <div className="absolute inset-0 pointer-events-none">
-                <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] mix-blend-overlay"></div>
+                <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-[0.03] mix-blend-overlay"></div>
                 <div className="hidden md:block absolute top-1/2 left-[10%] right-[10%] h-px bg-gradient-to-r from-transparent via-[#60a5fa]/20 to-transparent blur-sm"></div>
             </div> */}
 
@@ -183,16 +183,35 @@ function ImageDragSimulation() {
     const [dragState, setDragState] = useState(0);
 
     useEffect(() => {
+        let cancelled = false;
+        const timers = new Set<ReturnType<typeof setTimeout>>();
+        const wait = (ms: number) =>
+            new Promise<void>((resolve) => {
+                const timer = setTimeout(() => {
+                    timers.delete(timer);
+                    resolve();
+                }, ms);
+                timers.add(timer);
+            });
         const sequence = async () => {
-            await new Promise(r => setTimeout(r, 2000));
-            setDragState(1);
-            await new Promise(r => setTimeout(r, 1500));
-            setDragState(2);
-            await new Promise(r => setTimeout(r, 4000));
-            setDragState(0);
-            sequence();
+            while (!cancelled) {
+                await wait(2000);
+                if (cancelled) break;
+                setDragState(1);
+                await wait(1500);
+                if (cancelled) break;
+                setDragState(2);
+                await wait(4000);
+                if (cancelled) break;
+                setDragState(0);
+            }
         };
         sequence();
+        return () => {
+            cancelled = true;
+            timers.forEach((timer) => clearTimeout(timer));
+            timers.clear();
+        };
     }, []);
 
     return (
@@ -228,24 +247,38 @@ function SimulatedConfigPanel() {
     const [time, setTime] = useState('5s');
 
     useEffect(() => {
+        let cancelled = false;
+        const timers = new Set<ReturnType<typeof setTimeout>>();
+        const wait = (ms: number) =>
+            new Promise<void>((resolve) => {
+                const timer = setTimeout(() => {
+                    timers.delete(timer);
+                    resolve();
+                }, ms);
+                timers.add(timer);
+            });
         const sequence = async () => {
-            const wait = (ms: number) => new Promise(res => setTimeout(res, ms));
-            setStep(0); setModel('Select Model'); setRes('720p'); setTime('5s');
-            await wait(1000);
-            // Model
-            setStep(1); await wait(600); setStep(2); await wait(600);
-            setModel('Veo 3.1'); setStep(0); await wait(500);
-            // Res
-            setStep(3); await wait(600); setStep(4); await wait(600);
-            setRes('1080p'); setStep(0); await wait(500);
-            // Time
-            setStep(5); await wait(600); setStep(6); await wait(600);
-            setTime('10s'); setStep(0);
-            // Hold
-            setStep(7); await wait(3000);
-            sequence();
+            while (!cancelled) {
+                setStep(0); setModel('Select Model'); setRes('720p'); setTime('5s');
+                await wait(1000); if (cancelled) break;
+                setStep(1); await wait(600); if (cancelled) break;
+                setStep(2); await wait(600); if (cancelled) break;
+                setModel('Veo 3.1'); setStep(0); await wait(500); if (cancelled) break;
+                setStep(3); await wait(600); if (cancelled) break;
+                setStep(4); await wait(600); if (cancelled) break;
+                setRes('1080p'); setStep(0); await wait(500); if (cancelled) break;
+                setStep(5); await wait(600); if (cancelled) break;
+                setStep(6); await wait(600); if (cancelled) break;
+                setTime('10s'); setStep(0);
+                setStep(7); await wait(3000);
+            }
         };
         sequence();
+        return () => {
+            cancelled = true;
+            timers.forEach((timer) => clearTimeout(timer));
+            timers.clear();
+        };
     }, []);
 
     return (
@@ -295,32 +328,37 @@ function SimulatedGenerateProcess() {
     const [genState, setGenState] = useState(0);
 
     useEffect(() => {
+        let cancelled = false;
+        const timers = new Set<ReturnType<typeof setTimeout>>();
+        const wait = (ms: number) =>
+            new Promise<void>((resolve) => {
+                const timer = setTimeout(() => {
+                    timers.delete(timer);
+                    resolve();
+                }, ms);
+                timers.add(timer);
+            });
+
         const sequence = async () => {
-            const wait = (ms: number) => new Promise(r => setTimeout(r, ms));
-
-            setGenState(0);
-            await wait(1000);
-
-            // 1. Move Cursor
-            setGenState(1);
-            await wait(800);
-
-            // 2. Click
-            setGenState(2);
-            await wait(200);
-
-            // 3. Generating (2s)
-            setGenState(3);
-            await wait(2000);
-
-            // 4. Show Result (4s hold)
-            setGenState(4);
-            await wait(4000);
-
-            // Loop
-            sequence();
+            while (!cancelled) {
+                setGenState(0);
+                await wait(1000); if (cancelled) break;
+                setGenState(1);
+                await wait(800); if (cancelled) break;
+                setGenState(2);
+                await wait(200); if (cancelled) break;
+                setGenState(3);
+                await wait(2000); if (cancelled) break;
+                setGenState(4);
+                await wait(4000);
+            }
         };
         sequence();
+        return () => {
+            cancelled = true;
+            timers.forEach((timer) => clearTimeout(timer));
+            timers.clear();
+        };
     }, []);
 
     return (

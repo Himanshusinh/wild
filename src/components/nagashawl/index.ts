@@ -1,0 +1,2 @@
+export { NagaShawlModal } from "./NagaShawlModal";
+

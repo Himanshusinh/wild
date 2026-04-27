@@ -221,7 +221,7 @@ export default function FusionStyles() {
                     afterImage={generatedImage}
                     beforeLabel="Before"
                     afterLabel="Result"
-                    imageFit="object-contain"
+                    imageFit="object-cover"
                     imagePosition="object-center"
                   />
                   <button
@@ -245,11 +245,11 @@ export default function FusionStyles() {
               ) : (
                 <div className="relative w-full h-full flex items-center justify-center p-8">
                   <ImageComparisonSlider
-                    beforeImage="/workflow-samples/fusion-styles-before.jpg"
-                    afterImage="/workflow-samples/fusion-styles-after.png"
+                    beforeImage="/workflow-samples/fusion-styles-before-v2.jpg"
+                    afterImage="/workflow-samples/fusion-styles-after-v2.jpg"
                     beforeLabel="Before"
                     afterLabel="After"
-                    imageFit="object-contain"
+                    imageFit="object-cover"
                     imagePosition="object-center"
                   />
                 </div>

@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=375, initial-scale=1">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Space+Mono:wght@400;700&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0c;
+    --surface: #141418;
+    --surface2: #1c1c22;
+    --border: #2a2a34;
+    --accent: #3b6bff;
+    --accent2: #5e87ff;
+    --text: #e8e8f0;
+    --muted: #6b6b80;
+    --success: #22c55e;
+    --pill-bg: #1e1e28;
+  }
+
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 0;
+  }
+
+  .phone-frame {
+    width: 375px;
+    min-height: 812px;
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* Top bar */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px 10px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+
+  .topbar-title {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--text);
+  }
+
+  .topbar-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .icon-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+
+  .icon-btn svg { width: 16px; height: 16px; }
+
+  /* Mode tabs */
+  .mode-tabs {
+    display: flex;
+    padding: 10px 16px;
+    gap: 8px;
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .mode-tabs::-webkit-scrollbar { display: none; }
+
+  .tab-pill {
+    flex-shrink: 0;
+    padding: 6px 13px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all 0.2s;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--muted);
+    background: transparent;
+  }
+
+  .tab-pill.active {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+
+  .tab-pill:not(.active):hover {
+    background: var(--surface);
+    border-color: var(--border);
+    color: var(--text);
+  }
+
+  /* Sub tabs (Edit / Image / Image Editor) */
+  .view-tabs {
+    display: flex;
+    padding: 10px 16px 0;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .view-tab {
+    padding: 8px 16px;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+  }
+
+  .view-tab.active {
+    color: var(--accent2);
+    border-bottom-color: var(--accent2);
+  }
+
+  /* Scrollable content */
+  .content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    scrollbar-width: none;
+  }
+  .content::-webkit-scrollbar { display: none; }
+
+  /* Upload zone */
+  .upload-zone {
+    border: 1.5px dashed var(--border);
+    border-radius: 16px;
+    padding: 32px 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    background: var(--surface);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .upload-zone::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 50% 0%, rgba(59,107,255,0.06) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .upload-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .upload-icon svg { width: 20px; height: 20px; color: var(--accent2); }
+
+  .upload-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .upload-sub {
+    font-size: 11.5px;
+    color: var(--muted);
+    text-align: center;
+  }
+
+  .upload-sub span {
+    color: var(--accent2);
+    font-weight: 500;
+  }
+
+  .format-pills {
+    display: flex;
+    gap: 6px;
+    margin-top: 4px;
+  }
+
+  .fmt-pill {
+    padding: 3px 9px;
+    border-radius: 6px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    font-size: 10.5px;
+    font-weight: 500;
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+  }
+
+  /* Image preview card */
+  .preview-card {
+    border-radius: 14px;
+    overflow: hidden;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    position: relative;
+  }
+
+  .preview-img {
+    width: 100%;
+    height: 160px;
+    object-fit: cover;
+    display: block;
+    background: linear-gradient(135deg, #1c1c28 0%, #0f0f18 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .preview-placeholder {
+    width: 100%;
+    height: 140px;
+    background: linear-gradient(135deg, #1a1a28 0%, #111120 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted);
+    font-size: 12px;
+    gap: 8px;
+  }
+
+  /* Settings card */
+  .settings-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+
+  .settings-section {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .settings-section:last-child {
+    border-bottom: none;
+  }
+
+  .section-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+    font-family: 'Space Mono', monospace;
+  }
+
+  /* Model select */
+  .model-select {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    cursor: pointer;
+  }
+
+  .model-name {
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  .chevron svg { width: 16px; height: 16px; color: var(--muted); }
+
+  /* Scale slider */
+  .scale-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+
+  .scale-badge {
+    background: var(--accent);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 9px;
+    border-radius: 20px;
+    font-family: 'Space Mono', monospace;
+  }
+
+  .slider-track {
+    position: relative;
+    height: 4px;
+    background: var(--surface2);
+    border-radius: 4px;
+    margin: 4px 0 8px;
+  }
+
+  .slider-fill {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    width: 26%;
+    background: var(--accent);
+    border-radius: 4px;
+  }
+
+  .slider-thumb {
+    position: absolute;
+    left: calc(26% - 8px);
+    top: -6px;
+    width: 16px;
+    height: 16px;
+    background: var(--accent);
+    border: 2.5px solid #fff;
+    border-radius: 50%;
+    box-shadow: 0 2px 6px rgba(59,107,255,0.5);
+  }
+
+  .scale-ticks {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 4px;
+  }
+
+  .tick {
+    font-size: 10px;
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+  }
+
+  /* Format toggle */
+  .format-toggle {
+    display: flex;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 3px;
+    gap: 3px;
+  }
+
+  .fmt-btn {
+    flex: 1;
+    padding: 7px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    font-weight: 600;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+  }
+
+  .fmt-btn.active {
+    background: var(--accent);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(59,107,255,0.4);
+  }
+
+  /* Output info */
+  .output-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .output-cell {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+  }
+
+  .output-cell-label {
+    font-size: 9.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+    margin-bottom: 4px;
+  }
+
+  .output-cell-value {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  /* Bottom CTA */
+  .bottom-bar {
+    padding: 12px 16px 24px;
+    background: var(--bg);
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 10px;
+    position: sticky;
+    bottom: 0;
+  }
+
+  .btn-reset {
+    flex: 0 0 80px;
+    padding: 13px;
+    border-radius: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 13.5px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    transition: background 0.2s;
+  }
+
+  .btn-generate {
+    flex: 1;
+    padding: 13px;
+    border-radius: 12px;
+    background: var(--accent);
+    border: none;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    box-shadow: 0 4px 18px rgba(59,107,255,0.35);
+    transition: all 0.2s;
+  }
+
+  .btn-generate:active {
+    transform: scale(0.98);
+    box-shadow: 0 2px 10px rgba(59,107,255,0.3);
+  }
+
+  .btn-generate svg { width: 16px; height: 16px; }
+</style>
+</head>
+<body>
+<div class="phone-frame">
+
+  <!-- Top Bar -->
+  <div class="topbar">
+    <div class="topbar-title">Image Generation</div>
+    <div class="topbar-actions">
+      <div class="view-tabs" style="border:none;padding:0;display:flex;gap:0;">
+        <div class="view-tab" style="padding:4px 10px;font-size:11.5px;">Image</div>
+        <div class="view-tab active" style="padding:4px 10px;font-size:11.5px;">Edit</div>
+        <div class="view-tab" style="padding:4px 10px;font-size:11.5px;">Editor</div>
+      </div>
+      <div class="icon-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1M16 12l-4 4m0 0l-4-4m4 4V4"/>
+        </svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- Feature tabs -->
+  <div class="mode-tabs">
+    <div class="tab-pill active">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 3h18v18H3z"/><path d="M3 9h18M9 3v18"/></svg>
+      Upscale
+    </div>
+    <div class="tab-pill">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="9"/></svg>
+      Remove BG
+    </div>
+    <div class="tab-pill">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M11 19H5a2 2 0 01-2-2V7a2 2 0 012-2h6m6 0h2a2 2 0 012 2v10a2 2 0 01-2 2h-2"/></svg>
+      Erase/Replace
+    </div>
+    <div class="tab-pill">Expand</div>
+    <div class="tab-pill">Vectorize</div>
+  </div>
+
+  <!-- Scrollable content -->
+  <div class="content">
+
+    <!-- Upload zone -->
+    <div class="upload-zone">
+      <div class="upload-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="18" height="18" rx="3"/>
+          <circle cx="8.5" cy="8.5" r="1.5"/>
+          <path d="M21 15l-5-5L5 21"/>
+        </svg>
+      </div>
+      <div class="upload-title">Drop your image here</div>
+      <div class="upload-sub">or <span>tap to browse</span> from your device</div>
+      <div class="format-pills">
+        <div class="fmt-pill">PNG</div>
+        <div class="fmt-pill">JPG</div>
+        <div class="fmt-pill">up to 50MB</div>
+      </div>
+    </div>
+
+    <!-- Settings card -->
+    <div class="settings-card">
+
+      <!-- AI Model -->
+      <div class="settings-section">
+        <div class="section-label">AI Model</div>
+        <div class="model-select">
+          <div class="model-name">Crystal Upscaler</div>
+          <div class="chevron">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M6 9l6 6 6-6"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scale factor -->
+      <div class="settings-section">
+        <div class="scale-header">
+          <div class="section-label" style="margin-bottom:0;">Scale Factor</div>
+          <div class="scale-badge">2×</div>
+        </div>
+        <div class="slider-track">
+          <div class="slider-fill"></div>
+          <div class="slider-thumb"></div>
+        </div>
+        <div class="scale-ticks">
+          <span class="tick">1×</span>
+          <span class="tick">2×</span>
+          <span class="tick">3×</span>
+          <span class="tick">4×</span>
+          <span class="tick">5×</span>
+          <span class="tick">6×</span>
+        </div>
+      </div>
+
+      <!-- Output format -->
+      <div class="settings-section">
+        <div class="section-label">Output Format</div>
+        <div class="format-toggle">
+          <div class="fmt-btn active">PNG</div>
+          <div class="fmt-btn">JPG</div>
+        </div>
+      </div>
+
+      <!-- Estimated output -->
+      <div class="settings-section">
+        <div class="section-label">Estimated Output</div>
+        <div class="output-grid">
+          <div class="output-cell">
+            <div class="output-cell-label">Resolution</div>
+            <div class="output-cell-value">2× size</div>
+          </div>
+          <div class="output-cell">
+            <div class="output-cell-label">Est. Cost</div>
+            <div class="output-cell-value" style="color:var(--muted);">—</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- Bottom bar -->
+  <div class="bottom-bar">
+    <button class="btn-reset">Reset</button>
+    <button class="btn-generate">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+      </svg>
+      Generate
+    </button>
+  </div>
+
+</div>
+</body>
+</html>

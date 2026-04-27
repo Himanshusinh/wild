@@ -1,0 +1,2 @@
+export { KeralaMuralModal } from "./KeralaMuralModal";
+

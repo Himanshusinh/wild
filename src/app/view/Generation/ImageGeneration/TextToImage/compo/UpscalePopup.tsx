@@ -40,6 +40,11 @@ const UpscalePopup = ({
   const [isUpscaling, setIsUpscaling] = useState(false);
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
   const [fullscreenTitle, setFullscreenTitle] = useState<string>("");
+  const [fullscreenScale, setFullscreenScale] = useState(1);
+  const [fullscreenOffset, setFullscreenOffset] = useState({ x: 0, y: 0 });
+  const [isFullscreenDragging, setIsFullscreenDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const fullscreenContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const user = useAppSelector((state) => state.auth.user);
@@ -319,16 +324,105 @@ const UpscalePopup = ({
   const openFullscreen = (imageUrl: string, title: string) => {
     setFullscreenImage(imageUrl);
     setFullscreenTitle(title);
+    setFullscreenScale(1);
+    setFullscreenOffset({ x: 0, y: 0 });
+    setIsFullscreenDragging(false);
   };
 
   const closeFullscreen = () => {
     setFullscreenImage(null);
     setFullscreenTitle("");
+    setFullscreenScale(1);
+    setFullscreenOffset({ x: 0, y: 0 });
+    setIsFullscreenDragging(false);
+  };
+
+  const clampFullscreenOffset = (
+    nextOffset: { x: number; y: number },
+    nextScale: number,
+  ) => {
+    const container = fullscreenContainerRef.current;
+    if (!container || nextScale <= 1) return { x: 0, y: 0 };
+    const maxX = ((nextScale - 1) * container.clientWidth) / 2;
+    const maxY = ((nextScale - 1) * container.clientHeight) / 2;
+    return {
+      x: Math.max(-maxX, Math.min(maxX, nextOffset.x)),
+      y: Math.max(-maxY, Math.min(maxY, nextOffset.y)),
+    };
+  };
+
+  const handleFullscreenWheel: React.WheelEventHandler<HTMLDivElement> = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const container = fullscreenContainerRef.current;
+    if (!container) return;
+
+    const rect = container.getBoundingClientRect();
+    const px = e.clientX - rect.left;
+    const py = e.clientY - rect.top;
+
+    setFullscreenScale((prevScale) => {
+      const zoomFactor = e.deltaY < 0 ? 1.12 : 0.88;
+      const nextScale = Math.max(1, Math.min(6, prevScale * zoomFactor));
+      if (nextScale === prevScale) return prevScale;
+
+      setFullscreenOffset((prevOffset) => {
+        const cx = rect.width / 2;
+        const cy = rect.height / 2;
+        const ix = (px - cx - prevOffset.x) / prevScale;
+        const iy = (py - cy - prevOffset.y) / prevScale;
+        const nextOffset = {
+          x: px - cx - ix * nextScale,
+          y: py - cy - iy * nextScale,
+        };
+        return clampFullscreenOffset(nextOffset, nextScale);
+      });
+
+      return nextScale;
+    });
+  };
+
+  const handleFullscreenMouseDown: React.MouseEventHandler<HTMLDivElement> = (
+    e,
+  ) => {
+    if (fullscreenScale <= 1) return;
+    e.preventDefault();
+    setIsFullscreenDragging(true);
+    setDragStart({ x: e.clientX - fullscreenOffset.x, y: e.clientY - fullscreenOffset.y });
+  };
+
+  const handleFullscreenMouseMove: React.MouseEventHandler<HTMLDivElement> = (
+    e,
+  ) => {
+    if (!isFullscreenDragging || fullscreenScale <= 1) return;
+    e.preventDefault();
+    const nextOffset = {
+      x: e.clientX - dragStart.x,
+      y: e.clientY - dragStart.y,
+    };
+    setFullscreenOffset(clampFullscreenOffset(nextOffset, fullscreenScale));
+  };
+
+  const handleFullscreenMouseUp = () => {
+    setIsFullscreenDragging(false);
   };
 
   useEffect(() => {
     if (defaultImage) setUploadedImage(defaultImage);
   }, [defaultImage]);
+
+  useEffect(() => {
+    if (!fullscreenImage) return;
+    const prevOverflow = document.body.style.overflow;
+    const prevOverscroll = document.documentElement.style.overscrollBehavior;
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overscrollBehavior = "none";
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.documentElement.style.overscrollBehavior = prevOverscroll;
+    };
+  }, [fullscreenImage]);
 
   useEffect(() => {
     if (!uploadedImage) {
@@ -1298,7 +1392,15 @@ const UpscalePopup = ({
       {/* Fullscreen Modal */}
       {fullscreenImage && (
         <div className="fixed inset-0 z-[80] bg-black flex items-center justify-center">
-          <div className="relative w-full h-full flex items-center justify-center">
+          <div
+            ref={fullscreenContainerRef}
+            className="relative w-full h-full flex items-center justify-center overflow-hidden"
+            onWheel={handleFullscreenWheel}
+            onMouseDown={handleFullscreenMouseDown}
+            onMouseMove={handleFullscreenMouseMove}
+            onMouseUp={handleFullscreenMouseUp}
+            onMouseLeave={handleFullscreenMouseUp}
+          >
             {/* Title */}
             <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-10">
               <h3 className="text-white text-lg font-medium bg-black/50 px-4 py-2 rounded-lg">
@@ -1308,7 +1410,13 @@ const UpscalePopup = ({
             <img
               src={fullscreenImage}
               alt={`${fullscreenTitle} Fullscreen`}
-              className="w-full h-full object-contain"
+              className={`w-full h-full object-contain select-none ${isFullscreenDragging ? "cursor-grabbing" : fullscreenScale > 1 ? "cursor-grab" : "cursor-zoom-in"}`}
+              draggable={false}
+              style={{
+                transform: `translate(${fullscreenOffset.x}px, ${fullscreenOffset.y}px) scale(${fullscreenScale})`,
+                transformOrigin: "center center",
+                transition: isFullscreenDragging ? "none" : "transform 120ms ease-out",
+              }}
             />
             {/* Close Fullscreen Button */}
             <button

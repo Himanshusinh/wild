@@ -1,0 +1,1 @@
+export { JhajjarModal } from "./JhajjarModal";

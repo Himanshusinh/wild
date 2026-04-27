@@ -315,7 +315,8 @@ export default function PhotoToLineDrawing() {
                     afterImage={generatedImage}
                     beforeLabel="Original"
                     afterLabel="Line Drawing"
-                    imageFit="object-contain"
+                    imageFit="object-cover"
+                    imagePosition="object-center"
                   />
                   <button
                     onClick={handleDownload}
@@ -356,6 +357,7 @@ export default function PhotoToLineDrawing() {
                     beforeLabel="Before"
                     afterLabel="After"
                     imageFit="object-cover"
+                    imagePosition="object-center"
                   />
                 </div>
               )}

@@ -1,7 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { getApiClient } from '@/lib/axiosInstance';
-import { getMeCached } from '@/lib/me';
-import { RootState } from '@/store';
 
 function getClientPlanOverride(): string | null {
   if (typeof window === 'undefined') return null;
@@ -24,6 +22,8 @@ export interface UserCredits {
   planCode: string;
   storageUsed: number;
   storageQuota: number;
+  freeTurboUsed?: number;
+  freeTurboLimit?: number;
   lastSync?: string;
 }
 
@@ -62,7 +62,7 @@ const initialState: CreditsState = {
 // Async thunks
 export const fetchUserCredits = createAsyncThunk(
   'credits/fetchUserCredits',
-  async (_, { rejectWithValue, getState }) => {
+  async (_, { rejectWithValue }) => {
     const startTime = Date.now();
     try {
       console.log('[CREDITS_FRONTEND] fetchUserCredits: Starting credit fetch...');
@@ -73,14 +73,18 @@ export const fetchUserCredits = createAsyncThunk(
         console.log('[CREDITS_FRONTEND] Trying /api/credits/me endpoint...');
         const creditsResponse = await api.get('/api/credits/me');
         const creditsData = creditsResponse.data?.data || creditsResponse.data;
+        const planCode = withTestPlanOverride(creditsData?.planCode).toLowerCase();
         const creditBalance = creditsData?.creditBalance ?? 0;
-        const planCode = withTestPlanOverride(creditsData?.planCode);
         const storageUsed = Number(creditsData?.storageUsedBytes || 0);
         const storageQuota = Number(creditsData?.storageQuotaBytes || 0);
+        const freeTurboUsed = Number(creditsData?.freeTurboUsed || 0);
+        const freeTurboLimit = Number(creditsData?.freeTurboLimit || 10);
 
         console.log('[CREDITS_FRONTEND] Credits endpoint response:', {
           creditBalance,
           planCode,
+          freeTurboUsed,
+          freeTurboLimit,
           autoReconciled: creditsData?.autoReconciled,
           recentLedgers: creditsData?.recentLedgers?.length || 0,
           responseTime: Date.now() - startTime
@@ -98,6 +102,8 @@ export const fetchUserCredits = createAsyncThunk(
           planCode,
           storageUsed,
           storageQuota,
+          freeTurboUsed,
+          freeTurboLimit,
           lastSync: new Date().toISOString(),
         } as UserCredits;
       } catch (creditsError: any) {
@@ -114,45 +120,18 @@ export const fetchUserCredits = createAsyncThunk(
         // Skip fallbacks as they will also fail with 401 or return unauthenticated state.
         if (errorStatus === 401) {
           console.log('[CREDITS_FRONTEND] skipping fallback due to 401 Unauthorized');
+          const planCode = withTestPlanOverride('free').toLowerCase();
           return {
             creditBalance: 0,
-            planCode: withTestPlanOverride('free'),
+            planCode,
             lastSync: new Date().toISOString(),
           } as UserCredits;
         }
 
-        console.log('[CREDITS_FRONTEND] Falling back to auth/me...');
-        const state = getState() as RootState;
-        const authUser = state?.auth?.user;
-        if (authUser) {
-          const fallbackBalance = (authUser as any)?.creditBalance || (authUser as any)?.credits || 0;
-          console.log('[CREDITS_FRONTEND] Using auth user state:', {
-            creditBalance: fallbackBalance,
-            planCode: withTestPlanOverride((authUser as any)?.planCode)
-          });
-          return {
-            creditBalance: fallbackBalance,
-            planCode: withTestPlanOverride((authUser as any)?.planCode),
-            storageUsed: 0,
-            storageQuota: 0,
-            lastSync: new Date().toISOString(),
-          } as UserCredits;
-        }
-        // Fallback to cached /me endpoint
-        const userData = await getMeCached();
-        const cachedBalance = userData?.creditBalance || userData?.credits || 0;
-        console.log('[CREDITS_FRONTEND] Using cached /me endpoint:', {
-          creditBalance: cachedBalance,
-          planCode: withTestPlanOverride(userData?.planCode)
-        });
-
-        return {
-          creditBalance: cachedBalance,
-          planCode: withTestPlanOverride(userData?.planCode),
-          storageUsed: 0,
-          storageQuota: 0,
-          lastSync: new Date().toISOString(),
-        } as UserCredits;
+        // Strict mode: no fallback to auth/me or cached profile credits.
+        return rejectWithValue(
+          errorMessage || 'Failed to fetch credits from credit service',
+        );
       }
     } catch (error: any) {
       console.error('[CREDITS_FRONTEND] Failed to fetch credits:', {
@@ -334,6 +313,18 @@ const creditsSlice = createSlice({
         state.credits.creditBalance += action.payload;
       }
     },
+    // Optimistic update for promotional turbo counter
+    incrementFreeTurboUsedOptimistic: (state, action: PayloadAction<number>) => {
+      if (state.credits) {
+        state.credits.freeTurboUsed = (state.credits.freeTurboUsed || 0) + action.payload;
+      }
+    },
+    // Rollback for promotional turbo counter
+    decrementFreeTurboUsedOptimistic: (state, action: PayloadAction<number>) => {
+      if (state.credits) {
+        state.credits.freeTurboUsed = Math.max(0, (state.credits.freeTurboUsed || 0) - action.payload);
+      }
+    },
     // Manual credit update (for admin operations, etc.)
     updateCredits: (state, action: PayloadAction<Partial<UserCredits>>) => {
       if (state.credits) {
@@ -421,6 +412,8 @@ export const {
   clearValidation,
   deductCreditsOptimistic,
   rollbackCreditsOptimistic,
+  incrementFreeTurboUsedOptimistic,
+  decrementFreeTurboUsedOptimistic,
   updateCredits,
 } = creditsSlice.actions;
 

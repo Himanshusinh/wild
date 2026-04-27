@@ -1,0 +1,1 @@
+export { KhatambandModal } from "./KhatambandModal";

@@ -557,7 +557,6 @@ const LandingPage: React.FC = () => {
                         height={500}
                         alt="Free pricing plan artwork"
                         className="grayscale filter object-contain rounded-2xl scale-90"
-                        unoptimized
                       />
                     </div>
                   </LazyWobbleCard>
@@ -590,7 +589,6 @@ const LandingPage: React.FC = () => {
                       height={500}
                       alt="Explore pricing plans artwork"
                       className="grayscale filter absolute -right-10 md:-right-[20%] lg:-right-[20%] -bottom-10 object-contain rounded-2xl mb:static mb:mt-6 mb:w-[80%] mb:max-w-[320px] mb:mx-auto mobile:w-[85%]"
-                      unoptimized
                     />
                   </LazyWobbleCard>
                 </div>

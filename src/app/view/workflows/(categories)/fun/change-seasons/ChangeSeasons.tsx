@@ -226,7 +226,7 @@ export default function ChangeSeasons() {
                     afterImage={generatedImage}
                     beforeLabel="Before"
                     afterLabel="Result"
-                    imageFit="object-contain"
+                    imageFit="object-cover"
                     imagePosition="object-center"
                   />
                   <button

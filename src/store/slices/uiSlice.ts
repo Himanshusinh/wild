@@ -19,7 +19,9 @@ interface UIState {
     auth?: boolean;
     accountBlocked?: boolean;
     accountUnderReview?: boolean;
+    promotionalLimit?: boolean;
   };
+  creditsMessage?: string | null;
   moderationInfo: {
     code:
       | "ACCOUNT_BANNED"
@@ -105,10 +107,14 @@ const uiSlice = createSlice({
       action: PayloadAction<{
         modal: keyof UIState["modals"];
         isOpen: boolean;
+        message?: string | null;
       }>,
     ) => {
       if (state.modals) {
         state.modals[action.payload.modal] = action.payload.isOpen;
+      }
+      if (action.payload.modal === "noCredits" || action.payload.modal === "promotionalLimit") {
+        state.creditsMessage = action.payload.message || null;
       }
     },
     setModerationInfo: (

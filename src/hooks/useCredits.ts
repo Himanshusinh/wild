@@ -29,6 +29,8 @@ import { useEffect, useCallback } from 'react';
 let creditsBootstrapInFlight: Promise<any> | null = null;
 let creditsBootstrapCompleted = false;
 
+import { isModelAccessibleForPlan } from '@/config/planModelAccess';
+
 export const useCredits = () => {
   const dispatch = useDispatch<AppDispatch>();
   const authUser = useSelector((state: RootState) => state.auth.user);
@@ -75,6 +77,11 @@ export const useCredits = () => {
     inputVideoDurationSec?: number,
     hasReferenceVideoInput?: boolean,
   ) => {
+    // Plan-based model access check
+    if (!isModelAccessibleForPlan(credits?.planCode || 'free', 'video', model)) {
+      throw new Error(`The ${model} model is not available on your current plan. Please upgrade to unlock.`);
+    }
+
     const requiredCredits = getVideoGenerationCreditCost(
       provider,
       model,
@@ -110,6 +117,11 @@ export const useCredits = () => {
     uploadedImages?: any[],
     quality?: string
   ) => {
+    // Plan-based model access check
+    if (!isModelAccessibleForPlan(credits?.planCode || 'free', 'image', model)) {
+      throw new Error(`The ${model} model is not available on your current plan. Please upgrade to unlock.`);
+    }
+
     const requiredCredits = getImageGenerationCreditCost(
       model,
       count,
@@ -120,9 +132,22 @@ export const useCredits = () => {
       quality,
     );
 
-    // Special case: Free models should not trigger "Unknown model"
-    if (model === 'wildmindimage') {
-      return { requiredCredits: 0, validation: null as any };
+    // Special case for z-image-turbo: allow free plan users to generate even if they have 0 credits
+    const isFreeTurboModel = model === 'new-turbo-model' || model === 'z-image-turbo' || model?.toLowerCase().includes('turbo');
+    const isFreePlan = (credits?.planCode?.toLowerCase() || 'free') === 'free';
+    
+    console.log('[DEBUG useCredits] Checking bypass:', { model, isFreeTurboModel, planCode: credits?.planCode, isFreePlan, requiredCredits });
+
+    if (isFreeTurboModel && isFreePlan) {
+      console.log('[useCredits] Allowing free-tier turbo generation (usage limit managed by backend)');
+      return { 
+        requiredCredits: 0, // Treat as 0 for frontend validation
+        validation: { 
+          hasEnoughCredits: true, 
+          requiredCredits: 0, 
+          currentBalance: creditBalance 
+        } as any 
+      };
     }
 
     if (requiredCredits === 0) {
@@ -139,7 +164,7 @@ export const useCredits = () => {
     }
 
     return { requiredCredits, validation: result.payload };
-  }, [dispatch, creditBalance]);
+  }, [dispatch, creditBalance, credits?.planCode]);
 
   const validateMusicCredits = useCallback(async (
     model: string,
@@ -147,6 +172,11 @@ export const useCredits = () => {
     inputs?: any[],
     text?: string // Added for Maya TTS per-second pricing based on text length
   ) => {
+    // Plan-based model access check
+    if (!isModelAccessibleForPlan(credits?.planCode || 'free', 'audio', model)) {
+      throw new Error(`The ${model} model is not available on your current plan. Please upgrade to unlock.`);
+    }
+
     const requiredCredits = getMusicGenerationCreditCost(model, duration, inputs, text);
 
     if (requiredCredits === 0) {
@@ -221,6 +251,7 @@ export const useCredits = () => {
     // State
     credits,
     creditBalance,
+    planCode: credits?.planCode,
     loading,
     error,
     lastValidation,
@@ -275,8 +306,11 @@ export const useGenerationCredits = (
     confirmGenerationSuccess,
     confirmGenerationFailure,
     creditBalance,
+    credits,
+    planCode,
     error,
     clearCreditsError,
+    refreshCredits,
   } = useCredits();
 
   const validateAndReserveCredits = async (provider?: 'minimax' | 'runway' | 'fal' | 'replicate') => {
@@ -330,7 +364,16 @@ export const useGenerationCredits = (
       }
       console.log('[DEBUG validateAndReserveCredits] Validation successful, required:', requiredCredits);
 
-      // Reserve credits
+      // Reserve credits (skip if free)
+      if (requiredCredits === 0) {
+        return {
+          requiredCredits,
+          validation,
+          reservation: null as any,
+          transactionId: `free_${Date.now()}`,
+        };
+      }
+
       const reservation = await reserveCreditsForGeneration(
         requiredCredits,
         `${generationType}-generation`,
@@ -367,7 +410,10 @@ export const useGenerationCredits = (
     handleGenerationSuccess,
     handleGenerationFailure,
     creditBalance,
+    credits,
+    planCode,
     error,
     clearCreditsError,
+    refreshCredits,
   };
 };

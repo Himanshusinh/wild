@@ -1,0 +1,1 @@
+export { PalmmatModal } from "./PalmmatModal";

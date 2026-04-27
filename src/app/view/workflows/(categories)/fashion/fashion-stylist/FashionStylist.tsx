@@ -4,23 +4,26 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { X, Camera, Zap, Download } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
+import axiosInstance from '@/lib/axiosInstance';
 import UploadModal from '@/app/view/Generation/ImageGeneration/TextToImage/compo/UploadModal';
 import ImageComparisonSlider from '@/app/view/workflows/components/ImageComparisonSlider';
 import { downloadFileWithNaming } from '@/utils/downloadUtils';
 import { useCredits } from '@/hooks/useCredits';
+import { getSignInUrl } from '@/routes/routes';
 
 export default function FashionStylist() {
   const router = useRouter();
   const {
     creditBalance,
     deductCreditsOptimisticForGeneration,
-    rollbackOptimisticDeduction
+    rollbackOptimisticDeduction,
+    user
   } = useCredits();
 
   // State
   const [isOpen, setIsOpen] = useState(false);
-  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
-  const [userImage, setUserImage] = useState<string | null>(null);
+  const [uploadedImage, setUploadedImage] = useState<string | null>(null); // Outfit
+  const [userImage, setUserImage] = useState<string | null>(null); // Person
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
@@ -32,9 +35,11 @@ export default function FashionStylist() {
     id: "fashion-stylist",
     title: "Fashion Stylist",
     category: "Fashion",
-    description: "Generate professional styling suggestions and combinations.",
+    description: "Generate professional styling suggestions and combinations by virtually trying on outfits.",
     cost: 90
   };
+
+  const CREDIT_COST = 90;
 
   useEffect(() => {
     // Open modal animation on mount
@@ -64,6 +69,11 @@ export default function FashionStylist() {
   };
 
   const handleRun = async () => {
+    if (!user) {
+      router.push(getSignInUrl());
+      return;
+    }
+
     if (!uploadedImage) {
       toast.error('Please upload an outfit image');
       return;
@@ -72,8 +82,11 @@ export default function FashionStylist() {
       toast.error('Please upload your photo');
       return;
     }
+    if (!backgroundPrompt.trim()) {
+      toast.error('Please describe the background context');
+      return;
+    }
 
-    const CREDIT_COST = 90;
     if (creditBalance < CREDIT_COST) {
       toast.error(`Insufficient credits. You need ${CREDIT_COST} credits.`);
       return;
@@ -83,11 +96,20 @@ export default function FashionStylist() {
       deductCreditsOptimisticForGeneration(CREDIT_COST);
       setIsGenerating(true);
 
-      // Simulation for now
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      // Use the sample after image as a simulation result
-      setGeneratedImage("/workflow-samples/fashion-stylist-after-v3.jpg");
-      toast.success('Styling generated!');
+      const response = await axiosInstance.post('/api/workflows/fashion/fashion-stylist', {
+        outfitImage: uploadedImage,
+        userImage: userImage,
+        backgroundDetails: backgroundPrompt.trim(),
+        isPublic: true,
+        size: '2K',
+      });
+
+      if (response.data?.responseStatus === 'success' && response.data?.data?.images?.[0]?.url) {
+        setGeneratedImage(response.data.data.images[0].url);
+        toast.success('Fashion styling generated!');
+      } else {
+        throw new Error(response.data?.message || 'Invalid response from server');
+      }
 
     } catch (error: any) {
       console.error('Generation error:', error);
@@ -137,66 +159,70 @@ export default function FashionStylist() {
                   <span className="text-[10px] font-bold uppercase tracking-wider text-[#60a5fa] border border-[#60a5fa]/30 px-2 py-1 rounded-full">{workflowData.category}</span>
                 </div>
                 <h2 className="text-2xl md:text-4xl font-medium text-white mb-4 tracking-tight">{workflowData.title}</h2>
-                <p className="text-slate-400 text-lg mb-8">{workflowData.description}</p>
+                <p className="text-slate-400 text-lg mb-8 leading-relaxed">{workflowData.description}</p>
 
-                <div className="mb-8">
-                  <div className="border border-dashed border-white/15 rounded-xl bg-black/20 h-48 flex flex-col items-center justify-center gap-4 cursor-pointer hover:bg-[#60a5fa]/5 transition-colors relative overflow-hidden group"
+                {/* Outfit Upload */}
+                <div className="mb-6">
+                  <label className="text-[10px] font-bold uppercase text-slate-500 mb-2 block tracking-widest pl-1">STEP 1: UPLOAD OUTFIT</label>
+                  <div className="border border-dashed border-white/15 rounded-xl bg-black/20 h-40 flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-[#60a5fa]/5 transition-colors relative overflow-hidden group"
                     onClick={() => openUploadModal('outfit')}>
                     {uploadedImage ? (
                       <>
-                        <img src={uploadedImage} className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:opacity-30 transition-opacity" alt="Uploaded" />
+                        <img src={uploadedImage} className="absolute inset-0 w-full h-full object-contain p-2 opacity-60 group-hover:opacity-40 transition-opacity" alt="Outfit" />
                         <div className="relative z-10 flex flex-col items-center gap-2">
-                          <span className="text-white font-medium bg-black/50 px-3 py-1 rounded-full backdrop-blur">Change Outfit</span>
+                          <span className="text-white text-xs font-bold bg-black/60 px-4 py-1.5 rounded-full backdrop-blur border border-white/10 shadow-xl">Change Outfit</span>
                         </div>
                       </>
                     ) : (
                       <>
-                        <div className="w-12 h-12 rounded-full bg-[#111] flex items-center justify-center text-slate-400"><Camera size={24} /></div>
+                        <div className="w-10 h-10 rounded-full bg-[#111] flex items-center justify-center text-slate-400 border border-white/5 shadow-inner transition-transform group-hover:scale-110"><Camera size={20} /></div>
                         <div className="text-center">
-                          <span className="text-sm text-slate-300 block font-medium">Upload Outfit</span>
-                          <span className="text-xs text-slate-500">JPG, PNG, WebP up to 25MB</span>
+                          <span className="text-xs text-slate-300 block font-bold tracking-tight">Upload Outfit</span>
+                          <span className="text-[9px] text-slate-500 uppercase tracking-tighter">Flat lay or model photo</span>
                         </div>
                       </>
                     )}
                   </div>
                 </div>
 
+                {/* User Photo Upload */}
                 <div className="mb-8">
-                  <div className="border border-dashed border-white/15 rounded-xl bg-black/20 h-48 flex flex-col items-center justify-center gap-4 cursor-pointer hover:bg-[#60a5fa]/5 transition-colors relative overflow-hidden group"
+                  <label className="text-[10px] font-bold uppercase text-slate-500 mb-2 block tracking-widest pl-1">STEP 2: UPLOAD USER PHOTO (HIM/HER)</label>
+                  <div className="border border-dashed border-white/15 rounded-xl bg-black/20 h-40 flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-[#60a5fa]/5 transition-colors relative overflow-hidden group"
                     onClick={() => openUploadModal('user')}>
                     {userImage ? (
                       <>
-                        <img src={userImage} className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:opacity-30 transition-opacity" alt="User" />
+                        <img src={userImage} className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-40 transition-opacity" alt="User" />
                         <div className="relative z-10 flex flex-col items-center gap-2">
-                          <span className="text-white font-medium bg-black/50 px-3 py-1 rounded-full backdrop-blur">Change Photo</span>
+                          <span className="text-white text-xs font-bold bg-black/60 px-4 py-1.5 rounded-full backdrop-blur border border-white/10 shadow-xl">Change Photo</span>
                         </div>
                       </>
                     ) : (
                       <>
-                        <div className="w-12 h-12 rounded-full bg-[#111] flex items-center justify-center text-slate-400"><Camera size={24} /></div>
+                        <div className="w-10 h-10 rounded-full bg-[#111] flex items-center justify-center text-slate-400 border border-white/5 shadow-inner transition-transform group-hover:scale-110"><Camera size={20} /></div>
                         <div className="text-center">
-                          <span className="text-sm text-slate-300 block font-medium">Upload User Photo (Him/Her)</span>
-                          <span className="text-xs text-slate-500">JPG, PNG, WebP up to 25MB</span>
+                          <span className="text-xs text-slate-300 block font-bold tracking-tight">Upload Your Photo</span>
+                          <span className="text-[9px] text-slate-500 uppercase tracking-tighter">Front-facing for best results</span>
                         </div>
                       </>
                     )}
                   </div>
                 </div>
 
+                {/* Background Details */}
                 <div className="mb-8">
-                  <label className="text-xs font-bold uppercase text-slate-500 mb-2 block tracking-wider">BACKGROUND DETAILS </label>
+                  <label className="text-xs font-bold uppercase text-slate-500 mb-2 block tracking-wider">BACKGROUND DETAILS (REQUIRED)</label>
                   <textarea
                     value={backgroundPrompt}
                     onChange={(e) => setBackgroundPrompt(e.target.value)}
                     className="w-full bg-black/20 border border-white/10 rounded-xl p-4 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-[#60a5fa]/50 focus:bg-black/30 transition-all resize-none h-32"
-                    placeholder="Describe the background you want (e.g. 'Luxury boutique context', 'Street style urban setting')..."
+                    placeholder="Describe the context (e.g. 'Luxury boutique backdrop', 'Urban street style setting')..."
                   ></textarea>
                 </div>
 
-
-
               </div>
 
+              {/* Action Section */}
               <div className="mt-auto pt-6 border-t border-white/5">
                 <div className="flex items-center justify-between mb-4">
                   <span className="text-xs font-medium text-slate-500">Cost estimated:</span>
@@ -207,9 +233,9 @@ export default function FashionStylist() {
                 </div>
                 <button
                   onClick={handleRun}
-                  disabled={isGenerating || !uploadedImage || !userImage}
+                  disabled={isGenerating || !uploadedImage || !userImage || !backgroundPrompt.trim()}
                   className={`w-full py-4 rounded-xl font-bold text-sm tracking-wide transition-all flex items-center justify-center gap-2
-                    ${isGenerating || !uploadedImage
+                    ${isGenerating || !uploadedImage || !userImage || !backgroundPrompt.trim()
                       ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
                       : 'bg-[#60a5fa] text-black hover:bg-[#60a5fa]/90 shadow-[0_0_20px_rgba(96,165,250,0.3)] hover:shadow-[0_0_30px_rgba(96,165,250,0.5)]'
                     }`}
@@ -221,7 +247,7 @@ export default function FashionStylist() {
                     </>
                   ) : (
                     <>
-                      <Zap size={16} className={(!uploadedImage || !userImage) ? "fill-slate-500" : "fill-black"} />
+                      <Zap size={16} className={(!uploadedImage || !userImage || !backgroundPrompt.trim()) ? "fill-slate-500" : "fill-black"} />
                       Run Workflow
                     </>
                   )}
@@ -236,14 +262,15 @@ export default function FashionStylist() {
                 style={{ backgroundImage: 'linear-gradient(45deg, #111 25%, transparent 25%), linear-gradient(-45deg, #111 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #111 75%), linear-gradient(-45deg, transparent 75%, #111 75%)', backgroundSize: '20px 20px', backgroundPosition: '0 0, 0 10px, 10px -10px, -10px 0px' }}>
               </div>
 
-              {uploadedImage && generatedImage ? (
+              {userImage && generatedImage ? (
                 <div className="relative w-full h-full flex items-center justify-center p-8">
                   <ImageComparisonSlider
-                    beforeImage={uploadedImage}
+                    beforeImage={userImage}
                     afterImage={generatedImage}
-                    beforeLabel="Before"
-                    afterLabel="Result"
+                    beforeLabel="Person"
+                    afterLabel="Styled Result"
                     imageFit="object-cover"
+                    imagePosition="object-center"
                   />
                   <button
                     onClick={handleDownload}
@@ -253,18 +280,27 @@ export default function FashionStylist() {
                     Download
                   </button>
                 </div>
-              ) : uploadedImage ? (
+              ) : (userImage && isGenerating) ? (
                 <div className="relative w-full h-full flex items-center justify-center p-8">
-                  <img src={uploadedImage} className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" alt="Preview" />
-                  {isGenerating && (
-                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-10 transition-all duration-500">
-                      <div className="relative w-20 h-20 mb-4">
-                        <div className="absolute inset-0 border-4 border-[#60a5fa]/20 rounded-full"></div>
-                        <div className="absolute inset-0 border-4 border-[#60a5fa] rounded-full border-t-transparent animate-spin"></div>
-                      </div>
-                      <p className="text-white font-medium text-lg animate-pulse">Creating style...</p>
+                  <img src={userImage} className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" alt="Preview" />
+                  <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-10 transition-all duration-500">
+                    <div className="relative w-20 h-20 mb-4">
+                      <div className="absolute inset-0 border-4 border-[#60a5fa]/20 rounded-full"></div>
+                      <div className="absolute inset-0 border-4 border-[#60a5fa] rounded-full border-t-transparent animate-spin"></div>
                     </div>
-                  )}
+                    <p className="text-white font-medium text-lg animate-pulse tracking-wide">Applying outfit...</p>
+                  </div>
+                </div>
+              ) : userImage ? (
+                <div className="relative w-full h-full flex items-center justify-center p-8">
+                  <img src={userImage} className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" alt="Preview" />
+                  <div className="absolute top-10 left-10 flex gap-4">
+                    {uploadedImage && (
+                       <div className="w-24 h-32 rounded-lg border border-white/10 overflow-hidden shadow-2xl bg-black/40 backdrop-blur">
+                          <img src={uploadedImage} className="w-full h-full object-contain p-1" alt="Outfit thumbnail" />
+                       </div>
+                    )}
+                  </div>
                 </div>
               ) : (
                 <div className="relative w-full h-full flex items-center justify-center p-8">
@@ -274,7 +310,13 @@ export default function FashionStylist() {
                     beforeLabel="Before"
                     afterLabel="Result"
                     imageFit="object-cover"
+                    imagePosition="object-center"
                   />
+                  {!uploadedImage && (
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                       <p className="text-white/20 text-xs font-bold uppercase tracking-[0.2em]">Ready for Styling</p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -298,4 +340,3 @@ export default function FashionStylist() {
     </>
   );
 }
-

@@ -81,7 +81,7 @@ export default function App() {
 
             {/* --- Ambient Background Effects (Blue Theme) --- */}
             <div className={`fixed inset-0 pointer-events-none z-0 ${isAuthenticated ? 'left-20' : ''}`}>
-                <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] mix-blend-overlay"></div>
+                <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-[0.03] mix-blend-overlay"></div>
                 {/* Abstract Grid */}
                 <div className="absolute inset-0" style={{
                     backgroundImage: 'linear-gradient(rgba(96, 165, 250, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(96, 165, 250, 0.03) 1px, transparent 1px)',
