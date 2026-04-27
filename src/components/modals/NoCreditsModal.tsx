@@ -35,10 +35,10 @@ export default function NoCreditsModal() {
             <Zap className="h-8 w-8 text-yellow-500" />
           </div>
           
-          <h2 className="mb-2 text-xl font-bold text-white">Out of Credits</h2>
+          <h2 className="mb-2 text-xl font-bold text-white">Credits Not Available</h2>
           
           <p className="mb-6 text-sm text-gray-400">
-            You don't have enough credits to perform this action. Upgrade your plan to get more credits and continue creating!
+            Credits are not available, please recharge.
           </p>
           
           <div className="flex flex-col gap-3">
