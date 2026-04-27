@@ -239,15 +239,7 @@ export function PunjabJuttiModal({ isOpen, onClose }: { isOpen: boolean; onClose
               </div>
               <SettingsPanel model={state.model} resolution={state.resolution} imageCount={state.imageCount} ratio={state.ratio} includeBenchmark={false} includeVariable={state.includeVariable} includeRestyle={false} onCountChange={(v) => dispatchLocal({ type: "SET_COUNT", payload: v })} onResolutionChange={(v) => dispatchLocal({ type: "SET_RESOLUTION", payload: v })} onRatioChange={handleRatioChange} onIncludeBenchmarkChange={() => {}} onIncludeVariableChange={(v) => dispatchLocal({ type: "SET_INCLUDE_VARIABLE", payload: v })} onIncludeRestyleChange={() => {}} />
             </div>
-            <div className="border-t border-white/[0.06] bg-[#0E0E12] px-5 py-3">
-              <div className="flex flex-wrap gap-2 text-[11px] text-white/35">
-                <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1">{styleTitle}</span>
-                <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1">{MODELS.find((m) => m.id === state.model)?.label ?? state.model}</span>
-                <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1">{state.imageCount} img</span>
-                <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1">{state.resolution}</span>
-                <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1">{ratioSummary}</span>
-              </div>
-            </div>
+            
             <div className="border-t border-white/[0.06] bg-[#0E0E12] px-5 py-4">
               <button type="button" onClick={() => void handleGenerate()} disabled={state.panelState === "loading"} className="w-full rounded-lg bg-[#2F6BFF] py-2.5 text-[12px] font-semibold text-white transition hover:bg-[#2F6BFF]/90 disabled:opacity-50">Generate PUNJAB JUTTI</button>
             </div>
