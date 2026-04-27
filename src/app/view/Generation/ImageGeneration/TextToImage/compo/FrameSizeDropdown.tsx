@@ -285,9 +285,8 @@ const FrameSizeDropdown = ({
     selectedModel === "ideogram-ai/ideogram-v3-quality";
   const isZTurbo = selectedModel === "new-turbo-model";
   const isPImage = selectedModel === "prunaai/p-image";
-  const isGptImageModel =
-    selectedModel === "openai/gpt-image-1.5" ||
-    selectedModel === "openai/gpt-image-2";
+  const isGptImage15Model = selectedModel === "openai/gpt-image-1.5";
+  const isGptImage2Model = selectedModel === "openai/gpt-image-2";
   const isQwenImageEdit =
     selectedModel === "qwen-image-edit-2511" ||
     selectedModel === "qwen-image-edit" ||
@@ -351,8 +350,29 @@ const FrameSizeDropdown = ({
       }
       return allowed;
     }
-    if (isGptImageModel) {
-      // GPT Image models on FAL: support square, 4:3, 3:4, 16:9, 9:16 presets
+    if (isGptImage2Model) {
+      // GPT Image 2 (FAL): expose full image_size presets shown in provider UI.
+      // Keep legacy ratio values so payload mapping stays backward compatible.
+      const options = [
+        { name: "Default", value: "default", icon: "square", hideValue: true },
+        { name: "Custom", value: "custom", icon: "landscape", hideValue: true },
+        {
+          name: "Square HD",
+          value: "square_hd",
+          icon: "square",
+          hideValue: true,
+        },
+        { name: "Square", value: "1:1", icon: "square" },
+        { name: "Portrait", value: "3:4", icon: "portrait" },
+        { name: "Vertical", value: "9:16", icon: "portrait" },
+        { name: "Landscape", value: "4:3", icon: "landscape" },
+        { name: "Wide", value: "16:9", icon: "landscape" },
+        { name: "Auto", value: "auto", icon: "square", hideValue: true },
+      ];
+      return options;
+    }
+    if (isGptImage15Model) {
+      // GPT Image 1.5: keep ratio presets only.
       const allowed = new Set(["1:1", "4:3", "3:4", "16:9", "9:16"]);
       return baseSizes.filter((s) => allowed.has(s.value));
     }

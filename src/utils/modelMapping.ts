@@ -375,12 +375,15 @@ export const MODEL_MAPPING: ModelMapping[] = [
     options: {
       quality: ["low", "medium", "high", "auto"],
       image_size: [
+        "default",
+        "custom",
         "square_hd",
         "square",
         "portrait_4_3",
         "portrait_16_9",
         "landscape_4_3",
         "landscape_16_9",
+        "auto",
       ],
       output_format: ["png", "jpeg", "webp"],
     },

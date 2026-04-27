@@ -295,7 +295,7 @@ export const generateImages = createAsyncThunk(
       }
       // For GPT Image 1.5 (Replicate), use aspect_ratio from frameSize
       if (
-        (model === 'openai/gpt-image-1.5' || model === 'openai/gpt-image-2') &&
+        model === 'openai/gpt-image-1.5' &&
         frameSize
       ) {
         // GPT Image 1.5 schema only supports: 1:1 | 3:2 | 2:3
