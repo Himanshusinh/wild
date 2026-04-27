@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { X } from "lucide-react";
 import { STYLES } from "./CreativeStyle";
@@ -30,22 +30,23 @@ const StyleCard = ({ style, onClick }: { style: typeof STYLES[0]; onClick: () =>
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-80" />
 
       <div className="absolute bottom-4 left-4 right-4">
-        <div className="text-[18px] font-bold uppercase tracking-wider text-white sm:text-[22px]" style={{ fontFamily: "var(--font-bebas-neue), 'Bebas Neue', sans-serif" }}>
+        <div
+          className="text-[18px] font-bold uppercase tracking-wider text-white sm:text-[22px]"
+          style={{ fontFamily: "var(--font-bebas-neue), 'Bebas Neue', sans-serif" }}
+        >
           {style.title}
         </div>
-        <div className="mt-1 text-[11px] font-semibold tracking-wide text-white/85">
-          {style.name}
-        </div>
-        <div className="mt-1 text-[10px] leading-snug text-white/55 line-clamp-2">
-          {style.desc}
-        </div>
+        <div className="mt-1 text-[11px] font-semibold tracking-wide text-white/85">{style.name}</div>
+        <div className="mt-1 line-clamp-2 text-[10px] leading-snug text-white/55">{style.desc}</div>
       </div>
 
-      <div className="absolute left-4 top-4">
-        <span className="rounded-full border border-white/20 bg-black/40 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider text-white/80 backdrop-blur-md">
-          {style.tag}
-        </span>
-      </div>
+      {style.tag && (
+        <div className="absolute left-4 top-4">
+          <span className="rounded-full border border-white/20 bg-black/40 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider text-white/80 backdrop-blur-md">
+            {style.tag}
+          </span>
+        </div>
+      )}
     </div>
 
     <div className="sr-only">
@@ -61,52 +62,19 @@ export default function AllStylesModal({ isOpen, onClose, onStyleSelect }: AllSt
   const [scrollTop, setScrollTop] = useState(0);
   const [scrollMetrics, setScrollMetrics] = useState({ clientHeight: 1, scrollHeight: 1 });
   const [isDraggingThumb, setIsDraggingThumb] = useState(false);
-  const listRef = React.useRef<HTMLDivElement | null>(null);
-  const dragStateRef = React.useRef<{ startY: number; startTop: number } | null>(null);
+  const listRef = useRef<HTMLDivElement | null>(null);
+  const dragStateRef = useRef<{ startY: number; startTop: number } | null>(null);
 
   useEffect(() => {
-    if (isOpen) {
-      const stored = localStorage.getItem("recent_styles");
-      if (stored) {
-        try {
-          setRecentIds(JSON.parse(stored));
-        } catch (e) {
-          console.error("Failed to parse recent styles", e);
-        }
+    if (!isOpen) return;
+    const stored = localStorage.getItem("recent_styles");
+    if (stored) {
+      try {
+        setRecentIds(JSON.parse(stored));
+      } catch (e) {
+        console.error("Failed to parse recent styles", e);
       }
     }
-  }, [isOpen]);
-
-  const handleStyleSelect = (id: string) => {
-    const updated = [id, ...recentIds.filter((x) => x !== id)].slice(0, 10);
-    setRecentIds(updated);
-    localStorage.setItem("recent_styles", JSON.stringify(updated));
-    onStyleSelect(id);
-  };
-
-  const { groupedStyles, categories } = useMemo(() => {
-    const groups: Record<string, typeof STYLES> = {};
-    STYLES.forEach((style) => {
-      const stateName = style.name.split(" (")[0];
-      if (!groups[stateName]) {
-        groups[stateName] = [];
-      }
-      groups[stateName].push(style);
-    });
-
-    const sortedStates = Object.keys(groups).sort();
-
-    return {
-      groupedStyles: sortedStates.map((state) => ({
-        state,
-        styles: groups[state],
-      })),
-      categories: ["All", "Recent", ...sortedStates],
-    };
-  }, []);
-
-  React.useEffect(() => {
-    if (!isOpen) return;
     if (listRef.current) {
       listRef.current.scrollTop = 0;
       setScrollTop(0);
@@ -117,71 +85,19 @@ export default function AllStylesModal({ isOpen, onClose, onStyleSelect }: AllSt
     }
   }, [isOpen, selectedCategory]);
 
-  const handleGridScroll = React.useCallback(() => {
+  const handleGridScroll = () => {
     const el = listRef.current;
     if (!el) return;
     setScrollTop(el.scrollTop);
     setScrollMetrics({ clientHeight: el.clientHeight, scrollHeight: el.scrollHeight });
-  }, []);
+  };
 
-  const contentToRender = useMemo(() => {
-    if (selectedCategory === "All") {
-      return (
-        <div className="flex flex-col gap-10">
-          {groupedStyles.map((group) => (
-            <div key={group.state} className="flex flex-col gap-4">
-              <div className="flex items-center gap-4">
-                <h3 className="text-2xl text-white tracking-wider uppercase" style={{ fontFamily: "var(--font-bebas-neue), 'Bebas Neue', sans-serif" }}>
-                  {group.state}
-                </h3>
-                <div className="h-px flex-1 bg-white/5" />
-              </div>
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
-                {group.styles.map((style) => (
-                  <StyleCard key={style.id} style={style} onClick={() => handleStyleSelect(style.id)} />
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      );
-    }
-
-    if (selectedCategory === "Recent") {
-      const recentStyles = recentIds
-        .map((id) => STYLES.find((s) => s.id === id))
-        .filter(Boolean) as typeof STYLES;
-
-      if (recentStyles.length === 0) {
-        return (
-          <div className="flex h-full flex-col items-center justify-center pt-20 text-white/40">
-            <p className="text-sm font-medium">No recent styles selected yet.</p>
-          </div>
-        );
-      }
-      return (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
-          {recentStyles.map((style) => (
-            <StyleCard key={style.id} style={style} onClick={() => handleStyleSelect(style.id)} />
-          ))}
-        </div>
-      );
-    }
-
-    const stateStyles = STYLES.filter((s) => s.name.split(" (")[0] === selectedCategory);
-    return (
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
-        {stateStyles.map((style) => (
-          <StyleCard key={style.id} style={style} onClick={() => handleStyleSelect(style.id)} />
-        ))}
-      </div>
-    );
-  }, [selectedCategory, groupedStyles, recentIds]);
-
-  if (!isOpen) return null;
-  const maxScroll = Math.max(1, scrollMetrics.scrollHeight - scrollMetrics.clientHeight);
-  const thumbHeight = Math.max(36, (scrollMetrics.clientHeight / scrollMetrics.scrollHeight) * 100);
-  const thumbTop = (scrollTop / maxScroll) * (100 - thumbHeight);
+  const handleStyleSelect = (id: string) => {
+    const updated = [id, ...recentIds.filter((x) => x !== id)].slice(0, 10);
+    setRecentIds(updated);
+    localStorage.setItem("recent_styles", JSON.stringify(updated));
+    onStyleSelect(id);
+  };
 
   const handleThumbPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     dragStateRef.current = { startY: e.clientY, startTop: scrollTop };
@@ -209,6 +125,82 @@ export default function AllStylesModal({ isOpen, onClose, onStyleSelect }: AllSt
     setIsDraggingThumb(false);
   };
 
+  const { groupedStyles, categories } = useMemo(() => {
+    const groups: Record<string, typeof STYLES> = {};
+    STYLES.forEach((style) => {
+      const stateName = style.name.split(" (")[0];
+      if (!groups[stateName]) groups[stateName] = [];
+      groups[stateName].push(style);
+    });
+    const sortedStates = Object.keys(groups).sort();
+    return {
+      groupedStyles: sortedStates.map((state) => ({ state, styles: groups[state] })),
+      categories: ["All", "Recent", ...sortedStates],
+    };
+  }, []);
+
+  const contentToRender = useMemo(() => {
+    if (selectedCategory === "All") {
+      return (
+        <div className="flex flex-col gap-10">
+          {groupedStyles.map((group) => (
+            <div key={group.state} className="flex flex-col gap-4">
+              <div className="flex items-center gap-4">
+                <h3
+                  className="text-2xl uppercase tracking-wider text-white"
+                  style={{ fontFamily: "var(--font-bebas-neue), 'Bebas Neue', sans-serif" }}
+                >
+                  {group.state}
+                </h3>
+                <div className="h-px flex-1 bg-white/5" />
+              </div>
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
+                {group.styles.map((style) => (
+                  <StyleCard key={style.id} style={style} onClick={() => handleStyleSelect(style.id)} />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    if (selectedCategory === "Recent") {
+      const recentStyles = recentIds
+        .map((id) => STYLES.find((s) => s.id === id))
+        .filter(Boolean) as typeof STYLES;
+      if (recentStyles.length === 0) {
+        return (
+          <div className="flex h-full flex-col items-center justify-center pt-20 text-white/40">
+            <p className="text-sm font-medium">No recent styles selected yet.</p>
+          </div>
+        );
+      }
+      return (
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
+          {recentStyles.map((style) => (
+            <StyleCard key={style.id} style={style} onClick={() => handleStyleSelect(style.id)} />
+          ))}
+        </div>
+      );
+    }
+
+    const stateStyles = STYLES.filter((s) => s.name.split(" (")[0] === selectedCategory);
+    return (
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
+        {stateStyles.map((style) => (
+          <StyleCard key={style.id} style={style} onClick={() => handleStyleSelect(style.id)} />
+        ))}
+      </div>
+    );
+  }, [selectedCategory, groupedStyles, recentIds]);
+
+  if (!isOpen) return null;
+
+  const maxScroll = Math.max(1, scrollMetrics.scrollHeight - scrollMetrics.clientHeight);
+  const thumbHeight = Math.max(36, (scrollMetrics.clientHeight / scrollMetrics.scrollHeight) * 100);
+  const thumbTop = (scrollTop / maxScroll) * (100 - thumbHeight);
+
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 p-3 backdrop-blur-xl sm:p-6" onClick={onClose}>
       <div
@@ -218,10 +210,15 @@ export default function AllStylesModal({ isOpen, onClose, onStyleSelect }: AllSt
         <div className="shrink-0 border-b border-white/5 px-5 py-4 sm:px-7">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl" style={{ fontFamily: "var(--font-bebas-neue), 'Bebas Neue', sans-serif" }}>
+              <h2
+                className="text-2xl font-bold tracking-tight text-white sm:text-3xl"
+                style={{ fontFamily: "var(--font-bebas-neue), 'Bebas Neue', sans-serif" }}
+              >
                 Explore All Styles
               </h2>
-              <p className="mt-1 text-xs font-medium uppercase tracking-widest text-white/30">Select a style to begin generating</p>
+              <p className="mt-1 text-xs font-medium uppercase tracking-widest text-white/30">
+                Select a style to begin generating
+              </p>
             </div>
             <button
               onClick={onClose}
@@ -266,8 +263,8 @@ export default function AllStylesModal({ isOpen, onClose, onStyleSelect }: AllSt
             onPointerMove={handleThumbPointerMove}
             onPointerUp={handleThumbPointerUp}
             onPointerCancel={handleThumbPointerUp}
-            className={`absolute left-0 right-0 rounded-full bg-[#3B82F6]/90 shadow-[0_0_10px_rgba(59,130,246,0.35)] ${
-              isDraggingThumb ? "cursor-grabbing" : "cursor-grab"
+            className={`absolute left-0 right-0 rounded-full bg-[#3B82F6]/90 shadow-[0_0_10px_rgba(59,130,246,0.35)] transition-colors ${
+              isDraggingThumb ? "cursor-grabbing bg-[#60A5FA]" : "cursor-grab hover:bg-[#60A5FA]"
             }`}
             style={{ height: `${thumbHeight}%`, top: `${thumbTop}%` }}
           />
