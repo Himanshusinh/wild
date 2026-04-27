@@ -28,41 +28,6 @@ const StyleCard = ({ style, onClick }: { style: typeof STYLES[0]; onClick: () =>
         style={{ filter: style.imageFilter as React.CSSProperties["filter"] }}
       />
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-80" />
-
-      <div className="absolute bottom-4 left-4 right-4">
-        <div className="text-[18px] font-bold uppercase tracking-wider text-white sm:text-[22px]" style={{ fontFamily: "var(--font-bebas-neue), 'Bebas Neue', sans-serif" }}>
-          {style.title}
-        </div>
-        <div className="mt-1 text-[11px] font-semibold tracking-wide text-white/85">
-          {style.name}
-        </div>
-        <div className="mt-1 text-[10px] leading-snug text-white/55 line-clamp-2">
-          {style.desc}
-        </div>
-      </div>
-
-      <div className="absolute left-4 top-4">
-        <span className="rounded-full border border-white/20 bg-black/40 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider text-white/80 backdrop-blur-md">
-          {style.tag}
-        </span>
-      </div>
-const StyleCard = ({ style, onClick }: { style: typeof STYLES[0]; onClick: () => void }) => (
-  <button
-    onClick={onClick}
-    className="group flex flex-col text-left transition-all hover:-translate-y-1"
-  >
-    <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl border border-white/10 bg-[#18181f] transition-colors group-hover:border-white/20">
-      <Image
-        src={style.image}
-        alt={style.title}
-        fill
-        unoptimized
-        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 20vw"
-        loading="lazy"
-        className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-        style={{ filter: style.imageFilter as React.CSSProperties["filter"] }}
-      />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-80" />
       
       <div className="absolute bottom-4 left-4 right-4">
         <div className="text-[18px] font-bold uppercase tracking-wider text-white sm:text-[22px]" style={{ fontFamily: "var(--font-bebas-neue), 'Bebas Neue', sans-serif" }}>
@@ -98,12 +63,6 @@ export default function AllStylesModal({ isOpen, onClose, onStyleSelect }: AllSt
   const [scrollTop, setScrollTop] = useState(0);
   const [scrollMetrics, setScrollMetrics] = useState({ clientHeight: 1, scrollHeight: 1 });
   const [isDraggingThumb, setIsDraggingThumb] = useState(false);
-  const listRef = React.useRef<HTMLDivElement | null>(null);
-  const dragStateRef = React.useRef<{ startY: number; startTop: number } | null>(null);
-  const [scrollTop, setScrollTop] = useState(0);
-  const [scrollMetrics, setScrollMetrics] = useState({ clientHeight: 1, scrollHeight: 1 });
-  const [isDraggingThumb, setIsDraggingThumb] = useState(false);
-  
   const listRef = useRef<HTMLDivElement | null>(null);
   const dragStateRef = useRef<{ startY: number; startTop: number } | null>(null);
 
@@ -117,7 +76,6 @@ export default function AllStylesModal({ isOpen, onClose, onStyleSelect }: AllSt
           console.error("Failed to parse recent styles", e);
         }
       }
-      
       // Reset scroll position on open
       if (listRef.current) {
         listRef.current.scrollTop = 0;
@@ -242,6 +200,7 @@ export default function AllStylesModal({ isOpen, onClose, onStyleSelect }: AllSt
   }, [selectedCategory, groupedStyles, recentIds]);
 
   if (!isOpen) return null;
+
   const maxScroll = Math.max(1, scrollMetrics.scrollHeight - scrollMetrics.clientHeight);
   const thumbHeight = Math.max(36, (scrollMetrics.clientHeight / scrollMetrics.scrollHeight) * 100);
   const thumbTop = (scrollTop / maxScroll) * (100 - thumbHeight);
