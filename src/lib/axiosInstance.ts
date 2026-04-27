@@ -1112,8 +1112,11 @@ axiosInstance.interceptors.response.use(
         // Payment Required -> No Credits
         const errorCode = errorData?.code as string | undefined;
         let customMessage = errorData?.message || null;
-        if (!customMessage && errorCode === "FREE_Z_IMAGE_TURBO_LIMIT_REACHED") {
+        if (errorCode === "FREE_Z_IMAGE_TURBO_LIMIT_REACHED") {
           customMessage = "Promotional generation limit reached for free plan. To continue creating amazing images with our Turbo models, please upgrade your plan.";
+          if (error.response?.data) {
+            (error.response.data as any).message = customMessage;
+          }
         }
         store.dispatch(setModalOpen({ modal: "noCredits", isOpen: true, message: customMessage }));
 

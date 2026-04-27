@@ -1,0 +1,1 @@
+export { IndoportugueseenvironmentModal } from "./IndoportugueseenvironmentModal";

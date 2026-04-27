@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type MouseEvent } from "react";
+import { Fragment, useEffect, useRef, useState, type MouseEvent } from "react";
 import Link from "next/link";
 
 type StyleItem = {
@@ -2062,6 +2062,391 @@ export const STYLES: StyleItem[] = [
     href: "/text-to-image",
     imageFilter: "brightness(0.85) saturate(0.95)",
   },
+  {
+    id: "gabba",
+    name: "Kashmir",
+    title: "GABBA",
+    desc: "A traditional floor covering made from reconstructed blankets, enriched with stitched and appliqué designs.",
+    image: "/HomePage/creativeStyle/5th-images/gabba.avif",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "garadsaree",
+    name: "West Bengal",
+    title: "GARAD SAREE",
+    desc: "A ceremonial silk tradition defined by its pure off-white body, bold red border, and refined simplicity.",
+    image: "/HomePage/creativeStyle/5th-images/garad-saree.avif",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "himalayansacredimage",
+    name: "Ladakh",
+    title: "HIMALAYAN SACRED IMAGE",
+    desc: "A ritual visual system where sacred figures are constructed through iconography, symbolism, and meditative hierarchy.",
+    image: "/HomePage/creativeStyle/5th-images/himalayan-sacred-image.avif",
+    tag: "Ritual Art",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "khatamband",
+    name: "Kashmir",
+    title: "KHATAMBAND",
+    desc: "A traditional ceiling craft where interlocking wooden units form a continuous geometric architectural system.",
+    image: "/HomePage/creativeStyle/5th-images/khatamband.avif",
+    tag: "Architecture",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "kushmandimask",
+    name: "West Bengal",
+    title: "KUSHMANDI MASK",
+    desc: "A ritual wooden mask tradition where carved faces embody deities, demons, and mythic characters in performance.",
+    image: "/HomePage/creativeStyle/5th-images/kushmandi-mask.avif",
+    tag: "Ritual",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "likhaiwoodcarving",
+    name: "Uttarakhand",
+    title: "LIKHAI WOOD CARVING",
+    desc: "A traditional carving technique where forms are sculpted from solid wood through measured, hand-carved structure.",
+    image: "/HomePage/creativeStyle/5th-images/likhai-wood-carving.avif",
+    tag: "Woodwork",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "matweaving",
+    name: "Daman & Diu",
+    title: "MAT WEAVING",
+    desc: "A traditional craft where plant fibers are interlaced to create flat, structured mats with woven patterns.",
+    image: "/HomePage/creativeStyle/5th-images/mat-weaving.avif",
+    tag: "Craft",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "moradabadmetalcraft",
+    name: "Uttar Pradesh",
+    title: "MORADABAD METAL CRAFT",
+    desc: "A traditional brassware craft where cast metal forms are refined through intricate hand-worked detailing.",
+    image: "/HomePage/creativeStyle/5th-images/moradabad-metal-craft.avif",
+    tag: "Metalwork",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "namda",
+    name: "Kashmir",
+    title: "NAMDA",
+    desc: "A traditional felted wool craft where compressed fibers form a dense rug, enriched with surface embroidery.",
+    image: "/HomePage/creativeStyle/5th-images/namda.avif",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "needlework",
+    name: "Lakshadweep",
+    title: "NEEDLE WORK",
+    desc: "A practical textile tradition where cloth is constructed through seams, joins, and simple hand stitching.",
+    image: "/HomePage/creativeStyle/5th-images/needle-work.avif",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "palmmat",
+    name: "Andaman & Nicobar",
+    title: "PALM MAT",
+    desc: "A traditional craft where pandanus leaves and coconut strips are interwoven to form flat, functional mats.",
+    image: "/HomePage/creativeStyle/5th-images/palm-mat.avif",
+    tag: "Craft",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "papiermachekashmir",
+    name: "Kashmir",
+    title: "PAPIER-MÂCHÉ",
+    desc: "A refined paper craft where molded forms are polished and richly decorated with intricate floral designs.",
+    image: "/HomePage/creativeStyle/5th-images/papier-mch.avif",
+    tag: "Craft",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "puruliachhaumask",
+    name: "West Bengal",
+    title: "PURULIA CHHAU MASK",
+    desc: "A traditional performance mask where exaggerated faces and elaborate headdresses bring mythological characters to life.",
+    image: "/HomePage/creativeStyle/5th-images/purulia-chhau-mask.avif",
+    tag: "Ritual",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "papiermachepuducherry",
+    name: "Puducherry",
+    title: "PAPIER-MÂCHÉ",
+    desc: "A handcrafted tradition where lightweight paper pulp is shaped into simple, expressive objects.",
+    image: "/HomePage/creativeStyle/5th-images/papier-mchpuducherry.avif",
+    tag: "Craft",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "rammanmask",
+    name: "Uttarakhand",
+    title: "RAMMAN MASK",
+    desc: "A sacred wooden mask tradition where faces are carved from solid wood and used in ritual performances.",
+    image: "/HomePage/creativeStyle/5th-images/ramman-mask.avif",
+    tag: "Ritual",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "rockgardenassemblage",
+    name: "Chandigarh",
+    title: "ROCK GARDEN ASSEMBLAGE",
+    desc: "A unique environment where discarded materials are transformed into a continuous sculptural world.",
+    image: "/HomePage/creativeStyle/5th-images/rock-garden-assemblage.avif",
+    tag: "Sculpture",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "saharanpurwoodcraft",
+    name: "Uttar Pradesh",
+    title: "SAHARANPUR WOOD CRAFT",
+    desc: "A traditional wood carving craft where intricate floral and geometric designs are sculpted into solid wood.",
+    image: "/HomePage/creativeStyle/5th-images/saharanpur-wood-craft.avif",
+    tag: "Woodwork",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "shellcraft",
+    name: "Andaman & Nicobar",
+    title: "SHELL CRAFT",
+    desc: "A coastal craft where natural seashells are assembled into compact, handcrafted objects.",
+    image: "/HomePage/creativeStyle/5th-images/shell-craft.avif",
+    tag: "Craft",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "sozniembroidery",
+    name: "Kashmir",
+    title: "SOZNI EMBROIDERY",
+    desc: "A fine needle embroidery tradition where delicate stitches create intricate floral and paisley patterns.",
+    image: "/HomePage/creativeStyle/5th-images/sozni-embroidery.avif",
+    tag: "Embroidery",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "terracottacraft",
+    name: "Puducherry",
+    title: "TERRACOTTA CRAFT",
+    desc: "A traditional craft where clay is shaped and fired to create durable, earthy objects.",
+    image: "/HomePage/creativeStyle/5th-images/terracotta-craft.avif",
+    tag: "Pottery",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "walnutcarving",
+    name: "Kashmir",
+    title: "WALNUT CARVING",
+    desc: "A traditional woodcraft where solid walnut is intricately carved into deep relief patterns.",
+    image: "/HomePage/creativeStyle/5th-images/walnut-carving.avif",
+    tag: "Woodwork",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "woodcraft",
+    name: "Andaman & Nicobar",
+    title: "WOODCRAFT",
+    desc: "A handcrafted tradition where solid timber is shaped into simple, expressive objects.",
+    image: "/HomePage/creativeStyle/5th-images/woodcraft.avif",
+    tag: "Woodwork",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "ladakhtextilesystem",
+    name: "Ladakh",
+    title: "LADAKH TEXTILE SYSTEM",
+    desc: "A fiber-based tradition where wool, yak hair, and textiles form functional objects, shelter, and ritual systems.",
+    image: "/HomePage/creativeStyle/5th-images/ladakh-textile-system.avif",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "indoportugueseenvironment",
+    name: "Daman & Diu",
+    title: "INDO-PORTUGUESE ENVIRONMENT",
+    desc: "A fortified coastal settlement where churches, gateways, and walls form a unified architectural system.",
+    image: "/HomePage/creativeStyle/5th-images/indo-portuguese-environment.avif",
+    tag: "Architecture",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "agramarbleinlay",
+    name: "Uttar Pradesh",
+    title: "AGRA MARBLE INLAY",
+    desc: "A Mughal-rooted stone inlay tradition where semi-precious stones are fitted into engraved marble bases.",
+    image: "/HomePage/creativeStyle/5th-images/agra-marble-inlay.avif",
+    tag: "Stone Craft",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "balucharisaree",
+    name: "West Bengal",
+    title: "BALUCHARI SAREE",
+    desc: "A narrative silk-weaving tradition from West Bengal featuring mythological and social-historical motifs on the pallu.",
+    image: "/HomePage/creativeStyle/5th-images/baluchari-saree.avif",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "bankuraterracotta",
+    name: "West Bengal",
+    title: "BANKURA TERRACOTTA",
+    desc: "A fired-clay sculptural tradition from West Bengal, famous for its stylized horses and ritual objects.",
+    image: "/HomePage/creativeStyle/5th-images/bankura-terracotta.avif",
+    tag: "Terracotta",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "basohlipainting",
+    name: "Jammu",
+    title: "BASOHLI PAINTING",
+    desc: "A bold Pahari miniature tradition from Jammu, characterized by primary colors, large eyes, and expressive intensity.",
+    image: "/HomePage/creativeStyle/5th-images/basohli-painting.avif",
+    tag: "Painting",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "canebamboocraftandaman",
+    name: "Andaman & Nicobar",
+    title: "CANE & BAMBOO CRAFT",
+    desc: "A construction-based island tradition where split strips and bent members form functional and decorative objects.",
+    image: "/HomePage/creativeStyle/5th-images/cane-bamboo-craft.avif",
+    tag: "Bamboo & Cane",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "chandigarhmodernist",
+    name: "Chandigarh",
+    title: "CHANDIGARH MODERNIST",
+    desc: "A planned civic-modernist architectural style defined by exposed concrete, formal geometry, and green-city openness.",
+    image: "/HomePage/creativeStyle/5th-images/chandigarh-modernist.avif",
+    tag: "Architecture",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "coastalfibercraft",
+    name: "Lakshadweep",
+    title: "COASTAL FIBER CRAFT",
+    desc: "An island fiber-craft system from Lakshadweep using coconut coir and leaf-weaving for functional objects.",
+    image: "/HomePage/creativeStyle/5th-images/coastal-fiber-craft.avif",
+    tag: "Fiber Craft",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "coconutshellcraft",
+    name: "Andaman & Nicobar",
+    title: "COCONUT SHELL CRAFT",
+    desc: "A compact handcrafted tradition where coconut shells are shaped and polished into utility and decorative articles.",
+    image: "/HomePage/creativeStyle/5th-images/coconut-shell-craft.avif",
+    tag: "Handicraft",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "coircraftlakshadweep",
+    name: "Lakshadweep",
+    title: "COIR CRAFT",
+    desc: "A rugged fiber-craft tradition using coconut husk coir for rope-making, matting, and utility basketry.",
+    image: "/HomePage/creativeStyle/5th-images/coir-craft.avif",
+    tag: "Fiber Craft",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "dhaniakhalisaree",
+    name: "West Bengal",
+    title: "DHANIAKHALI SAREE",
+    desc: "A distinctive cotton-weaving tradition from West Bengal known for its dense texture and contrast borders.",
+    image: "/HomePage/creativeStyle/5th-images/dhaniakhali-saree.avif",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "francotamilenvironment",
+    name: "Puducherry",
+    title: "FRANCO-TAMIL ENVIRONMENT",
+    desc: "A hybrid architectural system from Puducherry merging French colonial facades with Tamil house morphologies.",
+    image: "/HomePage/creativeStyle/5th-images/franco-tamil-environment.avif",
+    tag: "Architecture",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
 ];
 
 
@@ -2254,6 +2639,43 @@ type CreativeStyleProps = {
   onTodaEmbroideryOpen?: () => void;
   onZardoziOpen?: () => void;
   onAllStylesOpen?: () => void;
+
+  // 5th Batch Styles
+  onGabbaOpen?: () => void;
+  onGaradSareeOpen?: () => void;
+  onHimalayanSacredImageOpen?: () => void;
+  onKhatambandOpen?: () => void;
+  onKushmandiMaskOpen?: () => void;
+  onLikhaiWoodCarvingOpen?: () => void;
+  onMatWeavingOpen?: () => void;
+  onMoradabadMetalCraftOpen?: () => void;
+  onNamdaOpen?: () => void;
+  onNeedleWorkOpen?: () => void;
+  onPalmMatOpen?: () => void;
+  onPapierMacheKashmirOpen?: () => void;
+  onPuruliaChhauMaskOpen?: () => void;
+  onPapierMachePuducherryOpen?: () => void;
+  onRammanMaskOpen?: () => void;
+  onRockGardenAssemblageOpen?: () => void;
+  onSaharanpurWoodCraftOpen?: () => void;
+  onShellCraftOpen?: () => void;
+  onSozniEmbroideryOpen?: () => void;
+  onTerracottaCraftOpen?: () => void;
+  onWalnutCarvingOpen?: () => void;
+  onWoodcraftOpen?: () => void;
+  onLadakhTextileSystemOpen?: () => void;
+  onIndoPortugueseEnvironmentOpen?: () => void;
+  onAgraMarbleInlayOpen?: () => void;
+  onBaluchariSareeOpen?: () => void;
+  onBankuraTerracottaOpen?: () => void;
+  onBasohliPaintingOpen?: () => void;
+  onCaneBambooCraftAndamanOpen?: () => void;
+  onChandigarhModernistOpen?: () => void;
+  onCoastalFiberCraftOpen?: () => void;
+  onCoconutShellCraftOpen?: () => void;
+  onCoirCraftLakshadweepOpen?: () => void;
+  onDhaniakhaliSareeOpen?: () => void;
+  onFrancoTamilEnvironmentOpen?: () => void;
 };
 
 export default function CreativeStyle({
@@ -2444,921 +2866,1380 @@ export default function CreativeStyle({
   onTodaEmbroideryOpen,
   onZardoziOpen,
   onAllStylesOpen,
+
+  // 5th Batch
+  onGabbaOpen,
+  onGaradSareeOpen,
+  onHimalayanSacredImageOpen,
+  onKhatambandOpen,
+  onKushmandiMaskOpen,
+  onLikhaiWoodCarvingOpen,
+  onMatWeavingOpen,
+  onMoradabadMetalCraftOpen,
+  onNamdaOpen,
+  onNeedleWorkOpen,
+  onPalmMatOpen,
+  onPapierMacheKashmirOpen,
+  onPuruliaChhauMaskOpen,
+  onPapierMachePuducherryOpen,
+  onRammanMaskOpen,
+  onRockGardenAssemblageOpen,
+  onSaharanpurWoodCraftOpen,
+  onShellCraftOpen,
+  onSozniEmbroideryOpen,
+  onTerracottaCraftOpen,
+  onWalnutCarvingOpen,
+  onWoodcraftOpen,
+  onLadakhTextileSystemOpen,
+  onIndoPortugueseEnvironmentOpen,
+  onAgraMarbleInlayOpen,
+  onBaluchariSareeOpen,
+  onBankuraTerracottaOpen,
+  onBasohliPaintingOpen,
+  onCaneBambooCraftAndamanOpen,
+  onChandigarhModernistOpen,
+  onCoastalFiberCraftOpen,
+  onCoconutShellCraftOpen,
+  onCoirCraftLakshadweepOpen,
+  onDhaniakhaliSareeOpen,
+  onFrancoTamilEnvironmentOpen,
 }: CreativeStyleProps) {
   const railRef = useRef<HTMLDivElement | null>(null);
   const [showLeftArrow, setShowLeftArrow] = useState(false);
   const [showRightArrow, setShowRightArrow] = useState(true);
 
   const handleStyleClick = (event: MouseEvent<HTMLAnchorElement>, style: StyleItem) => {
-    const t = style.title.toLowerCase();
-    if (t === "warli" && onWarliOpen) {
-      event.preventDefault();
-      onWarliOpen();
-      return;
-    }
-    if (style.id === "ajrakh" && onAjrakhOpen) {
-      event.preventDefault();
-      onAjrakhOpen();
-      return;
-    }
-    if (style.id === "jhajjar" && onJhajjarOpen) {
-      event.preventDefault();
-      onJhajjarOpen();
-      return;
-    }
-    if (style.id === "kaavi" && onKaaviOpen) {
-      event.preventDefault();
-      onKaaviOpen();
-      return;
-    }
-    if (style.id === "kangra" && onKangraOpen) {
-      event.preventDefault();
-      onKangraOpen();
-      return;
-    }
-    if (style.id === "karepa" && onKarepaOpen) {
-      event.preventDefault();
-      onKarepaOpen();
-      return;
-    }
-    if (style.id === "khatwa" && onKhatwaOpen) {
-      event.preventDefault();
-      onKhatwaOpen();
-      return;
-    }
-    if (style.id === "khovar" && onKhovarOpen) {
-      event.preventDefault();
-      onKhovarOpen();
-      return;
-    }
-    if (style.id === "kinnauri" && onKinnauriOpen) {
-      event.preventDefault();
-      onKinnauriOpen();
-      return;
-    }
-    if (style.id === "kosa" && onKosaOpen) {
-      event.preventDefault();
-      onKosaOpen();
-      return;
-    }
-    if (style.id === "kutch" && onKutchOpen) {
-      event.preventDefault();
-      onKutchOpen();
-      return;
-    }
-    if (style.id === "lippan" && onLippanOpen) {
-      event.preventDefault();
-      onLippanOpen();
-      return;
-    }
-    if (style.id === "majuli" && onMajuliOpen) {
-      event.preventDefault();
-      onMajuliOpen();
-      return;
-    }
-    if (style.id === "manjusha" && onManjushaOpen) {
-      event.preventDefault();
-      onManjushaOpen();
-      return;
-    }
-    if (style.id === "matanipachedi" && onMataNiPachediOpen) {
-      event.preventDefault();
-      onMataNiPachediOpen();
-      return;
-    }
-    if (style.id === "madhubani" && onMadhubaniOpen) {
-      event.preventDefault();
-      onMadhubaniOpen();
-      return;
-    }
-    if (style.id === "kyilkhor" && onKyilKhorOpen) {
-      event.preventDefault();
-      onKyilKhorOpen();
-      return;
-    }
-    if (style.id === "sherdukpen" && onSherdukpenOpen) {
-      event.preventDefault();
-      onSherdukpenOpen();
-      return;
-    }
-    if (style.id === "etikoppaka" && onEtikoppakaOpen) {
-      event.preventDefault();
-      onEtikoppakaOpen();
-      return;
-    }
-    if (style.id === "kondapalli" && onKondapalliOpen) {
-      event.preventDefault();
-      onKondapalliOpen();
-      return;
-    }
-    if (style.id === "monpamask" && onMonpaMaskOpen) {
-      event.preventDefault();
-      onMonpaMaskOpen();
-      return;
-    }
-    if (style.id === "handmadepaper" && onHandmadePaperOpen) {
-      event.preventDefault();
-      onHandmadePaperOpen();
-      return;
-    }
-    if (style.id === "monpa" && onMonpaOpen) {
-      event.preventDefault();
-      onMonpaOpen();
-      return;
-    }
-    if (style.id === "wancho" && onWanchoOpen) {
-      event.preventDefault();
-      onWanchoOpen();
-      return;
-    }
-    if (style.id === "thangka" && onThangkaOpen) {
-      event.preventDefault();
-      onThangkaOpen();
-      return;
-    }
-    if (style.id === "tholu" && onTholuOpen) {
-      event.preventDefault();
-      onTholuOpen();
-      return;
-    }
-    if (style.id === "uppadajamdani" && onUppadaOpen) {
-      event.preventDefault();
-      onUppadaOpen();
-      return;
-    }
-    if (style.id === "machilipatnam" && onKalamkariOpen) {
-      event.preventDefault();
-      onKalamkariOpen();
-      return;
-    }
-    if (style.id === "srikalahasti" && onSrikalahastiOpen) {
-      event.preventDefault();
-      onSrikalahastiOpen();
-      return;
-    }
-    if (style.id === "idumishmi" && onIduMishmiOpen) {
-      event.preventDefault();
-      onIduMishmiOpen();
-      return;
-    }
-    if (style.id === "asharikandi" && onAsharikandiOpen) {
-      event.preventDefault();
-      onAsharikandiOpen();
-      return;
-    }
-    if (style.id === "azulejos" && onAzulejosOpen) {
-      event.preventDefault();
-      onAzulejosOpen();
-      return;
-    }
-    if (style.id === "bandhani" && onBandhaniOpen) {
-      event.preventDefault();
-      onBandhaniOpen();
-      return;
-    }
-    if (style.id === "bastardhokra" && onBastarDhokraOpen) {
-      event.preventDefault();
-      onBastarDhokraOpen();
-      return;
-    }
-    if (style.id === "muriawallpainting" && onMuriaWallPaintingOpen) {
-      event.preventDefault();
-      onMuriaWallPaintingOpen();
-      return;
-    }
-    if (style.id === "bastarwoodcraft" && onBastarWoodcraftOpen) {
-      event.preventDefault();
-      onBastarWoodcraftOpen();
-      return;
-    }
-    if (style.id === "bhagalpursilk" && onBhagalpurSilkOpen) {
-      event.preventDefault();
-      onBhagalpurSilkOpen();
-      return;
-    }
-    if (style.id === "chambaminiature" && onChambaMiniatureOpen) {
-      event.preventDefault();
-      onChambaMiniatureOpen();
-      return;
-    }
-    if (style.id === "exposedlaterite" && onExposedLateriteOpen) {
-      event.preventDefault();
-      onExposedLateriteOpen();
-      return;
-    }
-    if (style.id === "gharchola" && onGharcholaOpen) {
-      event.preventDefault();
-      onGharcholaOpen();
-      return;
-    }
-    if (style.id === "godnaart" && onGodnaArtOpen) {
-      event.preventDefault();
-      onGodnaArtOpen();
-      return;
-    }
-    if (style.id === "taiahommanuscript" && onTaiAhomManuscriptOpen) {
-      event.preventDefault();
-      onTaiAhomManuscriptOpen();
-      return;
-    }
-    if (style.id === "tangaliya" && onTangaliyaOpen) {
-      event.preventDefault();
-      onTangaliyaOpen();
-      return;
-    }
-    if (style.id === "agrarianindustrial" && onAgrarianIndustrialOpen) {
-      event.preventDefault();
-      onAgrarianIndustrialOpen();
-      return;
-    }
-    if (style.id === "indoportuguese" && onIndoPortugueseOpen) {
-      event.preventDefault();
-      onIndoPortugueseOpen();
-      return;
-    }
-    if (style.id === "tikuliart" && onTikuliArtOpen) {
-      event.preventDefault();
-      onTikuliArtOpen();
-      return;
-    }
-    if (style.id === "sohraikhovar" && onSohraiKhovarOpen) {
-      event.preventDefault();
-      onSohraiKhovarOpen();
-      return;
-    }
-    if (style.id === "woodtemplecarving" && onWoodTempleCarvingOpen) {
-      event.preventDefault();
-      onWoodTempleCarvingOpen();
-      return;
-    }
-    if (style.id === "neoagrarianbrutalism" && onNeoAgrarianBrutalismOpen) {
-      event.preventDefault();
-      onNeoAgrarianBrutalismOpen();
-      return;
-    }
-    if (style.id === "patola" && onPatolaOpen) {
-      event.preventDefault();
-      onPatolaOpen();
-      return;
-    }
-    if (style.id === "phulkari" && onPhulkariOpen) {
-      event.preventDefault();
-      onPhulkariOpen();
-      return;
-    }
-    if (style.id === "pithora" && onPithoraOpen) {
-      event.preventDefault();
-      onPithoraOpen();
-      return;
-    }
-    if (style.id === "roganart" && onRoganArtOpen) {
-      event.preventDefault();
-      onRoganArtOpen();
-      return;
-    }
-    if (style.id === "baghembroidery" && onBaghEmbroideryOpen) {
-      event.preventDefault();
-      onBaghEmbroideryOpen();
-      return;
-    }
-    if (style.id === "bagruprint" && onBagruPrintOpen) {
-      event.preventDefault();
-      onBagruPrintOpen();
-      return;
-    }
-    if (style.id === "bandhej" && onBandhejOpen) {
-      event.preventDefault();
-      onBandhejOpen();
-      return;
-    }
-    if (style.id === "berhampurpatta" && onBerhampurPattaOpen) {
-      event.preventDefault();
-      onBerhampurPattaOpen();
-      return;
-    }
-    if (style.id === "bomkai" && onBomkaiOpen) {
-      event.preventDefault();
-      onBomkaiOpen();
-      return;
-    }
-    if (style.id === "buddhistmask" && onBuddhistMaskOpen) {
-      event.preventDefault();
-      onBuddhistMaskOpen();
-      return;
-    }
-    if (style.id === "sikkimcarpet" && onSikkimCarpetOpen) {
-      event.preventDefault();
-      onSikkimCarpetOpen();
-      return;
-    }
-    if (style.id === "durrie" && onDurrieOpen) {
-      event.preventDefault();
-      onDurrieOpen();
-      return;
-    }
-    if (style.id === "thangka" && onThangkaFolkOpen) {
-      event.preventDefault();
-      onThangkaFolkOpen();
-      return;
-    }
-    if (style.id === "punjabjutti" && onPunjabJuttiOpen) {
-      event.preventDefault();
-      onPunjabJuttiOpen();
-      return;
-    }
-    if (style.id === "kathputli" && onKathputliOpen) {
-      event.preventDefault();
-      onKathputliOpen();
-      return;
-    }
-    if (style.id === "khaddar" && onKhaddarOpen) {
-      event.preventDefault();
-      onKhaddarOpen();
-      return;
-    }
-    if (style.id === "khandua" && onKhanduaOpen) {
-      event.preventDefault();
-      onKhanduaOpen();
-      return;
-    }
-    if (style.id === "khes" && onKhesOpen) {
-      event.preventDefault();
-      onKhesOpen();
-      return;
-    }
-    if (style.id === "malerkotlazari" && onMalerkotlaZariOpen) {
-      event.preventDefault();
-      onMalerkotlaZariOpen();
-      return;
-    }
-    if (style.id === "molela" && onMolelaOpen) {
-      event.preventDefault();
-      onMolelaOpen();
-      return;
-    }
-    if (style.id === "pichhwai" && onPichhwaiOpen) {
-      event.preventDefault();
-      onPichhwaiOpen();
-      return;
-    }
-    if (style.id === "pattachitra" && onPattachitraOpen) {
-      event.preventDefault();
-      onPattachitraOpen();
-      return;
-    }
-    if (style.id === "pipili" && onPipiliOpen) {
-      event.preventDefault();
-      onPipiliOpen();
-      return;
-    }
-    if (style.id === "rajasthaniminiature" && onRajasthaniMiniatureOpen) {
-      event.preventDefault();
-      onRajasthaniMiniatureOpen();
-      return;
-    }
-    if (style.id === "sambalpuribandha" && onSambalpuriBandhaOpen) {
-      event.preventDefault();
-      onSambalpuriBandhaOpen();
-      return;
-    }
-    if (style.id === "sanganer" && onSanganerOpen) {
-      event.preventDefault();
-      onSanganerOpen();
-      return;
-    }
-    if (style.id === "ustaart" && onUstaArtOpen) {
-      event.preventDefault();
-      onUstaArtOpen();
-      return;
-    }
-    if (style.id === "pipiliapplique" && onPipiliAppliqueOpen) {
-      event.preventDefault();
-      onPipiliAppliqueOpen();
-      return;
-    }
-    if (style.id === "saura" && onSauraOpen) {
-      event.preventDefault();
-      onSauraOpen();
-      return;
-    }
-    if (style.id === "banarasmural" && onBanarasMuralOpen) {
-      event.preventDefault();
-      onBanarasMuralOpen();
-      return;
-    }
-    if (style.id === "banarasibrocade" && onBanarasiBrocadeOpen) {
-      event.preventDefault();
-      onBanarasiBrocadeOpen();
-      return;
-    }
-    if (style.id === "banjaraembroidery" && onBanjaraEmbroideryOpen) {
-      event.preventDefault();
-      onBanjaraEmbroideryOpen();
-      return;
-    }
-    if (style.id === "patachitra" && onPataChitraOpen) {
-      event.preventDefault();
-      onPataChitraOpen();
-      return;
-    }
-    if (style.id === "bhotiaweaving" && onBhotiaWeavingOpen) {
-      event.preventDefault();
-      onBhotiaWeavingOpen();
-      return;
-    }
-    if (style.id === "cheriyal" && onCheriyalOpen) {
-      event.preventDefault();
-      onCheriyalOpen();
-      return;
-    }
-    if (style.id === "chikankari" && onChikankariOpen) {
-      event.preventDefault();
-      onChikankariOpen();
-      return;
-    }
-    if (style.id === "cholabronze" && onCholaBronzeOpen) {
-      event.preventDefault();
-      onCholaBronzeOpen();
-      return;
-    }
-    if (style.id === "cholaoldbronze" && onCholaOldBronzeOpen) {
-      event.preventDefault();
-      onCholaOldBronzeOpen();
-      return;
-    }
-    if (style.id === "farrukhabadprint" && onFarrukhabadPrintOpen) {
-      event.preventDefault();
-      onFarrukhabadPrintOpen();
-      return;
-    }
-    if (style.id === "odishafiligree" && onOdishaFiligreeOpen) {
-      event.preventDefault();
-      onOdishaFiligreeOpen();
-      return;
-    }
-    if (style.id === "gadwalsaree" && onGadwalSareeOpen) {
-      event.preventDefault();
-      onGadwalSareeOpen();
-      return;
-    }
-    if (style.id === "gollabhamasaree" && onGollabhamaSareeOpen) {
-      event.preventDefault();
-      onGollabhamaSareeOpen();
-      return;
-    }
-    if (style.id === "gotazari" && onGotaZariOpen) {
-      event.preventDefault();
-      onGotaZariOpen();
-      return;
-    }
-    if (style.id === "kaavad" && onKaavadOpen) {
-      event.preventDefault();
-      onKaavadOpen();
-      return;
-    }
-    if (style.id === "kalighatpainting" && onKalighatPaintingOpen) {
-      event.preventDefault();
-      onKalighatPaintingOpen();
-      return;
-    }
-    if (style.id === "karuppurkalamkari" && onKaruppurKalamkariOpen) {
-      event.preventDefault();
-      onKaruppurKalamkariOpen();
-      return;
-    }
-    if (style.id === "kolamgeometry" && onKolamGeometryOpen) {
-      event.preventDefault();
-      onKolamGeometryOpen();
-      return;
-    }
-    if (style.id === "lacbangles" && onLacBanglesOpen) {
-      event.preventDefault();
-      onLacBanglesOpen();
-      return;
-    }
-    if (style.id === "maduraisungudi" && onMaduraiSungudiOpen) {
-      event.preventDefault();
-      onMaduraiSungudiOpen();
-      return;
-    }
-    if (style.id === "mahabalipuramsculpture" && onMahabalipuramSculptureOpen) {
-      event.preventDefault();
-      onMahabalipuramSculptureOpen();
-      return;
-    }
-    if (style.id === "narayanpetsaree" && onNarayanpetSareeOpen) {
-      event.preventDefault();
-      onNarayanpetSareeOpen();
-      return;
-    }
-    if (style.id === "nirmalart" && onNirmalArtOpen) {
-      event.preventDefault();
-      onNirmalArtOpen();
-      return;
-    }
-    if (style.id === "bamboocanecraft" && onBambooCaneCraftOpen) {
-      event.preventDefault();
-      onBambooCaneCraftOpen();
-      return;
-    }
-    if (style.id === "odishastonecarving" && onOdishaStoneCarvingOpen) {
-      event.preventDefault();
-      onOdishaStoneCarvingOpen();
-      return;
-    }
-    if (style.id === "pachra" && onPachraOpen) {
-      event.preventDefault();
-      onPachraOpen();
-      return;
-    }
-    if (style.id === "pembarthimetalcraft" && onPembarthiMetalCraftOpen) {
-      event.preventDefault();
-      onPembarthiMetalCraftOpen();
-      return;
-    }
-    if (style.id === "pilkhuwablockprint" && onPilkhuwaBlockPrintOpen) {
-      event.preventDefault();
-      onPilkhuwaBlockPrintOpen();
-      return;
-    }
-    if (style.id === "rangwalipichhoda" && onRangwaliPichhodaOpen) {
-      event.preventDefault();
-      onRangwaliPichhodaOpen();
-      return;
-    }
-    if (style.id === "rignai" && onRignaiOpen) {
-      event.preventDefault();
-      onRignaiOpen();
-      return;
-    }
-    if (style.id === "risa" && onRisaOpen) {
-      event.preventDefault();
-      onRisaOpen();
-      return;
-    }
-    if (style.id === "sanjhi" && onSanjhiOpen) {
-      event.preventDefault();
-      onSanjhiOpen();
-      return;
-    }
-    if (style.id === "tamilritualcraft" && onTamilRitualCraftOpen) {
-      event.preventDefault();
-      onTamilRitualCraftOpen();
-      return;
-    }
-    if (style.id === "tanjorepainting" && onTanjorePaintingOpen) {
-      event.preventDefault();
-      onTanjorePaintingOpen();
-      return;
-    }
-    if (style.id === "thanjavurdoll" && onThanjavurDollOpen) {
-      event.preventDefault();
-      onThanjavurDollOpen();
-      return;
-    }
-    if (style.id === "therukoothu" && onTherukoothuOpen) {
-      event.preventDefault();
-      onTherukoothuOpen();
-      return;
-    }
-    if (style.id === "todaembroidery" && onTodaEmbroideryOpen) {
-      event.preventDefault();
-      onTodaEmbroideryOpen();
-      return;
-    }
-    if (style.id === "zardozi" && onZardoziOpen) {
-      event.preventDefault();
-      onZardoziOpen();
-      return;
-    }
-    if (style.id === "ruralfibercraft" && onRuralFiberCraftOpen) {
-      event.preventDefault();
-      onRuralFiberCraftOpen();
-      return;
-    }
-    if (style.id === "sarkandaarchitecture" && onSarkandaArchitectureOpen) {
-      event.preventDefault();
-      onSarkandaArchitectureOpen();
-      return;
-    }
-    if (style.id === "shimplahastkala" && onShimplaHastkalaOpen) {
-      event.preventDefault();
-      onShimplaHastkalaOpen();
-      return;
-    }
-    if (style.id === "sitalpati" && onSitalpatiOpen) {
-      event.preventDefault();
-      onSitalpatiOpen();
-      return;
-    }
-    if (style.id === "sohrai" && onSohraiOpen) {
-      event.preventDefault();
-      onSohraiOpen();
-      return;
-    }
-    if (style.id === "sonowaltextile" && onSonowalTextileOpen) {
-      event.preventDefault();
-      onSonowalTextileOpen();
-      return;
-    }
-    if (style.id === "sufembroidery" && onSufEmbroideryOpen) {
-      event.preventDefault();
-      onSufEmbroideryOpen();
-      return;
-    }
-    if (style.id === "katabapplique" && onKatabAppliqueOpen) {
-      event.preventDefault();
-      onKatabAppliqueOpen();
-      return;
-    }
-    if (style.id === "baghprint" && onBaghPrintOpen) {
-      event.preventDefault();
-      onBaghPrintOpen();
-      return;
-    }
-    if (style.id === "bamboocraft" && onBambooCraftOpen) {
-      event.preventDefault();
-      onBambooCraftOpen();
-      return;
-    }
-    if (style.id === "nagabeadcluster" && onNagaBeadClusterOpen) {
-      event.preventDefault();
-      onNagaBeadClusterOpen();
-      return;
-    }
-    if (style.id === "bidriware" && onBidriwareOpen) {
-      event.preventDefault();
-      onBidriwareOpen();
-      return;
-    }
-    if (style.id === "bordersigntextile" && onBorderSignTextileOpen) {
-      event.preventDefault();
-      onBorderSignTextileOpen();
-      return;
-    }
-    if (style.id === "bundelipainting" && onBundeliPaintingOpen) {
-      event.preventDefault();
-      onBundeliPaintingOpen();
-      return;
-    }
-    if (style.id === "ceremonialemblem" && onCeremonialEmblemOpen) {
-      event.preventDefault();
-      onCeremonialEmblemOpen();
-      return;
-    }
-    if (style.id === "channapatnatoys" && onChannapatnaToysOpen) {
-      event.preventDefault();
-      onChannapatnaToysOpen();
-      return;
-    }
-    if (style.id === "coircraft" && onCoirCraftOpen) {
-      event.preventDefault();
-      onCoirCraftOpen();
-      return;
-    }
-    if (style.id === "bellmetalrituals" && onBellMetalRitualsOpen) {
-      event.preventDefault();
-      onBellMetalRitualsOpen();
-      return;
-    }
-    if (style.id === "kasutiembroidery" && onKasutiEmbroideryOpen) {
-      event.preventDefault();
-      onKasutiEmbroideryOpen();
-      return;
-    }
-    if (style.id === "keralamural" && onKeralaMuralOpen) {
-      event.preventDefault();
-      onKeralaMuralOpen();
-      return;
-    }
-    if (style.id === "khambhatagate" && onKhambhatAgateOpen) {
-      event.preventDefault();
-      onKhambhatAgateOpen();
-      return;
-    }
-    if (style.id === "kinhalcraft" && onKinhalCraftOpen) {
-      event.preventDefault();
-      onKinhalCraftOpen();
-      return;
-    }
-    if (style.id === "kolhapurjewellery" && onKolhapurJewelleryOpen) {
-      event.preventDefault();
-      onKolhapurJewelleryOpen();
-      return;
-    }
-    if (style.id === "kolhapurichappal" && onKolhapuriChappalOpen) {
-      event.preventDefault();
-      onKolhapuriChappalOpen();
-      return;
-    }
-    if (style.id === "kolhapurisaaj" && onKolhapuriSaajOpen) {
-      event.preventDefault();
-      onKolhapuriSaajOpen();
-      return;
-    }
-    if (style.id === "lambaniembroidery" && onLambaniEmbroideryOpen) {
-      event.preventDefault();
-      onLambaniEmbroideryOpen();
-      return;
-    }
-    if (style.id === "leathertoys" && onLeatherToysOpen) {
-      event.preventDefault();
-      onLeatherToysOpen();
-      return;
-    }
-    if (style.id === "paithani" && onPaithaniOpen) {
-      event.preventDefault();
-      onPaithaniOpen();
-      return;
-    }
-    if (style.id === "pawndum" && onPawndumOpen) {
-      event.preventDefault();
-      onPawndumOpen();
-      return;
-    }
-    if (style.id === "poshinaterracotta" && onPoshinaTerracottaOpen) {
-      event.preventDefault();
-      onPoshinaTerracottaOpen();
-      return;
-    }
-    if (style.id === "prestigependants" && onPrestigePendantsOpen) {
-      event.preventDefault();
-      onPrestigePendantsOpen();
-      return;
-    }
-    if (style.id === "puanchei" && onPuancheiOpen) {
-      event.preventDefault();
-      onPuancheiOpen();
-      return;
-    }
-    if (style.id === "puanlaisen" && onPuanlaisenOpen) {
-      event.preventDefault();
-      onPuanlaisenOpen();
-      return;
-    }
-    if (style.id === "sandalwoodcarving" && onSandalwoodCarvingOpen) {
-      event.preventDefault();
-      onSandalwoodCarvingOpen();
-      return;
-    }
-    if (style.id === "sankhedawoodwork" && onSankhedaWoodworkOpen) {
-      event.preventDefault();
-      onSankhedaWoodworkOpen();
-      return;
-    }
-    if (style.id === "ganjifa-sawantwadi" && onGanjifaSawantwadiOpen) {
-      event.preventDefault();
-      onGanjifaSawantwadiOpen();
-      return;
-    }
-    if (style.id === "sawantwadiwoodcraft" && onSawantwadiWoodcraftOpen) {
-      event.preventDefault();
-      onSawantwadiWoodcraftOpen();
-      return;
-    }
-    if (style.id === "shapheelanphee" && onShapheeLanpheeOpen) {
-      event.preventDefault();
-      onShapheeLanpheeOpen();
-      return;
-    }
-    if (style.id === "sheerfieldcloth" && onSheerFieldClothOpen) {
-      event.preventDefault();
-      onSheerFieldClothOpen();
-      return;
-    }
-    if (style.id === "bodyaugmentation" && onBodyAugmentationOpen) {
-      event.preventDefault();
-      onBodyAugmentationOpen();
-      return;
-    }
-    if (style.id === "tawlhlohpuan" && onTawlhlophuanMizoramOpen) {
-      event.preventDefault();
-      onTawlhlophuanMizoramOpen();
-      return;
-    }
-    if (style.id === "tawlhlohpuan-ceremonial" && onTawlhlohpuanCeremonialOpen) {
-      event.preventDefault();
-      onTawlhlohpuanCeremonialOpen();
-      return;
-    }
-    if (style.id === "templemural" && onTempleMuralOpen) {
-      event.preventDefault();
-      onTempleMuralOpen();
-      return;
-    }
-    if (style.id === "togalugombeyaata" && onTogaluGombeyaataOpen) {
-      event.preventDefault();
-      onTogaluGombeyaataOpen();
-      return;
-    }
-    if (style.id === "nagashawl" && onNagaShawlOpen) {
-      event.preventDefault();
-      onNagaShawlOpen();
-      return;
-    }
-    if (style.id === "wangkheiphee" && onWangkheiPheeOpen) {
-      event.preventDefault();
-      onWangkheiPheeOpen();
-      return;
-    }
-    if (style.id === "meritshawl" && onMeritShawlOpen) {
-      event.preventDefault();
-      onMeritShawlOpen();
-      return;
-    }
-    if (style.id === "ganjifa-mysore" && onGanjifaMysoreOpen) {
-      event.preventDefault();
-      onGanjifaMysoreOpen();
-      return;
-    }
-    if (style.id === "garoweaving" && onGaroWeavingOpen) {
-      event.preventDefault();
-      onGaroWeavingOpen();
-      return;
-    }
-    if (style.id === "nagabodycloth" && onNagaBodyClothOpen) {
-      event.preventDefault();
-      onNagaBodyClothOpen();
-      return;
-    }
-    if (style.id === "gondpainting" && onGondPaintingOpen) {
-      event.preventDefault();
-      onGondPaintingOpen();
-      return;
-    }
-    if (style.id === "hardornament" && onHardOrnamentOpen) {
-      event.preventDefault();
-      onHardOrnamentOpen();
-      return;
-    }
-    if (style.id === "himroo" && onHimrooOpen) {
-      event.preventDefault();
-      onHimrooOpen();
-      return;
-    }
-    if (style.id === "hmaram" && onHmaramOpen) {
-      event.preventDefault();
-      onHmaramOpen();
-      return;
-    }
-    if (style.id === "hoysalarelief" && onHoysalaReliefOpen) {
-      event.preventDefault();
-      onHoysalaReliefOpen();
-      return;
-    }
-    if (style.id === "jaintiatextile" && onJaintiaTextileOpen) {
-      event.preventDefault();
-      onJaintiaTextileOpen();
-      return;
-    }
+    // Standard handler for all cultural styles that have a walkthrough modal.
+    // We prevent the default navigation and open the specific walkthrough instead.
+
     switch (style.id) {
-      case "jhabuadolls":
-        onJhabuaDollsOpen?.();
+      case "Maharashtra":
+        if (onWarliOpen) {
+          event.preventDefault();
+          onWarliOpen();
+        }
         break;
-      case "maheshwari":
-        onMaheshwariOpen?.();
+      case "ajrakh":
+        if (onAjrakhOpen) {
+          event.preventDefault();
+          onAjrakhOpen();
+        }
         break;
-      case "mashruweaving":
-        onMashruWeavingOpen?.();
+      case "jhajjar":
+        if (onJhajjarOpen) {
+          event.preventDefault();
+          onJhajjarOpen();
+        }
         break;
-      case "moirangphee":
-        onMoirangPheeOpen?.();
+      case "kaavi":
+        if (onKaaviOpen) {
+          event.preventDefault();
+          onKaaviOpen();
+        }
         break;
-      case "motibharat":
-        onMotiBharatOpen?.();
+      case "kangra":
+        if (onKangraOpen) {
+          event.preventDefault();
+          onKangraOpen();
+        }
         break;
-      case "mysorepainting":
-        onMysorePaintingOpen?.();
+      case "karepa":
+        if (onKarepaOpen) {
+          event.preventDefault();
+          onKarepaOpen();
+        }
         break;
-      case "rosewoodinlay":
-        onRosewoodInlayOpen?.();
+      case "khatwa":
+        if (onKhatwaOpen) {
+          event.preventDefault();
+          onKhatwaOpen();
+        }
         break;
-      case "nagashawlordinary":
-        onNagaShawlOrdinaryOpen?.();
+      case "khovar":
+        if (onKhovarOpen) {
+          event.preventDefault();
+          onKhovarOpen();
+        }
         break;
-      case "ngotekherh":
-        onNgotekherhOpen?.();
+      case "kinnauri":
+        if (onKinnauriOpen) {
+          event.preventDefault();
+          onKinnauriOpen();
+        }
         break;
-      case "nironalacquer":
-        onNironaLacquerOpen?.();
+      case "kosa":
+        if (onKosaOpen) {
+          event.preventDefault();
+          onKosaOpen();
+        }
         break;
-      case "opaquewrap":
-        onOpaqueWrapOpen?.();
+      case "kutch":
+        if (onKutchOpen) {
+          event.preventDefault();
+          onKutchOpen();
+        }
         break;
-      case "tawlhlohpuan":
-        onTawlhlophuanMizoramOpen?.();
+      case "lippan":
+        if (onLippanOpen) {
+          event.preventDefault();
+          onLippanOpen();
+        }
+        break;
+      case "majuli":
+        if (onMajuliOpen) {
+          event.preventDefault();
+          onMajuliOpen();
+        }
+        break;
+      case "manjusha":
+        if (onManjushaOpen) {
+          event.preventDefault();
+          onManjushaOpen();
+        }
+        break;
+      case "matanipachedi":
+        if (onMataNiPachediOpen) {
+          event.preventDefault();
+          onMataNiPachediOpen();
+        }
+        break;
+      case "madhubani":
+        if (onMadhubaniOpen) {
+          event.preventDefault();
+          onMadhubaniOpen();
+        }
+        break;
+      case "kyilkhor":
+        if (onKyilKhorOpen) {
+          event.preventDefault();
+          onKyilKhorOpen();
+        }
+        break;
+      case "sherdukpen":
+        if (onSherdukpenOpen) {
+          event.preventDefault();
+          onSherdukpenOpen();
+        }
+        break;
+      case "etikoppaka":
+        if (onEtikoppakaOpen) {
+          event.preventDefault();
+          onEtikoppakaOpen();
+        }
+        break;
+      case "kondapalli":
+        if (onKondapalliOpen) {
+          event.preventDefault();
+          onKondapalliOpen();
+        }
+        break;
+      case "monpamask":
+        if (onMonpaMaskOpen) {
+          event.preventDefault();
+          onMonpaMaskOpen();
+        }
+        break;
+      case "handmadepaper":
+        if (onHandmadePaperOpen) {
+          event.preventDefault();
+          onHandmadePaperOpen();
+        }
+        break;
+      case "monpa":
+        if (onMonpaOpen) {
+          event.preventDefault();
+          onMonpaOpen();
+        }
+        break;
+      case "wancho":
+        if (onWanchoOpen) {
+          event.preventDefault();
+          onWanchoOpen();
+        }
+        break;
+      case "thangka":
+        if (onThangkaOpen) {
+          event.preventDefault();
+          onThangkaOpen();
+        }
+        break;
+      case "tholu":
+        if (onTholuOpen) {
+          event.preventDefault();
+          onTholuOpen();
+        }
+        break;
+      case "uppadajamdani":
+        if (onUppadaOpen) {
+          event.preventDefault();
+          onUppadaOpen();
+        }
+        break;
+      case "machilipatnam":
+        if (onKalamkariOpen) {
+          event.preventDefault();
+          onKalamkariOpen();
+        }
+        break;
+      case "srikalahasti":
+        if (onSrikalahastiOpen) {
+          event.preventDefault();
+          onSrikalahastiOpen();
+        }
+        break;
+      case "idumishmi":
+        if (onIduMishmiOpen) {
+          event.preventDefault();
+          onIduMishmiOpen();
+        }
+        break;
+      case "asharikandi":
+        if (onAsharikandiOpen) {
+          event.preventDefault();
+          onAsharikandiOpen();
+        }
+        break;
+      case "azulejos":
+        if (onAzulejosOpen) {
+          event.preventDefault();
+          onAzulejosOpen();
+        }
+        break;
+      case "bandhani":
+        if (onBandhaniOpen) {
+          event.preventDefault();
+          onBandhaniOpen();
+        }
+        break;
+      case "bastardhokra":
+        if (onBastarDhokraOpen) {
+          event.preventDefault();
+          onBastarDhokraOpen();
+        }
+        break;
+      case "muriawallpainting":
+        if (onMuriaWallPaintingOpen) {
+          event.preventDefault();
+          onMuriaWallPaintingOpen();
+        }
+        break;
+      case "bastarwoodcraft":
+        if (onBastarWoodcraftOpen) {
+          event.preventDefault();
+          onBastarWoodcraftOpen();
+        }
+        break;
+      case "bhagalpursilk":
+        if (onBhagalpurSilkOpen) {
+          event.preventDefault();
+          onBhagalpurSilkOpen();
+        }
+        break;
+      case "chambaminiature":
+        if (onChambaMiniatureOpen) {
+          event.preventDefault();
+          onChambaMiniatureOpen();
+        }
+        break;
+      case "exposedlaterite":
+        if (onExposedLateriteOpen) {
+          event.preventDefault();
+          onExposedLateriteOpen();
+        }
+        break;
+      case "gharchola":
+        if (onGharcholaOpen) {
+          event.preventDefault();
+          onGharcholaOpen();
+        }
+        break;
+      case "godnaart":
+        if (onGodnaArtOpen) {
+          event.preventDefault();
+          onGodnaArtOpen();
+        }
+        break;
+      case "taiahommanuscript":
+        if (onTaiAhomManuscriptOpen) {
+          event.preventDefault();
+          onTaiAhomManuscriptOpen();
+        }
+        break;
+      case "tangaliya":
+        if (onTangaliyaOpen) {
+          event.preventDefault();
+          onTangaliyaOpen();
+        }
+        break;
+      case "agrarianindustrial":
+        if (onAgrarianIndustrialOpen) {
+          event.preventDefault();
+          onAgrarianIndustrialOpen();
+        }
+        break;
+      case "indoportuguese":
+        if (onIndoPortugueseOpen) {
+          event.preventDefault();
+          onIndoPortugueseOpen();
+        }
+        break;
+      case "tikuliart":
+        if (onTikuliArtOpen) {
+          event.preventDefault();
+          onTikuliArtOpen();
+        }
+        break;
+      case "sohraikhovar":
+        if (onSohraiKhovarOpen) {
+          event.preventDefault();
+          onSohraiKhovarOpen();
+        }
+        break;
+      case "woodtemplecarving":
+        if (onWoodTempleCarvingOpen) {
+          event.preventDefault();
+          onWoodTempleCarvingOpen();
+        }
+        break;
+      case "neoagrarianbrutalism":
+        if (onNeoAgrarianBrutalismOpen) {
+          event.preventDefault();
+          onNeoAgrarianBrutalismOpen();
+        }
+        break;
+      case "patola":
+        if (onPatolaOpen) {
+          event.preventDefault();
+          onPatolaOpen();
+        }
+        break;
+      case "phulkari":
+        if (onPhulkariOpen) {
+          event.preventDefault();
+          onPhulkariOpen();
+        }
+        break;
+      case "pithora":
+        if (onPithoraOpen) {
+          event.preventDefault();
+          onPithoraOpen();
+        }
+        break;
+      case "roganart":
+        if (onRoganArtOpen) {
+          event.preventDefault();
+          onRoganArtOpen();
+        }
+        break;
+      case "baghembroidery":
+        if (onBaghEmbroideryOpen) {
+          event.preventDefault();
+          onBaghEmbroideryOpen();
+        }
+        break;
+      case "bagruprint":
+        if (onBagruPrintOpen) {
+          event.preventDefault();
+          onBagruPrintOpen();
+        }
+        break;
+      case "bandhej":
+        if (onBandhejOpen) {
+          event.preventDefault();
+          onBandhejOpen();
+        }
+        break;
+      case "berhampurpatta":
+        if (onBerhampurPattaOpen) {
+          event.preventDefault();
+          onBerhampurPattaOpen();
+        }
+        break;
+      case "bomkai":
+        if (onBomkaiOpen) {
+          event.preventDefault();
+          onBomkaiOpen();
+        }
+        break;
+      case "buddhistmask":
+        if (onBuddhistMaskOpen) {
+          event.preventDefault();
+          onBuddhistMaskOpen();
+        }
+        break;
+      case "sikkimcarpet":
+        if (onSikkimCarpetOpen) {
+          event.preventDefault();
+          onSikkimCarpetOpen();
+        }
+        break;
+      case "durrie":
+        if (onDurrieOpen) {
+          event.preventDefault();
+          onDurrieOpen();
+        }
+        break;
+      case "thangkafolk":
+        if (onThangkaFolkOpen) {
+          event.preventDefault();
+          onThangkaFolkOpen();
+        }
+        break;
+      case "punjabjutti":
+        if (onPunjabJuttiOpen) {
+          event.preventDefault();
+          onPunjabJuttiOpen();
+        }
+        break;
+      case "kathputli":
+        if (onKathputliOpen) {
+          event.preventDefault();
+          onKathputliOpen();
+        }
+        break;
+      case "khaddar":
+        if (onKhaddarOpen) {
+          event.preventDefault();
+          onKhaddarOpen();
+        }
+        break;
+      case "khandua":
+        if (onKhanduaOpen) {
+          event.preventDefault();
+          onKhanduaOpen();
+        }
+        break;
+      case "khes":
+        if (onKhesOpen) {
+          event.preventDefault();
+          onKhesOpen();
+        }
+        break;
+      case "malerkotlazari":
+        if (onMalerkotlaZariOpen) {
+          event.preventDefault();
+          onMalerkotlaZariOpen();
+        }
+        break;
+      case "molela":
+        if (onMolelaOpen) {
+          event.preventDefault();
+          onMolelaOpen();
+        }
+        break;
+      case "pichhwai":
+        if (onPichhwaiOpen) {
+          event.preventDefault();
+          onPichhwaiOpen();
+        }
+        break;
+      case "pattachitra":
+        if (onPattachitraOpen) {
+          event.preventDefault();
+          onPattachitraOpen();
+        }
+        break;
+      case "pipili":
+        if (onPipiliOpen) {
+          event.preventDefault();
+          onPipiliOpen();
+        }
+        break;
+      case "rajasthaniminiature":
+        if (onRajasthaniMiniatureOpen) {
+          event.preventDefault();
+          onRajasthaniMiniatureOpen();
+        }
+        break;
+      case "sambalpuribandha":
+        if (onSambalpuriBandhaOpen) {
+          event.preventDefault();
+          onSambalpuriBandhaOpen();
+        }
+        break;
+      case "sanganer":
+        if (onSanganerOpen) {
+          event.preventDefault();
+          onSanganerOpen();
+        }
+        break;
+      case "ustaart":
+        if (onUstaArtOpen) {
+          event.preventDefault();
+          onUstaArtOpen();
+        }
+        break;
+      case "pipiliapplique":
+        if (onPipiliAppliqueOpen) {
+          event.preventDefault();
+          onPipiliAppliqueOpen();
+        }
+        break;
+      case "saura":
+        if (onSauraOpen) {
+          event.preventDefault();
+          onSauraOpen();
+        }
+        break;
+      case "banarasmural":
+        if (onBanarasMuralOpen) {
+          event.preventDefault();
+          onBanarasMuralOpen();
+        }
+        break;
+      case "banarasibrocade":
+        if (onBanarasiBrocadeOpen) {
+          event.preventDefault();
+          onBanarasiBrocadeOpen();
+        }
+        break;
+      case "banjaraembroidery":
+        if (onBanjaraEmbroideryOpen) {
+          event.preventDefault();
+          onBanjaraEmbroideryOpen();
+        }
+        break;
+      case "patachitra":
+        if (onPataChitraOpen) {
+          event.preventDefault();
+          onPataChitraOpen();
+        }
+        break;
+      case "bhotiaweaving":
+        if (onBhotiaWeavingOpen) {
+          event.preventDefault();
+          onBhotiaWeavingOpen();
+        }
+        break;
+      case "cheriyal":
+        if (onCheriyalOpen) {
+          event.preventDefault();
+          onCheriyalOpen();
+        }
+        break;
+      case "chikankari":
+        if (onChikankariOpen) {
+          event.preventDefault();
+          onChikankariOpen();
+        }
+        break;
+      case "cholabronze":
+        if (onCholaBronzeOpen) {
+          event.preventDefault();
+          onCholaBronzeOpen();
+        }
+        break;
+      case "cholaoldbronze":
+        if (onCholaOldBronzeOpen) {
+          event.preventDefault();
+          onCholaOldBronzeOpen();
+        }
+        break;
+      case "farrukhabadprint":
+        if (onFarrukhabadPrintOpen) {
+          event.preventDefault();
+          onFarrukhabadPrintOpen();
+        }
+        break;
+      case "odishafiligree":
+        if (onOdishaFiligreeOpen) {
+          event.preventDefault();
+          onOdishaFiligreeOpen();
+        }
+        break;
+      case "gadwalsaree":
+        if (onGadwalSareeOpen) {
+          event.preventDefault();
+          onGadwalSareeOpen();
+        }
+        break;
+      case "gollabhamasaree":
+        if (onGollabhamaSareeOpen) {
+          event.preventDefault();
+          onGollabhamaSareeOpen();
+        }
+        break;
+      case "gotazari":
+        if (onGotaZariOpen) {
+          event.preventDefault();
+          onGotaZariOpen();
+        }
+        break;
+      case "kaavad":
+        if (onKaavadOpen) {
+          event.preventDefault();
+          onKaavadOpen();
+        }
+        break;
+      case "kalighatpainting":
+        if (onKalighatPaintingOpen) {
+          event.preventDefault();
+          onKalighatPaintingOpen();
+        }
+        break;
+      case "karuppurkalamkari":
+        if (onKaruppurKalamkariOpen) {
+          event.preventDefault();
+          onKaruppurKalamkariOpen();
+        }
+        break;
+      case "kolamgeometry":
+        if (onKolamGeometryOpen) {
+          event.preventDefault();
+          onKolamGeometryOpen();
+        }
+        break;
+      case "lacbangles":
+        if (onLacBanglesOpen) {
+          event.preventDefault();
+          onLacBanglesOpen();
+        }
+        break;
+      case "maduraisungudi":
+        if (onMaduraiSungudiOpen) {
+          event.preventDefault();
+          onMaduraiSungudiOpen();
+        }
+        break;
+      case "mahabalipuramsculpture":
+        if (onMahabalipuramSculptureOpen) {
+          event.preventDefault();
+          onMahabalipuramSculptureOpen();
+        }
+        break;
+      case "narayanpetsaree":
+        if (onNarayanpetSareeOpen) {
+          event.preventDefault();
+          onNarayanpetSareeOpen();
+        }
+        break;
+      case "nirmalart":
+        if (onNirmalArtOpen) {
+          event.preventDefault();
+          onNirmalArtOpen();
+        }
+        break;
+      case "bamboocanecraft":
+        if (onBambooCaneCraftOpen) {
+          event.preventDefault();
+          onBambooCaneCraftOpen();
+        }
+        break;
+      case "odishastonecarving":
+        if (onOdishaStoneCarvingOpen) {
+          event.preventDefault();
+          onOdishaStoneCarvingOpen();
+        }
+        break;
+      case "pachra":
+        if (onPachraOpen) {
+          event.preventDefault();
+          onPachraOpen();
+        }
+        break;
+      case "pembarthimetalcraft":
+        if (onPembarthiMetalCraftOpen) {
+          event.preventDefault();
+          onPembarthiMetalCraftOpen();
+        }
+        break;
+      case "pilkhuwablockprint":
+        if (onPilkhuwaBlockPrintOpen) {
+          event.preventDefault();
+          onPilkhuwaBlockPrintOpen();
+        }
+        break;
+      case "rangwalipichhoda":
+        if (onRangwaliPichhodaOpen) {
+          event.preventDefault();
+          onRangwaliPichhodaOpen();
+        }
+        break;
+      case "rignai":
+        if (onRignaiOpen) {
+          event.preventDefault();
+          onRignaiOpen();
+        }
+        break;
+      case "risa":
+        if (onRisaOpen) {
+          event.preventDefault();
+          onRisaOpen();
+        }
+        break;
+      case "sanjhi":
+        if (onSanjhiOpen) {
+          event.preventDefault();
+          onSanjhiOpen();
+        }
+        break;
+      case "tamilritualcraft":
+        if (onTamilRitualCraftOpen) {
+          event.preventDefault();
+          onTamilRitualCraftOpen();
+        }
+        break;
+      case "tanjorepainting":
+        if (onTanjorePaintingOpen) {
+          event.preventDefault();
+          onTanjorePaintingOpen();
+        }
+        break;
+      case "thanjavurdoll":
+        if (onThanjavurDollOpen) {
+          event.preventDefault();
+          onThanjavurDollOpen();
+        }
+        break;
+      case "therukoothu":
+        if (onTherukoothuOpen) {
+          event.preventDefault();
+          onTherukoothuOpen();
+        }
+        break;
+      case "todaembroidery":
+        if (onTodaEmbroideryOpen) {
+          event.preventDefault();
+          onTodaEmbroideryOpen();
+        }
+        break;
+      case "zardozi":
+        if (onZardoziOpen) {
+          event.preventDefault();
+          onZardoziOpen();
+        }
+        break;
+      case "ruralfibercraft":
+        if (onRuralFiberCraftOpen) {
+          event.preventDefault();
+          onRuralFiberCraftOpen();
+        }
+        break;
+      case "sarkandaarchitecture":
+        if (onSarkandaArchitectureOpen) {
+          event.preventDefault();
+          onSarkandaArchitectureOpen();
+        }
+        break;
+      case "shimplahastkala":
+        if (onShimplaHastkalaOpen) {
+          event.preventDefault();
+          onShimplaHastkalaOpen();
+        }
+        break;
+      case "sitalpati":
+        if (onSitalpatiOpen) {
+          event.preventDefault();
+          onSitalpatiOpen();
+        }
+        break;
+      case "sohrai":
+        if (onSohraiOpen) {
+          event.preventDefault();
+          onSohraiOpen();
+        }
+        break;
+      case "sonowaltextile":
+        if (onSonowalTextileOpen) {
+          event.preventDefault();
+          onSonowalTextileOpen();
+        }
+        break;
+      case "sufembroidery":
+        if (onSufEmbroideryOpen) {
+          event.preventDefault();
+          onSufEmbroideryOpen();
+        }
+        break;
+      case "katabapplique":
+        if (onKatabAppliqueOpen) {
+          event.preventDefault();
+          onKatabAppliqueOpen();
+        }
+        break;
+      case "baghprint":
+        if (onBaghPrintOpen) {
+          event.preventDefault();
+          onBaghPrintOpen();
+        }
+        break;
+      case "bamboocraft":
+        if (onBambooCraftOpen) {
+          event.preventDefault();
+          onBambooCraftOpen();
+        }
+        break;
+      case "nagabeadcluster":
+        if (onNagaBeadClusterOpen) {
+          event.preventDefault();
+          onNagaBeadClusterOpen();
+        }
+        break;
+      case "bidriware":
+        if (onBidriwareOpen) {
+          event.preventDefault();
+          onBidriwareOpen();
+        }
+        break;
+      case "bordersigntextile":
+        if (onBorderSignTextileOpen) {
+          event.preventDefault();
+          onBorderSignTextileOpen();
+        }
+        break;
+      case "bundelipainting":
+        if (onBundeliPaintingOpen) {
+          event.preventDefault();
+          onBundeliPaintingOpen();
+        }
+        break;
+      case "ceremonialemblem":
+        if (onCeremonialEmblemOpen) {
+          event.preventDefault();
+          onCeremonialEmblemOpen();
+        }
+        break;
+      case "channapatnatoys":
+        if (onChannapatnaToysOpen) {
+          event.preventDefault();
+          onChannapatnaToysOpen();
+        }
+        break;
+      case "coircraft":
+        if (onCoirCraftOpen) {
+          event.preventDefault();
+          onCoirCraftOpen();
+        }
+        break;
+      case "bellmetalrituals":
+        if (onBellMetalRitualsOpen) {
+          event.preventDefault();
+          onBellMetalRitualsOpen();
+        }
+        break;
+      case "kasutiembroidery":
+        if (onKasutiEmbroideryOpen) {
+          event.preventDefault();
+          onKasutiEmbroideryOpen();
+        }
+        break;
+      case "keralamural":
+        if (onKeralaMuralOpen) {
+          event.preventDefault();
+          onKeralaMuralOpen();
+        }
+        break;
+      case "khambhatagate":
+        if (onKhambhatAgateOpen) {
+          event.preventDefault();
+          onKhambhatAgateOpen();
+        }
+        break;
+      case "kinhalcraft":
+        if (onKinhalCraftOpen) {
+          event.preventDefault();
+          onKinhalCraftOpen();
+        }
+        break;
+      case "kolhapurjewellery":
+        if (onKolhapurJewelleryOpen) {
+          event.preventDefault();
+          onKolhapurJewelleryOpen();
+        }
+        break;
+      case "kolhapurichappal":
+        if (onKolhapuriChappalOpen) {
+          event.preventDefault();
+          onKolhapuriChappalOpen();
+        }
+        break;
+      case "kolhapurisaaj":
+        if (onKolhapuriSaajOpen) {
+          event.preventDefault();
+          onKolhapuriSaajOpen();
+        }
+        break;
+      case "lambaniembroidery":
+        if (onLambaniEmbroideryOpen) {
+          event.preventDefault();
+          onLambaniEmbroideryOpen();
+        }
+        break;
+      case "leathertoys":
+        if (onLeatherToysOpen) {
+          event.preventDefault();
+          onLeatherToysOpen();
+        }
+        break;
+      case "paithani":
+        if (onPaithaniOpen) {
+          event.preventDefault();
+          onPaithaniOpen();
+        }
+        break;
+      case "pawndum":
+        if (onPawndumOpen) {
+          event.preventDefault();
+          onPawndumOpen();
+        }
+        break;
+      case "poshinaterracotta":
+        if (onPoshinaTerracottaOpen) {
+          event.preventDefault();
+          onPoshinaTerracottaOpen();
+        }
+        break;
+      case "prestigependants":
+        if (onPrestigePendantsOpen) {
+          event.preventDefault();
+          onPrestigePendantsOpen();
+        }
+        break;
+      case "puanchei":
+        if (onPuancheiOpen) {
+          event.preventDefault();
+          onPuancheiOpen();
+        }
+        break;
+      case "puanlaisen":
+        if (onPuanlaisenOpen) {
+          event.preventDefault();
+          onPuanlaisenOpen();
+        }
+        break;
+      case "sandalwoodcarving":
+        if (onSandalwoodCarvingOpen) {
+          event.preventDefault();
+          onSandalwoodCarvingOpen();
+        }
+        break;
+      case "sankhedawoodwork":
+        if (onSankhedaWoodworkOpen) {
+          event.preventDefault();
+          onSankhedaWoodworkOpen();
+        }
+        break;
+      case "ganjifa-sawantwadi":
+        if (onGanjifaSawantwadiOpen) {
+          event.preventDefault();
+          onGanjifaSawantwadiOpen();
+        }
+        break;
+      case "sawantwadiwoodcraft":
+        if (onSawantwadiWoodcraftOpen) {
+          event.preventDefault();
+          onSawantwadiWoodcraftOpen();
+        }
+        break;
+      case "shapheelanphee":
+        if (onShapheeLanpheeOpen) {
+          event.preventDefault();
+          onShapheeLanpheeOpen();
+        }
+        break;
+      case "sheerfieldcloth":
+        if (onSheerFieldClothOpen) {
+          event.preventDefault();
+          onSheerFieldClothOpen();
+        }
+        break;
+      case "bodyaugmentation":
+        if (onBodyAugmentationOpen) {
+          event.preventDefault();
+          onBodyAugmentationOpen();
+        }
+        break;
+      case "tawlhlophuan":
+        if (onTawlhlophuanMizoramOpen) {
+          event.preventDefault();
+          onTawlhlophuanMizoramOpen();
+        }
         break;
       case "tawlhlohpuan-ceremonial":
-        onTawlhlohpuanCeremonialOpen?.();
+        if (onTawlhlohpuanCeremonialOpen) {
+          event.preventDefault();
+          onTawlhlohpuanCeremonialOpen();
+        }
+        break;
+      case "templemural":
+        if (onTempleMuralOpen) {
+          event.preventDefault();
+          onTempleMuralOpen();
+        }
+        break;
+      case "togalugombeyaata":
+        if (onTogaluGombeyaataOpen) {
+          event.preventDefault();
+          onTogaluGombeyaataOpen();
+        }
+        break;
+      case "nagashawl":
+        if (onNagaShawlOpen) {
+          event.preventDefault();
+          onNagaShawlOpen();
+        }
+        break;
+      case "wangkheiphee":
+        if (onWangkheiPheeOpen) {
+          event.preventDefault();
+          onWangkheiPheeOpen();
+        }
+        break;
+      case "meritshawl":
+        if (onMeritShawlOpen) {
+          event.preventDefault();
+          onMeritShawlOpen();
+        }
+        break;
+      case "ganjifa-mysore":
+        if (onGanjifaMysoreOpen) {
+          event.preventDefault();
+          onGanjifaMysoreOpen();
+        }
+        break;
+      case "garoweaving":
+        if (onGaroWeavingOpen) {
+          event.preventDefault();
+          onGaroWeavingOpen();
+        }
+        break;
+      case "nagabodycloth":
+        if (onNagaBodyClothOpen) {
+          event.preventDefault();
+          onNagaBodyClothOpen();
+        }
+        break;
+      case "gondpainting":
+        if (onGondPaintingOpen) {
+          event.preventDefault();
+          onGondPaintingOpen();
+        }
+        break;
+      case "hardornament":
+        if (onHardOrnamentOpen) {
+          event.preventDefault();
+          onHardOrnamentOpen();
+        }
+        break;
+      case "himroo":
+        if (onHimrooOpen) {
+          event.preventDefault();
+          onHimrooOpen();
+        }
+        break;
+      case "hmaram":
+        if (onHmaramOpen) {
+          event.preventDefault();
+          onHmaramOpen();
+        }
+        break;
+      case "hoysalarelief":
+        if (onHoysalaReliefOpen) {
+          event.preventDefault();
+          onHoysalaReliefOpen();
+        }
+        break;
+      case "jaintiatextile":
+        if (onJaintiaTextileOpen) {
+          event.preventDefault();
+          onJaintiaTextileOpen();
+        }
+        break;
+      case "jhabuadolls":
+        if (onJhabuaDollsOpen) {
+          event.preventDefault();
+          onJhabuaDollsOpen();
+        }
+        break;
+      case "maheshwari":
+        if (onMaheshwariOpen) {
+          event.preventDefault();
+          onMaheshwariOpen();
+        }
+        break;
+      case "mashruweaving":
+        if (onMashruWeavingOpen) {
+          event.preventDefault();
+          onMashruWeavingOpen();
+        }
+        break;
+      case "moirangphee":
+        if (onMoirangPheeOpen) {
+          event.preventDefault();
+          onMoirangPheeOpen();
+        }
+        break;
+      case "motibharat":
+        if (onMotiBharatOpen) {
+          event.preventDefault();
+          onMotiBharatOpen();
+        }
+        break;
+      case "mysorepainting":
+        if (onMysorePaintingOpen) {
+          event.preventDefault();
+          onMysorePaintingOpen();
+        }
+        break;
+      case "rosewoodinlay":
+        if (onRosewoodInlayOpen) {
+          event.preventDefault();
+          onRosewoodInlayOpen();
+        }
+        break;
+      case "nagashawlordinary":
+        if (onNagaShawlOrdinaryOpen) {
+          event.preventDefault();
+          onNagaShawlOrdinaryOpen();
+        }
+        break;
+      case "ngotekherh":
+        if (onNgotekherhOpen) {
+          event.preventDefault();
+          onNgotekherhOpen();
+        }
+        break;
+      case "nironalacquer":
+        if (onNironaLacquerOpen) {
+          event.preventDefault();
+          onNironaLacquerOpen();
+        }
+        break;
+      case "opaquewrap":
+        if (onOpaqueWrapOpen) {
+          event.preventDefault();
+          onOpaqueWrapOpen();
+        }
         break;
       case "woodcarving":
-        onWoodCarvingOpen?.();
+        if (onWoodCarvingOpen) {
+          event.preventDefault();
+          onWoodCarvingOpen();
+        }
         break;
       case "wroughtiron":
-        onWroughtIronOpen?.();
+        if (onWroughtIronOpen) {
+          event.preventDefault();
+          onWroughtIronOpen();
+        }
         break;
       case "yakshagana":
-        onYakshaganaOpen?.();
+        if (onYakshaganaOpen) {
+          event.preventDefault();
+          onYakshaganaOpen();
+        }
+        break;
+      case "gabba":
+        if (onGabbaOpen) {
+          event.preventDefault();
+          onGabbaOpen();
+        }
+        break;
+      case "garadsaree":
+        if (onGaradSareeOpen) {
+          event.preventDefault();
+          onGaradSareeOpen();
+        }
+        break;
+      case "himalayansacredimage":
+        if (onHimalayanSacredImageOpen) {
+          event.preventDefault();
+          onHimalayanSacredImageOpen();
+        }
+        break;
+      case "khatamband":
+        if (onKhatambandOpen) {
+          event.preventDefault();
+          onKhatambandOpen();
+        }
+        break;
+      case "kushmandimask":
+        if (onKushmandiMaskOpen) {
+          event.preventDefault();
+          onKushmandiMaskOpen();
+        }
+        break;
+      case "likhaiwoodcarving":
+        if (onLikhaiWoodCarvingOpen) {
+          event.preventDefault();
+          onLikhaiWoodCarvingOpen();
+        }
+        break;
+      case "matweaving":
+        if (onMatWeavingOpen) {
+          event.preventDefault();
+          onMatWeavingOpen();
+        }
+        break;
+      case "moradabadmetalcraft":
+        if (onMoradabadMetalCraftOpen) {
+          event.preventDefault();
+          onMoradabadMetalCraftOpen();
+        }
+        break;
+      case "namda":
+        if (onNamdaOpen) {
+          event.preventDefault();
+          onNamdaOpen();
+        }
+        break;
+      case "needlework":
+        if (onNeedleWorkOpen) {
+          event.preventDefault();
+          onNeedleWorkOpen();
+        }
+        break;
+      case "palmmat":
+        if (onPalmMatOpen) {
+          event.preventDefault();
+          onPalmMatOpen();
+        }
+        break;
+      case "papiermachekashmir":
+        if (onPapierMacheKashmirOpen) {
+          event.preventDefault();
+          onPapierMacheKashmirOpen();
+        }
+        break;
+      case "puruliachhaumask":
+        if (onPuruliaChhauMaskOpen) {
+          event.preventDefault();
+          onPuruliaChhauMaskOpen();
+        }
+        break;
+      case "papiermachepuducherry":
+        if (onPapierMachePuducherryOpen) {
+          event.preventDefault();
+          onPapierMachePuducherryOpen();
+        }
+        break;
+      case "rammanmask":
+        if (onRammanMaskOpen) {
+          event.preventDefault();
+          onRammanMaskOpen();
+        }
+        break;
+      case "rockgardenassemblage":
+        if (onRockGardenAssemblageOpen) {
+          event.preventDefault();
+          onRockGardenAssemblageOpen();
+        }
+        break;
+      case "saharanpurwoodcraft":
+        if (onSaharanpurWoodCraftOpen) {
+          event.preventDefault();
+          onSaharanpurWoodCraftOpen();
+        }
+        break;
+      case "shellcraft":
+        if (onShellCraftOpen) {
+          event.preventDefault();
+          onShellCraftOpen();
+        }
+        break;
+      case "sozniembroidery":
+        if (onSozniEmbroideryOpen) {
+          event.preventDefault();
+          onSozniEmbroideryOpen();
+        }
+        break;
+      case "terracottacraft":
+        if (onTerracottaCraftOpen) {
+          event.preventDefault();
+          onTerracottaCraftOpen();
+        }
+        break;
+      case "walnutcarving":
+        if (onWalnutCarvingOpen) {
+          event.preventDefault();
+          onWalnutCarvingOpen();
+        }
+        break;
+      case "woodcraft":
+        if (onWoodcraftOpen) {
+          event.preventDefault();
+          onWoodcraftOpen();
+        }
+        break;
+      case "ladakhtextilesystem":
+        if (onLadakhTextileSystemOpen) {
+          event.preventDefault();
+          onLadakhTextileSystemOpen();
+        }
+        break;
+      case "indoportugueseenvironment":
+        if (onIndoPortugueseEnvironmentOpen) {
+          event.preventDefault();
+          onIndoPortugueseEnvironmentOpen();
+        }
+        break;
+      case "agramarbleinlay":
+        if (onAgraMarbleInlayOpen) {
+          event.preventDefault();
+          onAgraMarbleInlayOpen();
+        }
+        break;
+      case "balucharisaree":
+        if (onBaluchariSareeOpen) {
+          event.preventDefault();
+          onBaluchariSareeOpen();
+        }
+        break;
+      case "bankuraterracotta":
+        if (onBankuraTerracottaOpen) {
+          event.preventDefault();
+          onBankuraTerracottaOpen();
+        }
+        break;
+      case "basohlipainting":
+        if (onBasohliPaintingOpen) {
+          event.preventDefault();
+          onBasohliPaintingOpen();
+        }
+        break;
+      case "canebamboocraftandaman":
+        if (onCaneBambooCraftAndamanOpen) {
+          event.preventDefault();
+          onCaneBambooCraftAndamanOpen();
+        }
+        break;
+      case "chandigarhmodernist":
+        if (onChandigarhModernistOpen) {
+          event.preventDefault();
+          onChandigarhModernistOpen();
+        }
+        break;
+      case "coastalfibercraft":
+        if (onCoastalFiberCraftOpen) {
+          event.preventDefault();
+          onCoastalFiberCraftOpen();
+        }
+        break;
+      case "coconutshellcraft":
+        if (onCoconutShellCraftOpen) {
+          event.preventDefault();
+          onCoconutShellCraftOpen();
+        }
+        break;
+      case "coircraftlakshadweep":
+        if (onCoirCraftLakshadweepOpen) {
+          event.preventDefault();
+          onCoirCraftLakshadweepOpen();
+        }
+        break;
+      case "dhaniakhalisaree":
+        if (onDhaniakhaliSareeOpen) {
+          event.preventDefault();
+          onDhaniakhaliSareeOpen();
+        }
+        break;
+      case "francotamilenvironment":
+        if (onFrancoTamilEnvironmentOpen) {
+          event.preventDefault();
+          onFrancoTamilEnvironmentOpen();
+        }
+        break;
+      default:
         break;
     }
   };
@@ -3428,54 +4309,56 @@ export default function CreativeStyle({
           ref={railRef}
           className="scrollbar-hide flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 sm:gap-4 sm:px-6 lg:px-16 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
-          {STYLES.slice(0, 14).map((style, index) => (
-            <Link
-              key={`${style.id}-${index}`}
-              href={style.href}
-              onClick={(event) => handleStyleClick(event, style)}
-              className="w-full md:w-[340px] shrink-0 snap-start"
-            >
-              <div className="mb-2 overflow-hidden rounded-xl border border-white/10 bg-[#18181f] sm:mb-3">
-                <div className="group relative h-[190px] sm:h-[220px]">
-                  <img
-                    src={style.image}
-                    alt={style.name}
-                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
-                    style={{ filter: style.imageFilter }}
-                  />
-                  <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,transparent_40%,rgba(0,0,0,0.72)_100%)]" />
-                  <div className="absolute left-3 top-3 rounded-full border border-white/15 bg-black/45 px-2.5 py-1 text-[8px] font-bold uppercase tracking-[0.08em] text-white/80 backdrop-blur-[6px] sm:left-4 sm:top-4 sm:px-3 sm:text-[9px]">
-                    {style.tag}
-                  </div>
-                  <div className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4">
-                    <div
-                      className="text-[30px] uppercase leading-none tracking-[0.06em] sm:text-[34px]"
-                      style={{
-                        color: style.titleColor,
-                        fontFamily: "var(--font-bebas-neue), 'Bebas Neue', sans-serif",
-                        textShadow: "0 2px 12px rgba(0,0,0,0.5)",
-                      }}
-                    >
-                      {style.title}
+          {STYLES.slice(0, 12).map((style, index) => (
+            <Fragment key={`${style.id}-${index}`}>
+              <Link
+                href={style.href}
+                onClick={(event) => handleStyleClick(event, style)}
+                className="w-full md:w-[340px] shrink-0 snap-start"
+              >
+                <div className="mb-2 overflow-hidden rounded-xl border border-white/10 bg-[#18181f] sm:mb-3">
+                  <div className="group relative h-[190px] sm:h-[220px]">
+                    <img
+                      src={style.image}
+                      alt={style.name}
+                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+                      style={{ filter: style.imageFilter }}
+                    />
+                    <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,transparent_40%,rgba(0,0,0,0.72)_100%)]" />
+                    <div className="absolute left-3 top-3 rounded-full border border-white/15 bg-black/45 px-2.5 py-1 text-[8px] font-bold uppercase tracking-[0.08em] text-white/80 backdrop-blur-[6px] sm:left-4 sm:top-4 sm:px-3 sm:text-[9px]">
+                      {style.tag}
                     </div>
-                    <div className="mt-1 text-[11px] font-semibold tracking-wide text-white/85 sm:text-[12px]">
-                      {style.name}
-                    </div>
-                    <div className="mt-1 max-w-[280px] text-[10px] leading-snug text-white/60 line-clamp-2 sm:max-w-[300px]">
-                      {style.desc}
+                    <div className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4">
+                      <div
+                        className="text-[30px] uppercase leading-none tracking-[0.06em] sm:text-[34px]"
+                        style={{
+                          color: style.titleColor,
+                          fontFamily: "var(--font-bebas-neue), 'Bebas Neue', sans-serif",
+                          textShadow: "0 2px 12px rgba(0,0,0,0.5)",
+                        }}
+                      >
+                        {style.title}
+                      </div>
+                      <div className="mt-1 text-[11px] font-semibold tracking-wide text-white/85 sm:text-[12px]">
+                        {style.name}
+                      </div>
+                      <div className="mt-1 max-w-[280px] text-[10px] leading-snug text-white/60 line-clamp-2 sm:max-w-[300px]">
+                        {style.desc}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-              <div className="sr-only">
-                <div>{style.name}</div>
-                <p>{style.desc}</p>
-              </div>
-            </Link>
+                <div className="sr-only">
+                  <div>{style.name}</div>
+                  <p>{style.desc}</p>
+                </div>
+              </Link>
+
+            </Fragment>
           ))}
 
-          {/* "See More" Card */}
           <button
+            key="explore-more-inline"
             onClick={onAllStylesOpen}
             className="w-full md:w-[340px] shrink-0 snap-start"
           >
@@ -3487,7 +4370,7 @@ export default function CreativeStyle({
               </div>
               <div className="text-center">
                 <div className="text-[18px] uppercase tracking-wider text-white/80 font-bold" style={{ fontFamily: "var(--font-bebas-neue), 'Bebas Neue', sans-serif" }}>
-                  Discover More
+                  Explore More
                 </div>
                 <div className="text-[10px] text-white/40 font-medium uppercase tracking-[0.1em] mt-1">
                   Explore {STYLES.length}+ Regional Styles
@@ -3495,6 +4378,7 @@ export default function CreativeStyle({
               </div>
             </div>
           </button>
+
         </div>
 
         <button
