@@ -3311,6 +3311,20 @@ export default function CreativeStyle({
       onJaintiaTextileOpen();
       return;
     }
+    if (style.id === "idumishmi" && onIduMishmiOpen) {
+      event.preventDefault();
+      onIduMishmiOpen();
+      return;
+    }
+    if (style.id === "jhabuadolls" || style.id === "maheshwari" || style.id === "mashruweaving" || 
+        style.id === "moirangphee" || style.id === "motibharat" || style.id === "mysorepainting" || 
+        style.id === "rosewoodinlay" || style.id === "nagashawlordinary" || style.id === "ngotekherh" || 
+        style.id === "nironalacquer" || style.id === "opaquewrap" || style.id === "tawlhlohpuan" || 
+        style.id === "tawlhlohpuan-ceremonial" || style.id === "woodcarving" || style.id === "wroughtiron" || 
+        style.id === "yakshagana") {
+      event.preventDefault();
+    }
+
     switch (style.id) {
       case "jhabuadolls":
         onJhabuaDollsOpen?.();

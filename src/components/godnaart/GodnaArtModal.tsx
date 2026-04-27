@@ -304,7 +304,7 @@ export function GodnaArtModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
   const styleTitle = `${state.style} · ${familyMeta.chip}`;
 
   return (
-    <div className="fixed inset-0 z-[160] flex items-center justify-center bg-black/45 p-3 sm:p-6 backdrop-blur-2xl">
+    <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/45 p-3 sm:p-6 backdrop-blur-2xl">
       <div className="absolute inset-0" onClick={onClose} aria-hidden />
       <div
         role="dialog"
