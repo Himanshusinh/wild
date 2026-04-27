@@ -5001,8 +5001,29 @@ const EditImageInterface: React.FC = () => {
     } catch {}
   };
 
+  const handleFeatureSelect = (featureId: EditFeature) => {
+    setSelectedFeature(featureId);
+    const params = new URLSearchParams(window.location.search);
+    params.set("feature", featureId);
+    router.push(`${window.location.pathname}?${params.toString()}`, {
+      scroll: false,
+    });
+
+    if (featureId === "remove-bg") {
+      setModel("851-labs/background-remover");
+    } else if (featureId === "upscale") {
+      setModel("philz1337x/crystal-upscaler");
+    } else if (featureId === "resize") {
+      setModel("fal-ai/bria/expand");
+    } else if (featureId === "vectorize") {
+      setModel("fal-ai/recraft/vectorize" as any);
+    }
+
+    setProcessing((prev) => ({ ...prev, [featureId]: false }));
+  };
+
   return (
-    <div className="body box-border flex flex-1 overflow-hidden relative w-full h-[100vh] bg-[#0E0E12] font-sans text-white pt-12">
+    <div className="body box-border flex flex-col md:flex-row flex-1 overflow-hidden relative w-full h-[100svh] md:h-[100vh] bg-[#0E0E12] font-sans text-white pt-0 md:pt-12">
       {/* Sticky header like ArtStation */}
       {/* <div className="w-full fixed top-0 z-30 px-4 md:px-1  pb-2 bg-[#0E0E12] backdrop-blur-xl shadow-xl md:pr-5 pt-4">
         <div className="flex items-center gap-4">
@@ -5068,10 +5089,68 @@ const EditImageInterface: React.FC = () => {
           <p className="text-white text-sm font-medium">{errorMsg}</p>
         </div>
       )}
+      <div className="md:hidden sticky top-0 z-40 bg-[#0E0E12]/95 backdrop-blur-xl border-b border-white/10 px-4 pt-11 pb-1">
+        {/* <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <div className="text-[1.08rem] font-semibold tracking-[0.03em] text-white">
+              Image Generation
+            </div>
+            <div className="mt-2 flex items-center gap-3 text-[12px] text-white/40">
+              <span>Image</span>
+              <span className="border-b-2 border-[#3B6BFF] pb-1 font-semibold text-[#4E7BFF]">
+                Edit
+              </span>
+              <span>Editor</span>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleDownloadOutput}
+            disabled={!outputs[selectedFeature]}
+            className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/12 bg-white/5 text-white/80 transition hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+            title="Download"
+          >
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M12 3v12" />
+              <path d="m7 10 5 5 5-5" />
+              <path d="M5 21h14" />
+            </svg>
+          </button>
+        </div> */}
+
+        <div className="mt-2 -mx-1 flex items-center gap-2 overflow-x-auto px-1 pb-2 no-scrollbar">
+          {features
+            .filter((feature) => feature.id !== "live-chat")
+            .map((feature) => (
+              <button
+                key={feature.id}
+                type="button"
+                onClick={() => handleFeatureSelect(feature.id as EditFeature)}
+                className={`shrink-0 rounded-full border px-4 py-2 text-[13px] font-medium leading-none transition ${
+                  selectedFeature === feature.id
+                    ? "border-[#3B6BFF] bg-[#3B6BFF] text-white shadow-[0_10px_30px_rgba(59,107,255,0.28)]"
+                    : "border-white/10 bg-transparent text-white/55"
+                }`}
+              >
+                {feature.id === "fill" ? "Erase/Replace" : feature.label}
+              </button>
+            ))}
+        </div>
+      </div>
+      <div className="flex min-h-0 flex-1 flex-col gap-3 px-4 pb-4 pt-1 md:flex-row md:gap-7 md:px-0 md:pb-0 md:pt-0">
       <EditImageSidebar
         imagePreview={
           selectedFeature !== "live-chat" ? (
-            <div className="px-1 md:px-4 md:mb-2 md:pt-4 pt-2 z-10">
+            <div className="hidden px-1 pt-4 z-10 md:block md:px-4 md:mb-2">
               <div className="preview-wrap relative h-[148px] bg-[#1a1a20] border-b border-white/10 rounded-t-[15px] shrink-0 overflow-hidden cursor-pointer group">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -5196,40 +5275,40 @@ const EditImageInterface: React.FC = () => {
                 <div className="space-y-2">
                   {/* Super Mode Toggle */}
                   <div>
-                    <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1 mt-1">
+                    <label className="block text-[12px] md:text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1 mt-1">
                       Mode
                     </label>
-                    <div className="relative bg-white/3 border border-white/12 rounded-xl md:p-1 p-0.5 flex">
+                    <div className="relative bg-[#1c1c22] border border-[#2a2a34] rounded-[10px] md:rounded-xl md:p-1 p-1 flex">
                       <button
                         onClick={() => setVectorizeSuperMode(false)}
-                        className={`flex-1 md:px-3 px-2.5 md:py-2 py-1 md:text-[12px] text-[11px] font-medium rounded-lg transition-colors ${
+                        className={`flex-1 md:px-3 px-3 md:py-2 py-2 md:text-[12px] text-[13px] font-medium rounded-[8px] md:rounded-xl transition-colors ${
                           !vectorizeSuperMode
-                            ? "bg-white text-black"
-                            : "text-white/70 hover:text-white"
+                            ? "bg-white text-black shadow-[0_4px_16px_rgba(59,107,255,0.28)]"
+                            : "text-white/60 hover:text-white/85"
                         }`}
                       >
                         Line Vector
                       </button>
                       <button
                         onClick={() => setVectorizeSuperMode(true)}
-                        className={`flex-1 md:px-3 px-2.5 md:py-2 py-1 md:text-[12px] text-[11px] font-medium rounded-lg transition-colors whitespace-nowrap ${
+                        className={`flex-1 md:px-3 px-3 md:py-2 py-2 md:text-[12px] text-[13px] font-medium rounded-[8px] md:rounded-xl transition-colors whitespace-nowrap ${
                           vectorizeSuperMode
-                            ? "bg-white text-black"
-                            : "text-white/70 hover:text-white"
+                            ? "bg-white text-black shadow-[0_4px_16px_rgba(59,107,255,0.28)]"
+                            : "text-white/60 hover:text-white/85"
                         }`}
                       >
                         Art Vector
                       </button>
                     </div>
                     {vectorizeSuperMode && (
-                      <div className="text-[11px] text-white/50 mt-1">
+                      <div className="text-[12px] md:text-[10px] text-white/50 mt-2">
                         First converts image to 2D vector using Seedream, then
                         vectorizes the result
                       </div>
                     )}
                   </div>
                   <div>
-                    <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2 mt-2">
+                    <label className="block text-[12px] md:text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2 mt-2">
                       Model
                     </label>
                     <div className="relative edit-dropdown">
@@ -5539,7 +5618,7 @@ const EditImageInterface: React.FC = () => {
 
                   {/* Standardized Estimated Output card */}
                   <div className="pt-1">
-                    <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">
+                    <p className="text-[12px] md:text-[10px] font-semibold tracking-widest text-white/40 uppercase md:pt-0 mb-1">
                       Estimated Output
                     </p>
                     <div className="grid grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] gap-2">
@@ -5547,7 +5626,7 @@ const EditImageInterface: React.FC = () => {
                         <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">
                           Resolution
                         </span>
-                        <span className="text-[12px] font-semibold text-white leading-tight uppercase">
+                        <span className="text-[12px]  font-semibold text-white leading-tight uppercase">
                           Vector (SVG)
                         </span>
                       </div>
@@ -5555,7 +5634,7 @@ const EditImageInterface: React.FC = () => {
                         <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">
                           Est. Cost
                         </span>
-                        <span className="text-[12px] font-semibold text-white leading-tight">
+                        <span className="text-[12px]  font-semibold text-white leading-tight">
                           {vectorizeModel === "fal-ai/recraft/vectorize"
                             ? `${vectorizeRecraftCredits + (vectorizeSuperMode ? vectorizeArtExtraCredits : 0)} credits`
                             : `${vectorizeImage2SvgCredits + (vectorizeSuperMode ? vectorizeArtExtraCredits : 0)} credits`}
@@ -5571,7 +5650,7 @@ const EditImageInterface: React.FC = () => {
 
             {/* Configuration area (no scroll). Add bottom padding so footer doesn't overlap. */}
             <div
-              className={`flex-1 min-h-0 md:p-4 p-2 ${selectedFeature === "live-chat" ? "overflow-hidden flex flex-col" : "overflow-visible"}`}
+              className={`edit-image-mobile-params flex-1 min-h-0 md:p-4 p-3 ${selectedFeature === "live-chat" ? "overflow-hidden flex flex-col" : "overflow-visible"}`}
             >
               {selectedFeature === "live-chat" && (
                 <>
@@ -5840,12 +5919,12 @@ const EditImageInterface: React.FC = () => {
               {selectedFeature !== "vectorize" &&
                 selectedFeature !== "live-chat" && (
                   <>
-                    <div className="space-y-2">
+                    <div className="space-y-">
                       {selectedFeature !== "fill" &&
                         selectedFeature !== "erase" &&
                         selectedFeature !== "expand" && (
                           <div>
-                            <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">
+                            <p className="text-[12px] md:text-[10px] font-semibold tracking-widest text-white/40 uppercase pb-1">
                               AI Model
                             </p>
                             <div className="relative edit-dropdown">
@@ -6020,7 +6099,7 @@ const EditImageInterface: React.FC = () => {
                                       bottom: 0,
                                     });
                                   }}
-                                  className="px-3 py-1.5 text-[11px] rounded bg-white/10 hover:bg-white/20 text-white/80 border border-white/20"
+                                  className="px-3 py-1.5 text-[11px] rounded bg-white/10 hover:bg-white/20 text-white/80 "
                                 >
                                   Reset
                                 </button>
@@ -6219,7 +6298,7 @@ const EditImageInterface: React.FC = () => {
 
                           {/* Standardized Estimated Output card */}
                           <div className="pt-1">
-                            <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">
+                            <p className="text-[12px] md:text-[10px] font-semibold tracking-widest text-white/40 uppercase pt-0 md:pt-0 mb-1">
                               Estimated Output
                             </p>
                             <div className="grid grid-cols-2 gap-2">
@@ -6253,7 +6332,7 @@ const EditImageInterface: React.FC = () => {
                           <div className="grid grid-cols-2 gap-2">
                             {/* Output format (left) */}
                             <div>
-                              <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1 pt-1">
+                              <label className="block text-[12px] md:text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1 pt-1">
                                 Output Format
                               </label>
                               <div className="relative edit-dropdown">
@@ -6300,7 +6379,7 @@ const EditImageInterface: React.FC = () => {
 
                             {/* Background type (right) */}
                             <div>
-                              <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1 pt-1">
+                              <label className="block text-[12px] md:text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1 pt-1">
                                 Background Type
                               </label>
                               <div className="relative edit-dropdown">
@@ -6323,7 +6402,7 @@ const EditImageInterface: React.FC = () => {
                                 </button>
                                 {activeDropdown === "backgroundType" && (
                                   <div
-                                    className={`absolute top-full z-[100] mt-1 left-0 w-full bg-black backdrop-blur-xl rounded-xl ring-1 ring-white/15 py-1 max-h-64 overflow-y-auto dropdown-scrollbar`}
+                                    className={`absolute top-full z-[100] mt-1 left-0 w-full bg-black backdrop-blur-xl rounded-xl ring-1 ring-white/15 py-1 max-h-40 overflow-y-auto dropdown-scrollbar`}
                                   >
                                     {[
                                       {
@@ -6358,13 +6437,13 @@ const EditImageInterface: React.FC = () => {
 
                           {model.startsWith("851-labs/") && (
                             <div>
-                              <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">
+                              <label className="block text-[12px] md:text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">
                                 Reverse
                               </label>
                               <button
                                 type="button"
                                 onClick={() => setReverseBg((v) => !v)}
-                                className={`h-[38px] w-full px-4 rounded-xl border border-white/12 text-[13px] font-medium transition ${reverseBg ? "bg-white text-black" : "bg-white/3 text-white/80 hover:bg-white/10"}`}
+                                className={`h-[30px] w-full px-4 rounded-xl border text-[13px] font-medium transition ${reverseBg ? "bg-white border-[#2F6BFF] text-black shadow-[0_4px_16px_rgba(47,107,255,0.28)]" : "bg-white/3 border-white/20 text-white/60 hover:border-white/35 hover:text-white/85"}`}
                               >
                                 {reverseBg ? "Enabled" : "Disabled"}
                               </button>
@@ -6373,7 +6452,7 @@ const EditImageInterface: React.FC = () => {
 
                           {/* Standardized Estimated Output card */}
                           <div className="pt-1">
-                            <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">
+                            <p className="text-[12px] md:text-[10px] font-semibold tracking-widest text-white/40 uppercase md:pt-0 mb-1">
                               Estimated Output
                             </p>
                             <div className="grid grid-cols-2 gap-2">
@@ -6381,7 +6460,7 @@ const EditImageInterface: React.FC = () => {
                                 <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">
                                   Resolution
                                 </span>
-                                <span className="text-[12px] font-semibold text-white leading-tight">
+                                <span className="text-[12px] md:text-[10px] font-semibold text-white leading-tight">
                                   {inputNaturalSize.width > 0
                                     ? `${inputNaturalSize.width} × ${inputNaturalSize.height}`
                                     : "Original size"}
@@ -6391,7 +6470,7 @@ const EditImageInterface: React.FC = () => {
                                 <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">
                                   Est. Cost
                                 </span>
-                                <span className="text-[12px] font-semibold text-white leading-tight">
+                                <span className="text-[12px] md:text-[10px]font-semibold text-white leading-tight">
                                   1 credit
                                 </span>
                               </div>
@@ -6412,12 +6491,12 @@ const EditImageInterface: React.FC = () => {
                           <div className="space-y-2">
                             {/* AI MODEL label */}
                             <div>
-                              <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-0 pt-1">
+                              <p className="text-[12px] md:text-[10px] font-semibold tracking-widest text-white/40 uppercase pt-1">
                                 Upscale Factor (N)
                               </p>
                               {/* Range label row */}
                               <div className="flex items-center justify-between mb-0">
-                                <span className="text-[12px] text-white/50">
+                                <span className="text-[12px] md:text-[10px] text-white/50">
                                   1× — 8×
                                 </span>
                                 <span className="bg-[#2F6BFF] text-white text-[11px] font-semibold px-2 py-0.5 rounded-md leading-tight">
@@ -6454,7 +6533,7 @@ const EditImageInterface: React.FC = () => {
 
                             {/* Standardized Estimated Output card */}
                             <div className="pt-1">
-                              <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">
+                              <p className="text-[12px]  md:text-[10px] font-semibold tracking-widest text-white/40 uppercase pt-1 md:pt-0 mb-1">
                                 Estimated Output
                               </p>
                               <div className="grid grid-cols-2 gap-2">
@@ -6462,7 +6541,7 @@ const EditImageInterface: React.FC = () => {
                                   <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">
                                     Resolution
                                   </span>
-                                  <span className="text-[12px] font-semibold text-white leading-tight">
+                                  <span className="text-[12px] md:text-[10px] font-semibold text-white leading-tight">
                                     {seedvrEstimate
                                       ? `${seedvrEstimate.outW} × ${seedvrEstimate.outH}`
                                       : "—"}
@@ -6472,7 +6551,7 @@ const EditImageInterface: React.FC = () => {
                                   <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">
                                     Est. Cost
                                   </span>
-                                  <span className="text-[12px] font-semibold text-white leading-tight">
+                                  <span className="text-[12px] md:text-[10px] font-semibold text-white leading-tight">
                                     {seedvrEstimate
                                       ? `${seedvrEstimate.credits} credits`
                                       : "—"}
@@ -6481,7 +6560,7 @@ const EditImageInterface: React.FC = () => {
                               </div>
                             </div>
 
-                            <div className="text-[11px] text-white/40 leading-relaxed bg-white/[0.02] p-2 rounded-lg border border-white/5">
+                            <div className="hidden md:block text-[11px] text-white/40 leading-relaxed bg-white/[0.02] p-2 rounded-xl border border-white/5">
                               Uses factor-only upscaling. Estimated cost is 1
                               credits per output megapixel.
                             </div>
@@ -6491,12 +6570,12 @@ const EditImageInterface: React.FC = () => {
                           <div className="space-y-2">
                             {/* Scale slider */}
                             <div>
-                              <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-0 pt-1">
+                              <p className="text-[12px] md:text-[10px]font-semibold tracking-widest text-white/40 uppercase mb-1 pt-2">
                                 Scale (1x-10x)
                               </p>
                               {/* Range label row */}
                               <div className="flex items-center justify-between mb-0">
-                                <span className="text-[12px] text-white/50">
+                                <span className="text-[12px] md:text-[10px] text-white/50">
                                   1× — 10×
                                 </span>
                                 <span className="bg-[#2F6BFF] text-white text-[11px] font-semibold px-2 py-0.5 rounded-md leading-tight">
@@ -6540,13 +6619,13 @@ const EditImageInterface: React.FC = () => {
 
                             {/* Face enhance toggle */}
                             <div>
-                              <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">
+                              <p className="text-[12px] md:text-[10px] font-semibold tracking-widest text-white/40 uppercase pt-1 mb-2">
                                 Face enhance
                               </p>
                               <button
                                 type="button"
                                 onClick={() => setFaceEnhance((v) => !v)}
-                                className={`md:h-[30px] h-[27px] w-full md:px-3 px-2.5 md:py-1 py-0.5 rounded-lg ring-1 ring-white/20 md:text-[13px] text-[12px] font-medium transition ${faceEnhance ? "bg-white text-black" : "text-white/80 hover:bg-white/10"}`}
+                                className={`h-[30px] w-full px-4 rounded-xl border text-[13px] font-medium transition ${faceEnhance ? "bg-white border-[#2F6BFF] text-black shadow-[0_4px_16px_rgba(47,107,255,0.28)]" : "bg-transparent border-white/20 text-white/60 hover:border-white/35 hover:text-white/85"}`}
                               >
                                 {faceEnhance ? "Enabled" : "Disabled"}
                               </button>
@@ -6554,7 +6633,7 @@ const EditImageInterface: React.FC = () => {
 
                             {/* Standardized Estimated Output card */}
                             <div className="pt-1">
-                              <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">
+                              <p className="text-[12px]  md:text-[10px] font-semibold tracking-widest text-white/40 uppercase pt-1 md:pt-0 mb-1">
                                 Estimated Output
                               </p>
                               <div className="grid grid-cols-2 gap-2">
@@ -6562,7 +6641,7 @@ const EditImageInterface: React.FC = () => {
                                   <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">
                                     Resolution
                                   </span>
-                                  <span className="text-[12px] font-semibold text-white leading-tight">
+                                  <span className="text-[12px]  font-semibold text-white leading-tight">
                                     {realEsrganEstimate
                                       ? `${realEsrganEstimate.outW} × ${realEsrganEstimate.outH}`
                                       : "—"}
@@ -6572,7 +6651,7 @@ const EditImageInterface: React.FC = () => {
                                   <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">
                                     Est. Cost
                                   </span>
-                                  <span className="text-[12px] font-semibold text-white leading-tight">
+                                  <span className="text-[12px]  font-semibold text-white leading-tight">
                                     {realEsrganEstimate
                                       ? `${realEsrganEstimate.credits} credits`
                                       : "—"}
@@ -6586,12 +6665,12 @@ const EditImageInterface: React.FC = () => {
                           <div className="space-y-2">
                             {/* AI MODEL label */}
                             <div>
-                              <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-0 pt-1">
+                              <p className="text-[12px] md:text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-0 pt-1">
                                 Scale Factor
                               </p>
                               {/* Range label row */}
                               <div className="flex items-center justify-between mb-0">
-                                <span className="text-[12px] text-white/50">
+                                <span className="text-[12px]  text-white/50">
                                   1× — 6×
                                 </span>
                                 <span className="bg-[#2F6BFF] text-white text-[11px] font-semibold px-2 py-0.5 rounded-md leading-tight">
@@ -6643,7 +6722,7 @@ const EditImageInterface: React.FC = () => {
                               "fal-ai/seedvr/upscale/image",
                             ].includes(model as any) && (
                               <div>
-                                <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">
+                                <p className="text-[12px] md:text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">
                                   Output Format
                                 </p>
                                 <div className="flex flex-wrap gap-2">
@@ -6651,7 +6730,7 @@ const EditImageInterface: React.FC = () => {
                                     <button
                                       key={fmt}
                                       onClick={() => setOutput(fmt as any)}
-                                      className={`px-3 py-1 rounded-lg text-[12px] font-medium border transition-all ${
+                                      className={`px-3 py-1 rounded-xl text-[12px] font-medium border transition-all ${
                                         (output || "png") === fmt
                                           ? "bg-[#2F6BFF] border-[#2F6BFF] text-white"
                                           : "bg-transparent border-white/20 text-white/60 hover:border-white/40 hover:text-white/80"
@@ -6666,12 +6745,12 @@ const EditImageInterface: React.FC = () => {
 
                             {/* Estimated Output card — always visible */}
                             <div>
-                              <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">
+                              <p className="text-[12px] md:text-[10px] font-semibold tracking-widest text-white/40 uppercase pt-1 md:pt-0 mb-1">
                                 Estimated Output
                               </p>
                               <div className="grid grid-cols-2 gap-2">
                                 <div className="bg-white/3 border border-white/10 rounded-xl px-3 py-2.5 flex flex-col gap-0.5">
-                                  <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">
+                                  <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35 pb-1 md:pb-0">
                                     Resolution
                                   </span>
                                   <span className="text-[12px] font-semibold text-white leading-tight">
@@ -6681,10 +6760,10 @@ const EditImageInterface: React.FC = () => {
                                   </span>
                                 </div>
                                 <div className="bg-white/3 border border-white/10 rounded-xl px-3 py-2.5 flex flex-col gap-0.5">
-                                  <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">
+                                  <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35 pb-1 md:pb-0">
                                     Est. Cost
                                   </span>
-                                  <span className="text-[12px] font-semibold text-white leading-tight">
+                                  <span className="text-[12px]  font-semibold text-white leading-tight">
                                     {crystalEstimate
                                       ? `${crystalEstimate.credits} credits`
                                       : "—"}
@@ -6695,9 +6774,9 @@ const EditImageInterface: React.FC = () => {
                           </div>
                         )}
                         {model === "fal-ai/topaz/upscale/image" && (
-                          <div className="space-y-3">
+                          <div className="space-y-2">
                             <div>
-                              <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1 pt-1">
+                              <label className="block text-[12px] md:text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1 md:mb-1 pt-2 md:pt-1">
                                 Model
                               </label>
                               <div className="relative edit-dropdown">
@@ -6750,12 +6829,12 @@ const EditImageInterface: React.FC = () => {
                             </div>
 
                             <div>
-                              <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-0 pt-1">
+                              <p className="text-[12px] md:text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1 md:mb-0 pt-2 md:pt-1">
                                 Upscale Factor
                               </p>
                               {/* Range label row */}
                               <div className="flex items-center justify-between mb-0">
-                                <span className="text-[12px] text-white/50">
+                                <span className="text-[12px]  text-white/50">
                                   1× — 6×
                                 </span>
                                 <span className="bg-[#2F6BFF] text-white text-[11px] font-semibold px-2 py-0.5 rounded-md leading-tight">
@@ -6791,7 +6870,7 @@ const EditImageInterface: React.FC = () => {
                             </div>
                             <div className="grid grid-cols-2 gap-2">
                               <div>
-                                <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">
+                                <label className="block text-[12px] md:text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">
                                   Subject detection
                                 </label>
                                 <div className="relative edit-dropdown">
@@ -6803,7 +6882,7 @@ const EditImageInterface: React.FC = () => {
                                           : "backgroundType",
                                       )
                                     }
-                                    className={`h-[38px] w-full px-4 rounded-xl text-[13px] font-medium border border-white/12 hover:bg-white/3 transition flex items-center justify-between bg-transparent text-white/90`}
+                                    className={`h-[30px] w-full px-4 rounded-xl text-[13px] font-medium border border-white/12 hover:bg-white/3 transition flex items-center justify-between bg-transparent text-white/90`}
                                   >
                                     <span className="truncate">
                                       {topazSubjectDetection}
@@ -6842,13 +6921,13 @@ const EditImageInterface: React.FC = () => {
                                 </div>
                               </div>
                               <div>
-                                <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">
+                                <label className="block text-[12px] md:text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">
                                   Face enhancement
                                 </label>
                                 <button
                                   type="button"
                                   onClick={() => setTopazFaceEnhance((v) => !v)}
-                                  className={`h-[30px] w-full px-3 rounded-lg ring-1 ring-white/20 text-[13px] font-medium transition ${topazFaceEnhance ? "bg-white text-black" : "bg-white/5 text-white/80 hover:bg-white/10"}`}
+                                  className={`h-[30px] w-full px-4 rounded-xl border text-[13px] font-medium transition ${topazFaceEnhance ? "bg-white border-[#2F6BFF] text-black shadow-[0_4px_16px_rgba(47,107,255,0.28)]" : "bg-transparent border-white/20 text-white/60 hover:border-white/35 hover:text-white/85"}`}
                                 >
                                   {topazFaceEnhance ? "Enabled" : "Disabled"}
                                 </button>
@@ -6856,7 +6935,7 @@ const EditImageInterface: React.FC = () => {
                             </div>
                             <div className="grid grid-cols-2 gap-2">
                               <div>
-                                <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">
+                                <label className="block text-[12px] md:text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">
                                   Face creativity (0-1)
                                 </label>
                                 <input
@@ -6876,27 +6955,26 @@ const EditImageInterface: React.FC = () => {
                                       ),
                                     )
                                   }
-                                  className="w-full h-[30px] px-2 py-1 bg-white/5 border border-white/20 rounded-lg text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50 2xl:text-sm 2xl:py-2"
+                                  className="w-full h-[30px] px-4 bg-transparent border border-white/12 rounded-xl text-white text-[13px] focus:outline-none focus:ring-1 focus:ring-blue-500/50 focus:border-blue-500/50"
                                 />
                               </div>
-                              <div className="flex items-end flex-col justify-end">
-                                <label className="flex items-center gap-2 text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1 cursor-pointer">
-                                  <input
-                                    type="checkbox"
-                                    className="accent-white/90"
-                                    checked={topazCropToFill}
-                                    onChange={(e) =>
-                                      setTopazCropToFill(e.target.checked)
-                                    }
-                                  />{" "}
+                              <div>
+                                <label className="block text-[12px] md:text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">
                                   Crop to fill
                                 </label>
+                                <button
+                                  type="button"
+                                  onClick={() => setTopazCropToFill((v) => !v)}
+                                  className={`h-[30px] w-full px-4 rounded-xl border text-[13px] font-medium transition ${topazCropToFill ? "bg-white border-[#2F6BFF] text-black shadow-[0_4px_16px_rgba(47,107,255,0.28)]" : "bg-transparent border-white/20 text-white/60 hover:border-white/35 hover:text-white/85"}`}
+                                >
+                                  {topazCropToFill ? "Enabled" : "Disabled"}
+                                </button>
                               </div>
                             </div>
 
                             {/* Standardized Estimated Output card */}
                             <div className="pt-1">
-                              <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">
+                              <p className="text-[12px] md:text-[10px] font-semibold tracking-widest text-white/40 uppercase pt-1 md:pt-0 mb-1">
                                 Estimated Output
                               </p>
                               <div className="grid grid-cols-2 gap-2">
@@ -6914,7 +6992,7 @@ const EditImageInterface: React.FC = () => {
                                   <span className="text-[9px] font-semibold uppercase tracking-wider text-white/35">
                                     Est. Cost
                                   </span>
-                                  <span className="text-[12px] font-semibold text-white leading-tight">
+                                  <span className="text-[12px]  font-semibold text-white leading-tight">
                                     {topazEstimate
                                       ? `${topazEstimate.credits} credits`
                                       : "—"}
@@ -6933,10 +7011,10 @@ const EditImageInterface: React.FC = () => {
         }
         footer={
           selectedFeature !== "live-chat" ? (
-            <div className="flex gap-2 2xl:gap-3">
+            <div className="flex items-center gap-2 2xl:gap-3">
               <button
                 onClick={handleReset}
-                className="flex-1 px-2 py-2 text-xs font-medium text-white/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-lg transition-colors 2xl:text-sm"
+                className="w-[93px] md:flex-1 md:w-auto px-2 py-2 md:px-2 md:py-2 text-sm md:text-xs font-semibold md:font-medium text-white/70 hover:text-white bg-white/10 hover:bg-white/20 border border-white/10 rounded-xl md:rounded-xl transition-colors 2xl:text-sm"
               >
                 Reset
               </button>
@@ -6945,12 +7023,12 @@ const EditImageInterface: React.FC = () => {
                 disabled={
                   !inputs[selectedFeature] || processing[selectedFeature]
                 }
-                className="flex-1 px-2 py-2 text-xs font-semibold text-white bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors 2xl:text-sm"
+                className="flex-1 px-2 py-2 md:px-2 md:py-2 text-sm md:text-xs font-semibold text-white bg-[#3B6BFF] hover:bg-[#2a5fe3] disabled:opacity-50 disabled:cursor-not-allowed rounded-xl md:rounded-xl shadow-[0_10px_30px_rgba(59,107,255,0.28)] transition-colors 2xl:text-sm"
               >
                 {processing[selectedFeature] ? "Processing..." : "Generate"}
               </button>
               {(selectedFeature === "fill" || selectedFeature === "expand") && (
-                <div className="flex items-center text-[11px] text-white/70 px-2 py-1 rounded-lg bg-white/5 border border-white/10">
+                <div className=" w-[92px] flex items-center text-[11px] text-white/70 px-2 py-2 rounded-xl bg-white/5 border border-white/10">
                   {selectedFeature === "fill" ? eraseCredits : expandCredits}{" "}
                   credits
                 </div>
@@ -6962,6 +7040,8 @@ const EditImageInterface: React.FC = () => {
 
       {/* Right Main Area - Image Display */}
       <EditImageCanvasArea
+        className="order-1 flex-none shrink-0 h-[18rem] md:order-2 md:flex-1 md:h-auto min-h-0 md:min-h-0 md:rounded-none md:border-0 md:bg-[#0E0E12]"
+        topBarClassName="hidden md:flex"
         topBar={
           <div className="flex items-center w-full h-full gap-2">
             {/* Left: Breadcrumb */}
@@ -6976,28 +7056,7 @@ const EditImageInterface: React.FC = () => {
                 {features.map((feature) => (
                   <button
                     key={feature.id}
-                    onClick={() => {
-                      setSelectedFeature(feature.id as EditFeature);
-                      const params = new URLSearchParams(
-                        window.location.search,
-                      );
-                      params.set("feature", feature.id);
-                      router.push(
-                        `${window.location.pathname}?${params.toString()}`,
-                        { scroll: false },
-                      );
-
-                      if (feature.id === "remove-bg") {
-                        setModel("851-labs/background-remover");
-                      } else if (feature.id === "upscale") {
-                        setModel("philz1337x/crystal-upscaler");
-                      } else if (feature.id === "resize") {
-                        setModel("fal-ai/bria/expand");
-                      } else if (feature.id === "vectorize") {
-                        setModel("fal-ai/recraft/vectorize" as any);
-                      }
-                      setProcessing((p) => ({ ...p, [feature.id]: false }));
-                    }}
+                    onClick={() => handleFeatureSelect(feature.id as EditFeature)}
                     className={`relative flex items-center gap-[6px] px-[10px] h-full text-[12px] whitespace-nowrap transition-all duration-150 ${
                       selectedFeature === feature.id
                         ? "text-white font-medium after:absolute after:bottom-0 after:left-2 after:right-2 after:h-[2px] after:rounded-t-full after:bg-white/40"
@@ -7147,11 +7206,17 @@ const EditImageInterface: React.FC = () => {
           </div>
         }
         canvas={
-          <div className="flex-1 flex flex-col relative w-full h-full p-10  bg-[#0E0E12] overflow-hidden">
+          <div className="flex-1 flex flex-col relative w-full h-full px-0 pb-1 pt-0 md:p-10 bg-transparent md:bg-[#0E0E12] overflow-hidden">
             {/* Right Main Area - Output preview parallel to input image */}
             <div className="md:p-0 p-0 flex flex-col md:flex-row items-start justify-center md:gap-0 gap-2 md:pt-1 lg:pt-2 xl:pt-3 pt-0">
               <div
-                className={`relative w-full max-w-6xl md:max-w-[100rem] ${(selectedFeature as any) === "live-chat" ? "min-h-[24rem] md:min-h-[28rem] lg:min-h-[28rem]" : "min-h-[24rem]"}`}
+                className={`relative w-full max-w-6xl md:max-w-[100rem] ${
+                  (selectedFeature as any) === "live-chat"
+                    ? "min-h-[18rem] md:min-h-[28rem] lg:min-h-[28rem]"
+                    : inputs[selectedFeature]
+                      ? "min-h-[18rem] md:min-h-0"
+                      : "md:min-h-0"
+                }`}
                 onDragOver={(e) => {
                   try {
                     e.preventDefault();
@@ -7197,9 +7262,9 @@ const EditImageInterface: React.FC = () => {
                   } catch {}
                 }}
               >
-                {inputs[selectedFeature] && (
+                {/* {inputs[selectedFeature] && (
                   <div className="absolute top-0 left-1 z-30 md:hidden">
-                    <div className="flex items-center gap-1 bg-white/5 backdrop-blur-md border border-white/10 rounded-lg p-1">
+                    <div className="flex items-center gap-1 bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-1">
                       <button
                         title="Zoom in"
                         onClick={() => {
@@ -7292,11 +7357,11 @@ const EditImageInterface: React.FC = () => {
                       </button>
                     </div>
                   </div>
-                )}
+                )} */}
 
                 {outputs[selectedFeature] && (
                   <div className="absolute md:top-5 top-0 md:left-4 left-1 z-10  ">
-                    <span className="text-[10px] font-medium text-white bg-white/5 border border-white/10 px-1.5 py-0.5 rounded rounded-lg md:text-sm md:px-3 md:py-1.5">
+                    <span className="text-[10px] font-medium text-white bg-white/5 border border-white/10 px-1.5 py-0.5 rounded rounded-xl md:text-sm md:px-3 md:py-1.5">
                       {selectedFeature === "upscale" &&
                       upscaleViewMode === "comparison"
                         ? "Input Image"
@@ -7312,7 +7377,7 @@ const EditImageInterface: React.FC = () => {
                       <div className="relative">
                         <button
                           ref={menuButtonRef}
-                          className="md:p-2.5 p-0.5 bg-white/5 hover:bg-black/70 text-white rounded-lg transition-all duration-200 border border-white/10 md:p-2"
+                          className="md:p-2.5 p-0.5 bg-white/5 hover:bg-black/70 text-white rounded-xl transition-all duration-200 border border-white/10 md:p-2"
                           aria-haspopup="menu"
                           aria-expanded={showImageMenu}
                           onClick={() => setShowImageMenu((v) => !v)}
@@ -7338,7 +7403,7 @@ const EditImageInterface: React.FC = () => {
                           handleOpenUploadModal();
                         } catch {}
                       }}
-                      className="md:p-4 md:px-2 px-1.25 md:py-2 py-1 md:mt-0 -mt-1 bg-white/5 hover:bg-black/70 text-white rounded-lg transition-all duration-200 border border-white/10"
+                      className="md:p-4 md:px-2 px-1.25 md:py-2 py-1 md:mt-0 -mt-1 bg-white/5 hover:bg-black/70 text-white rounded-xl transition-all duration-200 border border-white/10"
                       title="Upload other"
                     >
                       <Image
@@ -7354,7 +7419,7 @@ const EditImageInterface: React.FC = () => {
                     {outputs[selectedFeature] && showImageMenu && (
                       <div
                         ref={menuRef}
-                        className="absolute md:bottom-10 bottom-7 left-0 bg-white/5 backdrop-blur-md border border-white/10 rounded-lg shadow-2xl w-auto min-w-[100px] overflow-hidden md:min-w-[150px]"
+                        className="absolute md:bottom-10 bottom-7 left-0 bg-white/5 backdrop-blur-md border border-white/10 rounded-xl shadow-2xl w-auto min-w-[100px] overflow-hidden md:min-w-[150px]"
                       >
                         <button
                           onClick={async () => {
@@ -7536,7 +7601,7 @@ const EditImageInterface: React.FC = () => {
                           selectedFeature !== "resize" &&
                           selectedFeature !== "live-chat" && (
                             <div className="absolute md:bottom-3 bottom-1 md:left-1/2 left-1/2 -translate-x-1/2 transform z-30 2xl:bottom-4">
-                              <div className="flex bg-white/5 backdrop-blur-md border border-white/10 rounded-lg md:p-1 p-0.5">
+                              <div className="flex bg-white/5 backdrop-blur-md border border-white/10 rounded-xl md:p-1 p-0.5">
                                 <button
                                   onClick={() =>
                                     setUpscaleViewMode("comparison")
@@ -7635,7 +7700,7 @@ const EditImageInterface: React.FC = () => {
                             </div>
 
                             <div className="absolute md:top-5 top-0 md:right-4 right-1 z-30 2xl:top-6 2xl:right-6">
-                              <span className="text-[10px] font-medium text-white bg-white/5 border border-white/10 px-1.5 py-0.5 rounded-lg md:text-sm md:px-3 md:py-1.5">
+                              <span className="text-[10px] font-medium text-white bg-white/5 border border-white/10 px-1.5 py-0.5 rounded-xl md:text-sm md:px-3 md:py-1.5">
                                 Generated
                               </span>
                             </div>
@@ -7701,7 +7766,7 @@ const EditImageInterface: React.FC = () => {
 
                             {/* Zoom Controls */}
                             <div className="absolute md:bottom-3 bottom-1 md:right-3 right-1 z-30 2xl:bottom-4 2xl:right-4">
-                              <div className="flex items-center gap-1 2xl:gap-1.5 bg-white/5 backdrop-blur-md border border-white/10 rounded-lg md:p-1 p-0.5">
+                              <div className="flex items-center gap-1 2xl:gap-1.5 bg-white/5 backdrop-blur-md border border-white/10 rounded-xl md:p-1 p-0.5">
                                 <button
                                   onClick={() => {
                                     const newScale = Math.max(0.1, scale - 0.1);
@@ -7799,7 +7864,7 @@ const EditImageInterface: React.FC = () => {
 
                         {/* Zoom Controls */}
                         <div className="absolute md:bottom-3 bottom-1 md:right-3 right-1 z-30 2xl:bottom-4 2xl:right-4">
-                          <div className="flex items-center gap-1 2xl:gap-1.5 bg-white/5 backdrop-blur-md border border-white/10 rounded-lg md:p-1 p-0.5">
+                          <div className="flex items-center gap-1 2xl:gap-1.5 bg-white/5 backdrop-blur-md border border-white/10 rounded-xl md:p-1 p-0.5">
                             <button
                               onClick={() => {
                                 const newScale = Math.max(0.1, scale - 0.1);
@@ -7837,7 +7902,7 @@ const EditImageInterface: React.FC = () => {
                     )}
                   </div>
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center min-h-[24rem] md:min-h-[28rem] lg:min-h-[28rem]">
+                  <div className="w-full flex items-center justify-center min-h-[18rem] md:min-h-[28rem] lg:min-h-[28rem]">
                     {inputs[selectedFeature] ? (
                       <div className="absolute inset-0">
                         {selectedFeature === "resize" ||
@@ -8680,7 +8745,7 @@ const EditImageInterface: React.FC = () => {
                                       {(reimagineLiveBounds ||
                                         reimagineSelectionBounds) && (
                                         <div
-                                          className="absolute pointer-events-none z-16 border border-white/50 rounded-lg transition-all duration-200"
+                                          className="absolute pointer-events-none z-16 border border-white/50 rounded-xl transition-all duration-200"
                                           style={{
                                             left: `${(reimagineLiveBounds || reimagineSelectionBounds)?.x || 0}px`,
                                             top: `${(reimagineLiveBounds || reimagineSelectionBounds)?.y || 0}px`,
@@ -8697,7 +8762,7 @@ const EditImageInterface: React.FC = () => {
                                           <div className="absolute -bottom-1 -right-1 w-2 h-2 bg-white rounded-full shadow-sm" />
 
                                           {/* Animated border effect - Linear Shadow (Clean Border) */}
-                                          <div className="absolute inset-0 border border-white/80 rounded-lg shadow-none" />
+                                          <div className="absolute inset-0 border border-white/80 rounded-xl shadow-none" />
                                         </div>
                                       )}
                                     </>
@@ -8751,7 +8816,7 @@ const EditImageInterface: React.FC = () => {
                                 <select
                                   value={reimagineModel}
                                   onChange={(e) => setReimagineModel(e.target.value as 'auto' | 'nano-banana' | 'seedream-4k')}
-                                  className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white/80 outline-none cursor-pointer transition-colors"
+                                  className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white/80 outline-none cursor-pointer transition-colors"
                                   title="AI Model"
                                 >
                                   <option value="auto" className="bg-gray-900">🚀 Auto (Recommended)</option>
@@ -8814,48 +8879,60 @@ const EditImageInterface: React.FC = () => {
                         )}
                       </div>
                     ) : (
-                      <div className="flex flex-col items-center justify-center md:justify-start xl:justify-center w-full h-full min-h-[24rem] md:min-h-[24rem] lg:min-h-[28rem] xl:min-h-[32rem] p-4 md:px-8 md:pt-2 lg:pt-3 xl:pt-6">
+                      <div className="flex flex-col items-center justify-center md:justify-start xl:justify-center w-full md:min-h-[24rem] lg:min-h-[28rem] xl:min-h-[32rem] px-0 py-0 md:p-4 md:px-8 md:pt-2 lg:pt-1 xl:pt-6">
                         <div
-                          className="w-full max-w-xl aspect-[4/3] md:aspect-[3/2] md:min-h-[14rem] lg:min-h-[17rem] xl:min-h-0 flex flex-col items-center justify-center border-2 border-dashed border-white/10 rounded-[32px] hover:bg-white/[0.04] transition-all cursor-pointer group"
+                          className="relative w-full md:max-w-xl md:aspect-[3/2] md:min-h-[14rem] lg:min-h-[17rem] xl:min-h-0 flex flex-col items-center justify-center rounded-[16px] md:rounded-[32px] px-4 py-6 hover:bg-white/[0.03] transition-all cursor-pointer group"
                           onClick={handleOpenUploadModal}
                         >
-                          <div className="w-12 h-12 mb-6 flex items-center justify-center bg-white/5 rounded-2xl border border-white/10 group-hover:scale-110 transition-transform duration-300">
+                          <svg
+                            aria-hidden="true"
+                            className="pointer-events-none absolute inset-0 h-full w-full"
+                            viewBox="0 0 100 100"
+                            preserveAspectRatio="none"
+                          >
+                            <rect
+                              x="1"
+                              y="1"
+                              width="98"
+                              height="98"
+                              rx="6"
+                              ry="6"
+                              fill="none"
+                              stroke="rgba(255,255,255,0.16)"
+                              strokeWidth="0.2"
+                              strokeDasharray="1 1"
+                            />
+                          </svg>
+                          <div className="w-12 h-12 mb-4 flex items-center justify-center bg-[#1A1C24] rounded-2xl border border-white/[0.12] group-hover:scale-110 transition-transform duration-300">
                             <svg
-                              className="w-6 h-6 text-white/60"
+                              className="w-6 h-6 text-white/70"
                               fill="none"
                               stroke="currentColor"
                               viewBox="0 0 24 24"
                               strokeWidth={1.8}
+                              strokeLinecap="round"
                             >
-                              <path
-                                d="M12 5v14"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              />
-                              <path
-                                d="M5 12h14"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              />
+                              <path d="M12 6v12" />
+                              <path d="M6 12h12" />
                             </svg>
                           </div>
 
-                          <h3 className="text-xl md:text-2xl font-semibold text-white mb-2">
+                          <h3 className="text-[1.55rem] leading-[1.02] md:text-2xl font-semibold text-white mb-2 text-center">
                             Drop your image here
                           </h3>
-                          <p className="text-sm md:text-base text-white/40 mb-8">
+                          <p className="text-[15px] md:text-base text-white/45 mb-5 text-center">
                             or{" "}
-                            <span className="text-blue-400 font-medium">
+                            <span className="text-[#5B83FF] font-medium">
                               click to browse
                             </span>{" "}
                             from your computer
                           </p>
 
-                          <div className="flex flex-wrap items-center justify-center gap-2 px-6">
+                          <div className="flex flex-wrap items-center justify-center gap-2">
                             {["PNG", "JPG", "up to 50MB"].map((label) => (
                               <span
                                 key={label}
-                                className="px-2.5 py-1 text-[10px] font-bold text-white/30 bg-white/5 rounded-md border border-white/5 tracking-wider"
+                                className="px-3 py-1.5 text-[10px] font-semibold text-white/40 bg-[#171925] rounded-[10px] border border-white/8 tracking-[0.16em] uppercase"
                               >
                                 {label}
                               </span>
@@ -8995,8 +9072,56 @@ const EditImageInterface: React.FC = () => {
         }
         statusBar={null}
       />
+      <style jsx global>{`
+        @media (max-width: 767px) {
+          .edit-image-mobile-params {
+            background: #141418;
+          }
+
+          .edit-image-mobile-params .edit-dropdown > button,
+          .edit-image-mobile-params input[type="text"],
+          .edit-image-mobile-params input[type="number"],
+          .edit-image-mobile-params textarea,
+          .edit-image-mobile-params select {
+            min-height: 42px;
+            border-color: #2a2a34 !important;
+            background: #1c1c22 !important;
+            border-radius: 10px !important;
+            color: #e8e8f0 !important;
+            font-size: 13px !important;
+          }
+
+          .edit-image-mobile-params .edit-dropdown > button:hover,
+          .edit-image-mobile-params input[type="text"]:hover,
+          .edit-image-mobile-params input[type="number"]:hover,
+          .edit-image-mobile-params textarea:hover,
+          .edit-image-mobile-params select:hover {
+            background: #1f1f27 !important;
+          }
+
+          .edit-image-mobile-params .edit-dropdown > div {
+            border: 1px solid #2a2a34 !important;
+            background: #111217 !important;
+            border-radius: 12px !important;
+          }
+
+          .edit-image-mobile-params .dropdown-scrollbar::-webkit-scrollbar,
+          .edit-image-mobile-params .thin-scrollbar::-webkit-scrollbar {
+            width: 4px;
+          }
+
+          .edit-image-mobile-params .dropdown-scrollbar::-webkit-scrollbar-thumb,
+          .edit-image-mobile-params .thin-scrollbar::-webkit-scrollbar-thumb {
+            background: #2a2a34;
+            border-radius: 999px;
+          }
+        }
+      `}</style>
+      </div>
     </div>
   );
 };
 
 export default EditImageInterface;
+
+

@@ -608,6 +608,19 @@ const TraditionalStyleWalkthrough = dynamic<{
     () => import('./compo/TraditionalStyleWalkthrough'),
     { ssr: false }
 )
+const TraditionalStyleFullscreenWalkthrough = dynamic<{ 
+    isOpen: boolean; 
+    onClose: () => void;
+    styleId: string;
+    styleTitle: string;
+    styleName: string;
+    styleDesc: string;
+    styleImage: string;
+    styleTag: string;
+}>(
+    () => import('./compo/TraditionalStyleFullscreenWalkthrough'),
+    { ssr: false }
+)
 const BomkaiFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
     () => import('./compo/BomkaiFullscreenWalkthrough'),
     { ssr: false }
@@ -1101,7 +1114,7 @@ const HomePage: React.FC = () => {
 
     const handleStyleSelect = (id: string) => {
         setOpenedFromAllStyles(true);
-        setShowAllStylesModal(false);
+        // setShowAllStylesModal(false); // Keep it mounted to preserve scroll
 
         switch (id) {
             case "Maharashtra": setShowWarliWalkthrough(true); break;
@@ -1204,6 +1217,7 @@ const HomePage: React.FC = () => {
             case "nagashawl": setShowNagaShawlWalkthrough(true); break;
             case "wangkheiphee": setShowWangkheiPheeWalkthrough(true); break;
             case "meritshawl": setShowMeritShawlWalkthrough(true); break;
+            case "idumishmi": setShowIduMishmiWalkthrough(true); break;
 
             case "garoweaving": setShowGaroWeavingWalkthrough(true); break;
             case "nagabodycloth": setShowNagaBodyClothWalkthrough(true); break;
@@ -1597,78 +1611,97 @@ const HomePage: React.FC = () => {
                             setShowSherdukpenWalkthrough(true);
                         }}
                         onIduMishmiOpen={() => {
+                            setOpenedFromAllStyles(false);
                             setShowWelcomeModal(false);
                             setShowIduMishmiWalkthrough(true);
                         }}
                         onAsharikandiOpen={() => {
+                            setOpenedFromAllStyles(false);
                             setShowWelcomeModal(false);
                             setShowAsharikandiWalkthrough(true);
                         }}
                         onAzulejosOpen={() => {
+                            setOpenedFromAllStyles(false);
                             setShowWelcomeModal(false);
                             setShowAzulejosWalkthrough(true);
                         }}
                         onBandhaniOpen={() => {
+                            setOpenedFromAllStyles(false);
                             setShowWelcomeModal(false);
                             setShowBandhaniWalkthrough(true);
                         }}
                         onBastarDhokraOpen={() => {
+                            setOpenedFromAllStyles(false);
                             setShowWelcomeModal(false);
                             setShowBastarDhokraWalkthrough(true);
                         }}
                         onMuriaWallPaintingOpen={() => {
+                            setOpenedFromAllStyles(false);
                             setShowWelcomeModal(false);
                             setShowMuriaWallPaintingWalkthrough(true);
                         }}
                         onBastarWoodcraftOpen={() => {
+                            setOpenedFromAllStyles(false);
                             setShowWelcomeModal(false);
                             setShowBastarWoodcraftWalkthrough(true);
                         }}
                         onBhagalpurSilkOpen={() => {
+                            setOpenedFromAllStyles(false);
                             setShowWelcomeModal(false);
                             setShowBhagalpurSilkWalkthrough(true);
                         }}
                         onChambaMiniatureOpen={() => {
+                            setOpenedFromAllStyles(false);
                             setShowWelcomeModal(false);
                             setShowChambaMiniatureWalkthrough(true);
                         }}
                         onExposedLateriteOpen={() => {
+                            setOpenedFromAllStyles(false);
                             setShowWelcomeModal(false);
                             setShowExposedLateriteWalkthrough(true);
                         }}
                         onGharcholaOpen={() => {
+                            setOpenedFromAllStyles(false);
                             setShowWelcomeModal(false);
                             setShowGharcholaWalkthrough(true);
                         }}
                         onGodnaArtOpen={() => {
+                            setOpenedFromAllStyles(false);
                             setShowWelcomeModal(false);
                             setShowGodnaArtWalkthrough(true);
                         }}
                         onTaiAhomManuscriptOpen={() => {
+                            setOpenedFromAllStyles(false);
                             setShowWelcomeModal(false);
                             setShowTaiAhomManuscriptWalkthrough(true);
                         }}
                         onTangaliyaOpen={() => {
+                            setOpenedFromAllStyles(false);
                             setShowWelcomeModal(false);
                             setShowTangaliyaWalkthrough(true);
                         }}
                         onAgrarianIndustrialOpen={() => {
+                            setOpenedFromAllStyles(false);
                             setShowWelcomeModal(false);
                             setShowAgrarianIndustrialWalkthrough(true);
                         }}
                         onIndoPortugueseOpen={() => {
+                            setOpenedFromAllStyles(false);
                             setShowWelcomeModal(false);
                             setShowIndoPortugueseWalkthrough(true);
                         }}
                         onTikuliArtOpen={() => {
+                            setOpenedFromAllStyles(false);
                             setShowWelcomeModal(false);
                             setShowTikuliArtWalkthrough(true);
                         }}
                         onSohraiKhovarOpen={() => {
+                            setOpenedFromAllStyles(false);
                             setShowWelcomeModal(false);
                             setShowSohraiKhovarWalkthrough(true);
                         }}
                         onWoodTempleCarvingOpen={() => {
+                            setOpenedFromAllStyles(false);
                             setShowWelcomeModal(false);
                             setShowWoodTempleCarvingWalkthrough(true);
                         }}
@@ -2107,6 +2140,126 @@ const HomePage: React.FC = () => {
                             setOpenedFromAllStyles(false);
                             setShowWelcomeModal(false);
                             setShowThangkaNewWalkthrough(true);
+                        }}
+                        onBaghEmbroideryOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowBaghEmbroideryWalkthrough(true);
+                        }}
+                        onBagruPrintOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowBagruPrintWalkthrough(true);
+                        }}
+                        onBandhejOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowBandhejWalkthrough(true);
+                        }}
+                        onBerhampurPattaOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowBerhampurPattaWalkthrough(true);
+                        }}
+                        onBomkaiOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowBomkaiWalkthrough(true);
+                        }}
+                        onBuddhistMaskOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowBuddhistMaskWalkthrough(true);
+                        }}
+                        onSikkimCarpetOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowSikkimCarpetWalkthrough(true);
+                        }}
+                        onDurrieOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowDurrieWalkthrough(true);
+                        }}
+                        onPunjabJuttiOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowPunjabJuttiWalkthrough(true);
+                        }}
+                        onKathputliOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowKathputliWalkthrough(true);
+                        }}
+                        onKhaddarOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowKhaddarWalkthrough(true);
+                        }}
+                        onKhanduaOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowKhanduaWalkthrough(true);
+                        }}
+                        onKhesOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowKhesWalkthrough(true);
+                        }}
+                        onMalerkotlaZariOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowMalerkotlaZariWalkthrough(true);
+                        }}
+                        onMolelaOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowMolelaWalkthrough(true);
+                        }}
+                        onPichhwaiOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowPichhwaiNewWalkthrough(true);
+                        }}
+                        onPattachitraOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowPattachitraWalkthrough(true);
+                        }}
+                        onPipiliOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowPipiliWalkthrough(true);
+                        }}
+                        onRajasthaniMiniatureOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowRajasthaniMiniatureWalkthrough(true);
+                        }}
+                        onSambalpuriBandhaOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowSambalpuriBandhaWalkthrough(true);
+                        }}
+                        onSanganerOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowSanganerWalkthrough(true);
+                        }}
+                        onUstaArtOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowUstaArtWalkthrough(true);
+                        }}
+                        onPipiliAppliqueOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowPipiliAppliqueWalkthrough(true);
+                        }}
+                        onSauraOpen={() => {
+                            setOpenedFromAllStyles(false);
+                            setShowWelcomeModal(false);
+                            setShowSauraWalkthrough(true);
                         }}
                         onBanarasMuralOpen={() => {
                             setOpenedFromAllStyles(false);
@@ -2784,102 +2937,102 @@ const HomePage: React.FC = () => {
 
             <SherdukpenFullscreenWalkthrough
                 isOpen={showSherdukpenWalkthrough}
-                onClose={() => setShowSherdukpenWalkthrough(false)}
+                onClose={() => handleCloseWalkthrough(setShowSherdukpenWalkthrough)}
             />
 
             <IduMishmiFullscreenWalkthrough
                 isOpen={showIduMishmiWalkthrough}
-                onClose={() => setShowIduMishmiWalkthrough(false)}
+                onClose={() => handleCloseWalkthrough(setShowIduMishmiWalkthrough)}
             />
 
             <AsharikandiFullscreenWalkthrough
                 isOpen={showAsharikandiWalkthrough}
-                onClose={() => setShowAsharikandiWalkthrough(false)}
+                onClose={() => handleCloseWalkthrough(setShowAsharikandiWalkthrough)}
             />
 
             <AzulejosFullscreenWalkthrough
                 isOpen={showAzulejosWalkthrough}
-                onClose={() => setShowAzulejosWalkthrough(false)}
+                onClose={() => handleCloseWalkthrough(setShowAzulejosWalkthrough)}
             />
 
             <BandhaniFullscreenWalkthrough
                 isOpen={showBandhaniWalkthrough}
-                onClose={() => setShowBandhaniWalkthrough(false)}
+                onClose={() => handleCloseWalkthrough(setShowBandhaniWalkthrough)}
             />
 
             <BastarDhokraFullscreenWalkthrough
                 isOpen={showBastarDhokraWalkthrough}
-                onClose={() => setShowBastarDhokraWalkthrough(false)}
+                onClose={() => handleCloseWalkthrough(setShowBastarDhokraWalkthrough)}
             />
 
             <MuriaWallPaintingFullscreenWalkthrough
                 isOpen={showMuriaWallPaintingWalkthrough}
-                onClose={() => setShowMuriaWallPaintingWalkthrough(false)}
+                onClose={() => handleCloseWalkthrough(setShowMuriaWallPaintingWalkthrough)}
             />
 
             <BastarWoodcraftFullscreenWalkthrough
                 isOpen={showBastarWoodcraftWalkthrough}
-                onClose={() => setShowBastarWoodcraftWalkthrough(false)}
+                onClose={() => handleCloseWalkthrough(setShowBastarWoodcraftWalkthrough)}
             />
 
             <BhagalpurSilkFullscreenWalkthrough
                 isOpen={showBhagalpurSilkWalkthrough}
-                onClose={() => setShowBhagalpurSilkWalkthrough(false)}
+                onClose={() => handleCloseWalkthrough(setShowBhagalpurSilkWalkthrough)}
             />
 
             <ChambaMiniatureFullscreenWalkthrough
                 isOpen={showChambaMiniatureWalkthrough}
-                onClose={() => setShowChambaMiniatureWalkthrough(false)}
+                onClose={() => handleCloseWalkthrough(setShowChambaMiniatureWalkthrough)}
             />
 
             <ExposedLateriteFullscreenWalkthrough
                 isOpen={showExposedLateriteWalkthrough}
-                onClose={() => setShowExposedLateriteWalkthrough(false)}
+                onClose={() => handleCloseWalkthrough(setShowExposedLateriteWalkthrough)}
             />
 
             <GharcholaFullscreenWalkthrough
                 isOpen={showGharcholaWalkthrough}
-                onClose={() => setShowGharcholaWalkthrough(false)}
+                onClose={() => handleCloseWalkthrough(setShowGharcholaWalkthrough)}
             />
 
             <GodnaArtFullscreenWalkthrough
                 isOpen={showGodnaArtWalkthrough}
-                onClose={() => setShowGodnaArtWalkthrough(false)}
+                onClose={() => handleCloseWalkthrough(setShowGodnaArtWalkthrough)}
             />
 
             <TaiAhomManuscriptFullscreenWalkthrough
                 isOpen={showTaiAhomManuscriptWalkthrough}
-                onClose={() => setShowTaiAhomManuscriptWalkthrough(false)}
+                onClose={() => handleCloseWalkthrough(setShowTaiAhomManuscriptWalkthrough)}
             />
 
             <TangaliyaFullscreenWalkthrough
                 isOpen={showTangaliyaWalkthrough}
-                onClose={() => setShowTangaliyaWalkthrough(false)}
+                onClose={() => handleCloseWalkthrough(setShowTangaliyaWalkthrough)}
             />
 
             <AgrarianIndustrialFullscreenWalkthrough
                 isOpen={showAgrarianIndustrialWalkthrough}
-                onClose={() => setShowAgrarianIndustrialWalkthrough(false)}
+                onClose={() => handleCloseWalkthrough(setShowAgrarianIndustrialWalkthrough)}
             />
 
             <IndoPortugueseFullscreenWalkthrough
                 isOpen={showIndoPortugueseWalkthrough}
-                onClose={() => setShowIndoPortugueseWalkthrough(false)}
+                onClose={() => handleCloseWalkthrough(setShowIndoPortugueseWalkthrough)}
             />
 
             <TikuliArtFullscreenWalkthrough
                 isOpen={showTikuliArtWalkthrough}
-                onClose={() => setShowTikuliArtWalkthrough(false)}
+                onClose={() => handleCloseWalkthrough(setShowTikuliArtWalkthrough)}
             />
 
             <SohraiKhovarFullscreenWalkthrough
                 isOpen={showSohraiKhovarWalkthrough}
-                onClose={() => setShowSohraiKhovarWalkthrough(false)}
+                onClose={() => handleCloseWalkthrough(setShowSohraiKhovarWalkthrough)}
             />
 
             <WoodTempleCarvingFullscreenWalkthrough
                 isOpen={showWoodTempleCarvingWalkthrough}
-                onClose={() => setShowWoodTempleCarvingWalkthrough(false)}
+                onClose={() => handleCloseWalkthrough(setShowWoodTempleCarvingWalkthrough)}
             />
 
             <NeoAgrarianBrutalismFullscreenWalkthrough
@@ -3137,10 +3290,6 @@ const HomePage: React.FC = () => {
                 onClose={() => handleCloseWalkthrough(setShowMeritShawlWalkthrough)}
             />
 
-            <GanjifaFullscreenWalkthrough
-                isOpen={showGanjifaWalkthrough}
-                onClose={() => handleCloseWalkthrough(setShowGanjifaWalkthrough)}
-            />
 
             <GaroWeavingFullscreenWalkthrough
                 isOpen={showGaroWeavingWalkthrough}
@@ -3360,7 +3509,7 @@ const HomePage: React.FC = () => {
             />
 
             {/* New Cultural Craft Styles */}
-            <TraditionalStyleWalkthrough
+            <TraditionalStyleFullscreenWalkthrough
                 isOpen={showBanarasMuralWalkthrough}
                 onClose={() => handleCloseWalkthrough(setShowBanarasMuralWalkthrough)}
                 styleId="banarasmural"
@@ -3370,7 +3519,7 @@ const HomePage: React.FC = () => {
                 styleDesc="A sacred wall-painting tradition where devotional imagery is embedded into architectural surfaces."
                 styleImage="/HomePage/creativeStyle/4th-images/banaras-mural.avif"
             />
-            <TraditionalStyleWalkthrough
+            <TraditionalStyleFullscreenWalkthrough
                 isOpen={showBanarasiBrocadeWalkthrough}
                 onClose={() => handleCloseWalkthrough(setShowBanarasiBrocadeWalkthrough)}
                 styleId="banarasibrocade"
@@ -3380,207 +3529,207 @@ const HomePage: React.FC = () => {
                 styleDesc="A woven silk tradition where intricate patterns emerge directly from the loom using zari threads."
                 styleImage="/HomePage/creativeStyle/4th-images/banarasi-brocade.avif"
             />
-            <TraditionalStyleWalkthrough
+            <TraditionalStyleFullscreenWalkthrough
                 isOpen={showBanjaraEmbroideryWalkthrough}
                 onClose={() => handleCloseWalkthrough(setShowBanjaraEmbroideryWalkthrough)}
                 styleId="banjaraembroidery"
                 styleTitle="BANJARA EMBROIDERY"
                 styleName="Telangana"
                 styleTag="Telangana"
-                styleDesc="A vibrant textile tradition where mirrors, stitches, and patchwork come together to create bold geometric surfaces."
+                styleDesc="A nomadic textile tradition defined by bold geometric patterns, mirror-work, and vibrant embroidery."
                 styleImage="/HomePage/creativeStyle/4th-images/banjara-embroidery.avif"
             />
-            <TraditionalStyleWalkthrough
+            <TraditionalStyleFullscreenWalkthrough
                 isOpen={showPataChitraWalkthrough}
                 onClose={() => handleCloseWalkthrough(setShowPataChitraWalkthrough)}
                 styleId="patachitra"
                 styleTitle="PATA CHITRA"
                 styleName="West Bengal"
                 styleTag="West Bengal"
-                styleDesc="A storytelling painting tradition where vivid scenes unfold through bold lines and expressive figures."
+                styleDesc="A folk painting tradition where scroll-based narratives are brought to life through vibrant natural pigments."
                 styleImage="/HomePage/creativeStyle/4th-images/pata-chitra.avif"
             />
-            <TraditionalStyleWalkthrough
+            <TraditionalStyleFullscreenWalkthrough
                 isOpen={showBhotiaWeavingWalkthrough}
                 onClose={() => handleCloseWalkthrough(setShowBhotiaWeavingWalkthrough)}
                 styleId="bhotiaweaving"
                 styleTitle="BHOTIA WEAVING"
                 styleName="Uttarakhand"
                 styleTag="Uttarakhand"
-                styleDesc="A high-altitude wool weaving tradition designed for warmth, durability, and rugged mountain life."
+                styleDesc="A high-altitude wool-weaving tradition featuring rhythmic geometric patterns and thick, protective textures."
                 styleImage="/HomePage/creativeStyle/4th-images/bhotia-weaving.avif"
             />
-            <TraditionalStyleWalkthrough
+            <TraditionalStyleFullscreenWalkthrough
                 isOpen={showCheriyalWalkthrough}
                 onClose={() => handleCloseWalkthrough(setShowCheriyalWalkthrough)}
                 styleId="cheriyal"
                 styleTitle="CHERIYAL"
                 styleName="Telangana"
                 styleTag="Telangana"
-                styleDesc="A painted scroll tradition where stories unfold through bold figures on a striking red background."
+                styleDesc="A narrative scroll-painting tradition where mythological stories are told through vibrant, stylized characters."
                 styleImage="/HomePage/creativeStyle/4th-images/cheriyal.avif"
             />
-            <TraditionalStyleWalkthrough
+            <TraditionalStyleFullscreenWalkthrough
                 isOpen={showChikankariWalkthrough}
                 onClose={() => handleCloseWalkthrough(setShowChikankariWalkthrough)}
                 styleId="chikankari"
                 styleTitle="CHIKANKARI"
                 styleName="Uttar Pradesh"
                 styleTag="Uttar Pradesh"
-                styleDesc="A delicate shadow-work embroidery where fine white threads create ethereal patterns on light fabrics."
+                styleDesc="A delicate shadow-work embroidery tradition from Lucknow, featuring intricate white-on-white floral motifs."
                 styleImage="/HomePage/creativeStyle/4th-images/chikankari.avif"
             />
-            <TraditionalStyleWalkthrough
+            <TraditionalStyleFullscreenWalkthrough
                 isOpen={showCholaBronzeWalkthrough}
                 onClose={() => handleCloseWalkthrough(setShowCholaBronzeWalkthrough)}
                 styleId="cholabronze"
                 styleTitle="CHOLA BRONZE"
                 styleName="Tamil Nadu"
                 styleTag="Tamil Nadu"
-                styleDesc="A lost-wax casting tradition that captures divine movement and grace in enduring metallic form."
+                styleDesc="A monumental casting tradition where divine forms are sculpted with fluid grace and precise anatomical detail."
                 styleImage="/HomePage/creativeStyle/4th-images/chola-bronze.avif"
             />
-            <TraditionalStyleWalkthrough
+            <TraditionalStyleFullscreenWalkthrough
                 isOpen={showCholaOldBronzeWalkthrough}
                 onClose={() => handleCloseWalkthrough(setShowCholaOldBronzeWalkthrough)}
                 styleId="cholaoldbronze"
                 styleTitle="CHOLA OLD BRONZE"
                 styleName="Tamil Nadu"
                 styleTag="Tamil Nadu"
-                styleDesc="An ancient casting tradition characterized by weathered patinas and timeless spiritual weight."
+                styleDesc="An aged bronze aesthetic where time-worn textures and deep patinas emphasize the sacred antiquity of the form."
                 styleImage="/HomePage/creativeStyle/4th-images/chola-old-bronze.avif"
             />
-            <TraditionalStyleWalkthrough
+            <TraditionalStyleFullscreenWalkthrough
                 isOpen={showFarrukhabadPrintWalkthrough}
                 onClose={() => handleCloseWalkthrough(setShowFarrukhabadPrintWalkthrough)}
                 styleId="farrukhabadprint"
                 styleTitle="FARRUKHABAD PRINT"
                 styleName="Uttar Pradesh"
                 styleTag="Uttar Pradesh"
-                styleDesc="A block-printing tradition known for its large, intricate paisley motifs and deep, earthy tones."
+                styleDesc="A traditional hand-block printing style known for its distinct rhythmic patterns and complex floral compositions."
                 styleImage="/HomePage/creativeStyle/4th-images/farrukhabad-print.avif"
             />
-            <TraditionalStyleWalkthrough
+            <TraditionalStyleFullscreenWalkthrough
                 isOpen={showOdishaFiligreeWalkthrough}
                 onClose={() => handleCloseWalkthrough(setShowOdishaFiligreeWalkthrough)}
                 styleId="odishafiligree"
                 styleTitle="ODISHA FILIGREE"
                 styleName="Odisha"
                 styleTag="Odisha"
-                styleDesc="A silver-crafting tradition where fine wires are spun into delicate, lace-like structures of immense beauty."
+                styleDesc="A delicate silver-wire craft where intricate lace-like patterns are shaped into fine jewelry and sacred forms."
                 styleImage="/HomePage/creativeStyle/4th-images/odisha-filigree.avif"
             />
-            <TraditionalStyleWalkthrough
+            <TraditionalStyleFullscreenWalkthrough
                 isOpen={showGadwalSareeWalkthrough}
                 onClose={() => handleCloseWalkthrough(setShowGadwalSareeWalkthrough)}
                 styleId="gadwalsaree"
                 styleTitle="GADWAL SAREE"
                 styleName="Telangana"
                 styleTag="Telangana"
-                styleDesc="A unique weaving tradition where cotton bodies meet silk borders through masterful interlocking techniques."
+                styleDesc="A unique weaving tradition where cotton bodies are fused with opulent silk and zari borders."
                 styleImage="/HomePage/creativeStyle/4th-images/gadwal-saree.avif"
             />
-            <TraditionalStyleWalkthrough
+            <TraditionalStyleFullscreenWalkthrough
                 isOpen={showGollabhamaSareeWalkthrough}
                 onClose={() => handleCloseWalkthrough(setShowGollabhamaSareeWalkthrough)}
                 styleId="gollabhamasaree"
                 styleTitle="GOLLABHAMA SAREE"
                 styleName="Telangana"
                 styleTag="Telangana"
-                styleDesc="A charming textile tradition featuring woven motifs of milkmaids carrying pots, symbolizing rural life."
+                styleDesc="A pictorial weaving style from Siddipet, featuring rhythmic motifs of milkmaids carrying pots."
                 styleImage="/HomePage/creativeStyle/4th-images/gollabhama-saree.avif"
             />
-            <TraditionalStyleWalkthrough
+            <TraditionalStyleFullscreenWalkthrough
                 isOpen={showGotaZariWalkthrough}
                 onClose={() => handleCloseWalkthrough(setShowGotaZariWalkthrough)}
                 styleId="gotazari"
                 styleTitle="GOTA ZARI"
                 styleName="Rajasthan"
                 styleTag="Rajasthan"
-                styleDesc="A royal textile craft where metallic ribbons are appliquéed onto fabric to create shimmering, festive surfaces."
+                styleDesc="An opulent applique technique where metallic ribbons are shaped into shimmering floral and geometric designs."
                 styleImage="/HomePage/creativeStyle/4th-images/gota-zari.avif"
             />
-            <TraditionalStyleWalkthrough
+            <TraditionalStyleFullscreenWalkthrough
                 isOpen={showKaavadWalkthrough}
                 onClose={() => handleCloseWalkthrough(setShowKaavadWalkthrough)}
                 styleId="kaavad"
                 styleTitle="KAAVAD"
                 styleName="Rajasthan"
                 styleTag="Rajasthan"
-                styleDesc="A portable wooden shrine tradition where mythological stories unfold through multiple painted folding panels."
+                styleDesc="A portable wooden shrine tradition where painted panels unfold to reveal sacred narratives and mythological worlds."
                 styleImage="/HomePage/creativeStyle/4th-images/kaavad.avif"
             />
-            <TraditionalStyleWalkthrough
+            <TraditionalStyleFullscreenWalkthrough
                 isOpen={showKalighatPaintingWalkthrough}
                 onClose={() => handleCloseWalkthrough(setShowKalighatPaintingWalkthrough)}
                 styleId="kalighatpainting"
                 styleTitle="KALIGHAT PAINTING"
                 styleName="West Bengal"
                 styleTag="West Bengal"
-                styleDesc="A bold watercolor tradition from Bengal featuring expressive figures and sharp social commentary."
+                styleDesc="A bold, stylized painting tradition from Kolkata, defined by its fluid brushwork and rhythmic social narratives."
                 styleImage="/HomePage/creativeStyle/4th-images/kalighat-painting.avif"
             />
-            <TraditionalStyleWalkthrough
+            <TraditionalStyleFullscreenWalkthrough
                 isOpen={showKaruppurKalamkariWalkthrough}
                 onClose={() => handleCloseWalkthrough(setShowKaruppurKalamkariWalkthrough)}
                 styleId="karuppurkalamkari"
                 styleTitle="KARUPPUR KALAMKARI"
                 styleName="Tamil Nadu"
                 styleTag="Tamil Nadu"
-                styleDesc="A rare textile tradition where hand-painted natural dyes are enriched with woven gold zari work."
+                styleDesc="A rare hand-painted textile tradition where golden threads and natural dyes create opulent ritual patterns."
                 styleImage="/HomePage/creativeStyle/4th-images/karuppur-kalamkari.avif"
             />
-            <TraditionalStyleWalkthrough
+            <TraditionalStyleFullscreenWalkthrough
                 isOpen={showKolamGeometryWalkthrough}
                 onClose={() => handleCloseWalkthrough(setShowKolamGeometryWalkthrough)}
                 styleId="kolamgeometry"
                 styleTitle="KOLAM GEOMETRY"
                 styleName="Tamil Nadu"
                 styleTag="Tamil Nadu"
-                styleDesc="A ritual floor-art tradition where mathematical precision meets spiritual invitation through rhythmic dots and lines."
+                styleDesc="A sacred mathematical art form where infinite loops and symmetry define threshold patterns and ritual spaces."
                 styleImage="/HomePage/creativeStyle/4th-images/kolam-geometry.avif"
             />
-            <TraditionalStyleWalkthrough
+            <TraditionalStyleFullscreenWalkthrough
                 isOpen={showLacBanglesWalkthrough}
                 onClose={() => handleCloseWalkthrough(setShowLacBanglesWalkthrough)}
                 styleId="lacbangles"
                 styleTitle="LAC BANGLES"
                 styleName="Rajasthan"
                 styleTag="Rajasthan"
-                styleDesc="A vibrant jewelry tradition where resin is molded and encrusted with stones to create bold, colorful ornaments."
+                styleDesc="A traditional jewelry craft where resinous lac is shaped and embellished with vibrant stones and metallic foils."
                 styleImage="/HomePage/creativeStyle/4th-images/lac-bangles.avif"
             />
-            <TraditionalStyleWalkthrough
+            <TraditionalStyleFullscreenWalkthrough
                 isOpen={showMaduraiSungudiWalkthrough}
                 onClose={() => handleCloseWalkthrough(setShowMaduraiSungudiWalkthrough)}
                 styleId="maduraisungudi"
                 styleTitle="MADURAI SUNGUDI"
                 styleName="Tamil Nadu"
                 styleTag="Tamil Nadu"
-                styleDesc="A tie-dye textile tradition where tiny, hand-knotted patterns create a mesmerizing starry-night effect on fabric."
+                styleDesc="A traditional tie-and-dye textile from Madurai, characterized by its rhythmic dotted patterns and vibrant borders."
                 styleImage="/HomePage/creativeStyle/4th-images/madurai-sungudi.avif"
             />
-            <TraditionalStyleWalkthrough
+            <TraditionalStyleFullscreenWalkthrough
                 isOpen={showMahabalipuramSculptureWalkthrough}
                 onClose={() => handleCloseWalkthrough(setShowMahabalipuramSculptureWalkthrough)}
                 styleId="mahabalipuramsculpture"
                 styleTitle="MAHABALIPURAM SCULPTURE"
                 styleName="Tamil Nadu"
                 styleTag="Tamil Nadu"
-                styleDesc="A monumental stone-carving tradition where granite is transformed into lifelike figures and epic rock-cut temples."
+                styleDesc="A monumental stone-carving tradition where rock-cut chariots and reliefs depict fluid, divine movements."
                 styleImage="/HomePage/creativeStyle/4th-images/mahabalipuram-sculpture.avif"
             />
-            <TraditionalStyleWalkthrough
+            <TraditionalStyleFullscreenWalkthrough
                 isOpen={showNarayanpetSareeWalkthrough}
                 onClose={() => handleCloseWalkthrough(setShowNarayanpetSareeWalkthrough)}
                 styleId="narayanpetsaree"
                 styleTitle="NARAYANPET SAREE"
                 styleName="Telangana"
                 styleTag="Telangana"
-                styleDesc="A sturdy weaving tradition known for its distinct check patterns and vibrant contrasting borders."
+                styleDesc="A distinct weaving tradition known for its sharp geometric borders and rich, contrasting temple motifs."
                 styleImage="/HomePage/creativeStyle/4th-images/narayanpet-saree.avif"
             />
-            <TraditionalStyleWalkthrough
+            <TraditionalStyleFullscreenWalkthrough
                 isOpen={showNirmalArtWalkthrough}
                 onClose={() => handleCloseWalkthrough(setShowNirmalArtWalkthrough)}
                 styleId="nirmalart"
@@ -3590,7 +3739,7 @@ const HomePage: React.FC = () => {
                 styleDesc="A rich lacquered woodwork tradition where golden hues and vibrant colors bring mythological scenes to life."
                 styleImage="/HomePage/creativeStyle/4th-images/nirmal-art.avif"
             />
-            <TraditionalStyleWalkthrough
+            <TraditionalStyleFullscreenWalkthrough
                 isOpen={showBambooCaneCraftWalkthrough}
                 onClose={() => handleCloseWalkthrough(setShowBambooCaneCraftWalkthrough)}
                 styleId="bamboocanecraft"
@@ -3600,7 +3749,7 @@ const HomePage: React.FC = () => {
                 styleDesc="A traditional weaving craft where bamboo and cane are shaped into functional forms and rhythmic structures."
                 styleImage="/HomePage/creativeStyle/4th-images/bamboo--cane-craft.avif"
             />
-            <TraditionalStyleWalkthrough
+            <TraditionalStyleFullscreenWalkthrough
                 isOpen={showOdishaStoneCarvingWalkthrough}
                 onClose={() => handleCloseWalkthrough(setShowOdishaStoneCarvingWalkthrough)}
                 styleId="odishastonecarving"
@@ -3610,7 +3759,7 @@ const HomePage: React.FC = () => {
                 styleDesc="An ancient stone-carving tradition where sacred forms and temple narratives are sculpted in relief and monumental scale."
                 styleImage="/HomePage/creativeStyle/4th-images/odisha-stone-carving.avif"
             />
-            <TraditionalStyleWalkthrough
+            <TraditionalStyleFullscreenWalkthrough
                 isOpen={showPachraWalkthrough}
                 onClose={() => handleCloseWalkthrough(setShowPachraWalkthrough)}
                 styleId="pachra"
@@ -3620,7 +3769,7 @@ const HomePage: React.FC = () => {
                 styleDesc="A traditional handwoven textile from Tripura, defined by its specific cultural motifs and rhythmic weaving patterns."
                 styleImage="/HomePage/creativeStyle/4th-images/pachra.avif"
             />
-            <TraditionalStyleWalkthrough
+            <TraditionalStyleFullscreenWalkthrough
                 isOpen={showPembarthiMetalCraftWalkthrough}
                 onClose={() => handleCloseWalkthrough(setShowPembarthiMetalCraftWalkthrough)}
                 styleId="pembarthimetalcraft"
@@ -3630,7 +3779,7 @@ const HomePage: React.FC = () => {
                 styleDesc="An ancient metalwork tradition where brass and copper surfaces are adorned with intricate deep-relief hand carvings."
                 styleImage="/HomePage/creativeStyle/4th-images/pembarthi-metal-craft.avif"
             />
-            <TraditionalStyleWalkthrough
+            <TraditionalStyleFullscreenWalkthrough
                 isOpen={showPilkhuwaBlockPrintWalkthrough}
                 onClose={() => handleCloseWalkthrough(setShowPilkhuwaBlockPrintWalkthrough)}
                 styleId="pilkhuwablockprint"
@@ -3640,7 +3789,7 @@ const HomePage: React.FC = () => {
                 styleDesc="A traditional hand-block printing style from Uttar Pradesh, known for its distinct rhythmic patterns and floral compositions."
                 styleImage="/HomePage/creativeStyle/4th-images/pilkhuwa-block-print.avif"
             />
-            <TraditionalStyleWalkthrough
+            <TraditionalStyleFullscreenWalkthrough
                 isOpen={showRangwaliPichhodaWalkthrough}
                 onClose={() => handleCloseWalkthrough(setShowRangwaliPichhodaWalkthrough)}
                 styleId="rangwalipichhoda"
@@ -3650,7 +3799,7 @@ const HomePage: React.FC = () => {
                 styleDesc="A traditional ceremonial veil from Uttarakhand, characteristically adorned with auspicious symbols and vibrant dotted patterns."
                 styleImage="/HomePage/creativeStyle/4th-images/rangwali-pichhoda.avif"
             />
-            <TraditionalStyleWalkthrough
+            <TraditionalStyleFullscreenWalkthrough
                 isOpen={showRignaiWalkthrough}
                 onClose={() => handleCloseWalkthrough(setShowRignaiWalkthrough)}
                 styleId="rignai"
@@ -3660,7 +3809,7 @@ const HomePage: React.FC = () => {
                 styleDesc="A traditional handwoven lower garment from Tripura, featuring complex geometric patterns and cultural symbolism."
                 styleImage="/HomePage/creativeStyle/4th-images/rignai.avif"
             />
-            <TraditionalStyleWalkthrough
+            <TraditionalStyleFullscreenWalkthrough
                 isOpen={showRisaWalkthrough}
                 onClose={() => handleCloseWalkthrough(setShowRisaWalkthrough)}
                 styleId="risa"
@@ -3670,7 +3819,7 @@ const HomePage: React.FC = () => {
                 styleDesc="A traditional handwoven upper cloth from Tripura, used as ceremonial headgear and a symbol of cultural honor."
                 styleImage="/HomePage/creativeStyle/4th-images/risa.avif"
             />
-            <TraditionalStyleWalkthrough
+            <TraditionalStyleFullscreenWalkthrough
                 isOpen={showSanjhiWalkthrough}
                 onClose={() => handleCloseWalkthrough(setShowSanjhiWalkthrough)}
                 styleId="sanjhi"
@@ -3680,7 +3829,7 @@ const HomePage: React.FC = () => {
                 styleDesc="A sacred paper-cutting tradition from Mathura, where intricate stencils are used to create devotional art and threshold patterns."
                 styleImage="/HomePage/creativeStyle/4th-images/sanjhi.avif"
             />
-            <TraditionalStyleWalkthrough
+            <TraditionalStyleFullscreenWalkthrough
                 isOpen={showTamilRitualCraftWalkthrough}
                 onClose={() => handleCloseWalkthrough(setShowTamilRitualCraftWalkthrough)}
                 styleId="tamilritualcraft"
@@ -3690,7 +3839,7 @@ const HomePage: React.FC = () => {
                 styleDesc="A broad category of ceremonial crafts from Tamil Nadu, designed for sacred temple rituals and festive processions."
                 styleImage="/HomePage/creativeStyle/4th-images/tamil-ritual-craft.avif"
             />
-            <TraditionalStyleWalkthrough
+            <TraditionalStyleFullscreenWalkthrough
                 isOpen={showTanjorePaintingWalkthrough}
                 onClose={() => handleCloseWalkthrough(setShowTanjorePaintingWalkthrough)}
                 styleId="tanjorepainting"
@@ -3700,7 +3849,7 @@ const HomePage: React.FC = () => {
                 styleDesc="A classical painting style from Tamil Nadu, known for its rich colors, gold-leaf embellishments, and sacred iconography."
                 styleImage="/HomePage/creativeStyle/4th-images/tanjore-painting.avif"
             />
-            <TraditionalStyleWalkthrough
+            <TraditionalStyleFullscreenWalkthrough
                 isOpen={showThanjavurDollWalkthrough}
                 onClose={() => handleCloseWalkthrough(setShowThanjavurDollWalkthrough)}
                 styleId="thanjavurdoll"
@@ -3710,7 +3859,7 @@ const HomePage: React.FC = () => {
                 styleDesc="A traditional bobblehead craft from Tamil Nadu, featuring handmade terracotta forms that move with a distinct rhythmic grace."
                 styleImage="/HomePage/creativeStyle/4th-images/thanjavur-doll.avif"
             />
-            <TraditionalStyleWalkthrough
+            <TraditionalStyleFullscreenWalkthrough
                 isOpen={showTherukoothuWalkthrough}
                 onClose={() => handleCloseWalkthrough(setShowTherukoothuWalkthrough)}
                 styleId="therukoothu"
@@ -3720,7 +3869,7 @@ const HomePage: React.FC = () => {
                 styleDesc="An ancient folk theatre tradition from Tamil Nadu, where sacred epics are enacted through music, dance, and vibrant costume design."
                 styleImage="/HomePage/creativeStyle/4th-images/therukoothu.avif"
             />
-            <TraditionalStyleWalkthrough
+            <TraditionalStyleFullscreenWalkthrough
                 isOpen={showTodaEmbroideryWalkthrough}
                 onClose={() => handleCloseWalkthrough(setShowTodaEmbroideryWalkthrough)}
                 styleId="todaembroidery"
@@ -3730,7 +3879,7 @@ const HomePage: React.FC = () => {
                 styleDesc="A unique reversible embroidery tradition from the Nilgiris, featuring precise geometric patterns in red and black wool."
                 styleImage="/HomePage/creativeStyle/4th-images/toda-embroidery.avif"
             />
-            <TraditionalStyleWalkthrough
+            <TraditionalStyleFullscreenWalkthrough
                 isOpen={showZardoziWalkthrough}
                 onClose={() => handleCloseWalkthrough(setShowZardoziWalkthrough)}
                 styleId="zardozi"

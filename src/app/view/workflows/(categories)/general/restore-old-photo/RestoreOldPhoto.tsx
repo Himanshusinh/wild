@@ -313,6 +313,7 @@ export default function RestoreOldPhoto() {
                     beforeLabel="Before"
                     afterLabel="Restored" // Changed from "After" to "Restored"
                     imageFit="object-contain" // Use object-contain to see full images properly
+                    imagePosition="object-center"
                   />
                   <button
                     onClick={handleDownload}
@@ -353,6 +354,7 @@ export default function RestoreOldPhoto() {
                     beforeLabel="Before"
                     afterLabel="After"
                     imageFit="object-contain"
+                    imagePosition="object-center"
                   />
                 </div>
               )}

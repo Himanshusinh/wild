@@ -269,7 +269,8 @@ export default function FashionStylist() {
                     afterImage={generatedImage}
                     beforeLabel="Person"
                     afterLabel="Styled Result"
-                    imageFit="object-contain"
+                    imageFit="object-cover"
+                    imagePosition="object-center"
                   />
                   <button
                     onClick={handleDownload}
@@ -309,6 +310,7 @@ export default function FashionStylist() {
                     beforeLabel="Before"
                     afterLabel="Result"
                     imageFit="object-cover"
+                    imagePosition="object-center"
                   />
                   {!uploadedImage && (
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">

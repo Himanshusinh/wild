@@ -342,7 +342,7 @@ export default function CustomStickers() {
                     afterImage={generatedImage}
                     beforeLabel="Before"
                     afterLabel="Result"
-                    imageFit="object-contain"
+                    imageFit="object-cover"
                     imagePosition="object-center"
                   />
                   <button
@@ -366,8 +366,8 @@ export default function CustomStickers() {
               ) : (
                 <div className="relative w-full h-full flex items-center justify-center p-8">
                   <ImageComparisonSlider
-                    beforeImage="/workflow-samples/custom-stickers-before.png"
-                    afterImage="/workflow-samples/custom-stickers-after.png"
+                    beforeImage="/workflow-samples/custom-stickers-before-v2.jpg"
+                    afterImage="/workflow-samples/custom-stickers-after-v2.jpg"
                     beforeLabel="Before"
                     afterLabel="After"
                     imageFit="object-contain"

@@ -352,16 +352,23 @@ function WorkflowCard({ wf, router }) {
       onClick={handleClick}
       onMouseEnter={() => setIsPlaying(true)}
       onMouseLeave={() => setIsPlaying(false)}
-      className={`group flex flex-col ${isComingSoon ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+      className={`group relative flex flex-col p-[10px] pb-3 bg-[#161616] border border-white/5 rounded-[20px] transition-all duration-300 hover:bg-[#1A1A1A] hover:border-white/10 ${isComingSoon ? 'cursor-not-allowed opacity-80' : 'cursor-pointer shadow-lg hover:shadow-2xl'}`}
       whileHover={!isComingSoon ? { y: -5 } : {}}
     >
-      <div className="relative aspect-[4/5] rounded-[2rem] overflow-hidden bg-white/5 mb-4 border border-white/5 group-hover:border-white/10 transition-all duration-500 shadow-2xl">
+      <div className="relative aspect-[4/5] rounded-[14px] overflow-hidden bg-white/5 border border-white/5 mb-3 shadow-inner">
         {/* Thumbnail (Visible by default) */}
         <img
           src={wf.thumbnail}
-          className={`absolute inset-0 w-full h-full ${wf.imageFit || 'object-cover'} ${wf.imagePosition || 'object-top'} ${isComingSoon ? 'opacity-30 grayscale' : 'opacity-100'} transition-all duration-500`}
+          className={`absolute inset-0 w-full h-full ${wf.imageFit || 'object-cover'} ${wf.imagePosition || 'object-top'} ${isComingSoon ? 'opacity-30 grayscale' : 'opacity-100'} transition-transform duration-500 group-hover:scale-[1.03]`}
           alt={wf.title}
         />
+
+        {/* Heart Icon (top-right overlay) */}
+        {!isComingSoon && (
+          <div className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-30 hover:bg-black/60 shadow-sm border border-white/5">
+            <Heart size={14} className="text-white" />
+          </div>
+        )}
 
         {/* Result Media (Visible on hover) */}
         {!isComingSoon && (
@@ -379,33 +386,47 @@ function WorkflowCard({ wf, router }) {
               )
             ) : (
               <img
-                src={wf.sampleAfter}
+                src={wf.sampleAfter || wf.thumbnail}
                 className={`absolute inset-0 w-full h-full ${wf.imageFit || 'object-cover'} ${wf.imagePosition || 'object-top'}`}
                 alt={`${wf.title} Result`}
               />
             )}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
-            <div className="absolute bottom-4 left-4 right-4">
-              <div className="flex items-center gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-[#60a5fa] animate-pulse shadow-[0_0_8px_#60a5fa]"></div>
-                <span className="text-[10px] font-bold text-white tracking-widest uppercase">Live Now</span>
-              </div>
-            </div>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-80"></div>
           </div>
         )}
 
-
         {isComingSoon && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/20 backdrop-blur-[2px]">
-            <div className="px-4 py-2 bg-black/60 backdrop-blur-md border border-white/10 rounded-2xl text-[10px] font-bold uppercase tracking-[0.2em] text-white/80 shadow-2xl flex flex-col items-center gap-1">
-              <span className="opacity-50 text-[8px]">Coming</span>
-              <span>Soon</span>
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/40 backdrop-blur-[2px]">
+            <div className="px-4 py-2 bg-black/60 border border-white/10 rounded-full text-[10px] font-bold uppercase tracking-[0.2em] text-white/80 flex items-center gap-2">
+              Coming Soon
             </div>
           </div>
         )}
       </div>
-      <div className="px-1 text-center">
-        <h3 className={`text-xs md:text-[13px] font-semibold transition-all duration-300 tracking-tight line-clamp-1 ${isComingSoon ? 'text-white/30' : 'text-white/70 group-hover:text-white'}`}>{wf.title}</h3>
+
+      {/* Text Content */}
+      <div className="flex flex-col flex-1 px-1 relative">
+        <h3 className={`text-[15px] sm:text-[16px] font-semibold tracking-tight line-clamp-1 ${isComingSoon ? 'text-white/30' : 'text-[#FAFAFA] group-hover:text-white transition-colors'}`}>
+          {wf.title}
+        </h3>
+        {wf.description ? (
+          <p className={`text-[12px] sm:text-[13px] mt-1 leading-[1.4] line-clamp-1 pr-10 ${isComingSoon ? 'text-white/20' : 'text-[#87878C]'}`}>
+            {wf.description}
+          </p>
+        ) : (
+          <p className={`text-[12px] sm:text-[13px] mt-1 leading-[1.4] line-clamp-1 pr-10 ${isComingSoon ? 'text-white/20' : 'text-[#87878C]'}`}>
+            {`Create beautiful ${wf.category.toLowerCase()} content with AI.`}
+          </p>
+        )}
+
+        {/* Circular Arrow Button */}
+        {!isComingSoon && (
+          <div className="absolute bottom-0 right-0 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white flex items-center justify-center text-black shadow-md transition-transform group-hover:scale-110">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="opacity-90">
+              <path d="M5 12h14M12 5l7 7-7 7" />
+            </svg>
+          </div>
+        )}
       </div>
     </motion.div>
   );

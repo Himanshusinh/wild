@@ -214,7 +214,7 @@ export function RajasthaniMiniatureModal({ isOpen, onClose }: { isOpen: boolean;
   const styleTitle = `${state.style} - ${familyMeta.chip}`;
 
   return (
-    <div className="fixed inset-0 z-[160] flex items-center justify-center bg-black/45 p-3 sm:p-6 backdrop-blur-2xl">
+    <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/45 p-3 sm:p-6 backdrop-blur-2xl">
       <div className="absolute inset-0" onClick={onClose} aria-hidden />
       <div role="dialog" aria-modal="true" aria-label="RAJASTHANI MINIATURE Generator" className={`relative flex w-[min(1080px,calc(100vw-24px))] h-[min(760px,calc(100vh-24px))] flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0E0E12]/95 shadow-[0_24px_70px_rgba(0,0,0,0.7)] ring-1 ring-white/[0.04] transition-all duration-300 ${isVisible ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-2 scale-[0.985]"}`}>
         <RajasthaniMiniatureHeader style={state.style} onStyleChange={(s) => dispatchLocal({ type: "SET_STYLE", payload: s })} onClose={onClose} />
@@ -239,15 +239,7 @@ export function RajasthaniMiniatureModal({ isOpen, onClose }: { isOpen: boolean;
               </div>
               <SettingsPanel model={state.model} resolution={state.resolution} imageCount={state.imageCount} ratio={state.ratio} includeBenchmark={false} includeVariable={state.includeVariable} includeRestyle={false} onCountChange={(v) => dispatchLocal({ type: "SET_COUNT", payload: v })} onResolutionChange={(v) => dispatchLocal({ type: "SET_RESOLUTION", payload: v })} onRatioChange={handleRatioChange} onIncludeBenchmarkChange={() => {}} onIncludeVariableChange={(v) => dispatchLocal({ type: "SET_INCLUDE_VARIABLE", payload: v })} onIncludeRestyleChange={() => {}} />
             </div>
-            <div className="border-t border-white/[0.06] bg-[#0E0E12] px-5 py-3">
-              <div className="flex flex-wrap gap-2 text-[11px] text-white/35">
-                <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1">{styleTitle}</span>
-                <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1">{MODELS.find((m) => m.id === state.model)?.label ?? state.model}</span>
-                <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1">{state.imageCount} img</span>
-                <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1">{state.resolution}</span>
-                <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1">{ratioSummary}</span>
-              </div>
-            </div>
+            
             <div className="border-t border-white/[0.06] bg-[#0E0E12] px-5 py-4">
               <button type="button" onClick={() => void handleGenerate()} disabled={state.panelState === "loading"} className="w-full rounded-lg bg-[#2F6BFF] py-2.5 text-[12px] font-semibold text-white transition hover:bg-[#2F6BFF]/90 disabled:opacity-50">Generate RAJASTHANI MINIATURE</button>
             </div>

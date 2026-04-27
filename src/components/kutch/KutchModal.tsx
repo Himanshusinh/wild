@@ -324,7 +324,7 @@ export function KutchModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =
   const styleTitle = `${state.style} - ${familyMeta.chip}`;
 
   return (
-    <div className="fixed inset-0 z-[160] flex items-center justify-center bg-black/45 p-3 sm:p-6 backdrop-blur-2xl">
+    <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/45 p-3 sm:p-6 backdrop-blur-2xl">
       <div className="absolute inset-0" onClick={onClose} aria-hidden />
 
       <div
@@ -391,18 +391,6 @@ export function KutchModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =
                 onIncludeVariableChange={(v) => dispatchLocal({ type: "SET_INCLUDE_VARIABLE", payload: v })}
                 onIncludeRestyleChange={() => {}}
               />
-            </div>
-
-            <div className="border-t border-white/[0.06] bg-[#0E0E12] px-5 py-3">
-              <div className="flex flex-wrap gap-2 text-[11px] text-white/35">
-                <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1">{styleTitle}</span>
-                <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1">
-                  {MODELS.find((m) => m.id === state.model)?.label ?? state.model}
-                </span>
-                <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1">{state.imageCount} img</span>
-                <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1">{state.resolution}</span>
-                <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1">{ratioSummary}</span>
-              </div>
             </div>
 
             <div className="border-t border-white/[0.06] bg-[#0E0E12] px-5 py-4">

@@ -228,7 +228,8 @@ export default function DeconstructOutfit() {
                     afterImage={generatedImage}
                     beforeLabel="Full Outfit"
                     afterLabel="Deconstructed"
-                    imageFit="object-contain"
+                    imageFit="object-cover"
+                    imagePosition="object-center"
                   />
                   <button
                     onClick={handleDownload}
@@ -256,11 +257,12 @@ export default function DeconstructOutfit() {
               ) : (
                 <div className="relative w-full h-full flex items-center justify-center p-8">
                   <ImageComparisonSlider
-                    beforeImage="/workflow-samples/deconstruct-before.jpg"
-                    afterImage="/workflow-samples/deconstruct-after.jpg"
+                    beforeImage="/workflow-samples/deconstruct-outfit-before.jpg"
+                    afterImage="/workflow-samples/deconstruct-outfit-after.jpg"
                     beforeLabel="Before"
                     afterLabel="Result"
                     imageFit="object-cover"
+                    imagePosition="object-center"
                   />
                 </div>
               )}
