@@ -25,7 +25,7 @@ const FileTypeDropdown = ({ openDirection = 'up' }: FileTypeDropdownProps) => {
   const selectingRef = useRef(false);
 
   // Check if current model is an Imagen model
-  const isImagenModel = selectedModel === 'imagen-4-ultra' || selectedModel === 'imagen-4' || selectedModel === 'imagen-4-fast';
+  const isImagenModel = selectedModel === 'imagen-4-ultra' || selectedModel === 'imagen-4' || selectedModel === 'imagen-4-fast' || selectedModel === 'openai/gpt-image-2';
 
   const fileTypes = [
     { name: 'JPEG', value: 'jpeg', description: 'Best for photos' },

@@ -10633,7 +10633,8 @@ const InputBox = () => {
                         dropdownId="gptImage15Quality"
                       />
                     </div>
-                    <div className="flex items-center gap-2 relative">
+                    {/* GPT Image 2: File format is handled by FileTypeDropdown (JPEG/PNG/WebP) — JPG button hidden */}
+                    {/* <div className="flex items-center gap-2 relative">
                       <ZTurboOutputFormatDropdown
                         outputFormat={gptImage15OutputFormat}
                         onOutputFormatChange={(val) =>
@@ -10641,7 +10642,7 @@ const InputBox = () => {
                         }
                         dropdownId="gptImage15OutputFormat"
                       />
-                    </div>
+                    </div> */}
                   </>
                 )}
               </div>
@@ -10858,7 +10859,8 @@ const InputBox = () => {
                           dropdownId="gptImage15Quality"
                         />
                       </div>
-                      <div className="flex items-center gap-2 relative">
+                      {/* GPT Image 2: File format is handled by FileTypeDropdown (JPEG/PNG/WebP) — JPG button hidden */}
+                      {/* <div className="flex items-center gap-2 relative">
                         <ZTurboOutputFormatDropdown
                           outputFormat={gptImage15OutputFormat}
                           onOutputFormatChange={(val) =>
@@ -10866,7 +10868,7 @@ const InputBox = () => {
                           }
                           dropdownId="gptImage15OutputFormat"
                         />
-                      </div>
+                      </div> */}
                     </>
                   )}
                   {/* Qwen Image Edit: no extra advanced controls */}

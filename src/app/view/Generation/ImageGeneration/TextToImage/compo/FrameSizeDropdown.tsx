@@ -352,8 +352,8 @@ const FrameSizeDropdown = ({
       return allowed;
     }
     if (isGptImageModel) {
-      // GPT Image models: only support 1:1, 3:2, 2:3 per schema
-      const allowed = new Set(["1:1", "3:2", "2:3"]);
+      // GPT Image models on FAL: support square, 4:3, 3:4, 16:9, 9:16 presets
+      const allowed = new Set(["1:1", "4:3", "3:4", "16:9", "9:16"]);
       return baseSizes.filter((s) => allowed.has(s.value));
     }
     if (isPImage) {
