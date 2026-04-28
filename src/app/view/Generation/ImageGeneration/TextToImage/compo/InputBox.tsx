@@ -2282,6 +2282,9 @@ const InputBox = () => {
   const [seedream5LiteResolution, setSeedream5LiteResolution] = useState<
     "2K" | "3K"
   >("2K");
+  const [gptImage2CustomWidth, setGptImage2CustomWidth] = useState<number>(1024);
+  const [gptImage2CustomHeight, setGptImage2CustomHeight] =
+    useState<number>(1024);
   const [nanoBananaProResolution, setNanoBananaProResolution] = useState<
     "1K" | "2K" | "4K"
   >("2K");
@@ -7746,6 +7749,46 @@ const InputBox = () => {
                 : gptImage15OutputFormat;
           }
 
+          // GPT Image 2 on FAL supports image_size enums in addition to legacy aspect_ratio.
+          if (selectedModel === "openai/gpt-image-2") {
+            const gptImage2SizeMap: Record<string, string> = {
+              auto: "auto",
+              default: "default",
+              custom: "custom",
+              square_hd: "square_hd",
+              "1:1": "square",
+              "3:4": "portrait_4_3",
+              "9:16": "portrait_16_9",
+              "4:3": "landscape_4_3",
+              "16:9": "landscape_16_9",
+            };
+            const mappedImageSize = gptImage2SizeMap[frameSize];
+            if (mappedImageSize) {
+              generationPayload.image_size = mappedImageSize;
+            }
+            // Keep aspect_ratio for compatibility with existing backend/history logic.
+            const legacyAspectRatios = new Set([
+              "1:1",
+              "3:4",
+              "9:16",
+              "4:3",
+              "16:9",
+            ]);
+            if (legacyAspectRatios.has(frameSize)) {
+              generationPayload.aspect_ratio = frameSize;
+            } else if (frameSize === "custom") {
+              generationPayload.aspect_ratio = "custom";
+              generationPayload.width = Math.max(
+                64,
+                Math.min(4096, Number(gptImage2CustomWidth) || 1024),
+              );
+              generationPayload.height = Math.max(
+                64,
+                Math.min(4096, Number(gptImage2CustomHeight) || 1024),
+              );
+            }
+          }
+
           // For flux-pro models, convert frameSize to width/height dimensions (but keep frameSize for history)
           if (isFluxProModel) {
             const dimensions = convertFrameSizeToFluxProDimensions(frameSize);
@@ -10430,6 +10473,43 @@ const InputBox = () => {
               >
                 <ImageCountDropdown />
                 <FrameSizeDropdown />
+                {selectedModel === "openai/gpt-image-2" &&
+                  frameSize === "custom" && (
+                    <>
+                      <input
+                        type="number"
+                        min={64}
+                        max={4096}
+                        value={gptImage2CustomWidth}
+                        onChange={(e) =>
+                          setGptImage2CustomWidth(
+                            Math.max(
+                              64,
+                              Math.min(4096, Number(e.target.value) || 1024),
+                            ),
+                          )
+                        }
+                        placeholder="Width"
+                        className="h-[22px] md:h-[32px] w-[72px] md:w-24 px-2 md:px-3 rounded-lg text-[10px] md:text-[13px] ring-1 ring-white/20 bg-transparent text-white/90 placeholder-white/40"
+                      />
+                      <input
+                        type="number"
+                        min={64}
+                        max={4096}
+                        value={gptImage2CustomHeight}
+                        onChange={(e) =>
+                          setGptImage2CustomHeight(
+                            Math.max(
+                              64,
+                              Math.min(4096, Number(e.target.value) || 1024),
+                            ),
+                          )
+                        }
+                        placeholder="Height"
+                        className="h-[22px] md:h-[32px] w-[72px] md:w-24 px-2 md:px-3 rounded-lg text-[10px] md:text-[13px] ring-1 ring-white/20 bg-transparent text-white/90 placeholder-white/40"
+                      />
+                    </>
+                  )}
                 <StyleSelector />
                 <LucidOriginOptions />
                 <PhoenixOptions />
@@ -10633,7 +10713,8 @@ const InputBox = () => {
                         dropdownId="gptImage15Quality"
                       />
                     </div>
-                    <div className="flex items-center gap-2 relative">
+                    {/* GPT Image 2: File format is handled by FileTypeDropdown (JPEG/PNG/WebP) — JPG button hidden */}
+                    {/* <div className="flex items-center gap-2 relative">
                       <ZTurboOutputFormatDropdown
                         outputFormat={gptImage15OutputFormat}
                         onOutputFormatChange={(val) =>
@@ -10641,18 +10722,57 @@ const InputBox = () => {
                         }
                         dropdownId="gptImage15OutputFormat"
                       />
-                    </div>
+                    </div> */}
                   </>
                 )}
               </div>
 
-              {/* Desktop: All dropdowns in one row */}
-              <div className="hidden md:flex flex-1 min-w-0 items-center">
+              {/* Desktop: Model fixed, only parameters scroll */}
+              <div className="hidden md:flex flex-1 min-w-0 items-center gap-2">
+                <div className="shrink-0">
+                  <ModelsDropdown />
+                </div>
                 <div className="flex min-w-0 flex-1 items-center overflow-x-auto overflow-y-visible no-scrollbar pr-[290px]">
                   <div className="flex min-w-max items-center gap-2">
-                  <ModelsDropdown />
                   <ImageCountDropdown />
                   <FrameSizeDropdown />
+                  {selectedModel === "openai/gpt-image-2" &&
+                    frameSize === "custom" && (
+                      <>
+                        <input
+                          type="number"
+                          min={64}
+                          max={4096}
+                          value={gptImage2CustomWidth}
+                          onChange={(e) =>
+                            setGptImage2CustomWidth(
+                              Math.max(
+                                64,
+                                Math.min(4096, Number(e.target.value) || 1024),
+                              ),
+                            )
+                          }
+                          placeholder="Width"
+                          className="h-[32px] w-24 px-3 rounded-lg text-[13px] ring-1 ring-white/20 bg-transparent text-white/90 placeholder-white/40"
+                        />
+                        <input
+                          type="number"
+                          min={64}
+                          max={4096}
+                          value={gptImage2CustomHeight}
+                          onChange={(e) =>
+                            setGptImage2CustomHeight(
+                              Math.max(
+                                64,
+                                Math.min(4096, Number(e.target.value) || 1024),
+                              ),
+                            )
+                          }
+                          placeholder="Height"
+                          className="h-[32px] w-24 px-3 rounded-lg text-[13px] ring-1 ring-white/20 bg-transparent text-white/90 placeholder-white/40"
+                        />
+                      </>
+                    )}
                   <StyleSelector />
                   <LucidOriginOptions />
                   <PhoenixOptions />
@@ -10858,7 +10978,8 @@ const InputBox = () => {
                           dropdownId="gptImage15Quality"
                         />
                       </div>
-                      <div className="flex items-center gap-2 relative">
+                      {/* GPT Image 2: File format is handled by FileTypeDropdown (JPEG/PNG/WebP) — JPG button hidden */}
+                      {/* <div className="flex items-center gap-2 relative">
                         <ZTurboOutputFormatDropdown
                           outputFormat={gptImage15OutputFormat}
                           onOutputFormatChange={(val) =>
@@ -10866,7 +10987,7 @@ const InputBox = () => {
                           }
                           dropdownId="gptImage15OutputFormat"
                         />
-                      </div>
+                      </div> */}
                     </>
                   )}
                   {/* Qwen Image Edit: no extra advanced controls */}
