@@ -77,6 +77,32 @@ export const getVideoCreditCost = (
     // 5s -> 336, 10s (or >=10) -> 671
     return dur >= 10 ? 671 : 336;
   }
+  if (
+    frontendModel === "alibaba/happy-horse" ||
+    frontendModel === "alibaba/happy-horse/text-to-video" ||
+    frontendModel === "alibaba/happy-horse/image-to-video" ||
+    frontendModel === "alibaba/happy-horse/reference-to-video"
+  ) {
+    const durationSeconds =
+      typeof duration === "number"
+        ? duration
+        : parseInt(String(duration || 5).replace("s", ""), 10) || 5;
+    const boundedDuration = Math.min(15, Math.max(3, durationSeconds));
+    const is720p = String(resolution || "1080p").toLowerCase().includes("720");
+    return boundedDuration * (is720p ? 112 : 224);
+  }
+  if (
+    frontendModel === "alibaba/happy-horse/edit-video" ||
+    frontendModel === "alibaba/happy-horse/video-edit"
+  ) {
+    const durationSeconds =
+      typeof duration === "number"
+        ? duration
+        : parseInt(String(duration || 5).replace("s", ""), 10) || 5;
+    const boundedDuration = Math.min(15, Math.max(3, durationSeconds));
+    const is720p = String(resolution || "1080p").toLowerCase().includes("720");
+    return boundedDuration * (is720p ? 224 : 448);
+  }
   // WAN 2.2 Animate models use duration-based pricing: 8 credits per 1 second of input video
   if (
     frontendModel === "wan-2.2-animate-replace" ||

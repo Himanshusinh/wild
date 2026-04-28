@@ -6,6 +6,8 @@ const SEEDANCE_2_CREDITS_PER_USD = 4000 / 5.003;
 const SEEDANCE_2_REFERENCE_USD_PER_SECOND_720P = 0.3024;
 const SEEDANCE_2_FAST_REFERENCE_USD_PER_SECOND_720P = 0.2419;
 const SEEDANCE_2_FAST_REFERENCE_VIDEO_INPUT_MULTIPLIER = 0.6;
+const HAPPY_HORSE_720P_CREDITS_PER_SECOND = 112;
+const HAPPY_HORSE_1080P_CREDITS_PER_SECOND = 224;
 
 type Seedance2AspectRatio =
   | "auto"
@@ -574,6 +576,38 @@ export const getCreditsForModel = (
   inputVideoDurationSec?: number,
   hasReferenceVideoInput?: boolean,
 ): number | null => {
+  if (
+    modelValue === "alibaba/happy-horse" ||
+    modelValue === "alibaba/happy-horse/text-to-video" ||
+    modelValue === "alibaba/happy-horse/image-to-video" ||
+    modelValue === "alibaba/happy-horse/reference-to-video"
+  ) {
+    const durationSeconds = duration
+      ? parseInt(String(duration).replace("s", ""), 10)
+      : 5;
+    const boundedDuration = Number.isFinite(durationSeconds)
+      ? Math.min(15, Math.max(3, durationSeconds))
+      : 5;
+    const is720p = String(resolution || "1080p").toLowerCase().includes("720");
+    return boundedDuration *
+      (is720p
+        ? HAPPY_HORSE_720P_CREDITS_PER_SECOND
+        : HAPPY_HORSE_1080P_CREDITS_PER_SECOND);
+  }
+  if (
+    modelValue === "alibaba/happy-horse/edit-video" ||
+    modelValue === "alibaba/happy-horse/video-edit"
+  ) {
+    const durationSeconds = duration
+      ? parseInt(String(duration).replace("s", ""), 10)
+      : 5;
+    const boundedDuration = Number.isFinite(durationSeconds)
+      ? Math.min(15, Math.max(3, durationSeconds))
+      : 5;
+    const is720p = String(resolution || "1080p").toLowerCase().includes("720");
+    return boundedDuration * (is720p ? 224 : 448);
+  }
+
   if (modelValue === "seedance-2.0-t2v") {
     return computeSeedance2Credits(resolution, duration, aspectRatio);
   }

@@ -139,6 +139,11 @@ type VideoDurationValue = number | "auto";
 const VEO_31_STANDARD_MODEL = "veo3.1-t2v-8s";
 const VEO_31_LITE_MODEL = "veo3.1-lite-t2v-8s";
 const VEO_31_FAST_MODEL = "veo3.1-fast-t2v-8s";
+const HAPPY_HORSE_MODEL = "alibaba/happy-horse";
+const HAPPY_HORSE_T2V_MODEL = "alibaba/happy-horse/text-to-video";
+const HAPPY_HORSE_I2V_MODEL = "alibaba/happy-horse/image-to-video";
+const HAPPY_HORSE_R2V_MODEL = "alibaba/happy-horse/reference-to-video";
+const HAPPY_HORSE_EDIT_MODEL = "alibaba/happy-horse/edit-video";
 const KLING_O1_MODEL = "kling-o1";
 const KLING_3_STANDARD_MODEL = "kling-v3-standard";
 const KLING_3_PRO_MODEL = "kling-v3-pro";
@@ -197,6 +202,8 @@ const isLtxFamilyModel = (model: string) =>
   model === LTX_23_PRO_MODEL || model === LTX_23_FAST_MODEL;
 const isWanFamilyModel = (model: string) =>
   model === WAN_25_MODEL || model === WAN_25_FAST_MODEL;
+const isHappyHorseFamilyModel = (model: string) =>
+  model === HAPPY_HORSE_MODEL || model.startsWith("alibaba/happy-horse/");
 
 const isPixverseFamilyModel = (model: string) =>
   model === PIXVERSE_V6_T2V_MODEL ||
@@ -212,6 +219,7 @@ const shouldShowSecondaryFamilySelector = (model: string) =>
   isSoraFamilyModel(model) ||
   isLtxFamilyModel(model) ||
   isWanFamilyModel(model) ||
+  isHappyHorseFamilyModel(model) ||
   isPixverseFamilyModel(model);
 
 const isSeedance2TextModel = (model: string) =>
@@ -371,6 +379,29 @@ const PIXVERSE_VARIANT_OPTIONS = [
     value: PIXVERSE_V5_I2V_MODEL,
     label: "V5 I2V",
     info: "Image-to-video",
+  },
+];
+
+const HAPPY_HORSE_VARIANT_OPTIONS = [
+  {
+    value: HAPPY_HORSE_T2V_MODEL,
+    label: "Text to Video",
+    info: "Prompt-only generation",
+  },
+  {
+    value: HAPPY_HORSE_I2V_MODEL,
+    label: "Image to Video",
+    info: "Uses uploaded first-frame image",
+  },
+  {
+    value: HAPPY_HORSE_R2V_MODEL,
+    label: "Reference to Video",
+    info: "Uses 1-9 reference images",
+  },
+  {
+    value: HAPPY_HORSE_EDIT_MODEL,
+    label: "Edit Video",
+    info: "Edits uploaded source video",
   },
 ];
 
@@ -825,6 +856,17 @@ const InputBox = (props: InputBoxProps = {}) => {
     usePersistedGenerationState("seedanceFirstFrameImage", "", "text-to-video"); // For Seedance first frame image
   const [seedanceLastFrameImage, setSeedanceLastFrameImage] =
     usePersistedGenerationState("seedanceLastFrameImage", "", "text-to-video"); // For Seedance last frame image
+  // Commented out per request:
+  // const [happyHorseSeedInput, setHappyHorseSeedInput] =
+  //   usePersistedGenerationState("happyHorseSeedInput", "", "text-to-video");
+  // const [happyHorseSafetyChecker, setHappyHorseSafetyChecker] =
+  //   usePersistedGenerationState("happyHorseSafetyChecker", true, "text-to-video");
+  const [happyHorseAudioSetting, setHappyHorseAudioSetting] =
+    usePersistedGenerationState<"default" | "auto" | "origin">(
+      "happyHorseAudioSetting",
+      "default",
+      "text-to-video",
+    );
   // PixVerse specific state
   const [pixverseQuality, setPixverseQuality] = usePersistedGenerationState(
     "pixverseQuality",
@@ -1013,6 +1055,8 @@ const InputBox = (props: InputBoxProps = {}) => {
     ? selectedResolution
     : selectedModel.includes("veo3")
       ? selectedQuality
+      : selectedModel.startsWith("alibaba/happy-horse")
+        ? selectedQuality
       : selectedModel.includes("wan-2.5")
         ? frameSize.includes("480")
           ? "480p"
@@ -1047,10 +1091,23 @@ const InputBox = (props: InputBoxProps = {}) => {
     selectedModel.includes("veo3.1-lite") &&
     hasVeo31LiteFirstFrame &&
     hasVeo31LiteLastFrame;
+  const happyHorseInputImage = uploadedImages[0] || "";
+  const happyHorseHasVideoInput = Boolean(uploadedVideo);
+  const happyHorseHasReferenceInput = references.length > 0;
+  const happyHorseVariantModel =
+    selectedModel.startsWith("alibaba/happy-horse")
+      ? happyHorseHasVideoInput
+        ? HAPPY_HORSE_EDIT_MODEL
+        : happyHorseHasReferenceInput
+          ? HAPPY_HORSE_R2V_MODEL
+          : happyHorseInputImage
+            ? HAPPY_HORSE_I2V_MODEL
+            : HAPPY_HORSE_T2V_MODEL
+      : selectedModel;
 
   const creditsModel = hasVeo31LiteFirstLastFrames
     ? "veo3.1-lite-flf2v-8s"
-    : selectedModel;
+    : happyHorseVariantModel;
   const hasSeedanceReferenceVideoInput =
     isSeedance2ReferenceModel(selectedModel) && uploadedVideos.length > 0;
   const seedanceReferenceInputDurationForCredits = isSeedance2ReferenceModel(
@@ -1717,6 +1774,7 @@ const InputBox = (props: InputBoxProps = {}) => {
           !newModel.includes("v2.1") &&
           !newModel.includes("master")) ||
         newModel === "kling-o1" ||
+        newModel.startsWith("alibaba/happy-horse") ||
         newModel === SEEDANCE_2_MODEL ||
         newModel.includes("seedance") ||
         newModel.includes("pixverse") ||
@@ -1760,6 +1818,10 @@ const InputBox = (props: InputBoxProps = {}) => {
           setDuration(8); // Default 8s for Veo3
           setFrameSize("16:9"); // Default aspect ratio
           setSelectedQuality("720p"); // Default quality
+        } else if (newModel.startsWith("alibaba/happy-horse")) {
+          setDuration(5);
+          setFrameSize("16:9");
+          setSelectedQuality("1080p");
         } else if (newModel.includes("wan-2.5")) {
           // WAN 2.5 models: Set default duration and frame size
           setDuration(5); // Default 5s for WAN
@@ -1909,6 +1971,7 @@ const InputBox = (props: InputBoxProps = {}) => {
         newModel === "MiniMax-Hailuo-2.3-Fast" ||
         newModel === "I2V-01-Director" ||
         newModel === "S2V-01" ||
+        newModel.startsWith("alibaba/happy-horse") ||
         newModel.includes("veo3") ||
         newModel.includes("wan-2.5") ||
         newModel.startsWith("kling-") ||
@@ -1920,6 +1983,12 @@ const InputBox = (props: InputBoxProps = {}) => {
         newModel.startsWith("ltx-2.3-pro")
       ) {
         setSelectedModel(newModel);
+        if (newModel.startsWith("alibaba/happy-horse")) {
+          setDuration(5);
+          setFrameSize("16:9");
+          setSelectedQuality("1080p");
+          setSelectedCameraMovements([]);
+        }
         // Reset aspect ratio for MiniMax models (they don't support custom aspect ratios)
         if (
           newModel.includes("MiniMax") ||
@@ -4192,7 +4261,20 @@ const InputBox = (props: InputBoxProps = {}) => {
       }
     }
 
-    if (!prompt.trim()) {
+    const hhModelForPromptGate = selectedModel.startsWith("alibaba/happy-horse")
+      ? selectedModel === HAPPY_HORSE_MODEL
+        ? uploadedVideo
+          ? HAPPY_HORSE_EDIT_MODEL
+          : references.length > 0
+            ? HAPPY_HORSE_R2V_MODEL
+            : uploadedImages[0]
+              ? HAPPY_HORSE_I2V_MODEL
+              : HAPPY_HORSE_T2V_MODEL
+        : selectedModel
+      : null;
+    const isHappyHorseI2vPromptOptional =
+      hhModelForPromptGate === HAPPY_HORSE_I2V_MODEL && !!uploadedImages[0];
+    if (!prompt.trim() && !isHappyHorseI2vPromptOptional) {
       setError("Please enter a prompt");
       return;
     }
@@ -4567,7 +4649,10 @@ const InputBox = (props: InputBoxProps = {}) => {
       // 3. If model only supports I2V (like Runway) -> use I2V (will validate image requirement)
       // 4. If model supports both -> choose based on input
 
-      if (hasImage && caps.supportsImageToVideo) {
+      if (selectedModel.startsWith("alibaba/happy-horse")) {
+        // Keep Happy Horse request routing in one place below.
+        actualGenerationMode = "text_to_video";
+      } else if (hasImage && caps.supportsImageToVideo) {
         // Image uploaded and model supports I2V -> use image-to-video
         actualGenerationMode = "image_to_video";
         console.log("🖼️ Image detected, switching to image-to-video mode");
@@ -4707,6 +4792,133 @@ const InputBox = (props: InputBoxProps = {}) => {
           apiEndpoint = isFast
             ? "/api/fal/veo3/text-to-video/fast/submit"
             : "/api/fal/veo3/text-to-video/submit";
+        } else if (selectedModel.startsWith("alibaba/happy-horse")) {
+          const apiPrompt = getApiPrompt(prompt);
+          const modelDuration =
+            typeof duration === "number"
+              ? Math.min(15, Math.max(3, duration))
+              : Math.min(
+                  15,
+                  Math.max(
+                    3,
+                    parseInt(String(duration || 5).replace(/s$/i, ""), 10) || 5,
+                  ),
+                );
+          const resolution = String(selectedQuality).toLowerCase().includes("720")
+            ? "720p"
+            : "1080p";
+          // Commented out per request:
+          // const parsedHappyHorseSeed = (() => {
+          //   const raw = String(happyHorseSeedInput || "").trim();
+          //   if (!raw) return undefined;
+          //   const value = parseInt(raw, 10);
+          //   if (!Number.isFinite(value) || value < 0 || value > 2147483647) {
+          //     throw new Error(
+          //       "Happy Horse seed must be an integer between 0 and 2147483647.",
+          //     );
+          //   }
+          //   return value;
+          // })();
+          const effectiveHappyHorseModel =
+            selectedModel === HAPPY_HORSE_MODEL
+              ? uploadedVideo
+                ? HAPPY_HORSE_EDIT_MODEL
+                : references.length > 0
+                  ? HAPPY_HORSE_R2V_MODEL
+                  : uploadedImages[0]
+                    ? HAPPY_HORSE_I2V_MODEL
+                    : HAPPY_HORSE_T2V_MODEL
+              : selectedModel;
+          if (effectiveHappyHorseModel === HAPPY_HORSE_EDIT_MODEL) {
+            if (!uploadedVideo) {
+              throw new Error("Happy Horse Edit Video requires source video.");
+            }
+            requestBody = {
+              prompt: apiPrompt,
+              originalPrompt: prompt,
+              video_url: uploadedVideo,
+              reference_image_urls: references.slice(0, 5),
+              resolution,
+              ...(happyHorseAudioSetting !== "default"
+                ? { audio_setting: happyHorseAudioSetting }
+                : {}),
+              // enable_safety_checker: happyHorseSafetyChecker, // commented out per request
+              generationType: "video-to-video",
+              isPublic,
+              // ...(parsedHappyHorseSeed !== undefined
+              //   ? { seed: parsedHappyHorseSeed }
+              //   : {}), // commented out per request
+            };
+            generationType = "video-to-video";
+            apiEndpoint = "/api/fal/happy-horse/edit-video/submit";
+          } else if (effectiveHappyHorseModel === HAPPY_HORSE_R2V_MODEL) {
+            if (references.length === 0) {
+              throw new Error(
+                "Happy Horse Reference to Video requires at least one reference image.",
+              );
+            }
+            requestBody = {
+              prompt: apiPrompt,
+              originalPrompt: prompt,
+              image_urls: references.slice(0, 9),
+              aspect_ratio: ["16:9", "9:16", "1:1", "4:3", "3:4"].includes(
+                frameSize,
+              )
+                ? frameSize
+                : "16:9",
+              duration: modelDuration,
+              resolution,
+              // enable_safety_checker: happyHorseSafetyChecker, // commented out per request
+              generationType: "text-to-video",
+              isPublic,
+              // ...(parsedHappyHorseSeed !== undefined
+              //   ? { seed: parsedHappyHorseSeed }
+              //   : {}), // commented out per request
+            };
+            generationType = "text-to-video";
+            apiEndpoint = "/api/fal/happy-horse/reference-to-video/submit";
+          } else if (effectiveHappyHorseModel === HAPPY_HORSE_I2V_MODEL) {
+            if (!uploadedImages[0]) {
+              throw new Error(
+                "Happy Horse Image to Video requires an input image.",
+              );
+            }
+            requestBody = {
+              prompt: apiPrompt || "Bring the scene in the image to life.",
+              originalPrompt: prompt,
+              image_url: uploadedImages[0],
+              duration: modelDuration,
+              resolution,
+              // enable_safety_checker: happyHorseSafetyChecker, // commented out per request
+              generationType: "image-to-video",
+              isPublic,
+              // ...(parsedHappyHorseSeed !== undefined
+              //   ? { seed: parsedHappyHorseSeed }
+              //   : {}), // commented out per request
+            };
+            generationType = "image-to-video";
+            apiEndpoint = "/api/fal/happy-horse/image-to-video/submit";
+          } else {
+            requestBody = {
+              prompt: apiPrompt,
+              originalPrompt: prompt,
+              aspect_ratio: ["16:9", "9:16", "1:1", "4:3", "3:4"].includes(
+                frameSize,
+              )
+                ? frameSize
+                : "16:9",
+              duration: modelDuration,
+              resolution,
+              // enable_safety_checker: happyHorseSafetyChecker, // commented out per request
+              generationType: "text-to-video",
+              isPublic,
+              // ...(parsedHappyHorseSeed !== undefined
+              //   ? { seed: parsedHappyHorseSeed }
+              //   : {}), // commented out per request
+            };
+            generationType = "text-to-video";
+            apiEndpoint = "/api/fal/happy-horse/text-to-video/submit";
+          }
         } else if (
           selectedModel.includes("wan-2.5") &&
           !selectedModel.includes("i2v")
@@ -6957,6 +7169,99 @@ const InputBox = (props: InputBoxProps = {}) => {
           );
           throw new Error("Veo 3.1 video generation did not complete in time");
         }
+      } else if (selectedModel.startsWith("alibaba/happy-horse")) {
+        console.log(
+          "🎬 Happy Horse video generation started, request ID:",
+          result.requestId,
+        );
+        console.log("🎬 Model:", result.model);
+        console.log("🎬 History ID:", result.historyId);
+
+        let videoResult: any;
+        let consecutiveErrors = 0;
+        const MAX_CONSECUTIVE_ERRORS = 5;
+
+        for (let attempts = 0; attempts < 360; attempts++) {
+          try {
+            const statusRes = await api.get("/api/fal/queue/status", {
+              params: { model: result.model, requestId: result.requestId },
+              timeout: 1200000,
+            });
+            const status = statusRes.data?.data || statusRes.data;
+            consecutiveErrors = 0;
+
+            const statusValue = String(status?.status || "").toLowerCase();
+            if (
+              statusValue === "completed" ||
+              statusValue === "success" ||
+              statusValue === "succeeded"
+            ) {
+              const resultRes = await api.get("/api/fal/queue/result", {
+                params: { model: result.model, requestId: result.requestId },
+                timeout: 1200000,
+              });
+              videoResult = resultRes.data?.data || resultRes.data;
+              if (generationId) {
+                dispatch(
+                  updateActiveGeneration({
+                    id: generationId,
+                    updates: {
+                      status: "completed",
+                      historyId: result.historyId,
+                    },
+                  }),
+                );
+              }
+              break;
+            }
+            if (statusValue === "failed" || statusValue === "error") {
+              throw new Error("Happy Horse video generation failed");
+            }
+          } catch (statusError: any) {
+            const terminalMessage = getTerminalFalErrorMessage(statusError);
+            if (terminalMessage) {
+              throw new Error(terminalMessage);
+            }
+            consecutiveErrors++;
+            const errorMsg = statusError?.message || String(statusError);
+            if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+              throw new Error(
+                `Happy Horse: Too many network errors. ${errorMsg}`,
+              );
+            }
+            if (attempts === 359) {
+              throw new Error(
+                `Happy Horse: Timeout after 360 attempts. ${errorMsg}`,
+              );
+            }
+          }
+          await new Promise((res) => setTimeout(res, 1000));
+        }
+
+        if (
+          videoResult?.videos &&
+          Array.isArray(videoResult.videos) &&
+          videoResult.videos[0]?.url
+        ) {
+          videoUrl = videoResult.videos[0].url;
+        } else if (videoResult?.video?.url) {
+          videoUrl = videoResult.video.url;
+        } else if (
+          typeof videoResult?.output === "string" &&
+          videoResult.output.startsWith("http")
+        ) {
+          videoUrl = videoResult.output;
+        } else if (
+          Array.isArray(videoResult?.output) &&
+          videoResult.output[0] &&
+          typeof videoResult.output[0] === "string"
+        ) {
+          videoUrl = videoResult.output[0];
+        } else {
+          throw new Error(
+            "Happy Horse video generation did not complete in time",
+          );
+        }
       } else if (selectedModel.includes("ltx2")) {
         // LTX V2 flow - queue-based polling (same pattern as Veo 3.1)
         console.log(
@@ -9057,6 +9362,8 @@ const InputBox = (props: InputBoxProps = {}) => {
                         : o.value !== PIXVERSE_V5_I2V_MODEL &&
                           o.value !== PIXVERSE_V6_I2V_MODEL,
                     )
+                  : isHappyHorseFamilyModel(selectedModel)
+                    ? HAPPY_HORSE_VARIANT_OPTIONS
       : [];
 
   const selectedFamilyVariant = familyVariantOptions.some(
@@ -9116,6 +9423,10 @@ const InputBox = (props: InputBoxProps = {}) => {
 
     if (isPixverseFamilyModel(selectedModel)) {
       return <PixverseFamilyVariantDropdown {...sharedProps} />;
+    }
+
+    if (isHappyHorseFamilyModel(selectedModel)) {
+      return <KlingFamilyVariantDropdown {...sharedProps} />;
     }
 
     if (isSeedanceFamilyModel(selectedModel)) {
@@ -10909,6 +11220,82 @@ const InputBox = (props: InputBoxProps = {}) => {
                   );
                 }
 
+                if (selectedModel.startsWith("alibaba/happy-horse")) {
+                  const isHappyHorseEditMode =
+                    selectedModel === HAPPY_HORSE_EDIT_MODEL;
+                  const isHappyHorseReferenceMode =
+                    !isHappyHorseEditMode && references.length > 0;
+                  const showAspectRatio = !isHappyHorseEditMode && !uploadedImages[0]
+                    ? true
+                    : isHappyHorseReferenceMode;
+                  const showDuration = !isHappyHorseEditMode;
+                  return (
+                    <div className="flex flex-row gap-2 flex-nowrap items-center min-w-max">
+                      {showAspectRatio && (
+                        <VideoFrameSizeDropdown
+                          selectedFrameSize={frameSize}
+                          onFrameSizeChange={setFrameSize}
+                          selectedModel={selectedModel}
+                          generationMode={generationMode}
+                          onCloseOtherDropdowns={() => {
+                            setCloseModelsDropdown(true);
+                            setTimeout(() => setCloseModelsDropdown(false), 0);
+                            setCloseDurationDropdown(true);
+                            setTimeout(() => setCloseDurationDropdown(false), 0);
+                          }}
+                          onCloseThisDropdown={
+                            closeFrameSizeDropdown ? () => {} : undefined
+                          }
+                        />
+                      )}
+                      <ResolutionDropdown
+                        selectedModel={selectedModel}
+                        selectedResolution={selectedQuality}
+                        onResolutionChange={setSelectedQuality}
+                      />
+                      {showDuration && (
+                        <VideoDurationDropdown
+                          selectedDuration={duration}
+                          onDurationChange={setDuration}
+                          selectedModel={selectedModel}
+                          generationMode={generationMode}
+                          onCloseOtherDropdowns={() => {
+                            setCloseModelsDropdown(true);
+                            setTimeout(() => setCloseModelsDropdown(false), 0);
+                            setCloseFrameSizeDropdown(true);
+                            setTimeout(() => setCloseFrameSizeDropdown(false), 0);
+                          }}
+                          onCloseThisDropdown={
+                            closeDurationDropdown ? () => {} : undefined
+                          }
+                        />
+                      )}
+                      {/* Seed and safety checker commented out per request */}
+                      {isHappyHorseEditMode && (
+                        <select
+                          value={happyHorseAudioSetting}
+                          onChange={(e) =>
+                            setHappyHorseAudioSetting(
+                              e.target.value as "default" | "auto" | "origin",
+                            )
+                          }
+                          className="h-[32px] px-2 rounded-lg text-[12px] ring-1 ring-white/20 text-white/90 bg-transparent"
+                        >
+                          <option value="default" className="bg-black text-white">
+                            default
+                          </option>
+                          <option value="auto" className="bg-black text-white">
+                            auto
+                          </option>
+                          <option value="origin" className="bg-black text-white">
+                            origin
+                          </option>
+                        </select>
+                      )}
+                    </div>
+                  );
+                }
+
                 // Veo 3.1 Models: Full customization (check before Veo3)
                 if (selectedModel.includes("veo3.1")) {
                   return (
@@ -11994,6 +12381,82 @@ const InputBox = (props: InputBoxProps = {}) => {
                             {uploadedAudio ? "Audio OK" : "Audio"}
                           </label>
                         </div>
+                      )}
+                    </div>
+                  );
+                }
+
+                if (selectedModel.startsWith("alibaba/happy-horse")) {
+                  const isHappyHorseEditMode =
+                    selectedModel === HAPPY_HORSE_EDIT_MODEL;
+                  const isHappyHorseReferenceMode =
+                    !isHappyHorseEditMode && references.length > 0;
+                  const showAspectRatio = !isHappyHorseEditMode && !uploadedImages[0]
+                    ? true
+                    : isHappyHorseReferenceMode;
+                  const showDuration = !isHappyHorseEditMode;
+                  return (
+                    <div className="flex min-w-max flex-nowrap items-center gap-2 pr-1">
+                      {showAspectRatio && (
+                        <VideoFrameSizeDropdown
+                          selectedFrameSize={frameSize}
+                          onFrameSizeChange={setFrameSize}
+                          selectedModel={selectedModel}
+                          generationMode={generationMode}
+                          onCloseOtherDropdowns={() => {
+                            setCloseModelsDropdown(true);
+                            setTimeout(() => setCloseModelsDropdown(false), 0);
+                            setCloseDurationDropdown(true);
+                            setTimeout(() => setCloseDurationDropdown(false), 0);
+                          }}
+                          onCloseThisDropdown={
+                            closeFrameSizeDropdown ? () => {} : undefined
+                          }
+                        />
+                      )}
+                      <ResolutionDropdown
+                        selectedModel={selectedModel}
+                        selectedResolution={selectedQuality}
+                        onResolutionChange={setSelectedQuality}
+                      />
+                      {showDuration && (
+                        <VideoDurationDropdown
+                          selectedDuration={duration}
+                          onDurationChange={setDuration}
+                          selectedModel={selectedModel}
+                          generationMode={generationMode}
+                          onCloseOtherDropdowns={() => {
+                            setCloseModelsDropdown(true);
+                            setTimeout(() => setCloseModelsDropdown(false), 0);
+                            setCloseFrameSizeDropdown(true);
+                            setTimeout(() => setCloseFrameSizeDropdown(false), 0);
+                          }}
+                          onCloseThisDropdown={
+                            closeDurationDropdown ? () => {} : undefined
+                          }
+                        />
+                      )}
+                      {/* Seed and safety checker commented out per request */}
+                      {isHappyHorseEditMode && (
+                        <select
+                          value={happyHorseAudioSetting}
+                          onChange={(e) =>
+                            setHappyHorseAudioSetting(
+                              e.target.value as "default" | "auto" | "origin",
+                            )
+                          }
+                          className="h-[28px] px-2 rounded-lg text-[10px] ring-1 ring-white/20 text-white/90 bg-transparent"
+                        >
+                          <option value="default" className="bg-black text-white">
+                            default
+                          </option>
+                          <option value="auto" className="bg-black text-white">
+                            auto
+                          </option>
+                          <option value="origin" className="bg-black text-white">
+                            origin
+                          </option>
+                        </select>
                       )}
                     </div>
                   );
