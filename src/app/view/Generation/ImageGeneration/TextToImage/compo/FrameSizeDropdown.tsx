@@ -355,7 +355,6 @@ const FrameSizeDropdown = ({
       // Keep legacy ratio values so payload mapping stays backward compatible.
       const options = [
         { name: "Default", value: "default", icon: "square", hideValue: true },
-        { name: "Custom", value: "custom", icon: "landscape", hideValue: true },
         {
           name: "Square HD",
           value: "square_hd",

@@ -48,6 +48,8 @@ const InputActions: React.FC<InputActionsProps> = ({
   const isSeedance2ReferenceModel =
     selectedModel === "seedance-2.0-r2v" ||
     selectedModel === "seedance-2.0-fast-r2v";
+  const isHappyHorseReferenceModel =
+    selectedModel === "alibaba/happy-horse/reference-to-video";
   const referenceLimit =
     generationMode === "image_to_video" && selectedModel === "S2V-01"
       ? 1
@@ -89,7 +91,8 @@ const InputActions: React.FC<InputActionsProps> = ({
 
         {/* References Upload */}
         {(currentModelCapabilities.requiresReferenceImage ||
-          isSeedance2ReferenceModel) && (
+          isSeedance2ReferenceModel ||
+          isHappyHorseReferenceModel) && (
           <div className="relative">
             <button
               className={`p-1 rounded-lg transition-all duration-200 cursor-pointer peer relative flex items-center justify-center ${
@@ -308,7 +311,8 @@ const InputActions: React.FC<InputActionsProps> = ({
         {(currentModelCapabilities.supportsVideoToVideo ||
           selectedModel === "wan-2.2-animate-replace" ||
           selectedModel.startsWith("ltx-2.3-pro") ||
-          isSeedance2ReferenceModel) && (
+          isSeedance2ReferenceModel ||
+          isHappyHorseReferenceModel) && (
           <div className="relative">
             <button
               className="p-1.5  md:pl-1 rounded-lg transition-all duration-200 cursor-pointer peer relative flex items-center justify-center hover:bg-white/10"

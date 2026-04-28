@@ -45,6 +45,8 @@ const isLtxFamilyModel = (value: string) =>
   value === "ltx-2.3-pro-t2v" || value === "ltx-2.3-fast-t2v";
 const isWanFamilyModel = (value: string) =>
   value === "wan-2.5-t2v" || value === "wan-2.5-t2v-fast";
+const isHappyHorseFamilyModel = (value: string) =>
+  value === "alibaba/happy-horse" || value.startsWith("alibaba/happy-horse/");
 const isPixverseFamilyModel = (value: string) =>
   value === "pixverse-v6-t2v" ||
   value === "pixverse-v6-i2v" ||
@@ -56,6 +58,7 @@ const FAMILY_DISPLAY_ORDER = [
   "Kling",
   "LTX",
   "WAN",
+  "Happy Horse",
   "PixVerse",
   "Sora",
   "Hailuo",
@@ -307,6 +310,13 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
         provider: "fal",
       },
       {
+        value: "alibaba/happy-horse",
+        label: "Happy Horse",
+        description:
+          "T2V / I2V / Reference / Edit, 3s-15s, 720p/1080p, rich controls",
+        provider: "fal",
+      },
+      {
         value: "kling-o1",
         label: "Kling o1",
         description: "First frame required, last frame optional, 5s/10s",
@@ -548,6 +558,13 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                         description:
                           "A highly flexible model specializing in fluid motion dynamics and variable generation speeds.",
                       }
+                    : model.value === "alibaba/happy-horse"
+                      ? {
+                          ...model,
+                          label: "Happy Horse",
+                          description:
+                            "Text, image, reference, and edit video workflows with flexible duration and resolution controls.",
+                        }
                     : model.value === "pixverse-v6-t2v"
                       ? {
                           ...model,
@@ -585,6 +602,8 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                   ? model.value === "ltx-2.3-pro-t2v"
                   : isWanFamilyModel(selectedModel)
                     ? model.value === "wan-2.5-t2v"
+                    : isHappyHorseFamilyModel(selectedModel)
+                      ? model.value === "alibaba/happy-horse"
                     : isPixverseFamilyModel(selectedModel)
                       ? model.value === "pixverse-v6-t2v"
         : model.value === selectedModel,
@@ -610,6 +629,9 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
       }
       if (isWanFamilyModel(selectedModel)) {
         return model.value === "wan-2.5-t2v";
+      }
+      if (isHappyHorseFamilyModel(selectedModel)) {
+        return model.value === "alibaba/happy-horse";
       }
       if (isPixverseFamilyModel(selectedModel)) {
         return model.value === "pixverse-v6-t2v";
@@ -848,6 +870,8 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                   ? model.value === "ltx-2.3-pro-t2v"
                   : isWanFamilyModel(selectedModel)
                     ? model.value === "wan-2.5-t2v"
+                    : isHappyHorseFamilyModel(selectedModel)
+                      ? model.value === "alibaba/happy-horse"
                     : isPixverseFamilyModel(selectedModel)
                       ? model.value === "pixverse-v6-t2v"
         : model.value === selectedModel,
@@ -877,6 +901,9 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
       }
       if (isWanFamilyModel(selectedModel)) {
         return model.value === "wan-2.5-t2v";
+      }
+      if (isHappyHorseFamilyModel(selectedModel)) {
+        return model.value === "alibaba/happy-horse";
       }
       if (isPixverseFamilyModel(selectedModel)) {
         return model.value === "pixverse-v6-t2v";
@@ -919,6 +946,8 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                 ? model.value === "ltx-2.3-pro-t2v"
                 : isWanFamilyModel(selectedModel)
                   ? model.value === "wan-2.5-t2v"
+                  : isHappyHorseFamilyModel(selectedModel)
+                    ? model.value === "alibaba/happy-horse"
                   : isPixverseFamilyModel(selectedModel)
                     ? model.value === "pixverse-v6-t2v"
       : model.value === selectedModel,
@@ -939,6 +968,8 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                 ? isLtxFamilyModel(selectedModel)
                 : modelValue === "wan-2.5-t2v"
                   ? isWanFamilyModel(selectedModel)
+                  : modelValue === "alibaba/happy-horse"
+                    ? isHappyHorseFamilyModel(selectedModel)
                   : modelValue === "pixverse-v6-t2v"
                     ? isPixverseFamilyModel(selectedModel)
       : selectedModel === modelValue;
