@@ -8,9 +8,13 @@ import { getImageUrl } from '@/routes/imageroute';
 import ContactForm from './ContactForm';
 import SupportFaqModal from './SupportFaqModal';
 
-const ContactUsPage: React.FC = () => {
+interface ContactUsPageProps {
+  initialSupportOpen?: boolean;
+}
+
+const ContactUsPage: React.FC<ContactUsPageProps> = ({ initialSupportOpen = false }) => {
   const router = useRouter();
-  const [isSupportOpen, setIsSupportOpen] = useState(true);
+  const [isSupportOpen, setIsSupportOpen] = useState(initialSupportOpen);
 
   // Business contact information - Must be visible as text for Razorpay validation
   const businessInfo = {
@@ -133,7 +137,11 @@ const ContactUsPage: React.FC = () => {
       <SupportFaqModal
         isOpen={isSupportOpen}
         onClose={() => {
-          router.push('/');
+          if (initialSupportOpen) {
+            router.push('/');
+          } else {
+            setIsSupportOpen(false);
+          }
         }}
       />
     </main>

@@ -1,0 +1,419 @@
+<html>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body { 
+  background: #0E0E12;
+  color: #FFFFFF;
+}
+
+.container { 
+  max-width: 100%; 
+  position: relative;
+  background: #0E0E12;
+}
+
+.nav-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 32px;
+  border-bottom: 0.5px solid rgba(255, 255, 255, 0.1);
+}
+
+.logo {
+  font-size: 18px;
+  font-weight: 500;
+  color: #FFFFFF;
+  letter-spacing: -0.3px;
+}
+
+.back-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 0.5px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.05);
+  color: #FFFFFF;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.back-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.hero {
+  padding: 80px 32px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(180deg, rgba(42, 95, 227, 0.05) 0%, rgba(14, 14, 18, 0) 100%);
+}
+
+.hero::before {
+  content: '';
+  position: absolute;
+  top: -200px;
+  right: -200px;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(42, 95, 227, 0.15) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.hero::after {
+  content: '';
+  position: absolute;
+  bottom: -150px;
+  left: -250px;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(42, 95, 227, 0.08) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.hero-content {
+  position: relative;
+  z-index: 1;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.hero h1 {
+  font-size: 56px;
+  font-weight: 600;
+  line-height: 1.15;
+  margin-bottom: 24px;
+  color: #FFFFFF;
+  letter-spacing: -1px;
+}
+
+.hero p {
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.8;
+  margin-bottom: 48px;
+  max-width: 700px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.cta-buttons {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 60px;
+}
+
+.btn-primary, .btn-secondary {
+  padding: 12px 32px;
+  font-size: 15px;
+  font-weight: 500;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-primary {
+  background: #2A5FE3;
+  color: #FFFFFF;
+  box-shadow: 0 4px 16px rgba(42, 95, 227, 0.3);
+}
+
+.btn-primary:hover {
+  background: #1F4BC5;
+  box-shadow: 0 8px 24px rgba(42, 95, 227, 0.4);
+  transform: translateY(-2px);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.1);
+  color: #FFFFFF;
+  border: 0.5px solid rgba(255, 255, 255, 0.2);
+}
+
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+.search-bar {
+  display: flex;
+  gap: 12px;
+  max-width: 800px;
+  margin: 0 auto 50px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.search-input, .filter-select {
+  padding: 12px 16px;
+  font-size: 14px;
+  border-radius: 8px;
+  border: 0.5px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.05);
+  color: #FFFFFF;
+  transition: all 0.2s;
+  flex: 1;
+  min-width: 200px;
+  max-width: 350px;
+}
+
+.search-input:focus, .filter-select:focus {
+  outline: none;
+  border-color: #2A5FE3;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 0 3px rgba(42, 95, 227, 0.2);
+}
+
+.search-input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.filter-select {
+  background: rgba(255, 255, 255, 0.05);
+  color: #FFFFFF;
+}
+
+.filter-select option {
+  background: #1a1a1f;
+  color: #FFFFFF;
+}
+
+.tabs {
+  display: flex;
+  gap: 0;
+  padding: 0 32px;
+  border-bottom: 0.5px solid rgba(255, 255, 255, 0.1);
+  max-width: 1400px;
+  margin: 0 auto;
+  margin-bottom: 40px;
+  overflow-x: auto;
+}
+
+.tab {
+  padding: 14px 20px;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.5);
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.tab:hover {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.tab.active {
+  color: #2A5FE3;
+  border-bottom-color: #2A5FE3;
+}
+
+.gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 24px;
+  padding: 0 32px 80px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 0.5px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+  backdrop-filter: blur(10px);
+}
+
+.card:hover {
+  border-color: rgba(42, 95, 227, 0.5);
+  background: rgba(42, 95, 227, 0.08);
+  box-shadow: 0 16px 48px rgba(42, 95, 227, 0.15);
+  transform: translateY(-8px);
+}
+
+.card-image {
+  width: 100%;
+  height: 200px;
+  background: linear-gradient(135deg, rgba(42, 95, 227, 0.15) 0%, rgba(42, 95, 227, 0.05) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 56px;
+  color: rgba(42, 95, 227, 0.4);
+  border-bottom: 0.5px solid rgba(255, 255, 255, 0.08);
+}
+
+.card-content {
+  padding: 24px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.card-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #FFFFFF;
+  margin-bottom: 10px;
+}
+
+.card-desc {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
+  line-height: 1.6;
+  flex: 1;
+  margin-bottom: 16px;
+}
+
+.card-tag {
+  display: inline-block;
+  background: rgba(42, 95, 227, 0.2);
+  color: #2A5FE3;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  width: fit-content;
+  margin-top: auto;
+  border: 0.5px solid rgba(42, 95, 227, 0.3);
+}
+</style>
+
+<div class="container">
+  <div class="nav-header">
+    <div class="logo">Creative Studio</div>
+    <button class="back-btn">← Back to Home</button>
+  </div>
+
+  <div class="hero">
+    <div class="hero-content">
+      <h1>Creative Intelligence for Modern Brands</h1>
+      <p>Discover how generative AI is revolutionizing design timelines, brand consistency, and creative workflows. Learn from industry leaders and unlock new possibilities for your creative projects.</p>
+      
+      <div class="cta-buttons">
+        <button class="btn-primary">Start Exploring ↗</button>
+        <button class="btn-secondary">Watch Demo</button>
+      </div>
+
+      <div class="search-bar">
+        <input type="text" class="search-input" placeholder="Search resources, tools, templates...">
+        <select class="filter-select">
+          <option>All Categories</option>
+          <option>Design Tools</option>
+          <option>AI Models</option>
+          <option>Workflows</option>
+          <option>Case Studies</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active">All Resources</button>
+    <button class="tab">Featured</button>
+    <button class="tab">Trending</button>
+    <button class="tab">Collections</button>
+    <button class="tab">Case Studies</button>
+  </div>
+
+  <div class="gallery">
+    <div class="card">
+      <div class="card-image">🎨</div>
+      <div class="card-content">
+        <h3 class="card-title">Design Systems</h3>
+        <p class="card-desc">Build consistent brand identities with AI-powered design systems and component libraries.</p>
+        <span class="card-tag">Design</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-image">⚡</div>
+      <div class="card-content">
+        <h3 class="card-title">Fast Prototyping</h3>
+        <p class="card-desc">Generate prototypes and mockups in minutes with intelligent AI suggestions and feedback.</p>
+        <span class="card-tag">Tools</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-image">🌱</div>
+      <div class="card-content">
+        <h3 class="card-title">Creative Workflows</h3>
+        <p class="card-desc">Optimize your creative process with AI-assisted ideation and rapid iteration cycles.</p>
+        <span class="card-tag">Workflow</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-image">📊</div>
+      <div class="card-content">
+        <h3 class="card-title">Analytics & Insights</h3>
+        <p class="card-desc">Measure creativity performance and get data-driven recommendations for improvement.</p>
+        <span class="card-tag">Analytics</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-image">🎬</div>
+      <div class="card-content">
+        <h3 class="card-title">Video Creation</h3>
+        <p class="card-desc">Create compelling video content with AI-powered editing, effects, and automation tools.</p>
+        <span class="card-tag">Media</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-image">💡</div>
+      <div class="card-content">
+        <h3 class="card-title">Innovation Lab</h3>
+        <p class="card-desc">Explore cutting-edge techniques and emerging creative technologies for next-gen projects.</p>
+        <span class="card-tag">Learning</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.querySelectorAll('.card').forEach(card => {
+  card.addEventListener('click', () => {
+    const title = card.querySelector('.card-title').textContent;
+    sendPrompt(`Tell me more about ${title}`);
+  });
+});
+
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+  });
+});
+
+document.querySelectorAll('.btn-primary').forEach(btn => {
+  btn.addEventListener('click', () => {
+    sendPrompt('Show me how to get started with creative AI tools');
+  });
+});
+</script>
+</html>
