@@ -11,12 +11,7 @@ export default function BlogHero() {
     <div className="homepage">
       <div className="container">
         <div className="hero-actions">
-          <button
-            className="hero-back-button"
-            type="button"
-            onClick={() => router.push('/view/HomePage')}
-            aria-label="Back to home"
-          >
+          <button className="hero-back-button" type="button" aria-label="Back to home" onClick={() => router.push('/view/HomePage')}>
             ← Back to Home
           </button>
         </div>
