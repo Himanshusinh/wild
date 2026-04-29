@@ -1211,18 +1211,18 @@ const History = () => {
   return (
     <div className="min-h-full bg-[#0E0E12] text-white md:p-2 select-none">
       {/* Fixed Header with title and controls */}
-      <div className="fixed top-0 left-0 right-0 z-50 bg-[#0E0E12] backdrop-blur-xl shadow-xl px-3">
-        <div className="pt-10 md:pt-4  md:px-3">
-          <div className="flex md:items-center gap-4 md:pl-14 pb-2">
+      <div className="fixed top-0 left-0 right-0 z-50 border-b border-white/5 bg-[#0E0E12]/80 backdrop-blur-xl shadow-xl px-2 md:px-3">
+        <div className="pt-0 md:pt-4 md:px-3">
+          <div className="flex items-center gap-1.5 pl-10 pb-2 md:gap-4 md:pl-14">
             <button
               onClick={() => dispatch(setSidebarExpanded(true))}
-              className="md:hidden flex h-10 w-10 items-center justify-center shrink-0 text-white/70 hover:text-white transition-colors cursor-pointer"
+              className="md:hidden fixed -top-0.5 left-0 z-[60] flex h-10 w-10 items-center justify-center text-white/70 hover:text-white transition-colors cursor-pointer"
               aria-label="Toggle Menu"
             >
               <Menu size={24} />
             </button>
             <div>
-              <h2 className="text-xl md:text-2xl font-semibold text-white pb-0 md:pb-2 leading-tight">{headerTitle}</h2>
+              <h2 className="text-base md:text-2xl font-bold md:font-semibold text-white mt-2 md:mt-0 pb-0 md:pb-2 leading-tight tracking-tight">{headerTitle}</h2>
               <div className="hidden md:flex text-white/80 text-sm mt-0">{getFilteredItemsCount()} {quickFilter === 'user-uploads' ? 'uploads' : 'generations'}</div>
             </div>
 
@@ -1299,8 +1299,8 @@ const History = () => {
         </div>
 
         {/* Mobile-only: Search, Sort buttons, and Date Picker below filter buttons */}
-        <div className="flex md:hidden flex-col gap-1 mt-2 w-full pb-1 mx-0">
-          <div className="flex md:hidden flex-wrap gap-2 -mt-6">
+        <div className="flex md:hidden flex-col gap-1 mt-2 w-full pb-2 mx-0">
+          <div className="flex md:hidden flex-wrap gap-2">
             {([
               { key: 'all', label: 'All' },
               { key: 'images', label: 'Images' },
@@ -1352,7 +1352,7 @@ const History = () => {
             </div>
           )}
           {/* First row: Search and Date Picker */}
-          <div className="flex items-center gap-1 w-auto">
+          <div className="flex items-center gap-1 w-auto mt-1 md:mt-0">
             {/* Search Input */}
             <div className="flex-1 relative flex items-center">
               <input
@@ -1527,7 +1527,7 @@ const History = () => {
                   </div>
                 </div>
               )}
-              <div className="w-8 h-8 flex items-center justify-center">
+              {/* <div className="w-8 h-8 flex items-center justify-center">
                 {dateRange.start && (
                   <button
                     className="px-1 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white text-md"
@@ -1542,7 +1542,7 @@ const History = () => {
                     </svg>
                   </button>
                 )}
-              </div>
+              </div> */}
             </div>
 
             {/* Second row: Sort buttons (Newest/Oldest) - Mobile only */}
