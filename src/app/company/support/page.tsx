@@ -16,5 +16,5 @@ export const metadata: Metadata = {
 };
 
 export default function SupportPage() {
-  return <ContactUsPage />;
+  return <ContactUsPage initialSupportOpen={true} />;
 }

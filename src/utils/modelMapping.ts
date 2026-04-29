@@ -371,10 +371,20 @@ export const MODEL_MAPPING: ModelMapping[] = [
     frontendValue: "openai/gpt-image-2",
     creditModelName: "gpt-image-2 auto",
     generationType: "image",
-    provider: "replicate",
+    provider: "fal",
     options: {
       quality: ["low", "medium", "high", "auto"],
-      aspect_ratio: ["1:1", "3:2", "2:3"],
+      image_size: [
+        "default",
+        "custom",
+        "square_hd",
+        "square",
+        "portrait_4_3",
+        "portrait_16_9",
+        "landscape_4_3",
+        "landscape_16_9",
+        "auto",
+      ],
       output_format: ["png", "jpeg", "webp"],
     },
   },
@@ -629,6 +639,69 @@ export const MODEL_MAPPING: ModelMapping[] = [
     options: {
       resolution: ["720p", "1080p"],
       duration: [8],
+    },
+  },
+  {
+    frontendValue: "alibaba/happy-horse",
+    creditModelName: "Happy Horse T2V",
+    generationType: "video",
+    provider: "fal",
+    options: {
+      resolution: ["720p", "1080p"],
+      duration: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+      frameSize: ["16:9", "9:16", "1:1", "4:3", "3:4"],
+    },
+  },
+  {
+    frontendValue: "alibaba/happy-horse/text-to-video",
+    creditModelName: "Happy Horse T2V",
+    generationType: "video",
+    provider: "fal",
+    options: {
+      resolution: ["720p", "1080p"],
+      duration: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+      frameSize: ["16:9", "9:16", "1:1", "4:3", "3:4"],
+    },
+  },
+  {
+    frontendValue: "alibaba/happy-horse/image-to-video",
+    creditModelName: "Happy Horse I2V",
+    generationType: "video",
+    provider: "fal",
+    options: {
+      resolution: ["720p", "1080p"],
+      duration: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+    },
+  },
+  {
+    frontendValue: "alibaba/happy-horse/reference-to-video",
+    creditModelName: "Happy Horse R2V",
+    generationType: "video",
+    provider: "fal",
+    options: {
+      resolution: ["720p", "1080p"],
+      duration: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+      frameSize: ["16:9", "9:16", "1:1", "4:3", "3:4"],
+    },
+  },
+  {
+    frontendValue: "alibaba/happy-horse/edit-video",
+    creditModelName: "Happy Horse Edit",
+    generationType: "video",
+    provider: "fal",
+    options: {
+      resolution: ["720p", "1080p"],
+      duration: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+    },
+  },
+  {
+    frontendValue: "alibaba/happy-horse/video-edit",
+    creditModelName: "Happy Horse Edit",
+    generationType: "video",
+    provider: "fal",
+    options: {
+      resolution: ["720p", "1080p"],
+      duration: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
     },
   },
 
@@ -1393,6 +1466,26 @@ export const buildCreditModelName = (
         : 8;
     const mode = mapping.frontendValue.includes("i2v") ? "I2V" : "T2V";
     modelName = `Veo 3.1 Lite ${mode} ${d}s ${res}`;
+  } else if (
+    mapping.frontendValue.startsWith("alibaba/happy-horse") &&
+    options?.duration &&
+    options?.resolution
+  ) {
+    const d = Number(options.duration);
+    const durationSeconds = Number.isFinite(d)
+      ? Math.min(15, Math.max(3, Math.round(d)))
+      : 5;
+    const res = String(options.resolution).toLowerCase().includes("720")
+      ? "720p"
+      : "1080p";
+    const variant = mapping.frontendValue.includes("edit")
+      ? "Edit"
+      : mapping.frontendValue.includes("reference")
+        ? "R2V"
+        : mapping.frontendValue.includes("image-to-video")
+          ? "I2V"
+          : "T2V";
+    modelName = `Happy Horse ${variant} ${durationSeconds}s ${res}`;
   }
   // Handle Kling models
   else if (mapping.frontendValue.startsWith("kling") && options?.duration) {

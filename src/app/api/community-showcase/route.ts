@@ -1,11 +1,25 @@
 import { NextResponse } from 'next/server'
 import { getShowcaseImages } from '@/lib/showcase-cache'
+import { PHASE_PRODUCTION_BUILD } from 'next/constants'
 
 // Allow caching of this route itself for a short period, 
 // but the underlying data is cached for 24h by getShowcaseImages
 export const revalidate = 3600 // Revalidate this API response every hour
 
 export async function GET() {
+  // During `next build`, Next can attempt to prerender/export route handlers.
+  // This route performs multiple remote fetches and can exceed the build worker timeout.
+  // Returning a cheap response during the build phase keeps the build deterministic.
+  if (process.env.NEXT_PHASE === PHASE_PRODUCTION_BUILD) {
+    return NextResponse.json(
+      {
+        responseStatus: 'success',
+        data: [],
+        debug: { skipped: true, reason: 'phase-production-build' },
+      },
+      { headers: { 'Cache-Control': 'no-store' } }
+    )
+  }
   try {
     const items = await getShowcaseImages()
     

@@ -176,11 +176,13 @@ export default function ChromeMount() {
   const isBlogRoute = pathnameLower.startsWith('/blog');
   const isCanvasRoute = pathnameLower.startsWith('/canvas-projects');
   const isWorkflowsRoute = pathnameLower.startsWith('/view/workflows');
+  const isComingSoonRoute = pathnameLower === '/coming-soon' || pathnameLower.startsWith('/coming-soon/');
 
   // Check if pathname matches any known valid route
   // This is used to detect 404 pages (invalid routes)
   const isValidRoute = isRoot ||
     isLandingRoute ||
+    isComingSoonRoute ||
     isSignupRoute ||
     isForgotPasswordRoute ||
     isResetPasswordRoute ||
@@ -247,6 +249,7 @@ export default function ChromeMount() {
   // Hide chrome on all other public pages
   const shouldHide = (isRoot && currentView === 'landing' && !isAuthenticated) ||
     isLandingRoute ||
+    isComingSoonRoute ||
     isSignupRoute ||
     isForgotPasswordRoute ||
     isResetPasswordRoute ||

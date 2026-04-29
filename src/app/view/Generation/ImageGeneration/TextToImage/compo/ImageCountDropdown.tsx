@@ -23,7 +23,7 @@ const ImageCountDropdown = () => {
         ? 15
         : normalizedModel === "openai/gpt-image-2" ||
             normalizedModel === "gpt-image-2"
-          ? 10
+          ? 15
         : 4;
 
   const { creditBalance, credits, planCode } = useCredits();

@@ -110,11 +110,11 @@ export const fetchUserCredits = createAsyncThunk(
         const errorStatus = creditsError?.response?.status;
         const errorMessage = creditsError?.response?.data?.message || creditsError?.message || 'Unknown error';
 
-        console.error('[CREDITS_FRONTEND] Credits endpoint failed:', {
-          status: errorStatus,
-          message: errorMessage,
-          responseTime: Date.now() - startTime
-        });
+        console.error('[CREDITS_FRONTEND] Credits endpoint failed:', 
+          `Status: ${errorStatus}`, 
+          `Message: ${errorMessage}`, 
+          `ResponseTime: ${Date.now() - startTime}ms`
+        );
 
         // CRITICAL: If 401, user is definitely not logged in or session is expired.
         // Skip fallbacks as they will also fail with 401 or return unauthenticated state.

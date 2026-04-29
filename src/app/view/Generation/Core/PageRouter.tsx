@@ -13,8 +13,10 @@ import History from './History';
 import Bookmarks from './Bookmarks';
 import { loadHistory, clearHistoryByType, loadMoreHistory } from '@/store/slices/historySlice';
 import LiveChatInputBox from '../wildmindskit/LiveChat/compo/InputBox';
-import EditImageInterface from '../../EditImage/compo/EditImageInterface';
-import EditVideoInterface from '../../EditVideo/compo/EditVideoInterface';
+import dynamic from 'next/dynamic';
+const EditImageInterface = dynamic(() => import('../../EditImage/compo/EditImageInterface'), { ssr: false });
+const EditVideoInterface = dynamic(() => import('../../EditVideo/compo/EditVideoInterface'), { ssr: false });
+
 
 import { ViewType, GenerationType } from '@/types/generation';
 

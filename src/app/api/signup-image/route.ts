@@ -1,11 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSignupImages } from '@/lib/showcase-cache';
+import { PHASE_PRODUCTION_BUILD } from 'next/constants';
 
 // No caching for the API response itself, so we get a random image each time
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export async function GET(request: NextRequest) {
+  // Avoid long-running remote fetches during `next build` prerender/export.
+  if (process.env.NEXT_PHASE === PHASE_PRODUCTION_BUILD) {
+    return NextResponse.json(
+      {
+        responseStatus: 'success',
+        data: null,
+        debug: { skipped: true, reason: 'phase-production-build' },
+      },
+      { headers: { 'Cache-Control': 'no-store' } }
+    );
+  }
   try {
     // Get the cached pool of 1:1 high-quality images
     const items = await getSignupImages();

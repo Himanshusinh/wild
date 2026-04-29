@@ -355,6 +355,17 @@ export const getModelCapabilities = (model: string): ModelCapabilities => {
     capabilities.supportsTextToVideo = true;
     capabilities.supportsImageToVideo = true;
   } else if (
+    model === "alibaba/happy-horse" ||
+    model === "alibaba/happy-horse/text-to-video" ||
+    model === "alibaba/happy-horse/image-to-video" ||
+    model === "alibaba/happy-horse/reference-to-video" ||
+    model === "alibaba/happy-horse/edit-video" ||
+    model === "alibaba/happy-horse/video-edit"
+  ) {
+    capabilities.supportsTextToVideo = true;
+    capabilities.supportsImageToVideo = true;
+    capabilities.supportsVideoToVideo = true;
+  } else if (
     model.includes("sora2") &&
     !model.includes("i2v") &&
     !model.includes("v2v")

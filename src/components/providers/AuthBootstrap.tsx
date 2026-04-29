@@ -1,5 +1,5 @@
 "use client"
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useDispatch } from 'react-redux'
 import { getMeCached } from '@/lib/me'
 import { setAuthLoading, setUser } from '@/store/slices/authSlice'
@@ -7,10 +7,19 @@ import { auth } from '@/lib/firebase'
 
 // Prefetches the authenticated user once per app mount and stores it in Redux.
 // Also warms the storage-backed cache so subsequent pages don't refetch.
+// FIXED: Prevent redirect loops by letting axios interceptor handle 401 errors
 export default function AuthBootstrap() {
   const dispatch = useDispatch()
+  const hasAttemptedAuth = useRef(false)
 
   useEffect(() => {
+    // CIRCUIT BREAKER: Only attempt auth check once to prevent loops
+    if (hasAttemptedAuth.current) {
+      console.log('[AuthBootstrap] Skipping duplicate auth check')
+      return
+    }
+    hasAttemptedAuth.current = true
+
     let mounted = true
     dispatch(setAuthLoading(true))
       ; (async () => {
@@ -103,8 +112,10 @@ export default function AuthBootstrap() {
             dispatch(setUser(null))
           }
         } catch (error: any) {
-          // CRITICAL FIX: If /api/auth/me returns 401, clear user state
-          // This handles the case where cookie exists but is expired/invalid
+          if (!mounted) return
+
+          // CRITICAL FIX: Don't redirect on 401 - let axios interceptor handle it
+          // This prevents redirect loops
           if (error?.response?.status === 401) {
             const errorMessage = error?.response?.data?.message || error?.message || '';
 

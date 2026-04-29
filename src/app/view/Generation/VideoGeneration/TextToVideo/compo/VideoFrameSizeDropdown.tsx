@@ -130,6 +130,35 @@ const VideoFrameSizeDropdown: React.FC<VideoFrameSizeDropdownProps> = ({
 
   // Get available frame sizes based on model and generation mode
   const getAvailableFrameSizes = () => {
+    if (selectedModel?.startsWith("alibaba/happy-horse")) {
+      return [
+        {
+          value: "16:9",
+          label: "16:9",
+          description: "Widescreen landscape",
+          icon: "landscape",
+        },
+        {
+          value: "9:16",
+          label: "9:16",
+          description: "Widescreen portrait",
+          icon: "portrait",
+        },
+        { value: "1:1", label: "1:1", description: "Square", icon: "square" },
+        {
+          value: "4:3",
+          label: "4:3",
+          description: "Classic landscape",
+          icon: "landscape",
+        },
+        {
+          value: "3:4",
+          label: "3:4",
+          description: "Classic portrait",
+          icon: "portrait",
+        },
+      ];
+    }
     if (selectedModel?.includes("sora2")) {
       // Sora 2 models support limited aspect ratios
       if (generationMode === "image_to_video") {

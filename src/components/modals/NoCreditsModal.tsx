@@ -41,7 +41,7 @@ export default function NoCreditsModal() {
           </h2>
           
           <p className="mb-6 text-sm text-gray-400">
-            {creditsMessage || "Credits are not available, please recharge."}
+            {creditsMessage || "You don't have enough credits to perform this action. Upgrade your plan to get more credits and continue creating!"}
           </p>
           
           <div className="flex flex-col gap-3">

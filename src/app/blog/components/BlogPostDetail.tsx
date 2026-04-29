@@ -82,45 +82,51 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps): JSX.Element {
   }
 
   return (
-    <div className="blog-post-page">
-      <div className="blog-post-container">
-        <button className="back-button" onClick={onBack}>
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M12.5 15L7.5 10L12.5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <div className="blog-index-container">
+      <div className="minimal-back-container">
+        <button 
+          className="minimal-back-btn" 
+          onClick={onBack}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M15 18L9 12L15 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
-          Back to Articles
+          Back
         </button>
+      </div>
 
-        <article className="blog-post-article">
-          {/* Hero Image */}
-          {post.image && (
-            <div className="blog-post-hero-image">
-              <img src={post.image} alt={post.title} />
-            </div>
-          )}
-
-          <header className="blog-post-header">
-            <h1 className="blog-post-title">{post.title}</h1>
-            <div className="blog-post-meta">
-              <div className="read-time-post">
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5" />
-                  <path d="M8 4V8L11 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                </svg>
-                {post.readTime}
+      <div className="blog-post-page">
+        <div className="blog-post-container">
+          <article className="blog-post-article">
+            {/* Hero Image */}
+            {post.image && (
+              <div className="blog-post-hero-image">
+                <img src={post.image} alt={post.title} />
               </div>
-              <button className="share-button" type="button" aria-label="Share">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M15 5h4v4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M10 14l9-9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M9 5H5v14h14v-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </button>
-            </div>
-          </header>
+            )}
 
-          <div className="blog-post-content">
-            <p className="blog-intro">{post.content.introduction}</p>
+            <header className="blog-post-header">
+              <h1 className="blog-post-title">{post.title}</h1>
+              <div className="blog-post-meta">
+                <div className="read-time-post">
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5" />
+                    <path d="M8 4V8L11 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                  </svg>
+                  {post.readTime}
+                </div>
+                <button className="share-button" type="button" aria-label="Share">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M15 5h4v4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M10 14l9-9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M9 5H5v14h14v-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+              </div>
+            </header>
+
+            <div className="blog-post-content">
+              <p className="blog-intro">{post.content.introduction}</p>
 
             {/* Generic sections fallback */}
             {Array.isArray(post.content.sections) && post.content.sections.length > 0 && (
@@ -5299,6 +5305,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps): JSX.Element {
             </button>
           </div>
         </article>
+        </div>
       </div>
     </div>
   )

@@ -118,6 +118,12 @@ export function ProjectsView() {
     const canvasUrl = getCanvasUrl();
 
     const loadProjects = async () => {
+        // Prevent multiple simultaneous load attempts
+        if (loading) {
+            console.log('[ProjectsView] Already loading, skipping duplicate request')
+            return
+        }
+
         setLoading(true);
         setError(null);
         try {

@@ -47,7 +47,7 @@ export const UsernameForm = ({
                         fullWidth
                         size="small"
                         value={username}
-                        onChange={(e) => setUsername(e.target.value)}
+                        onChange={(e) => setUsername(e.target.value.toLowerCase())}
                         onFocus={() => setIsUsernameFocused(true)}
                         onBlur={() => setIsUsernameFocused(false)}
                         required

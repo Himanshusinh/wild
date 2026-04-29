@@ -27,11 +27,17 @@ export async function GET() {
     console.error('[signup-showcase] Error:', error)
     return NextResponse.json(
       {
-        responseStatus: 'error',
-        message: error?.message || 'Failed to load signup showcase',
+        // Keep endpoint resilient when upstream API is temporarily unavailable.
+        responseStatus: 'success',
+        message: error?.message || 'Signup showcase temporarily unavailable',
         data: [],
       },
-      { status: 500, headers: { 'Cache-Control': 'no-store' } },
+      {
+        status: 200,
+        headers: {
+          'Cache-Control': 'public, max-age=60, stale-while-revalidate=300',
+        },
+      },
     )
   }
 }

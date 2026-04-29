@@ -2282,6 +2282,9 @@ const InputBox = () => {
   const [seedream5LiteResolution, setSeedream5LiteResolution] = useState<
     "2K" | "3K"
   >("2K");
+  const [gptImage2CustomWidth, setGptImage2CustomWidth] = useState<number>(1024);
+  const [gptImage2CustomHeight, setGptImage2CustomHeight] =
+    useState<number>(1024);
   const [nanoBananaProResolution, setNanoBananaProResolution] = useState<
     "1K" | "2K" | "4K"
   >("2K");
@@ -4060,6 +4063,7 @@ const InputBox = () => {
       });
     });
     // No local writes to global history; backend tracks persistent history
+
 
     let firebaseHistoryId: string | undefined;
     // Read isPublic from backend policy (fallbacks handled internally)
@@ -7746,6 +7750,46 @@ const InputBox = () => {
                 : gptImage15OutputFormat;
           }
 
+          // GPT Image 2 on FAL supports image_size enums in addition to legacy aspect_ratio.
+          if (selectedModel === "openai/gpt-image-2") {
+            const gptImage2SizeMap: Record<string, string> = {
+              auto: "auto",
+              default: "default",
+              custom: "custom",
+              square_hd: "square_hd",
+              "1:1": "square",
+              "3:4": "portrait_4_3",
+              "9:16": "portrait_16_9",
+              "4:3": "landscape_4_3",
+              "16:9": "landscape_16_9",
+            };
+            const mappedImageSize = gptImage2SizeMap[frameSize];
+            if (mappedImageSize) {
+              generationPayload.image_size = mappedImageSize;
+            }
+            // Keep aspect_ratio for compatibility with existing backend/history logic.
+            const legacyAspectRatios = new Set([
+              "1:1",
+              "3:4",
+              "9:16",
+              "4:3",
+              "16:9",
+            ]);
+            if (legacyAspectRatios.has(frameSize)) {
+              generationPayload.aspect_ratio = frameSize;
+            } else if (frameSize === "custom") {
+              generationPayload.aspect_ratio = "custom";
+              generationPayload.width = Math.max(
+                64,
+                Math.min(4096, Number(gptImage2CustomWidth) || 1024),
+              );
+              generationPayload.height = Math.max(
+                64,
+                Math.min(4096, Number(gptImage2CustomHeight) || 1024),
+              );
+            }
+          }
+
           // For flux-pro models, convert frameSize to width/height dimensions (but keep frameSize for history)
           if (isFluxProModel) {
             const dimensions = convertFrameSizeToFluxProDimensions(frameSize);
@@ -8227,6 +8271,95 @@ const InputBox = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userData, dispatch, runningGenerationsCount]);
 
+
+  // Check for auto-resume intent on mount
+  useEffect(() => {
+    console.log('[AutoResume] ========================================');
+    console.log('[AutoResume] Effect running, userData:', !!userData, 'runningGenerationsCount:', runningGenerationsCount);
+    console.log('[AutoResume] localStorage keys:', Object.keys(localStorage));
+    console.log('[AutoResume] localStorage.wildmind_auto_resume_intent:', localStorage.getItem('wildmind_auto_resume_intent'));
+
+    // CRITICAL: Check for intent FIRST, before checking userData
+    const intent = getAutoResumeIntent();
+    console.log('[AutoResume] Checking for intent:', intent);
+    console.log('[AutoResume] Intent type:', intent?.type);
+    console.log('[AutoResume] Intent data:', intent?.data);
+
+    if (!intent || intent.type !== 'image') {
+      console.log('[AutoResume] No image intent found or wrong type');
+      return;
+    }
+
+    // Intent exists! Now check if we have userData
+    if (!userData) {
+      console.log('[AutoResume] ⏳ Intent found but waiting for userData...');
+      return; // Effect will re-run when userData becomes available
+    }
+
+    // We have both intent AND userData - proceed!
+    const { data } = intent;
+    console.log('[AutoResume] ✅ Found image intent AND userData, restoring state:', data);
+
+    if (data.prompt) {
+      console.log('[AutoResume] Restoring prompt:', data.prompt);
+      dispatch(setPrompt(data.prompt));
+    }
+    if (data.model) {
+      console.log('[AutoResume] Restoring model:', data.model);
+      dispatch(setSelectedModel(data.model));
+    }
+    if (data.imageCount) dispatch(setImageCount(data.imageCount));
+    if (data.frameSize) dispatch(setFrameSize(data.frameSize));
+    if (data.style) dispatch(setStyle(data.style));
+    if (data.uploadedImages) {
+      dispatch(setUploadedImages(data.uploadedImages));
+    }
+
+    if (data.selectedCharacters && Array.isArray(data.selectedCharacters)) {
+      data.selectedCharacters.forEach((char: any) => {
+        dispatch(addSelectedCharacter(char));
+      });
+    }
+
+    clearAutoResumeIntent();
+    console.log('[AutoResume] Intent cleared, scheduling auto-trigger in 1.5s');
+
+    // Auto-trigger generation after a short delay to ensure Redux state is updated
+    setTimeout(() => {
+      console.log('[AutoResume] Timeout fired! Checking conditions...');
+      console.log('[AutoResume] - Has prompt:', !!data.prompt);
+      console.log('[AutoResume] - Running count:', runningGenerationsCount);
+      console.log('[AutoResume] - Can trigger:', data.prompt && runningGenerationsCount < 4);
+
+      if (data.prompt && runningGenerationsCount < 4) {
+        console.log('[AutoResume] 🚀 AUTO-TRIGGERING GENERATION!');
+        const generationId = `gen-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        dispatch(addActiveGeneration({
+          id: generationId,
+          prompt: data.prompt,
+          model: data.model || selectedModel,
+          status: 'pending',
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          params: {
+            imageCount: data.imageCount || imageCount,
+            frameSize: data.frameSize || frameSize,
+            style: data.style || style,
+            uploadedImages: data.uploadedImages || []
+          }
+        }));
+        // Trigger generation directly without relying on handleGenerate in dependencies
+        console.log('[AutoResume] Calling handleGenerate with ID:', generationId);
+        handleGenerate(generationId);
+      } else {
+        console.log('[AutoResume] ❌ Conditions not met for auto-trigger');
+        if (!data.prompt) console.log('[AutoResume] - Missing prompt');
+        if (runningGenerationsCount >= 4) console.log('[AutoResume] - Queue full');
+      }
+    }, 1500);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userData, dispatch, runningGenerationsCount]);
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -8299,44 +8432,44 @@ const InputBox = () => {
         /* Simple fixed-size image containers */
         .image-item {
           width: 100%;
-          aspect-ratio: 1;
-          min-height: 165px;
           position: relative;
+          break-inside: avoid;
+          margin-bottom: 4px;
         }
 
         @media (min-width: 768px) {
           .image-item {
             width: 100%;
-            aspect-ratio: 1;
+            margin-bottom: 12px;
           }
         }
 
         /* Simple grid layout - stable to prevent reflow */
         .image-grid {
-          display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: 4px;
-          grid-auto-rows: auto;
+          column-count: 2;
+          column-gap: 4px;
         }
 
         @media (min-width: 768px) {
           .image-grid {
-            grid-template-columns: repeat(5, 1fr);
-            grid-auto-rows: auto;
-            gap: 12px;
+            column-count: 5;
+            column-gap: 12px;
           }
         }
 
         @media (min-width: 1024px) {
           .image-grid {
-            grid-template-columns: repeat(6, 1fr);
-            grid-auto-rows: auto;
-            gap: 4px;
+            column-count: 6;
+            column-gap: 4px;
             transition: all 0.5s ease-in-out;
           }
 
           .assistant-open .image-grid {
-            grid-template-columns: repeat(5, 1fr);
+            column-count: 5;
+          }
+          
+          .image-item {
+            margin-bottom: 4px;
           }
         }
 
@@ -8362,13 +8495,13 @@ const InputBox = () => {
           {/* History Header - Fixed during scroll */}
           <div className="fixed top-0 left-0 right-0 z-50 bg-[#0E0E12]/80 backdrop-blur-xl border-b border-white/5 shadow-xl transition-all duration-300 md:py-0 md:pl-20">
             <div className="mb-0 flex min-h-10 md:min-h-12 items-center justify-between pl-2 pr-2 md:h-auto md:pl-0">
-              <div className="flex w-full min-w-0 items-center gap-1.5 md:mt-3 md:w-auto md:gap-2">
+              <div className="flex w-full min-w-0 items-center gap-1.5 pl-11 md:mt-3 md:w-auto md:gap-2 md:pl-0">
                 <button
                   onClick={() => dispatch(setSidebarExpanded(true))}
-                  className="flex h-8 w-8 shrink-0 items-center justify-center text-white/70 transition-colors hover:text-white md:hidden"
+                  className="md:hidden fixed top-0 left-0 z-[60] flex h-10 w-10 items-center justify-center text-white/70 hover:text-white transition-colors cursor-pointer"
                   aria-label="Open menu"
                 >
-                  <Menu size={20} />
+                  <Menu size={24} />
                 </button>
                 <h2 className="min-w-0 flex-1 truncate whitespace-nowrap pr-1 pb-[1px] text-base font-bold leading-tight tracking-tight text-white md:flex-none md:pr-0 md:text-2xl">
                   Image Generation
@@ -9181,6 +9314,7 @@ const InputBox = () => {
                                       isNewEntry ? "animate-fade-in-up" : ""
                                     }`}
                                     style={{
+                                      aspectRatio: (entry.frameSize || '1:1').replace(':', ' / ').replace('x', ' / '),
                                       ...(isNewEntry
                                         ? {
                                             animation:
@@ -10430,6 +10564,43 @@ const InputBox = () => {
               >
                 <ImageCountDropdown />
                 <FrameSizeDropdown />
+                {selectedModel === "openai/gpt-image-2" &&
+                  frameSize === "custom" && (
+                    <>
+                      <input
+                        type="number"
+                        min={64}
+                        max={4096}
+                        value={gptImage2CustomWidth}
+                        onChange={(e) =>
+                          setGptImage2CustomWidth(
+                            Math.max(
+                              64,
+                              Math.min(4096, Number(e.target.value) || 1024),
+                            ),
+                          )
+                        }
+                        placeholder="Width"
+                        className="h-[22px] md:h-[32px] w-[72px] md:w-24 px-2 md:px-3 rounded-lg text-[10px] md:text-[13px] ring-1 ring-white/20 bg-transparent text-white/90 placeholder-white/40"
+                      />
+                      <input
+                        type="number"
+                        min={64}
+                        max={4096}
+                        value={gptImage2CustomHeight}
+                        onChange={(e) =>
+                          setGptImage2CustomHeight(
+                            Math.max(
+                              64,
+                              Math.min(4096, Number(e.target.value) || 1024),
+                            ),
+                          )
+                        }
+                        placeholder="Height"
+                        className="h-[22px] md:h-[32px] w-[72px] md:w-24 px-2 md:px-3 rounded-lg text-[10px] md:text-[13px] ring-1 ring-white/20 bg-transparent text-white/90 placeholder-white/40"
+                      />
+                    </>
+                  )}
                 <StyleSelector />
                 <LucidOriginOptions />
                 <PhoenixOptions />
@@ -10633,7 +10804,8 @@ const InputBox = () => {
                         dropdownId="gptImage15Quality"
                       />
                     </div>
-                    <div className="flex items-center gap-2 relative">
+                    {/* GPT Image 2: File format is handled by FileTypeDropdown (JPEG/PNG/WebP) — JPG button hidden */}
+                    {/* <div className="flex items-center gap-2 relative">
                       <ZTurboOutputFormatDropdown
                         outputFormat={gptImage15OutputFormat}
                         onOutputFormatChange={(val) =>
@@ -10641,18 +10813,57 @@ const InputBox = () => {
                         }
                         dropdownId="gptImage15OutputFormat"
                       />
-                    </div>
+                    </div> */}
                   </>
                 )}
               </div>
 
-              {/* Desktop: All dropdowns in one row */}
-              <div className="hidden md:flex flex-1 min-w-0 items-center">
+              {/* Desktop: Model fixed, only parameters scroll */}
+              <div className="hidden md:flex flex-1 min-w-0 items-center gap-2">
+                <div className="shrink-0">
+                  <ModelsDropdown />
+                </div>
                 <div className="flex min-w-0 flex-1 items-center overflow-x-auto overflow-y-visible no-scrollbar pr-[290px]">
                   <div className="flex min-w-max items-center gap-2">
-                  <ModelsDropdown />
                   <ImageCountDropdown />
                   <FrameSizeDropdown />
+                  {selectedModel === "openai/gpt-image-2" &&
+                    frameSize === "custom" && (
+                      <>
+                        <input
+                          type="number"
+                          min={64}
+                          max={4096}
+                          value={gptImage2CustomWidth}
+                          onChange={(e) =>
+                            setGptImage2CustomWidth(
+                              Math.max(
+                                64,
+                                Math.min(4096, Number(e.target.value) || 1024),
+                              ),
+                            )
+                          }
+                          placeholder="Width"
+                          className="h-[32px] w-24 px-3 rounded-lg text-[13px] ring-1 ring-white/20 bg-transparent text-white/90 placeholder-white/40"
+                        />
+                        <input
+                          type="number"
+                          min={64}
+                          max={4096}
+                          value={gptImage2CustomHeight}
+                          onChange={(e) =>
+                            setGptImage2CustomHeight(
+                              Math.max(
+                                64,
+                                Math.min(4096, Number(e.target.value) || 1024),
+                              ),
+                            )
+                          }
+                          placeholder="Height"
+                          className="h-[32px] w-24 px-3 rounded-lg text-[13px] ring-1 ring-white/20 bg-transparent text-white/90 placeholder-white/40"
+                        />
+                      </>
+                    )}
                   <StyleSelector />
                   <LucidOriginOptions />
                   <PhoenixOptions />
@@ -10858,7 +11069,8 @@ const InputBox = () => {
                           dropdownId="gptImage15Quality"
                         />
                       </div>
-                      <div className="flex items-center gap-2 relative">
+                      {/* GPT Image 2: File format is handled by FileTypeDropdown (JPEG/PNG/WebP) — JPG button hidden */}
+                      {/* <div className="flex items-center gap-2 relative">
                         <ZTurboOutputFormatDropdown
                           outputFormat={gptImage15OutputFormat}
                           onOutputFormatChange={(val) =>
@@ -10866,7 +11078,7 @@ const InputBox = () => {
                           }
                           dropdownId="gptImage15OutputFormat"
                         />
-                      </div>
+                      </div> */}
                     </>
                   )}
                   {/* Qwen Image Edit: no extra advanced controls */}

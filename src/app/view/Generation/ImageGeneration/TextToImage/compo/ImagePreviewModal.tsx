@@ -99,6 +99,30 @@ const isBackendStylePrompt = (text: string): boolean => {
   );
 };
 
+const extractUserPromptFromBackend = (text: string): string | null => {
+  if (!text) return null;
+  const marker = "PROJECT INPUTS:";
+  const idx = text.indexOf(marker);
+  if (idx < 0) return null;
+
+  const rest = text.substring(idx + marker.length);
+  const endIdx = rest.indexOf("CONTENT CONSTRAINT");
+  const extracted = endIdx >= 0 ? rest.substring(0, endIdx) : rest;
+
+  const lines = extracted.split('\n')
+    .map(line => line.trim())
+    .filter(line => line.length > 0)
+    .map(line => {
+      let l = line.replace(/^- /, "").trim();
+      l = l.replace(/^Scene description:\s*/i, "");
+      l = l.replace(/^Additional instructions:\s*/i, "");
+      return l;
+    })
+    .filter(line => line.length > 0 && !line.includes("(none)"));
+    
+  return lines.join("\n").trim() || null;
+};
+
 /** Same as Image Generation grid: library / device uploads are not real generations — skip in ←/→ navigation. */
 const normalizeModelKey = (t?: string) =>
   t ? String(t).replace(/[_-]/g, "-").toLowerCase() : "";
@@ -1220,8 +1244,12 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   const extractedStyle = selectedEntry?.style || extractStyleFromPrompt(selectedEntry?.prompt || '');
   const displayedStyle = extractedStyle && extractedStyle.toLowerCase() !== 'none' ? extractedStyle : null;
   const displayedAspect = getAspectRatio();
-  const rawUserPrompt = (selectedEntry as any)?.userPrompt?.trim() || '';
-  const userPromptToDisplay = isBackendStylePrompt(rawUserPrompt) ? '' : rawUserPrompt;
+  const rawUserPrompt = (selectedEntry as any)?.userPrompt?.trim() || (selectedEntry as any)?.prompt?.trim() || '';
+  let userPromptToDisplay = rawUserPrompt;
+  if (isBackendStylePrompt(rawUserPrompt)) {
+    const extracted = extractUserPromptFromBackend(rawUserPrompt);
+    userPromptToDisplay = extracted || "";
+  }
   const cleanUserPrompt = userPromptToDisplay ? getCleanPrompt(userPromptToDisplay) : '';
   const hasUserPrompt = Boolean(cleanUserPrompt);
   const promptForActions = cleanUserPrompt || getCleanPrompt((selectedEntry as any)?.prompt || '');

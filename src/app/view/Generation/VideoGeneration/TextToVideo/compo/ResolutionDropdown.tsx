@@ -31,6 +31,8 @@ const ResolutionDropdown: React.FC<ResolutionDropdownProps> = ({
   const getAvailableResolutions = () => {
     if (selectedModel === "wan-2.2-animate-replace") {
       return ["480p", "720p"]; // WAN 2.2 Animate Replace only supports 480p and 720p
+    } else if (selectedModel?.startsWith("alibaba/happy-horse")) {
+      return ["720p", "1080p"];
     } else if (
       selectedModel === "seedance-2.0-t2v" ||
       selectedModel === "seedance-2.0-r2v" ||

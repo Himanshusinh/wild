@@ -84,7 +84,7 @@ const isApiDebugEnabled = (): boolean => {
       return true;
     const flag = localStorage.getItem("api_debug");
     if (flag && flag.toLowerCase() === "true") return true;
-  } catch {}
+  } catch { }
   return process.env.NEXT_PUBLIC_API_DEBUG === "true";
 };
 
@@ -151,10 +151,10 @@ const normalizeInlineWorkflowImages = async (
 
   if (
     value &&
-    typeof value === "object" &&
-    typeof File === "undefined" ? true : !(value instanceof File) &&
-    typeof Blob === "undefined" ? true : !(value instanceof Blob) &&
-    typeof FormData === "undefined" ? true : !(value instanceof FormData)
+      typeof value === "object" &&
+      typeof File === "undefined" ? true : !(value instanceof File) &&
+        typeof Blob === "undefined" ? true : !(value instanceof Blob) &&
+          typeof FormData === "undefined" ? true : !(value instanceof FormData)
   ) {
     const entries = await Promise.all(
       Object.entries(value).map(async ([key, nestedValue]) => [
@@ -287,19 +287,19 @@ axiosInstance.interceptors.request.use(async (config) => {
         // AxiosHeaders supports .delete(); plain objects use delete.
         try {
           if (typeof hdrs.delete === "function") hdrs.delete("Content-Type");
-        } catch {}
+        } catch { }
         try {
           if (typeof hdrs.delete === "function") hdrs.delete("content-type");
-        } catch {}
+        } catch { }
         try {
           delete hdrs["Content-Type"];
-        } catch {}
+        } catch { }
         try {
           delete hdrs["content-type"];
-        } catch {}
+        } catch { }
         anyConfig.headers = hdrs;
       }
-    } catch {}
+    } catch { }
 
     // Use backend baseURL for all calls; session is now direct to backend
     const url = typeof config.url === "string" ? config.url : "";
@@ -324,7 +324,7 @@ axiosInstance.interceptors.request.use(async (config) => {
             );
           await new Promise((r) => setTimeout(r, 100));
         }
-      } catch {}
+      } catch { }
 
       // CRITICAL FIX: Try to get fresh token from Firebase first, fallback to stored token
       // This prevents using expired tokens from localStorage
@@ -400,7 +400,7 @@ axiosInstance.interceptors.request.use(async (config) => {
           headers["Expires"] = "0";
           config.headers = headers;
         }
-      } catch {}
+      } catch { }
       // Leave baseURL pointing to external backend (default)
     }
 
@@ -448,7 +448,7 @@ axiosInstance.interceptors.request.use(async (config) => {
     // Add strong FingerprintJS device hash for backend risk scoring
     try {
       headers["X-Device-Hash"] = await getDeviceHash();
-    } catch {}
+    } catch { }
 
     // Do NOT set X-Forwarded-* headers from the browser. Proxies (ngrok/Vercel) will set them.
 
@@ -463,7 +463,7 @@ axiosInstance.interceptors.request.use(async (config) => {
             baseURL: config.baseURL,
           });
       }
-    } catch {}
+    } catch { }
 
     // Attach bearer token for protected backend routes (primary auth path); cookie is optional fallback
     try {
@@ -510,7 +510,7 @@ axiosInstance.interceptors.request.use(async (config) => {
               );
             await new Promise((r) => setTimeout(r, 100));
           }
-        } catch {}
+        } catch { }
       }
       if (isProtectedApi) {
         let idToken = getStoredIdToken();
@@ -596,10 +596,10 @@ axiosInstance.interceptors.request.use(async (config) => {
           },
         );
       }
-    } catch {}
+    } catch { }
 
     config.headers = headers;
-  } catch {}
+  } catch { }
   return config;
 });
 
@@ -687,7 +687,7 @@ export async function ensureSessionReady(
     // Hint cookie to help middleware if needed
     try {
       document.cookie = "auth_hint=1; Max-Age=120; Path=/; SameSite=Lax";
-    } catch {}
+    } catch { }
 
     // Always get a fresh token from Firebase to ensure validity
     let idToken: string | null = null;
@@ -771,7 +771,7 @@ const markSessionCreated = () => {
   lastSessionCreateAt = getNow();
   try {
     sessionStorage.setItem("session_last_create", String(lastSessionCreateAt));
-  } catch {}
+  } catch { }
 };
 
 // Session refresh state management
@@ -979,7 +979,7 @@ axiosInstance.interceptors.response.use(
           // Silently fail - non-critical
         });
       }
-    } catch {}
+    } catch { }
     return response;
   },
   async (error) => {
@@ -1055,7 +1055,7 @@ axiosInstance.interceptors.response.use(
           await showGenericApiErrorToast(error, requestUrl);
         }
       }
-    } catch {}
+    } catch { }
     try {
       const urlStr = String(error?.config?.url || "");
       if (urlStr.includes("/api/auth/logout")) {
@@ -1067,7 +1067,7 @@ axiosInstance.interceptors.response.use(
           baseURL: error?.config?.baseURL,
         });
       }
-    } catch {}
+    } catch { }
 
     if (status !== 401 || isAuthCredentialRoute) {
       // ── Admin-panel moderation errors (403 with specific code) ──────────
@@ -1102,7 +1102,7 @@ axiosInstance.interceptors.response.use(
               isOpen: true,
             }),
           );
-        } catch {}
+        } catch { }
         // Do NOT show the generic error toast for moderation blocks
         return Promise.reject(error);
       }
@@ -1132,7 +1132,7 @@ axiosInstance.interceptors.response.use(
             status: error?.response?.status,
             data: error?.response?.data,
           });
-      } catch {}
+      } catch { }
       return Promise.reject(error);
     }
 
@@ -1302,7 +1302,7 @@ axiosInstance.interceptors.response.use(
     } catch (e) {
       try {
         if (isApiDebugEnabled()) console.error("[API][401][refresh] failed", e);
-      } catch {}
+      } catch { }
       return Promise.reject(error);
     } finally {
       isRefreshing = false;
