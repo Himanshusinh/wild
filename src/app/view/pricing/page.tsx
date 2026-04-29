@@ -56,16 +56,14 @@ const PricingPage: React.FC = () => {
         <div className="absolute bottom-[-20%] right-[-10%] w-[600px] h-[600px] bg-indigo-600/[0.05] rounded-full blur-[100px]" />
       </div>
 
-      <div className="md:hidden sticky top-0 z-50 bg-[#07070B]/80 backdrop-blur-md px-4 py-3 flex items-center">
-        <button
-          type="button"
-          onClick={() => dispatch(setSidebarExpanded(true))}
-          className="flex h-10 w-10 items-center justify-center shrink-0 text-white/70 hover:text-white transition-colors cursor-pointer"
-          aria-label="Toggle menu"
-        >
-          <Menu size={24} />
-        </button>
-      </div>
+      <button
+        type="button"
+        onClick={() => dispatch(setSidebarExpanded(true))}
+        className="md:hidden fixed top-0 left-0 z-[60] flex h-10 w-10 items-center justify-center text-white/70 hover:text-white transition-colors cursor-pointer"
+        aria-label="Toggle menu"
+      >
+        <Menu size={24} />
+      </button>
 
       <PricingPlans isAuthenticated={isAuthenticated} />
 

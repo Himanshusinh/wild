@@ -8495,13 +8495,13 @@ const InputBox = () => {
           {/* History Header - Fixed during scroll */}
           <div className="fixed top-0 left-0 right-0 z-50 bg-[#0E0E12]/80 backdrop-blur-xl border-b border-white/5 shadow-xl transition-all duration-300 md:py-0 md:pl-20">
             <div className="mb-0 flex min-h-10 md:min-h-12 items-center justify-between pl-2 pr-2 md:h-auto md:pl-0">
-              <div className="flex w-full min-w-0 items-center gap-1.5 md:mt-3 md:w-auto md:gap-2">
+              <div className="flex w-full min-w-0 items-center gap-1.5 pl-11 md:mt-3 md:w-auto md:gap-2 md:pl-0">
                 <button
                   onClick={() => dispatch(setSidebarExpanded(true))}
-                  className="flex h-8 w-8 shrink-0 items-center justify-center text-white/70 transition-colors hover:text-white md:hidden"
+                  className="md:hidden fixed top-0 left-0 z-[60] flex h-10 w-10 items-center justify-center text-white/70 hover:text-white transition-colors cursor-pointer"
                   aria-label="Open menu"
                 >
-                  <Menu size={20} />
+                  <Menu size={24} />
                 </button>
                 <h2 className="min-w-0 flex-1 truncate whitespace-nowrap pr-1 pb-[1px] text-base font-bold leading-tight tracking-tight text-white md:flex-none md:pr-0 md:text-2xl">
                   Image Generation
