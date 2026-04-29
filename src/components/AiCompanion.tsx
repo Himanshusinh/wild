@@ -61,16 +61,6 @@ export default function AiCompanion() {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Hide on 404 and error pages
-  const is404 = pathname === '/not-found' || pathname?.includes('/404');
-  const isError = pathname === '/error' || pathname?.includes('/error');
-  const isAuthRoute =
-    pathname?.startsWith('/view/signup') ||
-    pathname?.startsWith('/view/signin') ||
-    pathname?.startsWith('/view/forgot-password') ||
-    pathname?.startsWith('/auth/reset-password');
-  const shouldHide = is404 || isError || isAuthRoute;
-
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     if (isOpen) {
@@ -92,12 +82,18 @@ export default function AiCompanion() {
     }
   }, [buttonPosition]);
 
-  // Hide on 404, error, and coming-soon pages
+  // Hide on 404, error, coming-soon, and auth pages
   const is404 = pathname === '/not-found' || pathname?.includes('/404');
   const isError = pathname === '/error' || pathname?.includes('/error');
   const isComingSoon = pathname === '/coming-soon' || pathname?.startsWith('/coming-soon/');
+  const isAuthRoute =
+    pathname?.startsWith('/view/signup') ||
+    pathname?.startsWith('/view/signin') ||
+    pathname?.startsWith('/view/forgot-password') ||
+    pathname?.startsWith('/auth/reset-password');
 
-  if (is404 || isError || isComingSoon) {
+  if (is404 || isError || isComingSoon || isAuthRoute) {
+
     return null;
   }
 
@@ -232,9 +228,6 @@ export default function AiCompanion() {
     }
   };
 
-  if (shouldHide) {
-    return null;
-  }
 
   return (
     <>

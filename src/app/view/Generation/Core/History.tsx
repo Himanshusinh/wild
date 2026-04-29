@@ -165,7 +165,7 @@ const History = () => {
   };
 
   const getVisibleUserPrompt = (entry: HistoryEntry): string => {
-    const p = ((entry as any)?.userPrompt || "").trim();
+    const p = ((entry as any)?.userPrompt || entry?.prompt || "").trim();
     if (!p) return "";
     return isBackendStylePrompt(p) ? "" : getCleanPrompt(p);
   };

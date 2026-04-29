@@ -1220,7 +1220,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   const extractedStyle = selectedEntry?.style || extractStyleFromPrompt(selectedEntry?.prompt || '');
   const displayedStyle = extractedStyle && extractedStyle.toLowerCase() !== 'none' ? extractedStyle : null;
   const displayedAspect = getAspectRatio();
-  const rawUserPrompt = (selectedEntry as any)?.userPrompt?.trim() || '';
+  const rawUserPrompt = (selectedEntry as any)?.userPrompt?.trim() || (selectedEntry as any)?.prompt?.trim() || '';
   const userPromptToDisplay = isBackendStylePrompt(rawUserPrompt) ? '' : rawUserPrompt;
   const cleanUserPrompt = userPromptToDisplay ? getCleanPrompt(userPromptToDisplay) : '';
   const hasUserPrompt = Boolean(cleanUserPrompt);
