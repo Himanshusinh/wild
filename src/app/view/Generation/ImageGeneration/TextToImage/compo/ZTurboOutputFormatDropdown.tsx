@@ -11,13 +11,15 @@ type ZTurboOutputFormatDropdownProps = {
   outputFormat: 'png' | 'jpg' | 'webp';
   onOutputFormatChange: (format: 'png' | 'jpg' | 'webp') => void;
   dropdownId: string;
+  options?: Array<'png' | 'jpg' | 'webp'>;
 };
 
 const ZTurboOutputFormatDropdown = ({ 
   openDirection = 'up',
   outputFormat,
   onOutputFormatChange,
-  dropdownId
+  dropdownId,
+  options = ['png', 'jpg', 'webp'],
 }: ZTurboOutputFormatDropdownProps) => {
   const dispatch = useAppDispatch();
   const activeDropdown = useAppSelector((state: any) => state.ui?.activeDropdown);
@@ -26,8 +28,6 @@ const ZTurboOutputFormatDropdown = ({
   const [isActiveInstance, setIsActiveInstance] = useState(false);
   const buttonJustClickedRef = useRef(false);
   const shouldCloseRef = useRef(false);
-
-  const options: ('png' | 'jpg' | 'webp')[] = ['png', 'jpg', 'webp'];
 
   // Reset active instance when dropdown closes
   useEffect(() => {
@@ -199,7 +199,7 @@ const ZTurboOutputFormatDropdown = ({
         <button
           ref={buttonRef}
           onClick={handleDropdownClick}
-          className="h-[28px] md:h-[32px] md:px-4 px-2 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 bg-transparent text-white/90 hover:bg-white/5 transition flex items-center gap-2"
+          className="h-[23px] md:h-[32px] md:px-4 px-2 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 bg-transparent text-white/90 hover:bg-white/5 transition flex items-center gap-2"
         >
           {outputFormat.toUpperCase()}
           <ChevronUp className={`w-4 h-4 transition-transform ${activeDropdown === dropdownId ? 'rotate-180' : ''}`} />

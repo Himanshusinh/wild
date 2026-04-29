@@ -1,6 +1,8 @@
 {
   "compilerOptions": {
     "target": "ES2017",
+    "ignoreDeprecations": "5.0",
+    "baseUrl": ".",
     "lib": [
       "dom",
       "dom.iterable",
@@ -13,10 +15,10 @@
     "esModuleInterop": true,
     "module": "esnext",
     "moduleResolution": "bundler",
-    "resolveJsonModule": true,
+    "resolveJsonModule": true, 
     "isolatedModules": true,
     "jsx": "react-jsx",
-    "incremental": true,
+    "incremental": true,  
     "plugins": [
       {
         "name": "next"
@@ -30,14 +32,16 @@
         "./src/image_edit/*"
       ]
     },
-    "types": ["jest"]
+    "types": [
+      "jest",
+      "node"
+    ]
   },
   "include": [
     "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",
-    "src/app/view/pricing/compo/FAQs.tsx",
     ".next/dev/types/**/*.ts"
   ],
   "exclude": [

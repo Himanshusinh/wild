@@ -6,6 +6,8 @@ import Image from 'next/image';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { setStyle } from '@/store/slices/generationSlice';
 import { STYLE_CATALOG } from '@/styles/stylesCatalog';
+import { STYLES as INDIAN_STYLES } from '@/app/view/HomePage/compo/CreativeStyle';
+import { X } from 'lucide-react';
 
 // Wrapper component for style preview images with error handling
 const StylePreviewImage = ({ src, alt }: { src: string; alt: string }) => {
@@ -22,8 +24,8 @@ const StylePreviewImage = ({ src, alt }: { src: string; alt: string }) => {
       src={imgSrc} 
       alt={alt} 
       fill 
-      sizes="(max-width: 768px) 33vw, 25vw" 
-      style={{ objectFit: 'cover' }} 
+      sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 20vw" 
+      className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
       unoptimized
       onError={() => {
         if (!hasError) {
@@ -48,6 +50,7 @@ const StylePopup = ({ isOpen, onClose }: StylePopupProps) => {
   const theme = useAppSelector((state: any) => state.ui?.theme || 'dark');
   const [mounted, setMounted] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [activeCategory, setActiveCategory] = useState<'general' | 'indian'>('general');
 
   useEffect(() => {
     setMounted(true);
@@ -61,10 +64,10 @@ const StylePopup = ({ isOpen, onClose }: StylePopupProps) => {
         clearTimeout(timeoutRef.current);
       }
       
-      // Set new timeout for 5 seconds
+      // Set new timeout for 1 minute (Bug 46 fix)
       timeoutRef.current = setTimeout(() => {
         onClose();
-      }, 20000);
+      }, 60000);
     } else {
       // Clear timeout if popup is closed
       if (timeoutRef.current) {
@@ -118,7 +121,6 @@ const StylePopup = ({ isOpen, onClose }: StylePopupProps) => {
     return STYLE_CATALOG.filter(style => originalStyles.has(style.value));
   })();
 
-  // Auto-switch to supported style when model changes
   useEffect(() => {
     const currentStyleValue = currentStyle;
     const isCurrentStyleSupported = styles.some(style => style.value === currentStyleValue);
@@ -128,6 +130,15 @@ const StylePopup = ({ isOpen, onClose }: StylePopupProps) => {
       dispatch(setStyle(styles[0].value));
     }
   }, [selectedModel, styles, currentStyle, dispatch]);
+
+  const allStyles = activeCategory === 'general' ? styles : INDIAN_STYLES.map(s => ({
+    name: s.title,
+    value: s.id,
+    image: s.image,
+    description: s.desc,
+    state: s.name,
+    isIndian: true
+  }));
 
   const handleStyleSelect = (styleValue: string) => {
     dispatch(setStyle(styleValue));
@@ -140,86 +151,95 @@ const StylePopup = ({ isOpen, onClose }: StylePopupProps) => {
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[100]"
+        className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-xl p-3 sm:p-6"
         onClick={onClose}
-        style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
-      />
-
-      {/* Popup */}
-      <div
-        className="fixed inset-0 flex items-center justify-center z-[101] p-4 pointer-events-none"
         style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
       >
         <div
-          className="relative w-full max-w-2xl max-h-[70vh] rounded-lg backdrop-blur-xl overflow-hidden shadow-2xl pointer-events-auto transform"
-          style={{
-            backgroundColor: theme === 'dark' ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.3)',
-            border: `1px solid ${theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
-            transform: 'translate3d(0, 0, 0)'
-          }}
+          className="relative w-full max-w-8xl max-h-[90vh] flex flex-col overflow-hidden rounded-3xl border border-white/10 bg-[#0E0E12] shadow-[0_32px_120px_rgba(0,0,0,0.8)]"
+          onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-white/10">
-            <h2
-              className="text-lg font-semibold"
-              style={{ color: theme === 'dark' ? '#ffffff' : '#000000' }}
-            >
-              Choose Style
-            </h2>
+          <div className="flex items-center justify-between border-b border-white/5 px-5 py-4 sm:px-7">
+            <div>
+              <h2 className="text-2xl font-bold text-white tracking-tight sm:text-3xl" style={{ fontFamily: "var(--font-bebas-neue), 'Bebas Neue', sans-serif" }}>
+                Choose Style
+              </h2>
+              <p className="text-xs text-white/30 font-medium uppercase tracking-widest mt-1">Select a style to begin generating</p>
+            </div>
             <button
               onClick={onClose}
-              className="p-1 rounded-full hover:bg-white/10 transition-colors"
-              style={{ color: theme === 'dark' ? '#ffffff' : '#000000' }}
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-white/40 transition hover:border-white/20 hover:bg-white/5 hover:text-white"
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
-              </svg>
+              <X size={20} />
+            </button>
+          </div>
+
+          {/* Category Tabs */}
+          <div className="flex items-center gap-2 px-5 py-3 border-b border-white/5 bg-white/[0.02]">
+            <button
+              onClick={() => setActiveCategory('general')}
+              className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all ${
+                activeCategory === 'general'
+                  ? 'bg-white text-black'
+                  : 'text-white/40 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              General Styles
+            </button>
+            <button
+              onClick={() => setActiveCategory('indian')}
+              className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all ${
+                activeCategory === 'indian'
+                  ? 'bg-white text-black'
+                  : 'text-white/40 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              Indian Styles
             </button>
           </div>
 
           {/* Styles Grid */}
-          <div className="p-4 overflow-y-auto max-h-[calc(70vh-80px)] custom-scrollbar">
-            <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
-              {styles.map((style) => (
-                <div
+          <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-white/[0.06] [&::-webkit-scrollbar]:w-1.5 custom-scrollbar">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
+              {allStyles.map((style) => (
+                <button
                   key={style.value}
                   onClick={() => handleStyleSelect(style.value)}
-                  className={`
-                    relative group cursor-pointer rounded-xl overflow-hidden transition-all duration-200
-                    ${currentStyle === style.value 
-                      ? 'ring-2 ring-blue-500 scale-105' 
-                      : 'hover:scale-105 hover:shadow-lg'
-                    }
-                  `}
+                  className="group flex flex-col text-left transition-all hover:-translate-y-1"
                 >
-                  {/* Style Preview Image */}
-                  <div className="aspect-square relative bg-gray-200 rounded-lg overflow-hidden">
+                  <div className={`relative aspect-[4/3] w-full overflow-hidden rounded-2xl border ${currentStyle === style.value ? 'border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.5)]' : 'border-white/10'} bg-[#18181f] transition-all group-hover:border-white/20`}>
                     <StylePreviewImage src={style.image} alt={style.name} />
-                    <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity" />
-                    <div className="absolute bottom-2 left-2 text-white/95 text-xs px-2 py-1 rounded bg-black/40 backdrop-blur-sm">
-                      {style.name}
-                    </div>
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-80" />
                     
-                    {/* Selected Indicator */}
-                    {currentStyle === style.value && (
-                      <div className="absolute top-1 right-1 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="white">
-                          <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
-                        </svg>
+                    <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between">
+                      <div className="flex flex-col">
+                        <div className="text-[18px] font-bold uppercase tracking-wider text-white sm:text-[22px]" style={{ fontFamily: "var(--font-bebas-neue), 'Bebas Neue', sans-serif" }}>
+                          {style.name}
+                        </div>
+                        {activeCategory === 'indian' && (
+                          <>
+                            <div className="mt-0.5 text-[10px] font-semibold tracking-wide text-white/85">
+                              {(style as any).state}
+                            </div>
+                            <div className="mt-0.5 text-[9px] leading-snug text-white/50 line-clamp-1">
+                              {(style as any).description}
+                            </div>
+                          </>
+                        )}
                       </div>
-                    )}
+                      
+                      {/* Selected Indicator */}
+                      {currentStyle === style.value && (
+                        <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center shrink-0 mb-1 ml-2">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="white">
+                            <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                          </svg>
+                        </div>
+                      )}
+                    </div>
                   </div>
-
-                  {/* Style Info */}
-                  <div className="p-2">
-                    <h3
-                      className="font-medium text-xs mb-1"
-                      style={{ color: theme === 'dark' ? '#ffffff' : '#000000' }}
-                    >
-                      {style.name}
-                    </h3>
-                  </div>
-                </div>
+                </button>
               ))}
             </div>
           </div>

@@ -2,6 +2,23 @@ import { CanvasProject, CanvasProjectsResponse } from '@/types/canvasTypes';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api-gateway-services-wildmind.onrender.com';
 
+export interface CanvasInvitation {
+    id: string;
+    projectId: string;
+    projectName: string;
+    ownerUid: string;
+    senderUid: string;
+    senderEmail?: string;
+    senderUsername?: string;
+    recipientUid: string;
+    recipientEmail: string;
+    recipientUsername?: string;
+    role: 'owner' | 'editor' | 'viewer';
+    status: 'pending' | 'accepted' | 'dismissed';
+    createdAt: string;
+    updatedAt: string;
+}
+
 /**
  * Get Firebase ID token for Bearer authentication (fallback when cookies don't work)
  */
@@ -208,6 +225,84 @@ export async function deleteProject(projectId: string): Promise<void> {
         }
     } catch (error) {
         console.error('Error deleting canvas project:', error);
+        throw error;
+    }
+}
+
+export async function fetchCanvasInvitations(): Promise<CanvasInvitation[]> {
+    try {
+        const bearerToken = await getFirebaseIdToken();
+        const headers: HeadersInit = {};
+        if (bearerToken) {
+            headers['Authorization'] = `Bearer ${bearerToken}`;
+        }
+
+        const response = await fetch(`${API_BASE_URL}/api/canvas/invitations`, {
+            method: 'GET',
+            credentials: 'include',
+            headers,
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to fetch canvas invitations: ${response.statusText}`);
+        }
+
+        const result = await response.json();
+        return result.data?.invitations || [];
+    } catch (error) {
+        console.error('Error fetching canvas invitations:', error);
+        throw error;
+    }
+}
+
+export async function acceptCanvasInvitation(invitationId: string): Promise<CanvasInvitation> {
+    try {
+        const bearerToken = await getFirebaseIdToken();
+        const headers: HeadersInit = {};
+        if (bearerToken) {
+            headers['Authorization'] = `Bearer ${bearerToken}`;
+        }
+
+        const response = await fetch(`${API_BASE_URL}/api/canvas/invitations/${invitationId}/accept`, {
+            method: 'POST',
+            credentials: 'include',
+            headers,
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to accept canvas invitation: ${response.statusText}`);
+        }
+
+        const result = await response.json();
+        return result.data?.invitation;
+    } catch (error) {
+        console.error('Error accepting canvas invitation:', error);
+        throw error;
+    }
+}
+
+export async function dismissCanvasInvitation(invitationId: string): Promise<CanvasInvitation> {
+    try {
+        const bearerToken = await getFirebaseIdToken();
+        const headers: HeadersInit = {};
+        if (bearerToken) {
+            headers['Authorization'] = `Bearer ${bearerToken}`;
+        }
+
+        const response = await fetch(`${API_BASE_URL}/api/canvas/invitations/${invitationId}/dismiss`, {
+            method: 'POST',
+            credentials: 'include',
+            headers,
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to dismiss canvas invitation: ${response.statusText}`);
+        }
+
+        const result = await response.json();
+        return result.data?.invitation;
+    } catch (error) {
+        console.error('Error dismissing canvas invitation:', error);
         throw error;
     }
 }

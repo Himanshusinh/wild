@@ -1,6 +1,5 @@
 "use client"
 
-import Image from "next/image"
 import { useEffect, useMemo, useState } from "react"
 import { toDirectUrl, toMediaProxy } from "@/lib/thumb"
 
@@ -9,17 +8,47 @@ interface ImageData {
   prompt?: string
   generationId?: string
   creator?: { username?: string; photoURL?: string }
+  width?: number
+  height?: number
 }
 
 const DEFAULT_IMAGE_URL =
   "https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fsignup%2F3.png?alt=media&token=e67afc08-10e0-4710-b251-d9031ef14026"
 
-const TARGET_IMAGE_COUNT = 6
+const TARGET_IMAGE_COUNT = 20
+const SIGNUP_GALLERY_CACHE_KEY = "wildmind_signup_gallery_v1"
 
 const fallbackImages: ImageData[] = Array.from({ length: TARGET_IMAGE_COUNT }).map((_, i) => ({
   imageUrl: `${DEFAULT_IMAGE_URL}&v=${i}`,
   prompt: "Featured creation",
 }))
+
+const dedupeImages = (items: ImageData[]): ImageData[] => {
+  const uniqueMap = new Map<string, ImageData>()
+  for (const item of items) {
+    const key = canonicalImageKey(item.imageUrl)
+    if (!key || uniqueMap.has(key)) continue
+    uniqueMap.set(key, item)
+  }
+  return Array.from(uniqueMap.values())
+}
+
+const normalizeSignupShowcasePayload = (payload: any): ImageData[] => {
+  const items = Array.isArray(payload?.data) ? payload.data : Array.isArray(payload) ? payload : []
+  return items
+    .map((item: any) => ({
+      imageUrl:
+        normalizeMediaUrl(item?.imageUrl) ||
+        normalizeMediaUrl(item?.images?.[0]?.url) ||
+        normalizeMediaUrl(item?.images?.[0]?.originalUrl),
+      prompt: item?.prompt || item?.title || "Featured creation",
+      generationId: item?.generationId || item?.id,
+      creator: item?.creator || item?.createdBy,
+      width: toPositiveNumber(item?.width),
+      height: toPositiveNumber(item?.height),
+    }))
+    .filter((item: ImageData) => !!item.imageUrl)
+}
 
 const normalizeMediaUrl = (url?: string): string | undefined => {
   if (!url || typeof url !== "string") return undefined
@@ -39,79 +68,100 @@ const normalizeMediaUrl = (url?: string): string | undefined => {
   return toDirectUrl(trimmed)
 }
 
-const resolveItemImageUrl = (item: any): string | undefined => {
-  const mediaCandidates = [
-    item?.url,
-    item?.webpUrl,
-    item?.avifUrl,
-    item?.thumbnailUrl,
-    item?.storagePath,
+const canonicalImageKey = (url?: string): string => {
+  if (!url) return ""
+  try {
+    const u = new URL(url, window.location.origin)
+    // External proxy URLs: canonicalize by their real target URL
+    const proxiedExternal = u.searchParams.get("url")
+    if (proxiedExternal) {
+      return decodeURIComponent(proxiedExternal).split("?")[0]!.trim().toLowerCase()
+    }
+    // Other URLs: ignore query params for dedup
+    return `${u.origin}${u.pathname}`.trim().toLowerCase()
+  } catch {
+    return String(url).split("?")[0]!.trim().toLowerCase()
+  }
+}
+
+const toPositiveNumber = (value: any): number | undefined => {
+  const n = Number(value)
+  return Number.isFinite(n) && n > 0 ? n : undefined
+}
+
+const resolveItemMedia = (item: any): { imageUrl?: string; width?: number; height?: number } => {
+  const candidates = [
+    item,
+    ...(Array.isArray(item?.images) ? item.images : []),
+    ...(Array.isArray(item?.videos) ? item.videos : []),
   ]
 
-  for (const candidate of mediaCandidates) {
-    const resolved = normalizeMediaUrl(candidate)
-    if (resolved) return resolved
-  }
-
-  if (Array.isArray(item?.images)) {
-    for (const image of item.images) {
-      const nestedCandidates = [
-        image?.url,
-        image?.webpUrl,
-        image?.avifUrl,
-        image?.thumbnailUrl,
-        image?.storagePath,
-      ]
-      for (const candidate of nestedCandidates) {
-        const resolved = normalizeMediaUrl(candidate)
-        if (resolved) return resolved
-      }
+  for (const media of candidates) {
+    const mediaCandidates = [
+      media?.url,
+      media?.storagePath,
+      media?.avifUrl,
+      media?.webpUrl,
+      media?.thumbnailUrl,
+    ]
+    for (const candidate of mediaCandidates) {
+      const resolved = normalizeMediaUrl(candidate)
+      if (!resolved) continue
+      const width =
+        toPositiveNumber(media?.width) ||
+        toPositiveNumber(media?.dimensions?.width) ||
+        toPositiveNumber(media?.metadata?.width)
+      const height =
+        toPositiveNumber(media?.height) ||
+        toPositiveNumber(media?.dimensions?.height) ||
+        toPositiveNumber(media?.metadata?.height)
+      return { imageUrl: resolved, width, height }
     }
   }
 
-  return undefined
+  return {}
 }
 
 const fetchArtStationImages = async (): Promise<ImageData[]> => {
   try {
-    const url = new URL("/api/feed", window.location.origin)
-    url.searchParams.set("mode", "image")
-    url.searchParams.set("limit", "18")
-    url.searchParams.set("sortBy", "aestheticScore")
-    url.searchParams.set("sortOrder", "desc")
-
-    const response = await fetch(url.toString(), {
+    const response = await fetch("/api/signup-showcase", {
       method: "GET",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
-      cache: "no-store",
+      cache: "default",
     })
-
-    if (!response.ok) {
-      throw new Error(`Feed request failed with ${response.status}`)
-    }
-
+    if (!response.ok) return []
     const data = await response.json()
-    const payload = data?.data || data
-    const items = Array.isArray(payload?.items) ? payload.items : []
-
-    return items
-      .map((item: any) => {
-        const imageUrl = resolveItemImageUrl(item)
-        if (!imageUrl) return null
-        return {
-          imageUrl,
-          prompt: item?.prompt || item?.title || "Featured creation",
-          generationId: item?.id,
-          creator: item?.creator,
-        } satisfies ImageData
-      })
-      .filter((item: ImageData | null): item is ImageData => Boolean(item))
+    return dedupeImages(normalizeSignupShowcasePayload(data))
   } catch (error) {
     console.error("[Signup] Failed to fetch ArtStation gallery images:", error)
   }
 
   return []
+}
+
+const fetchSignupRandomImage = async (): Promise<ImageData | null> => {
+  try {
+    const response = await fetch("/api/signup-image", {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      cache: "no-store",
+    })
+    if (!response.ok) return null
+    const data = await response.json()
+    const payload = data?.data
+    if (!payload?.imageUrl) return null
+    return {
+      imageUrl: payload.imageUrl,
+      prompt: payload?.prompt || "Featured creation",
+      generationId: payload?.generationId,
+      creator: payload?.creator,
+      width: toPositiveNumber(payload?.width),
+      height: toPositiveNumber(payload?.height),
+    }
+  } catch {
+    return null
+  }
 }
 
 export default function RightImageGallery() {
@@ -125,6 +175,20 @@ export default function RightImageGallery() {
       return
     }
 
+    try {
+      const cached = window.sessionStorage.getItem(SIGNUP_GALLERY_CACHE_KEY)
+      if (cached) {
+        const parsed = dedupeImages(JSON.parse(cached))
+          .filter((item) => !!item?.imageUrl)
+        if (parsed.length > 0) {
+          setImages(parsed.slice(0, TARGET_IMAGE_COUNT))
+          setIsLoading(false)
+        }
+      }
+    } catch {
+      // ignore invalid storage cache
+    }
+
     const preload = (url?: string) => {
       if (!url) return
       const img = new window.Image()
@@ -133,15 +197,48 @@ export default function RightImageGallery() {
 
     const fetchImages = async () => {
       try {
-        const list = await fetchArtStationImages()
+        const feedList = await fetchArtStationImages()
+        let finalList = feedList.length > 0 ? [...feedList] : []
 
-        const finalList = list.length > 0 ? [...list] : [...fallbackImages]
-        const seed = [...finalList]
-        while (finalList.length < TARGET_IMAGE_COUNT) {
-          finalList.push(seed[finalList.length % seed.length])
+        // Fill with randomized signup images to avoid repetition if feed is homogeneous.
+        if (finalList.length < TARGET_IMAGE_COUNT) {
+          const extraResults = await Promise.allSettled(
+            Array.from({ length: TARGET_IMAGE_COUNT }).map(() => fetchSignupRandomImage())
+          )
+          const seen = new Set(finalList.map((it) => canonicalImageKey(it.imageUrl)))
+          for (const r of extraResults) {
+            const val = r.status === "fulfilled" ? r.value : null
+            if (!val?.imageUrl) continue
+            const key = canonicalImageKey(val.imageUrl)
+            if (seen.has(key)) continue
+            seen.add(key)
+            finalList.push(val)
+          }
         }
-        setImages(finalList)
-        finalList.forEach((item) => preload(item.imageUrl))
+
+        if (finalList.length === 0) {
+          finalList = [...fallbackImages]
+        }
+
+        finalList = dedupeImages(finalList)
+
+        while (finalList.length < TARGET_IMAGE_COUNT) {
+          const i = finalList.length
+          finalList.push({
+            imageUrl: `https://picsum.photos/seed/wildmind-signup-${i}/1200/900`,
+            prompt: "Featured creation",
+            width: 1200,
+            height: 900,
+          })
+        }
+        const bounded = finalList.slice(0, TARGET_IMAGE_COUNT)
+        setImages(bounded)
+        try {
+          window.sessionStorage.setItem(SIGNUP_GALLERY_CACHE_KEY, JSON.stringify(finalList))
+        } catch {
+          // ignore storage failures
+        }
+        bounded.forEach((item) => preload(item.imageUrl))
       } finally {
         setIsLoading(false)
       }
@@ -152,59 +249,54 @@ export default function RightImageGallery() {
 
   const columns = useMemo(() => {
     const source = images.length > 0 ? images : fallbackImages
-    const buildColumn = (start: number, count: number) =>
-      Array.from({ length: count }).map((_, idx) => source[(start + idx) % source.length])
-
-    return [buildColumn(0, 6), buildColumn(3, 6)]
+    // Hard-split unique pool so the same image is never in both columns.
+    const midpoint = Math.floor(source.length / 2)
+    const left = source.slice(0, midpoint)
+    const right = source.slice(midpoint)
+    return [left, right]
   }, [images])
 
   const creatorInfo = images[0]?.creator
-  const colAHeights = [260, 220, 320, 200, 240, 280]
-  const colBHeights = [300, 200, 260, 340, 220, 260]
 
   return (
-    <div className="absolute inset-0 overflow-hidden m-2 rounded-lg">
+    <div className="absolute inset-0 overflow-hidden m-0 rounded-lg">
       <div className="relative w-full h-full">
         {/* Top/bottom blend mask for smoother visual integration */}
         <div
           className="pointer-events-none absolute inset-0 z-20"
-          style={{
-            background:
-              "linear-gradient(to bottom, #1C1C20 0%, rgba(28,28,32,0) 14%, rgba(28,28,32,0) 86%, #1C1C20 100%)",
-          }}
+          // style={{
+          //   background:
+          //     "linear-gradient(to bottom, #1C1C20 0%, rgba(28,28,32,0) 14%, rgba(28,28,32,0) 86%, #1C1C20 100%)",
+          // }}
         />
 
-        <div className="absolute top-5 right-5 z-30 rounded-full border border-white/20 bg-white/8 px-3 py-1.5 backdrop-blur-md">
+        {/* <div className="absolute top-5 right-5 z-30 rounded-full border border-white/20 bg-white/8 px-3 py-1.5 backdrop-blur-md">
           <p className="text-[11px] font-medium text-white flex items-center gap-2">
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400" />
             2,400+ creators active
           </p>
-        </div>
+        </div> */}
 
-      <div className={`w-full h-full px-2 py-2 flex gap-2 ${isLoading ? "opacity-70" : "opacity-100"} transition-opacity duration-500`}>
+      <div className={`w-full h-full px-2 py-0 flex gap-2 ${isLoading ? "opacity-70" : "opacity-100"} transition-opacity duration-500`}>
           <GalleryColumn
             items={columns[0]}
-            heights={colAHeights}
             direction="down"
-            duration={32}
-            badges={{ 0: "Design", 3: "Motion" }}
+            duration={42}
           />
           <GalleryColumn
             items={columns[1]}
-            heights={colBHeights}
             direction="up"
-            duration={34}
-            badges={{ 1: "Branding", 4: "Editorial" }}
+            duration={46}
           />
         </div>
 
-        {creatorInfo && (creatorInfo.username || creatorInfo.photoURL) && (
+        {/* {creatorInfo && (creatorInfo.username || creatorInfo.photoURL) && (
           <div className="absolute bottom-6 right-6 text-white z-30 pointer-events-none">
             <p className="text-xs font-medium">
               Created by: <span className="font-bold">@{creatorInfo.username || "wildminduser"}</span> with WildMind AI
             </p>
           </div>
-        )}
+        )} */}
       </div>
 
       <style jsx global>{`
@@ -238,19 +330,14 @@ export default function RightImageGallery() {
 
 function GalleryColumn({
   items,
-  heights,
   direction,
   duration,
-  badges,
 }: {
   items: ImageData[]
-  heights: number[]
   direction: "up" | "down"
   duration: number
-  badges?: Record<number, string>
 }) {
   const list = [...items, ...items]
-  const doubledHeights = [...heights, ...heights]
 
   return (
     <div className="wm-col w-1/2 min-w-0 h-full overflow-hidden relative">
@@ -266,26 +353,15 @@ function GalleryColumn({
       >
         {list.map((img, idx) => (
           <div
-            className="wm-card w-full rounded-lg overflow-hidden relative bg-[#1a1a1f] shrink-0"
-            style={{ height: `${doubledHeights[idx % doubledHeights.length]}px` }}
+            className="wm-card w-full rounded-md overflow-hidden relative bg-[#1a1a1f] shrink-0"
             key={`${img.imageUrl}-${idx}`}
           >
-            <Image
+            <img
               src={img.imageUrl || DEFAULT_IMAGE_URL}
               alt={img.prompt || "Featured creation"}
-              fill
-              className="object-cover"
-              priority={idx < 2}
+              className="w-full h-auto block object-cover"
               loading={idx < 2 ? "eager" : "lazy"}
-              unoptimized
             />
-            {badges?.[idx % heights.length] && (
-              <div className="absolute left-2 bottom-2 rounded-full bg-black/50 backdrop-blur-sm border border-white/20 px-2 py-1">
-                <p className="text-[10px] text-white font-medium flex items-center gap-1">
-                  <span>✦</span> {badges[idx % heights.length]}
-                </p>
-              </div>
-            )}
           </div>
         ))}
       </div>

@@ -8,13 +8,15 @@ import UploadModal from '@/app/view/Generation/ImageGeneration/TextToImage/compo
 import ImageComparisonSlider from '@/app/view/workflows/components/ImageComparisonSlider';
 import { downloadFileWithNaming } from '@/utils/downloadUtils';
 import { useCredits } from '@/hooks/useCredits';
+import { getSignInUrl } from '@/routes/routes';
 
 export default function TurnIntoFigurine() {
   const router = useRouter();
   const {
     creditBalance,
     deductCreditsOptimisticForGeneration,
-    rollbackOptimisticDeduction
+    rollbackOptimisticDeduction,
+    user
   } = useCredits();
 
   // State
@@ -67,6 +69,10 @@ export default function TurnIntoFigurine() {
   };
 
   const handleRun = async () => {
+    if (!user) {
+      router.push(getSignInUrl());
+      return;
+    }
     if (!originalImage) {
       toast.error('Please upload an image first');
       return;
@@ -250,7 +256,8 @@ export default function TurnIntoFigurine() {
                     afterImage={generatedImage}
                     beforeLabel="Before"
                     afterLabel="Result"
-                    imageFit="object-cover"
+                    imageFit="object-contain"
+                    imagePosition="object-center"
                   />
                   <button
                     onClick={handleDownload}
@@ -285,6 +292,7 @@ export default function TurnIntoFigurine() {
 
       {isUploadModalOpen && (
         <UploadModal
+          persistLocalDeviceUploads={false}
           isOpen={isUploadModalOpen}
           onClose={() => setIsUploadModalOpen(false)}
           onAdd={(urls: string[]) => {
@@ -298,3 +306,4 @@ export default function TurnIntoFigurine() {
     </>
   );
 }
+

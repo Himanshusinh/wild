@@ -1,0 +1,32 @@
+          <PromptInput
+            prompt={prompt}
+            onChange={setPrompt}
+            onPasteFiles={processFiles}
+            isEnhancing={isEnhancing}
+            onEnhance={handleEnhancePrompt}
+            onClear={() => {
+              setPrompt("");
+              if (inputEl.current) inputEl.current.focus();
+            }}
+            placeholder={placeholder}
+            inputRef={inputEl}
+            actions={
+              <InputActions
+                generationMode={generationMode}
+                selectedModel={selectedModel}
+                activeFeature={activeFeature}
+                currentModelCapabilities={currentModelCapabilities}
+                selectedCameraMovements={selectedCameraMovements}
+                setSelectedCameraMovements={setSelectedCameraMovements}
+                onAddMovement={(text) => setPrompt(prev => prev + (prev.endsWith(' ') ? '' : ' ') + text)}
+                references={references}
+                removeReference={removeReference}
+                setUploadModalType={setUploadModalType}
+                setUploadModalTarget={setUploadModalTarget}
+                setIsUploadModalOpen={setIsUploadModalOpen}
+                uploadedImages={uploadedImages}
+                lastFrameImage={lastFrameImage}
+                selectedResolution={selectedResolution}
+              />
+            }
+          />

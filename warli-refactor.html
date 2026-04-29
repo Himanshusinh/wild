@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Warli — Refactored UI</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg-0: #0c0c0d;
+    --bg-1: #141416;
+    --bg-2: #1c1c1f;
+    --bg-3: #242428;
+    --bg-4: #2e2e33;
+    --border: rgba(255,255,255,0.07);
+    --border-hover: rgba(255,255,255,0.14);
+    --text-1: #f0ede8;
+    --text-2: #9b9894;
+    --text-3: #5e5c59;
+    --accent: #c8845a;
+    --accent-dim: rgba(200,132,90,0.12);
+    --accent-glow: rgba(200,132,90,0.25);
+    --blue: #5b8fff;
+    --blue-dim: rgba(91,143,255,0.1);
+    --green: #4caf7d;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;
+    --font: 'DM Sans', sans-serif;
+    --mono: 'DM Mono', monospace;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg-0);
+    font-family: var(--font);
+    color: var(--text-1);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── MODAL OVERLAY ── */
+  .overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(12px);
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+  }
+
+  .modal {
+    width: 100%; max-width: 1100px; height: min(820px, calc(100vh - 40px));
+    background: var(--bg-1);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    grid-template-rows: auto 1fr;
+    overflow: hidden;
+    box-shadow: 0 40px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04);
+  }
+
+  /* ── HEADER ── */
+  .modal-header {
+    grid-column: 1 / -1;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-1);
+  }
+
+  .header-left { display: flex; align-items: center; gap: 12px; }
+
+  .warli-badge {
+    display: flex; align-items: center; gap: 6px;
+    padding: 4px 10px;
+    background: var(--accent-dim);
+    border: 1px solid rgba(200,132,90,0.2);
+    border-radius: 20px;
+    font-size: 11px; font-weight: 500; letter-spacing: 0.06em;
+    color: var(--accent); text-transform: uppercase;
+  }
+
+  .warli-badge::before {
+    content: '';
+    width: 5px; height: 5px;
+    background: var(--accent);
+    border-radius: 50%;
+    box-shadow: 0 0 6px var(--accent);
+  }
+
+  .modal-title {
+    font-size: 15px; font-weight: 500; color: var(--text-1);
+  }
+
+  .close-btn {
+    width: 32px; height: 32px;
+    background: var(--bg-3); border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    cursor: pointer; color: var(--text-2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; line-height: 1;
+    transition: all 0.15s;
+  }
+  .close-btn:hover { background: var(--bg-4); color: var(--text-1); }
+
+  /* ── STYLE TABS (in header) ── */
+  .style-tabs {
+    display: flex; gap: 4px;
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 3px;
+  }
+
+  .style-tab {
+    padding: 5px 14px;
+    border-radius: 7px;
+    font-size: 12px; font-weight: 500;
+    color: var(--text-2);
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+    display: flex; align-items: center; gap: 6px;
+  }
+
+  .style-tab:hover { color: var(--text-1); }
+
+  .style-tab.active {
+    background: var(--bg-4);
+    color: var(--text-1);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  }
+
+  .style-tab .tab-badge {
+    font-size: 9px; font-weight: 600;
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: var(--accent-dim);
+    color: var(--accent);
+    letter-spacing: 0.04em;
+  }
+
+  /* ── LEFT PANEL ── */
+  .left-panel {
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+
+  .panel-scroll {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    display: flex; flex-direction: column; gap: 16px;
+  }
+
+  .panel-scroll::-webkit-scrollbar { width: 4px; }
+  .panel-scroll::-webkit-scrollbar-track { background: transparent; }
+  .panel-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* ── INPUT MODE TOGGLE ── */
+  .input-mode-toggle {
+    display: grid; grid-template-columns: 1fr 1fr;
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 3px;
+    gap: 3px;
+  }
+
+  .mode-btn {
+    padding: 8px 12px;
+    border-radius: 9px;
+    border: none;
+    background: transparent;
+    color: var(--text-2);
+    font-family: var(--font);
+    font-size: 12px; font-weight: 500;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 7px;
+    transition: all 0.15s;
+    user-select: none;
+  }
+
+  .mode-btn.active {
+    background: var(--bg-4);
+    color: var(--text-1);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+  }
+
+  .mode-btn svg { opacity: 0.7; }
+  .mode-btn.active svg { opacity: 1; }
+
+  /* ── UPLOAD ZONE ── */
+  .upload-zone {
+    border: 1.5px dashed var(--border);
+    border-radius: var(--radius-md);
+    padding: 28px 20px;
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--bg-2);
+    text-align: center;
+  }
+
+  .upload-zone:hover {
+    border-color: var(--accent);
+    background: var(--accent-dim);
+  }
+
+  .upload-icon {
+    width: 40px; height: 40px;
+    background: var(--bg-3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-2);
+  }
+
+  .upload-label { font-size: 13px; font-weight: 500; color: var(--text-1); }
+  .upload-sub { font-size: 11px; color: var(--text-3); }
+
+  /* ── SECTION LABEL ── */
+  .section-label {
+    font-size: 10px; font-weight: 600;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--text-3);
+    margin-bottom: -8px;
+  }
+
+  /* ── SCENE TEXTAREA ── */
+  .scene-input {
+    width: 100%;
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 14px;
+    color: var(--text-1);
+    font-family: var(--font);
+    font-size: 13px;
+    line-height: 1.6;
+    resize: none;
+    min-height: 100px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .scene-input::placeholder { color: var(--text-3); }
+  .scene-input:focus { border-color: var(--border-hover); }
+
+  .input-hint {
+    font-size: 11px; color: var(--text-3);
+    margin-top: -10px;
+    padding: 0 2px;
+  }
+
+  /* ── QUICK SETTINGS ── */
+  .settings-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .setting-group { display: flex; flex-direction: column; gap: 6px; }
+
+  .setting-label {
+    font-size: 10px; font-weight: 600;
+    letter-spacing: 0.07em; text-transform: uppercase;
+    color: var(--text-3);
+  }
+
+  .chip-row { display: flex; gap: 4px; flex-wrap: wrap; }
+
+  .chip {
+    padding: 5px 10px;
+    background: var(--bg-3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 11px; font-weight: 500;
+    color: var(--text-2);
+    cursor: pointer;
+    transition: all 0.12s;
+    user-select: none;
+  }
+
+  .chip:hover { border-color: var(--border-hover); color: var(--text-1); }
+  .chip.active {
+    background: var(--blue-dim);
+    border-color: rgba(91,143,255,0.3);
+    color: var(--blue);
+  }
+
+  /* ── MODEL SELECT ── */
+  .model-select {
+    display: flex; flex-direction: column; gap: 5px;
+  }
+
+  .model-option {
+    padding: 9px 12px;
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    display: flex; align-items: center; justify-content: space-between;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .model-option:hover { border-color: var(--border-hover); }
+
+  .model-option.active {
+    border-color: rgba(91,143,255,0.3);
+    background: var(--blue-dim);
+  }
+
+  .model-name { font-size: 12px; font-weight: 500; color: var(--text-1); }
+  .model-tag { font-size: 10px; color: var(--text-3); }
+  .model-option.active .model-tag { color: var(--blue); opacity: 0.7; }
+
+  .model-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    border: 1.5px solid var(--border);
+    transition: all 0.15s;
+  }
+  .model-option.active .model-dot {
+    background: var(--blue);
+    border-color: var(--blue);
+    box-shadow: 0 0 6px var(--blue);
+  }
+
+  /* ── GENERATE BUTTON ── */
+  .left-footer {
+    padding: 16px 20px;
+    border-top: 1px solid var(--border);
+    background: var(--bg-1);
+  }
+
+  .generate-btn {
+    width: 100%;
+    padding: 13px 20px;
+    background: var(--accent);
+    border: none;
+    border-radius: var(--radius-md);
+    color: #fff;
+    font-family: var(--font);
+    font-size: 14px; font-weight: 600;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    transition: all 0.2s;
+    letter-spacing: 0.01em;
+    box-shadow: 0 4px 16px rgba(200,132,90,0.25);
+  }
+
+  .generate-btn:hover {
+    background: #d4935f;
+    box-shadow: 0 4px 24px rgba(200,132,90,0.4);
+    transform: translateY(-1px);
+  }
+
+  .generate-btn:active { transform: translateY(0); }
+
+  .gen-credits {
+    font-size: 10px; color: var(--text-3);
+    text-align: center; margin-top: 8px;
+  }
+
+  /* ── RIGHT PANEL ── */
+  .right-panel {
+    display: flex; flex-direction: column;
+    background: var(--bg-0);
+    overflow: hidden;
+  }
+
+  .right-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--bg-1);
+  }
+
+  .right-title { font-size: 12px; font-weight: 500; color: var(--text-2); }
+
+  .result-actions { display: flex; gap: 6px; }
+
+  .action-btn {
+    padding: 5px 10px;
+    background: var(--bg-3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 11px; font-weight: 500;
+    color: var(--text-2);
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex; align-items: center; gap: 5px;
+  }
+  .action-btn:hover { border-color: var(--border-hover); color: var(--text-1); }
+
+  .right-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    display: flex; flex-direction: column;
+  }
+
+  .right-content::-webkit-scrollbar { width: 4px; }
+  .right-content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* ── EMPTY STATE ── */
+  .empty-state {
+    flex: 1;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 16px; text-align: center; padding: 40px;
+    opacity: 0.6;
+  }
+
+  .empty-art {
+    width: 80px; height: 80px;
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 32px;
+  }
+
+  .empty-title { font-size: 14px; font-weight: 500; color: var(--text-1); }
+  .empty-sub { font-size: 12px; color: var(--text-3); max-width: 200px; line-height: 1.6; }
+
+  /* ── GENERATED IMAGES STATE ── */
+  .images-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .image-card {
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    aspect-ratio: 1;
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    position: relative;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .image-card:hover { border-color: var(--border-hover); transform: scale(1.01); }
+
+  .image-card img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+  }
+
+  .image-overlay {
+    position: absolute; inset: 0;
+    background: rgba(0,0,0,0.5);
+    display: flex; align-items: flex-end;
+    padding: 12px;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .image-card:hover .image-overlay { opacity: 1; }
+
+  .image-actions { display: flex; gap: 6px; }
+
+  .img-btn {
+    padding: 5px 10px;
+    background: rgba(255,255,255,0.15);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 6px;
+    font-size: 11px; font-weight: 500;
+    color: #fff;
+    cursor: pointer;
+  }
+
+  /* ── PROMPT PREVIEW AREA ── */
+  .prompt-preview {
+    margin-top: 16px;
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+  }
+
+  .prompt-preview-header {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+
+  .prompt-preview-title {
+    font-size: 10px; font-weight: 600;
+    letter-spacing: 0.07em; text-transform: uppercase;
+    color: var(--text-3);
+  }
+
+  .copy-btn {
+    padding: 3px 8px;
+    background: var(--bg-3);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    font-size: 10px; font-weight: 500;
+    color: var(--text-2);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .copy-btn:hover { color: var(--text-1); border-color: var(--border-hover); }
+
+  .prompt-text {
+    padding: 14px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-2);
+    line-height: 1.7;
+    max-height: 140px;
+    overflow-y: auto;
+  }
+
+  .prompt-text::-webkit-scrollbar { width: 3px; }
+  .prompt-text::-webkit-scrollbar-thumb { background: var(--border); }
+
+  /* ── LOADING STATE ── */
+  .loading-state {
+    flex: 1;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 20px;
+  }
+
+  .loading-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 10px; width: 100%;
+  }
+
+  .loading-card {
+    aspect-ratio: 1;
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    position: relative;
+  }
+
+  .shimmer {
+    position: absolute; inset: 0;
+    background: linear-gradient(90deg,
+      transparent 0%,
+      rgba(255,255,255,0.03) 40%,
+      rgba(255,255,255,0.07) 50%,
+      rgba(255,255,255,0.03) 60%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.8s ease-in-out infinite;
+  }
+
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+
+  .loading-label {
+    font-size: 12px; color: var(--text-3);
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  .dot-pulse span {
+    display: inline-block;
+    width: 4px; height: 4px;
+    background: var(--accent);
+    border-radius: 50%;
+    animation: pulse 1.2s ease-in-out infinite;
+  }
+
+  .dot-pulse span:nth-child(2) { animation-delay: 0.2s; }
+  .dot-pulse span:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes pulse {
+    0%, 80%, 100% { opacity: 0.2; transform: scale(0.8); }
+    40% { opacity: 1; transform: scale(1); }
+  }
+
+  /* ── CURRENT SELECTION TAG ── */
+  .selection-summary {
+    display: flex; flex-wrap: wrap; gap: 5px;
+    padding: 10px 14px;
+    border-top: 1px solid var(--border);
+    background: var(--bg-1);
+  }
+
+  .sel-tag {
+    display: flex; align-items: center; gap: 4px;
+    padding: 3px 8px;
+    background: var(--bg-3);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    font-size: 10px; color: var(--text-2);
+  }
+
+  .sel-tag-key { color: var(--text-3); }
+  .sel-tag-val { font-weight: 500; color: var(--text-1); }
+
+  /* ── DEMO TABS ── */
+  .demo-tabs {
+    display: flex; gap: 8px;
+    padding: 16px 20px 0;
+  }
+
+  .demo-tab {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 11px; font-weight: 500;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    color: var(--text-2);
+    background: transparent;
+    transition: all 0.15s;
+    user-select: none;
+  }
+
+  .demo-tab.active {
+    background: var(--bg-3);
+    border-color: var(--border-hover);
+    color: var(--text-1);
+  }
+
+  /* ── WARLI PATTERN BG ── */
+  .warli-bg {
+    position: absolute; inset: 0;
+    opacity: 0.03;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60'%3E%3Ccircle cx='30' cy='10' r='4' fill='white'/%3E%3Cpolygon points='30,16 20,36 40,36' fill='white'/%3E%3Cline x1='30' y1='36' x2='30' y2='50' stroke='white' stroke-width='2'/%3E%3Cline x1='30' y1='42' x2='22' y2='38' stroke='white' stroke-width='2'/%3E%3Cline x1='30' y1='42' x2='38' y2='38' stroke='white' stroke-width='2'/%3E%3C/svg%3E");
+    background-size: 60px 60px;
+    pointer-events: none;
+  }
+
+  /* Demo state switcher */
+  .demo-controls {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 8px;
+    background: var(--bg-2); border: 1px solid var(--border);
+    border-radius: 30px; padding: 6px 10px;
+    z-index: 100;
+  }
+
+  .demo-state-btn {
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 11px; font-weight: 500;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    color: var(--text-2);
+    font-family: var(--font);
+    transition: all 0.15s;
+  }
+
+  .demo-state-btn.active {
+    background: var(--bg-4);
+    color: var(--text-1);
+  }
+</style>
+</head>
+<body>
+
+<div class="overlay">
+  <div class="modal">
+
+    <!-- HEADER -->
+    <header class="modal-header">
+      <div class="header-left">
+        <div class="warli-badge">Warli</div>
+        <span class="modal-title">Create</span>
+        <!-- Style A/B/C tabs in header -->
+        <div class="style-tabs" style="margin-left: 8px;">
+          <div class="style-tab active" onclick="setStyle('A',this)">
+            <span>A</span>
+            <span class="tab-badge">2D MURAL</span>
+          </div>
+          <div class="style-tab" onclick="setStyle('B',this)">
+            <span>B</span>
+            <span class="tab-badge">BAS-RELIEF</span>
+          </div>
+          <div class="style-tab" onclick="setStyle('C',this)">
+            <span>C</span>
+            <span class="tab-badge">3D WORLD</span>
+          </div>
+        </div>
+      </div>
+      <button class="close-btn" onclick="alert('close')">✕</button>
+    </header>
+
+    <!-- LEFT PANEL -->
+    <aside class="left-panel">
+      <div class="panel-scroll">
+
+        <!-- Input Mode Toggle -->
+        <div>
+          <div class="section-label" style="margin-bottom: 8px;">Input</div>
+          <div class="input-mode-toggle">
+            <button class="mode-btn active" id="btn-text" onclick="switchMode('text')">
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M2 4h12v1.5H2V4zm0 3h12v1.5H2V7zm0 3h8v1.5H2V10z"/></svg>
+              Describe scene
+            </button>
+            <button class="mode-btn" id="btn-image" onclick="switchMode('image')">
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="3" width="14" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="5.5" cy="7" r="1.5"/><path d="M2 13l4-4 3 3 2-2 3 4H2z" opacity="0.6"/></svg>
+              Upload photo
+            </button>
+          </div>
+        </div>
+
+        <!-- Text mode -->
+        <div id="text-mode">
+          <textarea class="scene-input" rows="4"
+            placeholder="Describe your scene... e.g. a woman in a saree standing near a bench with a young girl holding a book, park setting with trees"></textarea>
+          <p class="input-hint">Claude will extract characters, objects, and setting automatically.</p>
+        </div>
+
+        <!-- Image mode (hidden by default) -->
+        <div id="image-mode" style="display:none;">
+          <div class="upload-zone" onclick="alert('file picker')">
+            <div class="upload-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            </div>
+            <div class="upload-label">Drop photo or click to upload</div>
+            <div class="upload-sub">PNG, JPG up to 10MB · Claude will analyze your scene</div>
+          </div>
+        </div>
+
+        <!-- Model -->
+        <div>
+          <div class="section-label" style="margin-bottom: 8px;">Model</div>
+          <div class="model-select">
+            <div class="model-option active" onclick="setModel(this)">
+              <div>
+                <div class="model-name">Flux 2 Pro</div>
+                <div class="model-tag">Detailed</div>
+              </div>
+              <div class="model-dot"></div>
+            </div>
+            <div class="model-option" onclick="setModel(this)">
+              <div>
+                <div class="model-name">Seedream 4.5</div>
+                <div class="model-tag">Balanced</div>
+              </div>
+              <div class="model-dot"></div>
+            </div>
+            <div class="model-option" onclick="setModel(this)">
+              <div>
+                <div class="model-name">Imagen 4</div>
+                <div class="model-tag">Clean</div>
+              </div>
+              <div class="model-dot"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Settings row -->
+        <div class="settings-grid">
+          <div class="setting-group">
+            <div class="setting-label">Count</div>
+            <div class="chip-row">
+              <div class="chip" onclick="setChip(this,'count')">1</div>
+              <div class="chip active" onclick="setChip(this,'count')">2</div>
+              <div class="chip" onclick="setChip(this,'count')">4</div>
+            </div>
+          </div>
+          <div class="setting-group">
+            <div class="setting-label">Ratio</div>
+            <div class="chip-row">
+              <div class="chip active" onclick="setChip(this,'ratio')">1:1</div>
+              <div class="chip" onclick="setChip(this,'ratio')">4:5</div>
+              <div class="chip" onclick="setChip(this,'ratio')">16:9</div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /panel-scroll -->
+
+      <!-- Selection summary bar -->
+      <div class="selection-summary">
+        <div class="sel-tag"><span class="sel-tag-key">Style</span><span class="sel-tag-val" id="tag-style">A · 2D Mural</span></div>
+        <div class="sel-tag"><span class="sel-tag-key">Model</span><span class="sel-tag-val">Flux 2 Pro</span></div>
+        <div class="sel-tag"><span class="sel-tag-key">2 images</span></div>
+        <div class="sel-tag"><span class="sel-tag-key">1:1</span></div>
+      </div>
+
+      <!-- Generate footer -->
+      <div class="left-footer">
+        <button class="generate-btn" onclick="showLoading()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          Generate Warli Art
+        </button>
+        <div class="gen-credits">Uses 2 credits · High quality</div>
+      </div>
+    </aside>
+
+    <!-- RIGHT PANEL -->
+    <main class="right-panel">
+
+      <div class="right-header">
+        <span class="right-title" id="right-title">Output will appear here</span>
+        <div class="result-actions" id="result-actions" style="display:none;">
+          <button class="action-btn">
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M8 2a1 1 0 000-2 1 1 0 000 2zm0 4a1 1 0 000-2 1 1 0 000 2zm0 4a1 1 0 000-2 1 1 0 000 2z"/></svg>
+            More
+          </button>
+          <button class="action-btn">↻ Regenerate</button>
+          <button class="action-btn" style="color: var(--accent); border-color: rgba(200,132,90,0.25);">↓ Save all</button>
+        </div>
+      </div>
+
+      <div class="right-content" id="right-content">
+
+        <!-- EMPTY STATE (default) -->
+        <div class="empty-state" id="empty-state">
+          <div class="warli-bg"></div>
+          <div class="empty-art">⬡</div>
+          <div class="empty-title">Your Warli art will appear here</div>
+          <div class="empty-sub">Describe a scene or upload a photo, then hit Generate</div>
+        </div>
+
+        <!-- LOADING STATE (hidden) -->
+        <div class="loading-state" id="loading-state" style="display:none;">
+          <div class="loading-grid">
+            <div class="loading-card"><div class="shimmer"></div></div>
+            <div class="loading-card"><div class="shimmer"></div></div>
+          </div>
+          <div class="loading-label">
+            <div class="dot-pulse"><span></span><span></span><span></span></div>
+            Generating Warli art · Flux 2 Pro
+          </div>
+        </div>
+
+        <!-- RESULTS STATE (hidden) -->
+        <div id="results-state" style="display:none; flex-direction: column; gap: 14px;">
+          <div class="images-grid">
+            <div class="image-card">
+              <!-- Placeholder for warli image -->
+              <div style="width:100%;height:100%;background:linear-gradient(135deg,#1a1208 0%,#2d1e0f 50%,#1a0e08 100%);display:flex;align-items:center;justify-content:center;">
+                <svg width="80" height="80" viewBox="0 0 100 100" fill="none" opacity="0.4">
+                  <circle cx="50" cy="18" r="8" fill="white"/>
+                  <polygon points="50,28 30,65 70,65" fill="white"/>
+                  <line x1="50" y1="65" x2="50" y2="85" stroke="white" stroke-width="3"/>
+                  <line x1="50" y1="72" x2="38" y2="66" stroke="white" stroke-width="3"/>
+                  <line x1="50" y1="72" x2="62" y2="66" stroke="white" stroke-width="3"/>
+                  <circle cx="28" cy="55" r="6" fill="white"/>
+                  <polygon points="28,63 18,85 38,85" fill="white"/>
+                </svg>
+              </div>
+              <div class="image-overlay">
+                <div class="image-actions">
+                  <button class="img-btn">↓ Save</button>
+                  <button class="img-btn">↗ Expand</button>
+                </div>
+              </div>
+            </div>
+            <div class="image-card">
+              <div style="width:100%;height:100%;background:linear-gradient(135deg,#160f06 0%,#241508 50%,#180c04 100%);display:flex;align-items:center;justify-content:center;">
+                <svg width="80" height="80" viewBox="0 0 100 100" fill="none" opacity="0.35">
+                  <circle cx="35" cy="20" r="7" fill="white"/>
+                  <polygon points="35,29 22,60 48,60" fill="white"/>
+                  <line x1="35" y1="60" x2="35" y2="80" stroke="white" stroke-width="3"/>
+                  <circle cx="65" cy="50" r="7" fill="white"/>
+                  <polygon points="65,59 52,85 78,85" fill="white"/>
+                  <rect x="45" y="55" width="20" height="8" rx="2" fill="white" opacity="0.5"/>
+                </svg>
+              </div>
+              <div class="image-overlay">
+                <div class="image-actions">
+                  <button class="img-btn">↓ Save</button>
+                  <button class="img-btn">↗ Expand</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Prompt used -->
+          <div class="prompt-preview">
+            <div class="prompt-preview-header">
+              <span class="prompt-preview-title">Prompt used</span>
+              <button class="copy-btn" onclick="copyPrompt()">Copy</button>
+            </div>
+            <div class="prompt-text" id="prompt-display">
+Convert this image into an authentic traditional Maharashtrian Warli tribal painting mural.
+
+STYLE LOCK: authentic Warli folk art from Maharashtra, hand-painted mural on natural terracotta / red-ochre mud wall, monochrome white pigment painting, classic Warli visual language, all human figures constructed using simple geometric forms only...
+
+FORM TRANSLATION RULE: translate every person, object, prop, tree, plant into authentic Warli symbolic drawing language; simplify forms into clean tribal geometry while preserving the core action, relation, pose, and scene meaning...
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /right-content -->
+    </main>
+
+  </div><!-- /modal -->
+</div>
+
+<!-- Demo controls -->
+<div class="demo-controls">
+  <span style="font-size:10px;color:var(--text-3);padding:0 4px;">Preview state:</span>
+  <button class="demo-state-btn active" onclick="showState('empty',this)">Empty</button>
+  <button class="demo-state-btn" onclick="showState('loading',this)">Loading</button>
+  <button class="demo-state-btn" onclick="showState('results',this)">Results</button>
+</div>
+
+<script>
+  // Style A/B/C
+  const styleLabels = { A:'A · 2D Mural', B:'B · Bas-relief', C:'C · 3D World' };
+  function setStyle(s, el) {
+    document.querySelectorAll('.style-tab').forEach(t=>t.classList.remove('active'));
+    el.classList.add('active');
+    document.getElementById('tag-style').textContent = styleLabels[s];
+  }
+
+  // Input mode
+  function switchMode(mode) {
+    document.getElementById('btn-text').classList.toggle('active', mode==='text');
+    document.getElementById('btn-image').classList.toggle('active', mode==='image');
+    document.getElementById('text-mode').style.display = mode==='text'?'':'none';
+    document.getElementById('image-mode').style.display = mode==='image'?'':'none';
+  }
+
+  // Model
+  function setModel(el) {
+    document.querySelectorAll('.model-option').forEach(m=>m.classList.remove('active'));
+    el.classList.add('active');
+  }
+
+  // Chips
+  function setChip(el, group) {
+    el.closest('.chip-row').querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+    el.classList.add('active');
+  }
+
+  // Demo states
+  function showState(state, btn) {
+    document.querySelectorAll('.demo-state-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('empty-state').style.display = state==='empty'?'flex':'none';
+    document.getElementById('loading-state').style.display = state==='loading'?'flex':'none';
+    document.getElementById('results-state').style.display = state==='results'?'flex':'none';
+    document.getElementById('result-actions').style.display = state==='results'?'flex':'none';
+    document.getElementById('right-title').textContent =
+      state==='empty' ? 'Output will appear here' :
+      state==='loading' ? 'Generating...' :
+      '2 images · A · Nano Banana 2';
+  }
+
+  function showLoading() {
+    showState('loading', document.querySelectorAll('.demo-state-btn')[1]);
+    setTimeout(()=>showState('results', document.querySelectorAll('.demo-state-btn')[2]), 2800);
+  }
+
+  function copyPrompt() {
+    const txt = document.getElementById('prompt-display').textContent;
+    navigator.clipboard?.writeText(txt);
+    const btn = event.target;
+    btn.textContent = 'Copied!';
+    setTimeout(()=>btn.textContent='Copy', 1500);
+  }
+</script>
+</body>
+</html>

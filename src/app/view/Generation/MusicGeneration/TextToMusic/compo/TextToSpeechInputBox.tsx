@@ -6,7 +6,7 @@ import { addHistoryEntry, updateHistoryEntry, removeHistoryEntry } from '@/store
 import { falElevenTts } from '@/store/slices/generationsApi';
 import { useCredits } from '@/hooks/useCredits';
 const saveHistoryEntry = async (_entry: any) => undefined as unknown as string;
-const updateFirebaseHistory = async (_id: string, _updates: any) => {};
+const updateFirebaseHistory = async (_id: string, _updates: any) => { };
 import TTSHistory from './TTSHistory';
 import CustomAudioPlayer from './CustomAudioPlayer';
 import { useHistoryLoader } from '@/hooks/useHistoryLoader';
@@ -14,13 +14,17 @@ import MusicInputBox from './MusicInputBox';
 
 interface TextToSpeechInputBoxProps {
   showHistoryOnly?: boolean;
+  selectedModel?: string;
 }
 
-const TextToSpeechInputBox: React.FC<TextToSpeechInputBoxProps> = (props = {}) => {
+const TTS_GENERATION_TYPES = ['text-to-speech', 'text_to_speech', 'tts'];
+
+const TextToSpeechInputBox = ({ showHistoryOnly = false, selectedModel }: { showHistoryOnly?: boolean; selectedModel?: string }) => {
+  const [activeTab, setActiveTab] = useState('tts');
   const dispatch = useAppDispatch();
   // Include 'text-to-music' for backward compatibility with earlier mis-labeled TTS generations
   // But use only text-to-speech for new generations to avoid mixing with music entries
-  const { refreshImmediate: refreshMusicHistoryImmediate } = useHistoryLoader({ generationType: 'text-to-speech', generationTypes: ['text-to-speech', 'text_to_speech', 'tts'] });
+  const { refreshImmediate: refreshMusicHistoryImmediate } = useHistoryLoader({ generationType: 'text-to-speech', generationTypes: TTS_GENERATION_TYPES });
   const [isGenerating, setIsGenerating] = useState(false);
   const [resultUrl, setResultUrl] = useState<string | undefined>();
   const [errorMessage, setErrorMessage] = useState<string | undefined>();
@@ -60,7 +64,7 @@ const TextToSpeechInputBox: React.FC<TextToSpeechInputBoxProps> = (props = {}) =
 
     const hasSession = document.cookie.includes('app_session');
     const hasToken = localStorage.getItem('authToken') || localStorage.getItem('user');
-    
+
     if (!hasSession && !hasToken) {
       setErrorMessage('Please sign in to generate speech');
       window.location.href = '/view/signup?next=/text-to-music';
@@ -75,7 +79,7 @@ const TextToSpeechInputBox: React.FC<TextToSpeechInputBoxProps> = (props = {}) =
       // For Maya TTS, pass text length for per-second pricing calculation (6 credits per second)
       const isMayaTts = payload.model === 'maya-tts';
       const musicResult = await validateMusicCredits(
-        payload.model, 
+        payload.model,
         isMayaTts ? undefined : 10, // Don't pass duration for Maya TTS
         undefined, // No inputs for TTS
         isMayaTts ? normalizedText : undefined // Pass text for Maya TTS per-second pricing
@@ -100,9 +104,9 @@ const TextToSpeechInputBox: React.FC<TextToSpeechInputBoxProps> = (props = {}) =
     setResultUrl(undefined);
 
     const modelName = payload.model || 'elevenlabs-tts';
-    
+
     const fileName = payload.fileName || '';
-    
+
     setLocalMusicPreview({
       id: `tts-loading-${Date.now()}`,
       prompt: normalizedText,
@@ -131,7 +135,7 @@ const TextToSpeechInputBox: React.FC<TextToSpeechInputBoxProps> = (props = {}) =
       imageCount: 1,
       fileName: fileName
     };
-    
+
     console.log('[TextToSpeech] Creating loading entry:', {
       id: tempId,
       model: modelName,
@@ -141,19 +145,19 @@ const TextToSpeechInputBox: React.FC<TextToSpeechInputBoxProps> = (props = {}) =
 
     // Add to Redux immediately to show loading animation
     dispatch(addHistoryEntry(loadingEntry));
-    
+
     setLocalMusicPreview(loadingEntry);
 
     try {
       const { getIsPublic } = await import('@/lib/publicFlag');
       const isPublic = await getIsPublic();
-      const requestPayload = { 
-        ...payload, 
-        isPublic, 
+      const requestPayload = {
+        ...payload,
+        isPublic,
         prompt: payload.prompt || normalizedText,
         generationType: 'text-to-speech' // Ensure generationType is explicitly set
       };
-      
+
       const result: any = await dispatch(falElevenTts(requestPayload)).unwrap();
 
       console.log('[TextToSpeech] API Response received:', {
@@ -172,9 +176,9 @@ const TextToSpeechInputBox: React.FC<TextToSpeechInputBoxProps> = (props = {}) =
           ...prev,
           status: 'failed'
         }) : prev);
-        
+
         const errorMessage = result?.message || result?.error || 'Generation failed';
-        
+
         // Update history entry
         dispatch(updateHistoryEntry({
           id: tempId,
@@ -183,14 +187,14 @@ const TextToSpeechInputBox: React.FC<TextToSpeechInputBoxProps> = (props = {}) =
             error: errorMessage
           }
         }));
-        
+
         // Update local preview to failed state
-        setLocalMusicPreview((prev: any) => prev ? { 
-          ...prev, 
+        setLocalMusicPreview((prev: any) => prev ? {
+          ...prev,
           status: 'failed',
           error: errorMessage
         } : null);
-        
+
         // Refund credits
         if (transactionId) {
           try {
@@ -199,19 +203,19 @@ const TextToSpeechInputBox: React.FC<TextToSpeechInputBoxProps> = (props = {}) =
             console.error('❌ Credit refund failed:', creditError);
           }
         }
-        
+
         setErrorMessage(errorMessage);
-        try { 
-          const toast = (await import('react-hot-toast')).default; 
-          toast.error(errorMessage); 
-        } catch {}
-        
+        try {
+          const toast = (await import('react-hot-toast')).default;
+          toast.error(errorMessage);
+        } catch { }
+
         // Refresh credits
         try {
           const { requestCreditsRefresh } = await import('@/lib/creditsBus');
           requestCreditsRefresh();
-        } catch {}
-        
+        } catch { }
+
         return; // Exit early
       }
 
@@ -221,7 +225,7 @@ const TextToSpeechInputBox: React.FC<TextToSpeechInputBoxProps> = (props = {}) =
 
       let audioItem: any;
       let audiosArray: any[] = [];
-      
+
       if (Array.isArray(result.audios) && result.audios.length > 0) {
         audiosArray = result.audios;
         audioItem = result.audios[0];
@@ -290,7 +294,7 @@ const TextToSpeechInputBox: React.FC<TextToSpeechInputBoxProps> = (props = {}) =
       // Update the loading entry in Redux
       // Always update the tempId entry first with completed status
       dispatch(updateHistoryEntry({ id: tempId, updates: updateData }));
-      
+
       // If we have a real historyId that's different from tempId, we need to handle the ID change
       // The updateHistoryEntry doesn't change the entry's ID, so we need to remove the old one and add the new one
       // This prevents duplicates
@@ -298,7 +302,7 @@ const TextToSpeechInputBox: React.FC<TextToSpeechInputBoxProps> = (props = {}) =
         // Remove the tempId entry and add a new one with the real historyId
         dispatch(removeHistoryEntry(tempId));
         dispatch(addHistoryEntry({ ...updateData, id: result.historyId }));
-        
+
         try {
           await updateFirebaseHistory(result.historyId, updateData);
         } catch (firebaseErr) {
@@ -315,30 +319,30 @@ const TextToSpeechInputBox: React.FC<TextToSpeechInputBoxProps> = (props = {}) =
         refreshMusicHistoryImmediate(50, false); // false = merge mode
       }, 1000);
 
-      try { const toast = (await import('react-hot-toast')).default; toast.success('Speech generated successfully!'); } catch {}
+      try { const toast = (await import('react-hot-toast')).default; toast.success('Speech generated successfully!'); } catch { }
 
     } catch (error: any) {
       console.error('[TextToSpeech] Generation failed:', error);
       setIsGenerating(false); // Stop generating immediately
       setErrorMessage(error?.message || error?.response?.data?.message || 'Speech generation failed');
       confirmGenerationFailure(transactionId);
-      
+
       // Update Redux entry to failed status
-      dispatch(updateHistoryEntry({ 
-        id: tempId, 
-        updates: { 
+      dispatch(updateHistoryEntry({
+        id: tempId,
+        updates: {
           status: 'failed',
           error: error?.message || error?.response?.data?.message || 'Speech generation failed'
-        } 
+        }
       }));
-      
+
       // Update local preview to failed status
-      setLocalMusicPreview((prev: any) => prev ? { 
-        ...prev, 
+      setLocalMusicPreview((prev: any) => prev ? {
+        ...prev,
         status: 'failed',
         error: error?.message || error?.response?.data?.message || 'Speech generation failed'
       } : null);
-      
+
       // Request credit refresh to update UI
       try {
         const { requestCreditsRefresh } = await import('@/lib/creditsBus');
@@ -354,7 +358,7 @@ const TextToSpeechInputBox: React.FC<TextToSpeechInputBoxProps> = (props = {}) =
     audio: any;
   } | null>(null);
 
-  const showHistoryOnly = props?.showHistoryOnly || false;
+  // const showHistoryOnly = props?.showHistoryOnly || false;
 
   return (
     <>
@@ -382,7 +386,7 @@ const TextToSpeechInputBox: React.FC<TextToSpeechInputBoxProps> = (props = {}) =
               isGenerating={isGenerating}
               resultUrl={resultUrl}
               errorMessage={errorMessage}
-              defaultModel="elevenlabs-tts"
+              defaultModel={selectedModel || "elevenlabs-tts"}
               isTtsMode={true}
             />
           </div>
@@ -400,11 +404,11 @@ const TextToSpeechInputBox: React.FC<TextToSpeechInputBoxProps> = (props = {}) =
                 className="text-white/60 hover:text-white transition-colors"
               >
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M18 6L6 18M6 6l12 12"/>
+                  <path d="M18 6L6 18M6 6l12 12" />
                 </svg>
               </button>
             </div>
-            <CustomAudioPlayer 
+            <CustomAudioPlayer
               audioUrl={selectedAudio.audio.url || selectedAudio.audio.firebaseUrl || selectedAudio.audio.originalUrl}
               prompt={selectedAudio.entry.lyrics || selectedAudio.entry.prompt}
               model={selectedAudio.entry.model}

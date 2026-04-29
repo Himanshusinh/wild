@@ -7,14 +7,13 @@ import ImagePreviewModal from '@/app/view/Generation/ImageGeneration/TextToImage
 import VideoPreviewModal from '@/app/view/Generation/VideoGeneration/TextToVideo/compo/VideoPreviewModal';
 import CustomAudioPlayer from '@/app/view/Generation/MusicGeneration/TextToMusic/compo/CustomAudioPlayer';
 import FilterPopover from '@/components/ui/FilterPopover';
-import StickerImagePreview from '@/app/view/Generation/ImageGeneration/StickerGeneration/compo/StickerImagePreview';
 import ProductImagePreview from '@/app/view/Generation/ProductGeneration/compo/ProductImagePreview';
 import { HistoryEntry, HistoryFilters } from '@/types/history';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { loadHistory, loadMoreHistory, setFilters, clearFilters, clearHistory, removeHistoryEntry } from '@/store/slices/historySlice';
 import axiosInstance from '@/lib/axiosInstance';
-import { setCurrentView } from '@/store/slices/uiSlice';
-import { Download, Trash2 } from 'lucide-react';
+import { setCurrentView, setSidebarExpanded } from '@/store/slices/uiSlice';
+import { Download, Trash2, Menu } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { AUTH_ROUTES, getSignInUrl } from '@/routes/routes';
 import HistoryControls from '@/app/view/Generation/VideoGeneration/TextToVideo/compo/HistoryControls';
@@ -46,6 +45,20 @@ const getAudioColorTheme = (entry: any, index: number = 0): string => {
 
   return themes[Math.abs(hash) % themes.length];
 };
+
+const formatDateInputValue = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const getEndOfToday = (): Date => {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+};
+
+const isFutureCalendarDate = (date: Date): boolean => date.getTime() > getEndOfToday().getTime();
 
 const History = () => {
   const dispatch = useAppDispatch();
@@ -92,6 +105,7 @@ const History = () => {
   const calendarRef = useRef<HTMLDivElement | null>(null);
   const calendarDaysInMonth = useMemo(() => new Date(calendarYear, calendarMonth + 1, 0).getDate(), [calendarYear, calendarMonth]);
   const calendarFirstWeekday = useMemo(() => new Date(calendarYear, calendarMonth, 1).getDay(), [calendarYear, calendarMonth]);
+  const todayInputMax = useMemo(() => formatDateInputValue(new Date()), []);
 
   useEffect(() => {
     if (!showCalendar) return;
@@ -138,6 +152,24 @@ const History = () => {
     return promptText.replace(/\[\s*Style:\s*[^\]]+\]/i, "").trim();
   };
 
+  const isBackendStylePrompt = (text: string): boolean => {
+    const t = String(text || "").toLowerCase();
+    if (!t) return false;
+    return (
+      t.includes("primary directive (style lock") ||
+      t.includes("content constraint (strict)") ||
+      t.includes("render settings:") ||
+      t.includes("reference (optional)") ||
+      t.includes("project inputs:")
+    );
+  };
+
+  const getVisibleUserPrompt = (entry: HistoryEntry): string => {
+    const p = ((entry as any)?.userPrompt || "").trim();
+    if (!p) return "";
+    return isBackendStylePrompt(p) ? "" : getCleanPrompt(p);
+  };
+
   // Copy prompt to clipboard
   const copyPrompt = async (e: React.MouseEvent, text: string) => {
     try {
@@ -176,13 +208,21 @@ const History = () => {
 
   // Helper: load only the first page; more pages load on scroll.
   // IMPORTANT: Use forceRefresh so backend ordering is preserved and we don't merge into stale entries.
-  const loadFirstPage = async (filtersObj: any) => {
+  const loadFirstPage = async (filtersObj: any, activeQuickFilter?: string) => {
     try {
       if (!user) return; // Suppress fetching if not logged in
       if (loadLockRef.current) return; // prevent duplicate initial loads
       loadLockRef.current = true;
-      const initialLimit = computeDynamicLimit(0);
-      const result: any = await (dispatch as any)(loadHistory({ filters: filtersObj, backendFilters: filtersObj, paginationParams: { limit: initialLimit }, forceRefresh: true })).unwrap();
+      const currentQF = activeQuickFilter || quickFilter;
+      const initialLimit = currentQF === 'user-uploads' || currentQF === 'all' ? 100 : computeDynamicLimit(0);
+      const result: any = await (dispatch as any)(loadHistory({
+        filters: { ...filtersObj },
+        backendFilters: { ...filtersObj },
+        paginationParams: { limit: initialLimit },
+        expectedType: currentQF === 'all' || currentQF === 'user-uploads' ? undefined : 'text-to-image',
+        skipBackendGenerationFilter: currentQF !== 'music',
+        forceRefresh: true
+      })).unwrap();
       const entries = (result && Array.isArray(result.entries)) ? result.entries : [];
       let nextHasMore: boolean;
       if (typeof (result && result.hasMore) !== 'undefined') {
@@ -217,14 +257,29 @@ const History = () => {
     if (sortOrder) nextFilters.sortOrder = sortOrder;
     if (searchQuery.trim()) nextFilters.search = searchQuery.trim();
 
+    // Safety net: re-apply quickFilter-specific filters if missing (prevent stale filter state)
+    if (quickFilter === 'music' && !nextFilters.generationType) nextFilters.generationType = 'text-to-music';
+
     setLocalFilters(nextFilters);
     dispatch(setFilters(nextFilters));
     // Clear immediately so stale tiles don't linger while backend fetch happens
     dispatch(clearHistory());
-    await loadFirstPage(nextFilters);
+    loadLockRef.current = false; // unlock so date-change fetch isn't blocked by an in-flight request
+    await loadFirstPage(nextFilters, quickFilter); // pass quickFilter explicitly to avoid stale closure
     setPage(1);
     if (closeCalendar) setShowCalendar(false);
-  }, [dispatch, filters, searchQuery, sortOrder]);
+  }, [dispatch, filters, searchQuery, sortOrder, quickFilter]);
+
+  const runMobileHistoryRefresh = useCallback(async (action: () => Promise<void>) => {
+    setPillLoading(true);
+    setOverlayLoading(true);
+    try {
+      await action();
+    } finally {
+      setPillLoading(false);
+      setOverlayLoading(false);
+    }
+  }, []);
 
   // Backend-only sorting: clear UI and force a fresh backend query when sort changes
   const onSortChange = useCallback(async (order: 'asc' | 'desc') => {
@@ -234,17 +289,21 @@ const History = () => {
     isFetchingMoreRef.current = false;
     hasUserScrolledRef.current = false;
     autoLoadAttemptsRef.current = 0;
+    loadLockRef.current = false; // unlock so the new fetch isn't blocked by an in-flight request
 
     const f: any = { ...filters, sortOrder: newSortOrder };
     if (dateRange.start && dateRange.end) f.dateRange = { start: dateRange.start.toISOString(), end: dateRange.end?.toISOString() };
     if (searchQuery.trim()) f.search = searchQuery.trim();
 
+    // Safety net: re-apply quickFilter-specific filters if missing (prevent stale filter state)
+    if (quickFilter === 'music' && !f.generationType) f.generationType = 'text-to-music';
+
     setLocalFilters(f);
     dispatch(setFilters(f));
     dispatch(clearHistory());
-    await loadFirstPage(f);
+    await loadFirstPage(f, quickFilter); // pass quickFilter explicitly to avoid stale closure
     setPage(1);
-  }, [filters, dateRange, searchQuery, dispatch]);
+  }, [filters, dateRange, searchQuery, dispatch, quickFilter]);
 
   // Auto-fill viewport with a small safety cap to avoid fetching everything
   const computeDynamicLimit = (existingCount: number) => {
@@ -273,18 +332,21 @@ const History = () => {
 
         // Reset history to ensure a clean initial load on refresh
         dispatch(clearHistory());
+        loadLockRef.current = false; // unlock so view/search changes aren't blocked by a previous in-flight request
+        isFetchingMoreRef.current = false;
+        autoLoadAttemptsRef.current = 0;
         if (viewMode === 'global') {
           const base: any = {};
           if (sortOrder) base.sortOrder = sortOrder;
           if (searchQuery.trim()) base.search = searchQuery.trim();
           dispatch(setFilters(base));
-          await loadFirstPage(base);
+          await loadFirstPage(base, 'all');
         } else {
           const f: any = { generationType: currentGenerationType };
           if (sortOrder) f.sortOrder = sortOrder;
           if (searchQuery.trim()) f.search = searchQuery.trim();
           dispatch(setFilters(f));
-          await loadFirstPage(f);
+          await loadFirstPage(f, quickFilter);
         }
         setPage(1);
         didInitialLoadRef.current = true;
@@ -314,9 +376,13 @@ const History = () => {
       const baseFilters = { ...filters } as any;
       if (sortOrder) baseFilters.sortOrder = sortOrder;
       if (searchQuery.trim()) baseFilters.search = searchQuery.trim();
-      const limit = sortOrder === 'asc' ? 30 : 10;
+      const limit = (quickFilter === 'user-uploads' || quickFilter === 'all') ? 100 : (sortOrder === 'asc' ? 30 : 10);
 
-      dispatch(loadMoreHistory({ filters: baseFilters, backendFilters: baseFilters, paginationParams: { limit } }))
+      dispatch(loadMoreHistory({
+        filters: { ...baseFilters },
+        backendFilters: { ...baseFilters },
+        paginationParams: { limit }
+      }))
         .then((action: any) => {
           // Only update paging state on fulfilled requests; rejected conditions should not kill pagination.
           if (action?.meta?.requestStatus !== 'fulfilled') return;
@@ -330,7 +396,7 @@ const History = () => {
     } catch {
       isFetchingMoreRef.current = false;
     }
-  }, [dispatch, filters, hasMore, loading, searchQuery, sortOrder]);
+  }, [dispatch, filters, hasMore, loading, searchQuery, sortOrder, quickFilter]);
 
   useEffect(() => {
     const el = scrollContainerRef.current;
@@ -374,11 +440,16 @@ const History = () => {
     if (loading || isFetchingMoreRef.current || !hasMore) return;
     // If the content doesn't overflow, we can't scroll, so trigger loadMore automatically.
     const isScrollable = el.scrollHeight > el.clientHeight + 20;
-    if (isScrollable) return;
-    if (autoLoadAttemptsRef.current >= 4) return; // safety cap
+    const hasFilteredItems = getFilteredItemsCount() > 0;
+    // For regular tabs, we stop after 4 attempts to avoid infinite loops.
+    // For Uploads tab, we're more aggressive (up to 12 attempts) because matching items are rare.
+    const maxAttempts = (quickFilter === 'user-uploads' || quickFilter === 'all') ? 12 : 4;
+
+    if (isScrollable && hasFilteredItems) return;
+    if (autoLoadAttemptsRef.current >= maxAttempts) return; // safety cap
     autoLoadAttemptsRef.current += 1;
     triggerLoadMore('autofill');
-  }, [historyEntries.length, hasMore, loading, triggerLoadMore]);
+  }, [historyEntries.length, hasMore, loading, triggerLoadMore, quickFilter]);
 
   // Handle click outside to close filter popover
   useEffect(() => {
@@ -953,6 +1024,10 @@ const History = () => {
     setDateRange({ start: null, end: null });
     setSortOrder('desc');
     dispatch(clearFilters());
+    dispatch(clearHistory());
+    loadLockRef.current = false; // unlock so clear-filters fetch isn't blocked by an in-flight request
+    isFetchingMoreRef.current = false;
+    autoLoadAttemptsRef.current = 0;
     const base = {};
     await loadFirstPage(base);
 
@@ -1106,13 +1181,20 @@ const History = () => {
   }
 
   return (
-    <div className="min-h-full bg-[#07070B] text-white md:p-2 select-none">
+    <div className="min-h-full bg-[#0E0E12] text-white md:p-2 select-none">
       {/* Fixed Header with title and controls */}
-      <div className="fixed top-0 left-0 right-0 z-50 bg-[#07070B] backdrop-blur-xl shadow-xl px-3">
+      <div className="fixed top-0 left-0 right-0 z-50 bg-[#0E0E12] backdrop-blur-xl shadow-xl px-3">
         <div className="pt-10 md:pt-4  md:px-3">
-          <div className="flex  md:items-center gap-4 md:pl-14 pb-2">
+          <div className="flex md:items-center gap-4 md:pl-14 pb-2">
+            <button
+              onClick={() => dispatch(setSidebarExpanded(true))}
+              className="md:hidden flex h-10 w-10 items-center justify-center shrink-0 text-white/70 hover:text-white transition-colors cursor-pointer"
+              aria-label="Toggle Menu"
+            >
+              <Menu size={24} />
+            </button>
             <div>
-              <h2 className="text-xl md:text-2xl font-semibold text-white pb-2 ">{headerTitle}</h2>
+              <h2 className="text-xl md:text-2xl font-semibold text-white pb-0 md:pb-2 leading-tight">{headerTitle}</h2>
               <div className="hidden md:flex text-white/80 text-sm mt-0">{getFilteredItemsCount()} {quickFilter === 'user-uploads' ? 'uploads' : 'generations'}</div>
             </div>
 
@@ -1133,18 +1215,23 @@ const History = () => {
                     setOverlayLoading(true);
                     let f: any = {};
                     switch (key) {
-                      case 'images': f = { mode: 'image' }; break;
-                      case 'videos': f = { mode: 'video' }; break;
+                      case 'images': f = {}; break;
+                      case 'videos': f = {}; break;
                       case 'music': f = { generationType: 'text-to-music' }; break;
                       case 'user-uploads': f = { isUserUpload: true }; break;
                       default: f = {};
                     }
                     if (sortOrder) (f as any).sortOrder = sortOrder;
+                    if (searchQuery.trim()) (f as any).search = searchQuery.trim();
                     if (dateRange.start && dateRange.end) (f as any).dateRange = { start: dateRange.start, end: dateRange.end };
                     setLocalFilters(f);
                     dispatch(setFilters(f));
                     dispatch(clearHistory());
-                    await loadFirstPage(f);
+                    // Reset all load guards so the new tab's fetch is never blocked by a previous in-flight request
+                    loadLockRef.current = false;
+                    isFetchingMoreRef.current = false;
+                    autoLoadAttemptsRef.current = 0;
+                    await loadFirstPage(f, key);
                     setPage(1);
                     setPillLoading(false);
                     setOverlayLoading(false);
@@ -1163,19 +1250,20 @@ const History = () => {
             <div className="flex items-center ml-auto gap-3 -mt-3">
               <div className="hidden md:flex items-center justify-end gap-2">
                 <HistoryControls
-                  mode={currentGenerationType === 'text-to-video' ? 'video' : 'image'}
-                  onSearchChange={(s) => {
-                    setSearchQuery(String(s || ''));
+                  mode={
+                    (quickFilter === 'all' || quickFilter === 'user-uploads') ? 'all' :
+                      quickFilter === 'videos' ? 'video' :
+                        quickFilter === 'music' ? 'music' :
+                          (quickFilter === 'logo' || quickFilter === 'sticker' || quickFilter === 'product') ? 'branding' :
+                            currentGenerationType === 'text-to-video' ? 'video' : 'image'
+                  }
+                  onSearchChange={(search) => {
+                    setSearchQuery(search);
                     setPage(1);
                   }}
-                  onSortChange={(order) => {
-                    setSortOrder(order);
-                    setPage(1);
-                  }}
-                  onDateChange={(dr) => {
-                    setDateRange({ start: dr.start, end: dr.end });
-                    setDateInput(dr.start ? dr.start.toISOString().slice(0, 10) : '');
-                  }}
+                  onSortChange={onSortChange}
+                  onDateChange={(dr) => onDateChange(dr.start, dr.end)}
+                  disableAutoFetch={true}
                 />
               </div>
             </div>
@@ -1195,26 +1283,30 @@ const History = () => {
               <button
                 key={key}
                 onClick={async () => {
+                  if (quickFilter === key) return;
                   setQuickFilter(key);
-                  setPillLoading(true);
-                  setOverlayLoading(true);
-                  let f: any = {};
-                  switch (key) {
-                    case 'images': f = { mode: 'image' }; break;
-                    case 'videos': f = { mode: 'video' }; break;
-                    case 'music': f = { generationType: 'text-to-music' }; break;
-                    case 'user-uploads': f = { isUserUpload: true }; break;
-                    default: f = {};
-                  }
-                  if (sortOrder) (f as any).sortOrder = sortOrder;
-                  if (dateRange.start && dateRange.end) (f as any).dateRange = { start: dateRange.start, end: dateRange.end };
-                  setLocalFilters(f);
-                  dispatch(setFilters(f));
-                  dispatch(clearHistory());
-                  await loadFirstPage(f);
-                  setPage(1);
-                  setPillLoading(false);
-                  setOverlayLoading(false);
+                  await runMobileHistoryRefresh(async () => {
+                    let f: any = {};
+                    switch (key) {
+                      case 'images': f = {}; break;
+                      case 'videos': f = {}; break;
+                      case 'music': f = { generationType: 'text-to-music' }; break;
+                      case 'user-uploads': f = { isUserUpload: true }; break;
+                      default: f = {};
+                    }
+                    if (sortOrder) (f as any).sortOrder = sortOrder;
+                    if (searchQuery.trim()) (f as any).search = searchQuery.trim();
+                    if (dateRange.start && dateRange.end) (f as any).dateRange = { start: dateRange.start, end: dateRange.end };
+                    setLocalFilters(f);
+                    dispatch(setFilters(f));
+                    dispatch(clearHistory());
+                    // Reset all load guards so the new tab's fetch is never blocked by a previous in-flight request
+                    loadLockRef.current = false;
+                    isFetchingMoreRef.current = false;
+                    autoLoadAttemptsRef.current = 0;
+                    await loadFirstPage(f, key);
+                    setPage(1);
+                  });
                 }}
                 className={`inline-flex items-center md:gap-1 md:px-3 px-2 md:py-1 py-1 rounded-lg md:text-sm text-[11px] font-medium transition-all border whitespace-nowrap ${quickFilter === key
                   ? 'bg-white border-white/5 text-black shadow-sm'
@@ -1225,6 +1317,12 @@ const History = () => {
               </button>
             ))}
           </div>
+          {pillLoading && (
+            <div className="flex md:hidden items-center gap-2 text-[11px] text-white/70">
+              <Image src="/styles/Logo.gif" alt="Loading" width={18} height={18} className="rounded-full" unoptimized />
+              <span>Updating history...</span>
+            </div>
+          )}
           {/* First row: Search and Date Picker */}
           <div className="flex items-center gap-1 w-auto">
             {/* Search Input */}
@@ -1258,7 +1356,10 @@ const History = () => {
 
             <div className="flex items-center gap-2">
               <button
-                onClick={() => onSortChange('desc')}
+                onClick={() => {
+                  if (sortOrder === 'desc') return;
+                  void runMobileHistoryRefresh(() => onSortChange('desc'));
+                }}
                 className={`relative group px-1 py-1 rounded-lg text-xs ${sortOrder === 'desc' ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
                 aria-label="Recent"
               >
@@ -1268,7 +1369,10 @@ const History = () => {
                 </div>
               </button>
               <button
-                onClick={() => onSortChange('asc')}
+                onClick={() => {
+                  if (sortOrder === 'asc') return;
+                  void runMobileHistoryRefresh(() => onSortChange('asc'));
+                }}
                 className={`relative group px-1 py-1 rounded-lg text-xs ${sortOrder === 'asc' ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
                 aria-label="Oldest"
               >
@@ -1286,16 +1390,20 @@ const History = () => {
                 ref={dateInputRef}
                 type="date"
                 value={dateInput}
+                max={todayInputMax}
                 onChange={async (e) => {
                   const value = e.target.value;
-                  if (!value) {
-                    await onDateChange(null, null);
-                    return;
-                  }
-                  const d = new Date(value + 'T00:00:00');
-                  const start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0);
-                  const end = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
-                  await onDateChange(start, end);
+                  await runMobileHistoryRefresh(async () => {
+                    if (!value) {
+                      await onDateChange(null, null);
+                      return;
+                    }
+                    const d = new Date(value + 'T00:00:00');
+                    if (isFutureCalendarDate(d)) return;
+                    const start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0);
+                    const end = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+                    await onDateChange(start, end);
+                  });
                 }}
                 // Keep it in-viewport but invisible for reliable native picker behavior
                 style={{ position: 'absolute', top: 0, left: 0, width: 1, height: 1, opacity: 0 }}
@@ -1321,11 +1429,11 @@ const History = () => {
                   ref={calendarRef}
                   data-calendar-popup="true"
                   onMouseDown={(e) => e.stopPropagation()}
-                  className="absolute right-9 top-full mt-1 z-40 w-[200px] select-none bg-white/5 backdrop-blur-3xl rounded-xl ring-1 ring-white/20 shadow-2xl p-0 px-2 pb-2"
+                  className="absolute right-0 top-full mt-2 z-40 w-[280px] max-w-[calc(100vw-1rem)] select-none bg-black/90 backdrop-blur-3xl rounded-xl ring-1 ring-white/20 shadow-2xl p-3"
                 >
                   {/* Header */}
-                  <div className="flex items-center justify-between mb-0 text-white">
-                    <button className="px-2 py-1 rounded hover:bg-white/10" onClick={() => {
+                  <div className="flex items-center justify-between mb-2 text-white">
+                    <button className="px-2 py-1 rounded hover:bg-white/10" onMouseDown={(e) => e.stopPropagation()} onClick={() => {
                       const prev = new Date(calendarYear, calendarMonth - 1, 1);
                       setCalendarYear(prev.getFullYear());
                       setCalendarMonth(prev.getMonth());
@@ -1333,47 +1441,60 @@ const History = () => {
                     <div className="text-sm font-semibold">
                       {new Date(calendarYear, calendarMonth, 1).toLocaleString(undefined, { month: 'long', year: 'numeric' })}
                     </div>
-                    <button className="px-2 py-1 rounded hover:bg-white/10" onClick={() => {
+                    <button className="px-2 py-1 rounded hover:bg-white/10" onMouseDown={(e) => e.stopPropagation()} onClick={() => {
                       const next = new Date(calendarYear, calendarMonth + 1, 1);
                       setCalendarYear(next.getFullYear());
                       setCalendarMonth(next.getMonth());
                     }}>›</button>
                   </div>
                   {/* Weekdays */}
-                  <div className="grid grid-cols-7 text-[11px] text-white/70 mb-0">
+                  <div className="grid grid-cols-7 text-[11px] text-white/70 mb-1">
                     {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (<div key={d} className="text-center py-1">{d}</div>))}
                   </div>
                   {/* Days */}
                   <div className="grid grid-cols-7 gap-1">
                     {Array.from({ length: calendarFirstWeekday }).map((_, i) => (
-                      <div key={`pad-${i}`} className="h-6 text-xs" />
+                      <div key={`pad-${i}`} className="h-8" />
                     ))}
                     {Array.from({ length: calendarDaysInMonth }).map((_, i) => {
                       const day = i + 1;
                       const thisDate = new Date(calendarYear, calendarMonth, day);
                       const isSelected = !!dateRange.start && new Date(dateRange.start).toDateString() === thisDate.toDateString();
+                      const isFuture = isFutureCalendarDate(thisDate);
                       return (
                         <button
                           key={day}
-                          className={`h-6 rounded text-xs text-center text-white hover:bg-white/15 ${isSelected ? 'bg-white/25 ring-1 ring-white/40' : 'bg-white/5'}`}
+                          disabled={isFuture}
+                          className={`h-8 rounded text-sm text-center ${isFuture ? 'cursor-not-allowed text-white/20' : 'text-white hover:bg-white/15'} ${isSelected ? 'bg-white/25 ring-1 ring-white/40' : 'bg-white/5'}`}
+                          onMouseDown={(e) => e.stopPropagation()}
                           onClick={async () => {
+                            if (isFuture) return;
                             const start = new Date(thisDate.getFullYear(), thisDate.getMonth(), thisDate.getDate(), 0, 0, 0);
                             const end = new Date(thisDate.getFullYear(), thisDate.getMonth(), thisDate.getDate(), 23, 59, 59, 999);
-                            await onDateChange(start, end, true);
+                            await runMobileHistoryRefresh(async () => {
+                              await onDateChange(start, end, true);
+                            });
                           }}
                         >{day}</button>
                       );
                     })}
                   </div>
                   {/* Footer actions */}
-                  <div className="flex items-center justify-between mt-1">
-                    <button className="text-white/80 text-xs px-2 py-1 rounded hover:bg-white/10" onClick={async () => {
-                      await onDateChange(null, null, true);
+                  <div className="flex items-center justify-between mt-3">
+                    <button className="text-white/80 text-sm px-2 py-1 rounded hover:bg-white/10" onMouseDown={(e) => e.stopPropagation()} onClick={async () => {
+                      await runMobileHistoryRefresh(async () => {
+                        await onDateChange(null, null, true);
+                      });
                     }}>Clear</button>
-                    <button className="text-white/90 text-xs px-2 py-1 rounded hover:bg-white/10" onClick={() => {
+                    <button className="text-white/90 text-sm px-2 py-1 rounded hover:bg-white/10" onMouseDown={(e) => e.stopPropagation()} onClick={async () => {
                       const now = new Date();
                       setCalendarMonth(now.getMonth());
                       setCalendarYear(now.getFullYear());
+                      const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+                      const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+                      await runMobileHistoryRefresh(async () => {
+                        await onDateChange(start, end, true);
+                      });
                     }}>Today</button>
                   </div>
                 </div>
@@ -1383,7 +1504,9 @@ const History = () => {
                   <button
                     className="px-1 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white text-md"
                     onClick={async () => {
-                      await onDateChange(null, null);
+                      await runMobileHistoryRefresh(async () => {
+                        await onDateChange(null, null);
+                      });
                     }}
                   >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
@@ -1745,14 +1868,16 @@ const History = () => {
                                 >
                                   {getCleanPrompt(entry.prompt)}
                                 </span> */}
-                                    <button
-                                      aria-label="Copy prompt"
-                                      className="pointer-events-auto p-2 rounded-lg bg-white/20 hover:bg-white/30 text-white/90 backdrop-blur-3xl"
-                                      onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(entry.prompt)); }}
-                                      onMouseDown={(e) => e.stopPropagation()}
-                                    >
-                                      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" /></svg>
-                                    </button>
+                                    {getVisibleUserPrompt(entry) ? (
+                                      <button
+                                        aria-label="Copy prompt"
+                                        className="pointer-events-auto p-2 rounded-lg bg-white/20 hover:bg-white/30 text-white/90 backdrop-blur-3xl"
+                                        onClick={(e) => { e.stopPropagation(); copyPrompt(e, getVisibleUserPrompt(entry)); }}
+                                        onMouseDown={(e) => e.stopPropagation()}
+                                      >
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" /></svg>
+                                      </button>
+                                    ) : null}
                                     <button
                                       aria-label="Delete generation"
                                       className="pointer-events-auto p-2 rounded-lg bg-red-500/60 hover:bg-red-500/90 text-white backdrop-blur-3xl"
@@ -1810,14 +1935,16 @@ const History = () => {
                                 >
                                   {getCleanPrompt(entry.prompt)}
                                 </span> */}
-                                    <button
-                                      aria-label="Copy prompt"
-                                      className="pointer-events-auto p-2 rounded-lg bg-white/20 hover:bg-white/30 text-white/90 backdrop-blur-3xl"
-                                      onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(entry.prompt)); }}
-                                      onMouseDown={(e) => e.stopPropagation()}
-                                    >
-                                      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" /></svg>
-                                    </button>
+                                    {getVisibleUserPrompt(entry) ? (
+                                      <button
+                                        aria-label="Copy prompt"
+                                        className="pointer-events-auto p-2 rounded-lg bg-white/20 hover:bg-white/30 text-white/90 backdrop-blur-3xl"
+                                        onClick={(e) => { e.stopPropagation(); copyPrompt(e, getVisibleUserPrompt(entry)); }}
+                                        onMouseDown={(e) => e.stopPropagation()}
+                                      >
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" /></svg>
+                                      </button>
+                                    ) : null}
                                     <button
                                       aria-label="Delete generation"
                                       className="pointer-events-auto p-2 rounded-lg bg-red-500/60 hover:bg-red-500/90 text-white backdrop-blur-3xl"
@@ -1873,14 +2000,16 @@ const History = () => {
                                   <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
                                   {/* Hover prompt overlay */}
                                   <div className="pointer-events-none absolute bottom-1 right-1 rounded-lg   opacity-0 group-hover:opacity-100 transition-opacity p-1.5 shadow-lg flex items-center gap-1  z-20">
-                                    <button
-                                      aria-label="Copy prompt"
-                                      className="pointer-events-auto p-2 rounded-lg bg-white/20 hover:bg-white/30 text-white/90 backdrop-blur-3xl"
-                                      onClick={(e) => { e.stopPropagation(); copyPrompt(e, getCleanPrompt(entry.prompt)); }}
-                                      onMouseDown={(e) => e.stopPropagation()}
-                                    >
-                                      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" /></svg>
-                                    </button>
+                                    {getVisibleUserPrompt(entry) ? (
+                                      <button
+                                        aria-label="Copy prompt"
+                                        className="pointer-events-auto p-2 rounded-lg bg-white/20 hover:bg-white/30 text-white/90 backdrop-blur-3xl"
+                                        onClick={(e) => { e.stopPropagation(); copyPrompt(e, getVisibleUserPrompt(entry)); }}
+                                        onMouseDown={(e) => e.stopPropagation()}
+                                      >
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" /></svg>
+                                      </button>
+                                    ) : null}
                                     <button
                                       aria-label="Delete generation"
                                       className="pointer-events-auto p-2 rounded-lg bg-red-500/60 hover:bg-red-500/90 text-white backdrop-blur-3xl"
@@ -2015,9 +2144,9 @@ const History = () => {
       <ImagePreviewModal preview={preview} onClose={() => setPreview(null)} />
       <VideoPreviewModal preview={videoPreview} onClose={() => setVideoPreview(null)} />
 
-      {stickerPreviewEntry && (
+      {/* {stickerPreviewEntry && (
         <StickerImagePreview isOpen={true} onClose={() => setStickerPreviewEntry(null)} entry={stickerPreviewEntry} />
-      )}
+      )} */}
       {productPreviewEntry && (
         <ProductImagePreview isOpen={true} onClose={() => setProductPreviewEntry(null)} entry={productPreviewEntry} />
       )}

@@ -8,11 +8,11 @@ import { toggleDropdown } from '@/store/slices/uiSlice';
 
 type SeedreamSizeDropdownProps = {
   openDirection?: 'up' | 'down';
-  size: '1K' | '2K' | '4K' | 'custom';
-  onSizeChange: (size: '1K' | '2K' | '4K' | 'custom') => void;
+  size: '1K' | '2K' | '3K' | '4K' | 'custom';
+  onSizeChange: (size: '1K' | '2K' | '3K' | '4K' | 'custom') => void;
 };
 
-const SeedreamSizeDropdown = ({ 
+const SeedreamSizeDropdown = ({
   openDirection = 'up',
   size,
   onSizeChange
@@ -25,7 +25,12 @@ const SeedreamSizeDropdown = ({
   const buttonJustClickedRef = useRef(false);
   const shouldCloseRef = useRef(false);
 
-  const options: ('1K' | '2K' | '4K' | 'custom')[] = ['1K', '2K', '4K', 'custom'];
+  const selectedModel = useAppSelector((state: any) => state.generation?.selectedModel);
+
+  const isSeedream5Lite = selectedModel === 'seedream-5-lite';
+  const options: ('1K' | '2K' | '3K' | '4K' | 'custom')[] = isSeedream5Lite
+    ? ['2K', '3K']
+    : ['1K', '2K', '4K', 'custom'];
 
   // Reset active instance when dropdown closes
   useEffect(() => {
@@ -45,27 +50,27 @@ const SeedreamSizeDropdown = ({
         const isDisplayed = computedStyle.display !== 'none';
         const isVisible = computedStyle.visibility !== 'hidden';
         const hasOpacity = parseFloat(computedStyle.opacity) > 0;
-        
+
         // Check if element has dimensions (not collapsed)
         const buttonRect = buttonRef.current.getBoundingClientRect();
         const hasDimensions = buttonRect.width > 0 && buttonRect.height > 0;
-        
+
         // Only create dropdown if button is actually visible
         if (!isDisplayed || !isVisible || !hasOpacity || !hasDimensions) {
           setDropdownPosition(null);
           return;
         }
-        
+
         const dropdownWidth = 72; // w-18 = 4.5rem = 72px
         const spaceAbove = buttonRect.top;
         const spaceBelow = window.innerHeight - buttonRect.bottom;
-        
+
         let top: number;
         let left: number;
-        
+
         // Determine if we should open up or down based on available space
         const shouldOpenUp = openDirection === 'up' || (spaceAbove > spaceBelow && openDirection !== 'down');
-        
+
         if (shouldOpenUp) {
           // Position top of dropdown at button top, then translate up by 100% to make it grow upward
           top = buttonRect.top;
@@ -75,7 +80,7 @@ const SeedreamSizeDropdown = ({
           top = buttonRect.bottom + 8; // mt-2 = 8px
           left = buttonRect.left;
         }
-        
+
         // Ensure dropdown doesn't go off screen horizontally
         if (left + dropdownWidth > window.innerWidth) {
           left = window.innerWidth - dropdownWidth - 8;
@@ -83,7 +88,7 @@ const SeedreamSizeDropdown = ({
         if (left < 8) {
           left = 8;
         }
-        
+
         // If opening up and dropdown would go off screen, switch to opening down
         let finalOpenUp = shouldOpenUp;
         if (shouldOpenUp && top < 8) {
@@ -91,7 +96,7 @@ const SeedreamSizeDropdown = ({
           top = buttonRect.bottom + 8;
           finalOpenUp = false;
         }
-        
+
         setDropdownPosition({ top, left, openUp: finalOpenUp });
       } else {
         setDropdownPosition(null);
@@ -99,11 +104,11 @@ const SeedreamSizeDropdown = ({
     };
 
     updateDropdownPosition();
-    
+
     if (activeDropdown === 'seedreamSize') {
       window.addEventListener('scroll', updateDropdownPosition, true);
       window.addEventListener('resize', updateDropdownPosition);
-      
+
       // Close dropdown when clicking outside
       // Use bubble phase (default) so React's onClick runs first, then this handler
       const handleClickOutside = (event: MouseEvent) => {
@@ -111,7 +116,7 @@ const SeedreamSizeDropdown = ({
         if (buttonJustClickedRef.current || shouldCloseRef.current) {
           return;
         }
-        
+
         const target = event.target as HTMLElement;
         // Don't close if clicking the button itself
         if (buttonRef.current && buttonRef.current.contains(target)) {
@@ -125,13 +130,13 @@ const SeedreamSizeDropdown = ({
         setIsActiveInstance(false);
         dispatch(toggleDropdown(''));
       };
-      
+
       // Use bubble phase (default) so React's onClick runs first, then this handler
       // Add a small delay to ensure React's event handlers complete first
       const timeoutId = setTimeout(() => {
         document.addEventListener('click', handleClickOutside);
       }, 0);
-      
+
       return () => {
         clearTimeout(timeoutId);
         window.removeEventListener('scroll', updateDropdownPosition, true);
@@ -144,13 +149,13 @@ const SeedreamSizeDropdown = ({
   const handleDropdownClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation(); // Prevent click outside handler from firing
-    
+
     // Mark that button was just clicked - do this immediately and synchronously
     buttonJustClickedRef.current = true;
-    
+
     // Check current state and toggle accordingly
     const isCurrentlyOpen = activeDropdown === 'seedreamSize' && isActiveInstance;
-    
+
     if (isCurrentlyOpen) {
       // Close the dropdown immediately
       setIsActiveInstance(false);
@@ -162,7 +167,7 @@ const SeedreamSizeDropdown = ({
       dispatch(toggleDropdown('seedreamSize'));
       shouldCloseRef.current = false;
     }
-    
+
     // Reset the flag after a short delay
     setTimeout(() => {
       buttonJustClickedRef.current = false;
@@ -170,14 +175,14 @@ const SeedreamSizeDropdown = ({
     }, 300);
   };
 
-  const handleSizeSelect = (opt: '1K' | '2K' | '4K' | 'custom') => {
+  const handleSizeSelect = (opt: '1K' | '2K' | '3K' | '4K' | 'custom') => {
     onSizeChange(opt);
     setIsActiveInstance(false);
     dispatch(toggleDropdown(''));
   };
 
   const dropdownContent = activeDropdown === 'seedreamSize' && isActiveInstance && dropdownPosition ? (
-    <div 
+    <div
       data-dropdown="seedreamSize"
       className="fixed w-18 bg-black/90 backdrop-blur-3xl shadow-2xl rounded-lg overflow-hidden ring-1 ring-white/30 py-1 z-[9999] max-h-150 overflow-y-auto dropdown-scrollbar"
       style={{
@@ -210,7 +215,7 @@ const SeedreamSizeDropdown = ({
         <button
           ref={buttonRef}
           onClick={handleDropdownClick}
-          className="h-[28px] md:h-[32px] md:px-4 px-2 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 bg-transparent text-white/90 hover:bg-white/5 transition flex items-center gap-2"
+          className="h-[23px] md:h-[32px] md:px-4 px-2 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 bg-transparent text-white/90 hover:bg-white/5 transition flex items-center gap-2"
         >
           {size}
           <ChevronUp className={`w-4 h-4 transition-transform ${activeDropdown === 'seedreamSize' ? 'rotate-180' : ''}`} />

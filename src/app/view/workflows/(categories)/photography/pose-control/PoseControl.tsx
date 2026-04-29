@@ -10,13 +10,15 @@ import ImageComparisonSlider from '@/app/view/workflows/components/ImageComparis
 import { useCredits } from '@/hooks/useCredits';
 import { downloadFileWithNaming } from '@/utils/downloadUtils';
 import { WORKFLOWS_DATA } from '@/app/view/workflows/components/data';
+import { getSignInUrl } from '@/routes/routes';
 
 export default function PoseControl() {
   const router = useRouter();
   const {
     creditBalance,
     deductCreditsOptimisticForGeneration,
-    rollbackOptimisticDeduction
+    rollbackOptimisticDeduction,
+    user
   } = useCredits();
 
   // State
@@ -67,6 +69,10 @@ export default function PoseControl() {
   };
 
   const handleRun = async () => {
+    if (!user) {
+      router.push(getSignInUrl());
+      return;
+    }
     if (!originalImage || !poseReferenceImage) {
       toast.error('Please upload both Model and Pose Reference images');
       return;
@@ -255,7 +261,7 @@ export default function PoseControl() {
                     afterImage={generatedImage}
                     beforeLabel="Before"
                     afterLabel="After"
-                    imageFit="object-contain"
+                    imageFit="object-cover"
                     imagePosition="object-center"
                   />
                   <button
@@ -286,7 +292,7 @@ export default function PoseControl() {
                     afterImage={workflowData.sampleAfter}
                     beforeLabel="Before"
                     afterLabel="After"
-                    imageFit="object-contain"
+                    imageFit="object-cover"
                     imagePosition="object-center"
                   />
 
@@ -299,6 +305,7 @@ export default function PoseControl() {
 
       {isUploadModalOpen && (
         <UploadModal
+          persistLocalDeviceUploads={false}
           isOpen={isUploadModalOpen}
           onClose={() => setIsUploadModalOpen(false)}
           onAdd={(urls: string[]) => {
@@ -312,3 +319,4 @@ export default function PoseControl() {
     </>
   );
 }
+

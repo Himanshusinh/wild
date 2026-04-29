@@ -1,18 +1,19 @@
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
 // Protect routes by requiring the backend session cookie (app_session) and add security headers
 export function proxy(req: NextRequest) {
   const url = req.nextUrl.clone();
-  const headerHost = req.headers.get('host') || url.host;
-  const forwardedHost = req.headers.get('x-forwarded-host') || headerHost;
-  const forwardedProto = req.headers.get('x-forwarded-proto') || url.protocol.replace(':', '');
+  const headerHost = req.headers.get("host") || url.host;
+  const forwardedHost = req.headers.get("x-forwarded-host") || headerHost;
+  const forwardedProto =
+    req.headers.get("x-forwarded-proto") || url.protocol.replace(":", "");
   const isLocalHost =
-    forwardedHost?.startsWith('localhost') ||
-    forwardedHost?.startsWith('127.0.0.1') ||
-    forwardedHost?.endsWith('.local');
+    forwardedHost?.startsWith("localhost") ||
+    forwardedHost?.startsWith("127.0.0.1") ||
+    forwardedHost?.endsWith(".local");
   const { pathname } = url;
-  const trimmedPath = pathname.replace(/\/+$/, '') || '/';
+  const trimmedPath = pathname.replace(/\/+$/, "") || "/";
   const normalizedPath = trimmedPath.toLowerCase();
   const pathnameLower = trimmedPath.toLowerCase();
 
@@ -36,77 +37,104 @@ export function proxy(req: NextRequest) {
   }
 
   const blockPrefixes = [
-    '/view/home',
-    '/dashboard',
-    '/account',
-    '/profile',
-    '/settings',
-    '/auth',
-    '/login',
-    '/signup',
+    "/view/home",
+    "/dashboard",
+    "/account",
+    "/profile",
+    "/settings",
+    "/auth",
+    "/login",
+    "/signup",
   ];
 
   const legacyRedirects: Record<string, string> = {
-    '/view/video-generation': '/text-to-video',
-    '/view/imagegeneration': '/text-to-image',
-    '/view/templates': '/view/workflows',
-    '/view/contactus': '/view/Landingpage?section=contact',
-    '/view/x': 'https://x.com/WildMind_AI',
-    '/view/youtube': 'https://www.youtube.com/@Wild-Mind-2025',
-    '/view/$': '/view/Landingpage',
-    '/view/&': '/view/Landingpage',
-    '/templates': '/view/workflows',
-    '/contactus': '/view/Landingpage?section=contact',
-    '/blogger': '/view/Landingpage',
-    '/$': '/view/Landingpage',
-    '/&': '/view/Landingpage',
+    "/view/video-generation": "/text-to-video",
+    "/view/imagegeneration": "/text-to-image",
+    "/view/templates": "/view/workflows",
+    "/view/contactus": "/view/Landingpage?section=contact",
+    "/view/x": "https://x.com/WildMind_AI",
+    "/view/youtube": "https://www.youtube.com/@Wild-Mind-2025",
+    "/view/$": "/view/Landingpage",
+    "/view/&": "/view/Landingpage",
+    "/templates": "/view/workflows",
+    "/contactus": "/view/Landingpage?section=contact",
+    "/blogger": "/view/Landingpage",
+    "/$": "/view/Landingpage",
+    "/&": "/view/Landingpage",
   };
 
-  if (!isLocalHost && forwardedProto === 'http') {
-    url.protocol = 'https:';
+  if (!isLocalHost && forwardedProto === "http") {
+    url.protocol = "https:";
+    url.host = headerHost; // FIX: Ensure we use the public hostname, not localhost/container IP
+    url.port = ""; // FIX: Clear the internal port (:3000) to prevent it appearing in redirect
     return NextResponse.redirect(url, { status: 308 });
   }
 
   // Proxy /api/canvas requests to the backend (Python Service)
   // This resolves the issue where /api/canvas/* routes were 404ing in production
-  if (pathname.startsWith('/api/canvas')) {
-    const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE;
+  if (pathname.startsWith("/api/canvas")) {
+    const backendUrl =
+      process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE;
     if (backendUrl) {
       // Clean backend URL to remove trailing slash
-      const targetBase = backendUrl.replace(/\/$/, '');
+      const targetBase = backendUrl.replace(/\/$/, "");
       const targetUrl = `${targetBase}${pathname}${req.nextUrl.search}`;
 
       // Rewrite request to the backend
       // NextResponse.rewrite preserves original headers
       return NextResponse.rewrite(new URL(targetUrl));
     } else {
-      console.error('Proxy: NEXT_PUBLIC_API_BASE_URL is not defined, cannot proxy /api/canvas');
+      console.error(
+        "Proxy: NEXT_PUBLIC_API_BASE_URL is not defined, cannot proxy /api/canvas",
+      );
     }
   }
 
   // Proxy /api/workflows requests to the backend Express service
   // Fixes 404 for routes like /api/workflows/selfie-video/generate-image
-  if (pathname.startsWith('/api/workflows')) {
-    const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE;
+  if (pathname.startsWith("/api/workflows")) {
+    const backendUrl =
+      process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE;
     if (backendUrl) {
-      const targetBase = backendUrl.replace(/\/$/, '');
+      const targetBase = backendUrl.replace(/\/$/, "");
       const targetUrl = `${targetBase}${pathname}${req.nextUrl.search}`;
       return NextResponse.rewrite(new URL(targetUrl));
     } else {
-      console.error('Proxy: NEXT_PUBLIC_API_BASE_URL is not defined, cannot proxy /api/workflows');
+      console.error(
+        "Proxy: NEXT_PUBLIC_API_BASE_URL is not defined, cannot proxy /api/workflows",
+      );
     }
   }
 
   // Proxy /api/replicate requests to the backend Express service
   // Fixes 404 for routes like /api/replicate/seedance-i2v/submit and /api/replicate/queue/*
-  if (pathname.startsWith('/api/replicate')) {
-    const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE;
+  if (pathname.startsWith("/api/replicate")) {
+    const backendUrl =
+      process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE;
     if (backendUrl) {
-      const targetBase = backendUrl.replace(/\/$/, '');
+      const targetBase = backendUrl.replace(/\/$/, "");
       const targetUrl = `${targetBase}${pathname}${req.nextUrl.search}`;
       return NextResponse.rewrite(new URL(targetUrl));
     } else {
-      console.error('Proxy: NEXT_PUBLIC_API_BASE_URL is not defined, cannot proxy /api/replicate');
+      console.error(
+        "Proxy: NEXT_PUBLIC_API_BASE_URL is not defined, cannot proxy /api/replicate",
+      );
+    }
+  }
+
+  // Proxy /api/billing requests to the backend (subscriptions, invoices, payments)
+  // Routes requests to the API Gateway which forwards to credit-service
+  if (pathname.startsWith("/api/billing")) {
+    const backendUrl =
+      process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE;
+    if (backendUrl) {
+      const targetBase = backendUrl.replace(/\/$/, "");
+      const targetUrl = `${targetBase}${pathname}${req.nextUrl.search}`;
+      return NextResponse.rewrite(new URL(targetUrl));
+    } else {
+      console.error(
+        "Proxy: NEXT_PUBLIC_API_BASE_URL is not defined, cannot proxy /api/billing",
+      );
     }
   }
 
@@ -117,47 +145,51 @@ export function proxy(req: NextRequest) {
 
   const redirectTarget = legacyRedirects[normalizedPath];
   if (redirectTarget) {
-    if (redirectTarget.startsWith('http')) {
+    if (redirectTarget.startsWith("http")) {
       return NextResponse.redirect(redirectTarget, { status: 308 });
     }
     const url = req.nextUrl.clone();
-    const [targetPath, targetQuery] = redirectTarget.split('?');
+    const [targetPath, targetQuery] = redirectTarget.split("?");
     url.pathname = targetPath;
     url.search = targetQuery ? `?${targetQuery}` : req.nextUrl.search;
     return NextResponse.redirect(url, { status: 308 });
   }
 
   const trackingParams = new Set([
-    'next',
-    'toast',
-    'ref',
-    'redirect',
-    'utm',
-    'utm_source',
-    'utm_medium',
-    'utm_campaign',
-    'utm_content',
-    'utm_term',
+    "next",
+    "toast",
+    "ref",
+    "redirect",
+    "utm",
+    "utm_source",
+    "utm_medium",
+    "utm_campaign",
+    "utm_content",
+    "utm_term",
   ]);
 
   const hasStrippableParams =
-    pathnameLower.startsWith('/view') &&
+    pathnameLower.startsWith("/view") &&
     Array.from(req.nextUrl.searchParams.keys()).some(
-      (key) => trackingParams.has(key.toLowerCase()) || key.toLowerCase().startsWith('utm_')
+      (key) =>
+        trackingParams.has(key.toLowerCase()) ||
+        key.toLowerCase().startsWith("utm_"),
     );
 
   if (hasStrippableParams) {
     const cleanUrl = req.nextUrl.clone();
-    cleanUrl.search = '';
+    cleanUrl.search = "";
     return NextResponse.redirect(cleanUrl, { status: 308 });
   }
 
   // Skip middleware for static files in /public (images, fonts, etc.)
   // This prevents Next.js from treating static files as routes
   if (
-    pathname.startsWith('/core/') ||
-    pathname.startsWith('/styles/') ||
-    pathname.match(/\.(png|jpg|jpeg|gif|svg|webp|avif|ico|woff|woff2|ttf|otf|mp4|webm|mp3|wav)$/i)
+    pathname.startsWith("/core/") ||
+    pathname.startsWith("/styles/") ||
+    pathname.match(
+      /\.(png|jpg|jpeg|gif|svg|webp|avif|ico|woff|woff2|ttf|otf|mp4|webm|mp3|wav)$/i,
+    )
   ) {
     return NextResponse.next();
   }
@@ -165,121 +197,161 @@ export function proxy(req: NextRequest) {
   // Base response with security headers
   const res = NextResponse.next();
   // Force correct MIME types for SEO files
-  if (pathname.endsWith('.xml')) {
-    res.headers.set('Content-Type', 'application/xml');
+  if (pathname.endsWith(".xml")) {
+    res.headers.set("Content-Type", "application/xml");
   }
 
-  if (pathname === '/robots.txt') {
-    res.headers.set('Content-Type', 'text/plain; charset=utf-8');
+  if (pathname === "/robots.txt") {
+    res.headers.set("Content-Type", "text/plain; charset=utf-8");
   }
   // For the main HTML document, we disable caching at the edge (Vercel/CDN)
   // to ensure we don't serve stale HTML that points to old JS chunk hashes.
-  const isDocument = !pathname.includes('.') || pathname.endsWith('.html');
-  const isApi = pathname.startsWith('/api/');
+  const isDocument = !pathname.includes(".") || pathname.endsWith(".html");
+  const isApi = pathname.startsWith("/api/");
 
   if (isDocument && !isApi) {
-    res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
-    res.headers.set('Pragma', 'no-cache');
-    res.headers.set('Expires', '0');
-    res.headers.set('Surrogate-Control', 'no-store'); // Specifically for CDNs like Vercel/Cloudflare
+    res.headers.set(
+      "Cache-Control",
+      "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
+    );
+    res.headers.set("Pragma", "no-cache");
+    res.headers.set("Expires", "0");
+    res.headers.set("Surrogate-Control", "no-store"); // Specifically for CDNs like Vercel/Cloudflare
   }
 
   // Security Headers
-  res.headers.set('X-Frame-Options', 'DENY');
-  res.headers.set('X-Content-Type-Options', 'nosniff');
-  res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.headers.set("X-Frame-Options", "DENY");
+  res.headers.set("X-Content-Type-Options", "nosniff");
+  res.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
   // Allow OAuth popups to function (prevents window.closed blocking)
-  res.headers.set('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+  res.headers.set("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
 
-  // Improved CSP - allows Turnstile and removes unsafe directives
+  // frame-src: production uses https:; local canvas dev servers use http://localhost / 127.0.0.1
+  const frameSrcParts = new Set<string>(["'self'", "https:"]);
+  if (isLocalHost) {
+    frameSrcParts.add("http://127.0.0.1:*");
+    frameSrcParts.add("http://localhost:*");
+  }
+  const showcaseEmbedBase =
+    process.env.NEXT_PUBLIC_WILDMIND_CANVAS_SHOWCASE_URL ||
+    process.env.NEXT_PUBLIC_WILDMIND_STUDIO_EMBED_URL;
+  if (showcaseEmbedBase) {
+    try {
+      const u = new URL(showcaseEmbedBase);
+      frameSrcParts.add(`${u.protocol}//${u.host}`);
+    } catch {
+      /* ignore invalid env URL */
+    }
+  }
+
+  // Relaxed CSP - More permissive to avoid blocking issues
   const csp = [
     "default-src 'self'",
     // Allow inline styles (Next.js requires this)
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    // Allow scripts from Google, Firebase, Cloudflare Turnstile
-    // Note: 'unsafe-eval' needed for Firebase/Google Auth
-    "script-src 'self' 'unsafe-eval' https://apis.google.com https://www.gstatic.com https://www.googletagmanager.com https://accounts.google.com https://www.googleapis.com https://challenges.cloudflare.com https://static.cloudflareinsights.com",
-    // script-src-elem for external script tags - includes Turnstile
-    // Note: 'unsafe-inline' required for Next.js hydration/inline scripts
-    "script-src-elem 'self' 'unsafe-inline' https://apis.google.com https://www.gstatic.com https://www.googletagmanager.com https://accounts.google.com https://challenges.cloudflare.com https://static.cloudflareinsights.com",
-    // Images and media from HTTPS/data/blob
+    "style-src 'self' 'unsafe-inline' https:",
+    // Allow scripts from anywhere over HTTPS (more permissive)
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https:",
+    // Allow script elements from HTTPS
+    "script-src-elem 'self' 'unsafe-inline' https:",
+    // Allow images and media from anywhere
     "img-src 'self' data: blob: https: http:",
     "media-src 'self' data: blob: https: http:",
-    // Permit API/XHR/WebSocket to Google/Firebase backends and our gateway
-    "connect-src 'self' https: http: https://*.googleapis.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com https://*.firebaseio.com https://*.firebaseapp.com https://challenges.cloudflare.com https://static.cloudflareinsights.com",
-    // Allow Google, Firebase OAuth popups/iframes, and Turnstile widget
-    "frame-src 'self' https://accounts.google.com https://*.google.com https://*.firebaseapp.com https://*.firebase.com https://challenges.cloudflare.com",
+    // Allow connections to any HTTPS endpoint
+    "connect-src 'self' https: http: ws: wss:",
+    `frame-src ${[...frameSrcParts].join(" ")}`,
     // Do not allow our app to be framed by other sites
     "frame-ancestors 'none'",
     // Hardening
     "base-uri 'self'",
-    "form-action 'self' https://accounts.google.com",
-    // Add object-src restriction
+    "form-action 'self' https:",
+    // Restrict object/embed tags
     "object-src 'none'",
-  ].join('; ');
-  res.headers.set('Content-Security-Policy', csp);
+  ].join("; ");
+  res.headers.set("Content-Security-Policy", csp);
 
   // Add additional security headers
-  res.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
-  res.headers.set('X-DNS-Prefetch-Control', 'on');
+  res.headers.set(
+    "Permissions-Policy",
+    "camera=(), microphone=(), geolocation=()",
+  );
+  res.headers.set("X-DNS-Prefetch-Control", "on");
 
   // Only block indexing for internal/admin paths, not public pages
   const shouldNoIndex =
     blockPrefixes.some((prefix) => pathnameLower.startsWith(prefix)) ||
-    pathnameLower.startsWith('/_next') ||
-    pathnameLower.startsWith('/api') ||
-    pathnameLower.startsWith('/view/Generation') ||
-    pathnameLower.startsWith('/view/EditImage') ||
-    pathnameLower.startsWith('/view/EditVideo') ||
-    pathnameLower.endsWith('.woff2');
+    pathnameLower.startsWith("/_next") ||
+    pathnameLower.startsWith("/api") ||
+    pathnameLower.startsWith("/view/Generation") ||
+    pathnameLower.startsWith("/view/EditImage") ||
+    pathnameLower.startsWith("/view/EditVideo") ||
+    pathnameLower.endsWith(".woff2");
 
   if (shouldNoIndex) {
-    res.headers.set('X-Robots-Tag', 'noindex, nofollow');
+    res.headers.set("X-Robots-Tag", "noindex, nofollow");
   } else {
     // Allow indexing for public pages (HomePage, ArtStation, etc.)
     // Remove any existing noindex header to ensure pages are crawlable
-    res.headers.delete('X-Robots-Tag');
+    res.headers.delete("X-Robots-Tag");
   }
 
   // Enforce auth for protected routes in all environments
 
   // Allow public pages
-  const isPublic = (
-    pathname === '/' ||
-    pathname === '/coming-soon' ||
+  const isPublic =
+    pathname === "/" ||
     // SEO assets must be public and unprotected
-    pathname === '/robots.txt' ||
-    pathname === '/sitemap.xml' ||
-    pathname.startsWith('/sitemap-') ||
-    pathname.endsWith('.xml') ||
-    pathname.startsWith('/view/Landingpage') ||
-    pathname.startsWith('/view/ArtStation') ||
-    pathname.startsWith('/view/signup') ||
-    pathname.startsWith('/view/signin') ||
-    pathname.startsWith('/view/forgot-password') ||
-    pathname.startsWith('/view/pricing') ||
-    pathname.startsWith('/view/workflows') ||
+    pathname === "/robots.txt" ||
+    pathname === "/sitemap.xml" ||
+    pathname.startsWith("/sitemap-") ||
+    pathname.endsWith(".xml") ||
+    pathname.startsWith("/view/Landingpage") ||
+    pathname.startsWith("/view/ArtStation") ||
+    pathname.startsWith("/view/signup") ||
+    pathname.startsWith("/view/signin") ||
+    pathname.startsWith("/view/forgot-password") ||
+    pathname.startsWith("/view/pricing") ||
+    pathname.startsWith("/view/workflows") ||
+    pathname.startsWith("/view/HomePage") ||
+    pathname.startsWith("/text-to-image") ||
+    pathname.startsWith("/image-to-image") ||
+    pathname.startsWith("/logo-generation") ||
+    pathname.startsWith("/sticker-generation") ||
+    pathname.startsWith("/inpaint-fluxapi") ||
+    pathname.startsWith("/text-to-video") ||
+    pathname.startsWith("/image-to-video") ||
+    pathname.startsWith("/text-to-music") ||
+    pathname.startsWith("/text-to-speech") ||
+    pathname.startsWith("/product-generation") ||
+    pathname.startsWith("/mockup-generation") ||
+    pathname.startsWith("/ad-generation") ||
+    pathname.startsWith("/view/Generation") ||
+    pathname.startsWith("/history") ||
+    pathname.startsWith("/bookmarks") ||
     // Canvas projects - public access (authentication handled client-side)
-    pathname.startsWith('/canvas-projects') ||
+    pathname.startsWith("/canvas-projects") ||
     // Legal pages
-    pathname.startsWith('/legal/') ||
+    pathname.startsWith("/legal/") ||
     // Product pages
-    pathname.startsWith('/product/') ||
+    pathname.startsWith("/product/") ||
     // Company pages
-    pathname.startsWith('/company/') ||
-    pathname.startsWith('/blog') ||
+    pathname.startsWith("/company/") ||
+    pathname.startsWith("/blog") ||
     // Allow static assets and Next.js internals
-    pathname.startsWith('/_next') ||
-    pathname.startsWith('/api') ||
-    pathname.startsWith('/favicon.ico') ||
-    pathname.startsWith('/icons/') ||
-    pathname.startsWith('/public/')
-  );
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/api") ||
+    pathname.startsWith("/favicon.ico") ||
+    pathname.startsWith("/icons/") ||
+    pathname.startsWith("/public/") ||
+    // Firebase auth action URLs and our reset-password page must be public
+    // Firebase sends /__/auth/action?mode=resetPassword&oobCode=... which next.config.ts
+    // redirects to /auth/reset-password. Both paths must bypass auth middleware.
+    pathname.startsWith("/__/auth/") ||
+    pathname.startsWith("/auth/reset-password");
 
   // Root path: Allow through without redirect for Razorpay verification
   // The page.tsx will handle client-side redirect based on auth status
   // This ensures Razorpay's verification bot gets a 200 OK response
-  if (pathname === '/') {
+  if (pathname === "/") {
     // Don't redirect here - let the page render and handle redirect client-side
     // This allows Razorpay verification to succeed (they need 200 OK, not 302 redirect)
     return res;
@@ -288,30 +360,31 @@ export function proxy(req: NextRequest) {
 
   // Require session cookie for all other matched routes (generation pages, history, bookmarks, etc.)
   // Be tolerant for OAuth redirects: allow if Firebase id token present in Authorization header
-  const hasSession = req.cookies.get('app_session') || req.cookies.get('app_session.sig');
+  const hasSession =
+    req.cookies.get("app_session") || req.cookies.get("app_session.sig");
   // Do not consider Authorization header for page protection; only cookie/hint
   // Also respect a short-lived client hint cookie set right before redirect from auth
-  const hasHint = Boolean(req.cookies.get('auth_hint'));
+  const hasHint = Boolean(req.cookies.get("auth_hint"));
 
   if (!hasSession && !hasHint) {
     const url = req.nextUrl.clone();
-    url.pathname = '/view/signup'; // Redirect to signup instead of landing page
-    url.searchParams.set('next', pathname);
-    url.searchParams.set('toast', 'SESSION_EXPIRED'); // Add toast message
+    url.pathname = "/view/signup"; // Redirect to signup instead of landing page
+    url.searchParams.set("next", pathname);
+    url.searchParams.set("toast", "SESSION_EXPIRED"); // Add toast message
     const redirect = NextResponse.redirect(url);
-    redirect.headers.set('X-Auth-Decision', 'redirect-signup');
+    redirect.headers.set("X-Auth-Decision", "redirect-signup");
     return redirect;
   }
 
-  res.headers.set('X-Auth-Decision', 'allow');
+  res.headers.set("X-Auth-Decision", "allow");
   return res;
 }
 
 export const config = {
   // Protect everything except Next internals, public assets, and api routes you want open
-  matcher: ['/((?!favicon\\.ico|robots\\.txt|sitemap\\.xml).*)'],
+  matcher: ["/((?!favicon\\.ico|robots\\.txt|sitemap\\.xml).*)"],
 };
 
-
-
 export default proxy;
+
+

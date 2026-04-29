@@ -17,6 +17,8 @@ import { getAuthToken } from '@/lib/authHelper';
 import { useCredits } from '@/hooks/useCredits';
 import { downloadFileWithNaming } from '@/utils/downloadUtils';
 import toast from 'react-hot-toast';
+import { useRouter } from 'next/navigation';
+import { getSignInUrl } from '@/routes/routes';
 
 // --- TYPES ---
 interface Workflow {
@@ -38,6 +40,7 @@ interface SelfieVideoModalProps {
 }
 
 export default function SelfieVideoModal({ isOpen, onClose, workflowData }: SelfieVideoModalProps) {
+  const router = useRouter();
   const API_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
   const [isGenerating, setIsGenerating] = useState(false);
   const [hideControlsDuringGenerate, setHideControlsDuringGenerate] = useState(false);
@@ -71,6 +74,7 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
     creditBalance,
     deductCreditsOptimisticForGeneration,
     rollbackOptimisticDeduction,
+    user
   } = useCredits();
 
   const IMAGE_COST = 46;
@@ -133,6 +137,27 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
   const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
   const pollReplicateVideoResult = async (requestId: string, token: string): Promise<string> => {
+    const extractVideoUrl = (payload: any): string | null => {
+      const candidates: any[] = [
+        payload?.data?.videos?.[0]?.url,
+        payload?.data?.videos?.[0]?.originalUrl,
+        payload?.data?.videoUrl,
+        payload?.data?.url,
+        payload?.data?.output?.[0],
+        payload?.data?.output,
+        payload?.videos?.[0]?.url,
+        payload?.videos?.[0]?.originalUrl,
+        payload?.videoUrl,
+        payload?.url,
+        payload?.output?.[0],
+        payload?.output,
+      ];
+      for (const c of candidates) {
+        if (typeof c === 'string' && c.length > 0) return c;
+      }
+      return null;
+    };
+
     // Poll Replicate status first; when succeeded, finalize via queue/result.
     // Note: /queue/result also performs server-side storage + history finalization.
     const timeoutMs = 8 * 60 * 1000;
@@ -149,6 +174,10 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
         throw new Error(err?.message || 'Failed to fetch video status');
       }
       const statusJson = await statusRes.json();
+      // Backend may return either a raw Replicate prediction status OR a finalized result payload.
+      const finalizedUrl = extractVideoUrl(statusJson);
+      if (finalizedUrl) return finalizedUrl;
+
       const status = String(statusJson?.data?.status || '').toLowerCase();
 
       if (status === 'succeeded') {
@@ -163,8 +192,8 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
           throw new Error(err?.message || 'Failed to fetch video result');
         }
         const resultJson = await resultRes.json();
-        const videoUrl = resultJson?.data?.videos?.[0]?.url;
-        if (typeof videoUrl === 'string' && videoUrl.length > 0) return videoUrl;
+        const videoUrl = extractVideoUrl(resultJson);
+        if (videoUrl) return videoUrl;
         throw new Error('Video completed but URL missing');
       }
 
@@ -179,6 +208,10 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
   };
 
   const handleMergeImages = async () => {
+    if (!user) {
+      router.push(getSignInUrl());
+      return;
+    }
     if (!selfiePhoto || friendPhotos.length === 0) {
       return;
     }
@@ -314,6 +347,10 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
   };
 
   const regenerateImage = async (index: number) => {
+    if (!user) {
+      router.push(getSignInUrl());
+      return;
+    }
     if (!selfiePhoto || !friendPhotos[index]) {
       return;
     }
@@ -401,6 +438,10 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
   };
 
   const handleImagesToVideos = async (sourceImages?: string[]) => {
+    if (!user) {
+      router.push(getSignInUrl());
+      return;
+    }
     const images = (sourceImages || generatedImages).filter((u) => typeof u === 'string' && u.length > 0);
     if (images.length < 2) {
       alert('Please generate at least 2 images first.');
@@ -580,6 +621,10 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
   };
 
   const handleLoopAndRegenerate = async () => {
+    if (!user) {
+      router.push(getSignInUrl());
+      return;
+    }
     const images = generatedImages.filter((u) => typeof u === 'string' && u.length > 0);
     if (images.length < 2) {
       alert('Please generate at least 2 images first.');
@@ -674,6 +719,10 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
   };
 
   const regenerateVideo = async (index: number) => {
+    if (!user) {
+      router.push(getSignInUrl());
+      return;
+    }
     const images = generatedImages;
     const firstFrameUrl = images[index];
     const lastFrameUrl = images[index + 1];
@@ -998,6 +1047,10 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
   };
 
   const handleOpenInEditor = async () => {
+    if (!user) {
+      router.push(getSignInUrl());
+      return;
+    }
     const vids = generatedVideos.filter((u) => typeof u === 'string' && u.length > 0);
     if (vids.length === 0) {
       alert('No generated videos to open in editor.');
@@ -1054,7 +1107,8 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
           console.log('[selfieVideo] fetchResults prepared', fetchResults.map(r => (r.ok ? 'blob' : 'url')));
 
           // Build payload with blobs or proxy URLs
-          const proxyBase = 'http://localhost:3000/api/proxy/video?url=';
+          // Use relative path for proxy to work in both dev and prod
+          const proxyBase = '/api/proxy/video?url=';
           payloadForEditor.videos = fetchResults.map((r) => {
             if (r && r.ok) return r.blob;
             const candidate = r && typeof r.url === 'string' && r.url ? r.url : null;
@@ -1145,7 +1199,8 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
       }
     } catch (e) {
       console.error('[selfieVideo] open in editor failed', e);
-      alert('Failed to open editor. Please ensure your video editor is running on http://localhost:3001');
+      const editorUrl = process.env.NEXT_PUBLIC_CANVAS_URL || 'http://localhost:3001';
+      alert(`Failed to open editor. Please ensure your video editor is running on ${editorUrl}`);
     }
   };
 
@@ -1198,6 +1253,10 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
   };
 
   const handleCreateImageWithStep2Friend = async () => {
+    if (!user) {
+      router.push(getSignInUrl());
+      return;
+    }
     if (!selfiePhoto || !step2FriendPhoto) return;
     // After this action, total friend photos will be friendPhotos.length + 1
     const totalRequired = (friendPhotos.length + 1) * IMAGE_COST;
@@ -1821,6 +1880,7 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
       {isUploadModalOpen && (
         <div className="fixed inset-0 z-[110]">
           <UploadModal
+            persistLocalDeviceUploads={false}
             isOpen={isUploadModalOpen}
             onClose={() => setIsUploadModalOpen(false)}
             onAdd={handleUpload}

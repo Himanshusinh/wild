@@ -1,5 +1,6 @@
 'use client'
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useIntersectionObserverForRef } from '@/hooks/useInfiniteGenerations';
 // Nav and SidePannelFeatures are provided by the persistent root layout
 import { API_BASE } from '../HomePage/routes'
@@ -106,6 +107,7 @@ const canonicalMediaKey = (url?: string) => {
 };
 
 export default function ArtStationPage() {
+  const searchParams = useSearchParams()
   const formatDate = (input?: string) => {
     if (!input) return ''
     const d = new Date(input)
@@ -176,6 +178,19 @@ export default function ArtStationPage() {
   const inFlightRef = useRef<Promise<void> | null>(null)
   const queuedNextRef = useRef<{ reset: boolean } | null>(null)
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Deep-link support: /view/ArtStation?mode=video -> Videos tab
+  useEffect(() => {
+    const modeParam = (searchParams?.get('mode') || '').toLowerCase()
+    if (modeParam === 'video') {
+      setActiveCategory('Videos')
+      return
+    }
+    if (modeParam === 'image') {
+      setActiveCategory('Images')
+      return
+    }
+  }, [searchParams])
 
   // Track pending optimistic updates to prevent bulk-status from overwriting them with stale data
   // Map maps key -> count of active operations
@@ -298,6 +313,12 @@ export default function ArtStationPage() {
   }, [])
 
   const toggleLike = async (generationId: string) => {
+    // Redirect unauthenticated users to signup
+    if (!currentUid) {
+      if (typeof window !== 'undefined') window.location.href = '/signup'
+      return
+    }
+
     // Determine previous state once so we can use it for optimistic update + API action
     const prevState = engagement[generationId] || {
       likesCount: 0,
@@ -409,6 +430,12 @@ export default function ArtStationPage() {
   }
 
   const toggleBookmark = async (generationId: string) => {
+    // Redirect unauthenticated users to signup
+    if (!currentUid) {
+      if (typeof window !== 'undefined') window.location.href = '/signup'
+      return
+    }
+
     const prevState = engagement[generationId] || {
       likesCount: 0,
       bookmarksCount: 0,
@@ -1441,7 +1468,7 @@ export default function ArtStationPage() {
     <div className="min-h-screen bg-[#07070B]">
       {/* Root layout renders Nav + SidePanel; add spacing here so content aligns */}
       {/* When authenticated: add margin for sidepanel, when not: full width */}
-      <div className={`flex ${isAuth ? 'md:ml-[68px]' : 'ml-0'} ml-0`}>
+      <div className={`flex ${isAuth ? 'md:ml-[68px]' : 'ml-0'} md:ml-18`}>
         <div className="flex-1 min-w-0 px-2 sm:px-4 md:px-3 ">
           {/* Sticky header + filters (pinned under navbar) */}
           <div className="sticky top-0 z-20 bg-[#07070B] pt-8 md:pt-4 ">
@@ -1617,12 +1644,13 @@ export default function ArtStationPage() {
                             (() => {
                               const proxied = toMediaProxy(media.url)
                               const original = toDirectUrl(media.url) || media.url
-                              if (!proxied) return null;
+                              const videoSrc = proxied || original
+                              if (!videoSrc) return null;
 
                               return (
                                 <video
                                   key={`video-${cardId}`}
-                                  src={proxied || undefined}
+                                  src={videoSrc || undefined}
                                   className="w-full h-auto object-contain"
                                   muted
                                   playsInline

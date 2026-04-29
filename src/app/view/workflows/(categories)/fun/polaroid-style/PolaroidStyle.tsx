@@ -9,13 +9,15 @@ import UploadModal from '@/app/view/Generation/ImageGeneration/TextToImage/compo
 import ImageComparisonSlider from '@/app/view/workflows/components/ImageComparisonSlider';
 import { downloadFileWithNaming } from '@/utils/downloadUtils';
 import { useCredits } from '@/hooks/useCredits';
+import { getSignInUrl } from '@/routes/routes';
 
 export default function PolaroidStyle() {
   const router = useRouter();
   const {
     creditBalance,
     deductCreditsOptimisticForGeneration,
-    rollbackOptimisticDeduction
+    rollbackOptimisticDeduction,
+    user
   } = useCredits();
 
   // State
@@ -24,6 +26,7 @@ export default function PolaroidStyle() {
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [textPrompt, setTextPrompt] = useState("");
 
   const [includeProps, setIncludeProps] = useState(true);
   const [aspectRatio, setAspectRatio] = useState("1:1");
@@ -61,6 +64,10 @@ export default function PolaroidStyle() {
   };
 
   const handleRun = async () => {
+    if (!user) {
+      router.push(getSignInUrl());
+      return;
+    }
     if (!originalImage) {
       toast.error('Please upload an image first');
       return;
@@ -261,7 +268,7 @@ export default function PolaroidStyle() {
                     afterImage={generatedImage}
                     beforeLabel="Before"
                     afterLabel="Result"
-                    imageFit="object-contain"
+                    imageFit="object-cover"
                     imagePosition="object-center"
                   />
                   <button
@@ -301,6 +308,7 @@ export default function PolaroidStyle() {
 
       {isUploadModalOpen && (
         <UploadModal
+          persistLocalDeviceUploads={false}
           isOpen={isUploadModalOpen}
           onClose={() => setIsUploadModalOpen(false)}
           onAdd={(urls: string[]) => {
@@ -314,3 +322,4 @@ export default function PolaroidStyle() {
     </>
   );
 }
+

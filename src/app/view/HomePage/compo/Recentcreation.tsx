@@ -8,7 +8,6 @@ import { HistoryEntry } from '@/types/history'
 import ImagePreviewModal from '@/app/view/Generation/ImageGeneration/TextToImage/compo/ImagePreviewModal'
 import VideoPreviewModal from '@/app/view/Generation/VideoGeneration/TextToVideo/compo/VideoPreviewModal'
 import CustomAudioPlayer from '@/app/view/Generation/MusicGeneration/TextToMusic/compo/CustomAudioPlayer'
-import StickerImagePreview from '@/app/view/Generation/ImageGeneration/StickerGeneration/compo/StickerImagePreview'
 import ProductImagePreview from '@/app/view/Generation/ProductGeneration/compo/ProductImagePreview'
 import { toMediaProxy, toThumbUrl, toDirectUrl } from '@/lib/thumb'
 import SmartImage from '@/components/media/SmartImage'
@@ -37,17 +36,17 @@ const CATEGORIES: Array<CreationItem['category']> = [
 // Helper function to normalize image URLs
 const normalizeImageUrl = (image: any): string => {
   if (!image) return '';
-  
+
   // Priority 1: Use storagePath if available (most reliable)
   if (image.storagePath) {
     const directUrl = toDirectUrl(image.storagePath);
     if (directUrl) return directUrl;
   }
-  
+
   // Priority 2: Use url or firebaseUrl (prefer regular url over avifUrl for display)
   // Prefer non-AVIF URLs for main display, but fallback to AVIF if that's all we have
   let url = image.url || image.firebaseUrl || image.originalUrl || '';
-  
+
   // If the url is an AVIF URL, try to find a non-AVIF alternative
   if (url && (url.includes('.avif') || url.includes('_optimized') || url.includes('_thumb'))) {
     // Try to find a non-AVIF URL first
@@ -65,25 +64,25 @@ const normalizeImageUrl = (image: any): string => {
       }
     }
   }
-  
+
   // If still no url, try avifUrl or thumbnailUrl as last resort (better than nothing)
   if (!url || url.trim() === '') {
     url = image.avifUrl || image.thumbnailUrl || '';
   }
-  
+
   if (!url || url.trim() === '') return '';
-  
+
   // If it's already a full URL, return it
   if (url.startsWith('http://') || url.startsWith('https://')) {
     return url;
   }
-  
+
   // If it's a storage path, convert to direct URL
   if (url.startsWith('users/')) {
     const directUrl = toDirectUrl(url);
     if (directUrl) return directUrl;
   }
-  
+
   return url;
 }
 
@@ -124,7 +123,7 @@ const Recentcreation: React.FC = () => {
   const [loading, setLoading] = useState(false)
   const [isInitialLoad, setIsInitialLoad] = useState(true)
   const [hasCheckedForGenerations, setHasCheckedForGenerations] = useState(false)
-  
+
   // Preview modal states
   const [preview, setPreview] = useState<{ entry: HistoryEntry; image: any } | null>(null)
   const [videoPreview, setVideoPreview] = useState<{ entry: HistoryEntry; video: any } | null>(null)
@@ -132,7 +131,7 @@ const Recentcreation: React.FC = () => {
   const [logoPreviewEntry, setLogoPreviewEntry] = useState<HistoryEntry | null>(null)
   const [stickerPreviewEntry, setStickerPreviewEntry] = useState<HistoryEntry | null>(null)
   const [productPreviewEntry, setProductPreviewEntry] = useState<HistoryEntry | null>(null)
-  
+
   // Get history entries from Redux store
   const historyEntries = useAppSelector((state: any) => state.history?.entries || [])
   const isHistoryLoading = useAppSelector((state: any) => state.history?.loading || false)
@@ -152,14 +151,14 @@ const Recentcreation: React.FC = () => {
 
   // Reset retry guard on category change
   useEffect(() => { hasRetriedRef.current = false }, [active])
-  
+
   // Check if there are existing generations for the current category
   // We no longer reuse existing results on tab switch; always fetch fresh for each category
   const checkForExistingGenerations = () => false
 
   // Fetch recent creations for the active category
   useEffect(() => {
-    
+
     // Local guard to prevent duplicate calls (StrictMode double-mount or quick re-renders)
     if (fetchInFlightRef.current) {
       return
@@ -186,22 +185,22 @@ const Recentcreation: React.FC = () => {
       }
     }
     const baseFilters = computeFiltersForCategory(active)
-    
+
 
     const fetchRecentCreations = async () => {
       fetchInFlightRef.current = true
-      
+
       // Always fetch on category change
       setLoading(true)
       setIsInitialLoad(false)
       setHasCheckedForGenerations(false)
-      
+
       // Set a minimum loading time to prevent flash of "No generations found"
       const minLoadingTime = new Promise(resolve => setTimeout(resolve, 200))
-      
+
       try {
         const filters: any = { sortOrder: 'desc', status: 'completed', ...baseFilters }
-        
+
         // Wait for both the API call and minimum loading time
         const baseCount =
           gridSize === 'small' ? 10 : gridSize === 'medium' ? 7 : 5;
@@ -210,9 +209,9 @@ const Recentcreation: React.FC = () => {
           isMobile && gridSize === 'small' ? 9 : baseCount;
 
         const [result] = await Promise.all([
-          dispatch(loadHistory({ 
-            filters, 
-            paginationParams: { 
+          dispatch(loadHistory({
+            filters,
+            paginationParams: {
               // Fetch just enough to populate the single visible row based
               // on the active dot (5 / 7 / 10 latest generations).
               limit: visibleCount
@@ -221,7 +220,7 @@ const Recentcreation: React.FC = () => {
           })),
           minLoadingTime
         ])
-        
+
         // Check if the action was aborted
         if (loadHistory.fulfilled.match(result)) {
           // If we got zero items (likely due to auth race) and we haven't retried, retry once
@@ -232,55 +231,55 @@ const Recentcreation: React.FC = () => {
               if (authed) {
                 hasRetriedRef.current = true
                 setTimeout(async () => {
-                  dispatch(loadHistory({ 
-                    filters, 
+                  dispatch(loadHistory({
+                    filters,
                     paginationParams: { limit: active === 'All' ? cols : 12 },
                     debugTag: `recent:${active}:retry:${Date.now()}`
                   }))
                 }, 800)
               }
-            } catch {}
+            } catch { }
           }
         } else if (loadHistory.rejected.match(result)) {
           // Handle rejection (including condition aborts)
           if (result.error.message?.includes('condition callback returning false')) {
             // This is expected - another request is already in progress
           } else {
-            
+
             // Retry once after a brief delay if user is authenticated (handles early 401)
             try {
               const authed = isUserAuthenticated()
               if (authed && !hasRetriedRef.current) {
                 hasRetriedRef.current = true
                 setTimeout(async () => {
-                  dispatch(loadHistory({ 
-                    filters, 
+                  dispatch(loadHistory({
+                    filters,
                     paginationParams: { limit: active === 'All' ? cols : 12 },
                     debugTag: `recent:${active}:retry:${Date.now()}`
                   }))
                 }, 800)
               }
-            } catch {}
+            } catch { }
           }
         }
       } catch (error) {
-        
+
       } finally {
         setLoading(false)
         setHasCheckedForGenerations(true)
         fetchInFlightRef.current = false
       }
     }
-    
+
     fetchRecentCreations()
   }, [dispatch, active, gridSize])
 
   // Convert history entries to creation items
   const creationItems: CreationItem[] = useMemo(() => {
     const items: CreationItem[] = []
-    
+
     historyEntries.forEach((entry: HistoryEntry) => {
-      
+
       // Map generation type to category
       const getCategory = (type: string): CreationItem['category'] => {
         switch (type) {
@@ -517,12 +516,12 @@ const Recentcreation: React.FC = () => {
 
   const handleItemClick = (item: CreationItem) => {
     const { entry } = item
-    
+
     // Check if this is a video, audio, or image based on the URL
     const mediaUrl = item.src;
     const video = isVideoUrl(mediaUrl);
     const audio = isAudioUrl(mediaUrl);
-    
+
     if (video) {
       // Video preview
       const videoItem = entry.videos?.find(v => v.url === item.src || v.firebaseUrl === item.src)
@@ -531,12 +530,12 @@ const Recentcreation: React.FC = () => {
       }
     } else if (audio || entry.generationType === 'text-to-music') {
       // Audio preview - use the audio URL
-      const audioUrl = item.src || (entry.images && entry.images.length > 0 
+      const audioUrl = item.src || (entry.images && entry.images.length > 0
         ? (entry.images[0].url || entry.images[0].firebaseUrl || '')
         : '')
-      
+
       // Removed console.log for production performance
-      
+
       setAudioPreview({ entry, audioUrl })
     } else if (entry.generationType === 'logo') {
       // Logo preview
@@ -549,7 +548,20 @@ const Recentcreation: React.FC = () => {
       setProductPreviewEntry(entry)
     } else {
       // Default image preview (text-to-image, ad-generation, etc.)
-      const image = entry.images.find(img => img.url === item.src || img.firebaseUrl === item.src)
+      const image = entry.images.find((img: any) => {
+        const imUrl = normalizeImageUrl(img);
+        const imOriginalUrl = img.url || img.firebaseUrl || img.originalUrl || '';
+        const imAvifUrl = img.avifUrl || '';
+        const imStoragePath = img.storagePath ? toDirectUrl(img.storagePath) : '';
+        // Match by normalized URL, original URL, AVIF URL, or storage path
+        return imUrl === item.src ||
+          imOriginalUrl === item.src ||
+          imAvifUrl === item.src ||
+          imStoragePath === item.src ||
+          (img.storagePath && toDirectUrl(img.storagePath) === item.src) ||
+          // Also match if the base URL (without AVIF suffix) matches
+          (item.src && imOriginalUrl && item.src.replace(/\.(avif|jpg|jpeg|png)$/i, '') === imOriginalUrl.replace(/\.(avif|jpg|jpeg|png)$/i, ''));
+      })
       if (image) {
         setPreview({ entry, image })
       }
@@ -574,12 +586,12 @@ const Recentcreation: React.FC = () => {
   }
 
   return (
-    <section className="w-full px-4 md:px-6 lg:px-6 mt-2 md:mt-6">
+    <section className="w-full px-4 md:px-8 lg:px-10 mt-2 md:mt-6">
       {/* Heading */}
-      <h3 className="text-white text-xl md:text-4xl font-medium md:mb-4 mb-2">Recent Creations</h3>
+      <h3 className="text-white text-xl md:text-2xl font-medium md:mb-2 mb-2">Recent Creations</h3>
 
       {/* Filters + My creations aligned */}
-      <div className="flex items-center justify-between md:mb-6 mb-2">
+      <div className="flex items-center justify-between md:mb-2 mb-2">
         <div className="flex items-center md:gap-2 gap-1 flex-wrap">
           {CATEGORIES.map((cat) => {
             const isActive = cat === active
@@ -592,7 +604,7 @@ const Recentcreation: React.FC = () => {
                   setHasCheckedForGenerations(false) // Reset checked state when switching
                 }}
                 className={
-                  `md:px-4 px-2 md:py-2 py-1 rounded-lg md:text-sm text-xs transition ` +
+                  `md:px-3 px-2 md:py-1.5 py-1 rounded-lg md:text-sm text-xs transition ` +
                   (isActive
                     ? 'bg-white text-[#0b0f17]'
                     : 'bg-white/10 text-white/80 hover:bg-white/15')
@@ -627,7 +639,7 @@ const Recentcreation: React.FC = () => {
               <span className="block w-2.5 h-2.5 md:w-3 md:h-3 rounded-full bg-current"></span>
             </button>
           </div>
-          
+
         </div>
       </div>
 
@@ -636,8 +648,8 @@ const Recentcreation: React.FC = () => {
         <div className={gridColsClass('sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 md:gap-2 gap-1')}>
           {[...Array(cols)].map((_, i) => (
             <div key={i} className="rounded-lg bg-white/5 ring-1 ring-white/10 p-0.5 animate-pulse">
-              <div className="bg-white/10 rounded-xl mb-0 md:hidden" style={{height: cardHeightMobile}}></div>
-              <div className="bg-white/10 rounded-xl mb-0 hidden md:block" style={{height: cardHeightDesktop}}></div>
+              <div className="bg-white/10 rounded-xl mb-0 md:hidden" style={{ height: cardHeightMobile }}></div>
+              <div className="bg-white/10 rounded-xl mb-0 hidden md:block" style={{ height: cardHeightDesktop }}></div>
               {/* <div className="h-4 bg-white/10 rounded mb-2"></div>
               <div className="h-3 bg-white/10 rounded w-2/3"></div> */}
             </div>
@@ -652,38 +664,38 @@ const Recentcreation: React.FC = () => {
               </svg>
             ) : active === 'Images' ? (
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                <circle cx="8.5" cy="8.5" r="1.5"/>
-                <polyline points="21,15 16,10 5,21"/>
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                <circle cx="8.5" cy="8.5" r="1.5" />
+                <polyline points="21,15 16,10 5,21" />
               </svg>
             ) : active === 'Videos' ? (
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <polygon points="23 7 16 12 23 17 23 7"/>
-                <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+                <polygon points="23 7 16 12 23 17 23 7" />
+                <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
               </svg>
             ) : active === 'Music' ? (
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <path d="M9 18V5l12-2v13"/>
-                <circle cx="6" cy="18" r="3"/>
-                <circle cx="18" cy="16" r="3"/>
+                <path d="M9 18V5l12-2v13" />
+                <circle cx="6" cy="18" r="3" />
+                <circle cx="18" cy="16" r="3" />
               </svg>
             ) : active === 'Logo' ? (
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-                <path d="M2 17l10 5 10-5"/>
-                <path d="M2 12l10 5 10-5"/>
+                <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                <path d="M2 17l10 5 10-5" />
+                <path d="M2 12l10 5 10-5" />
               </svg>
             ) : active === 'Stickers' ? (
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-                <polyline points="3.27,6.96 12,12.01 20.73,6.96"/>
-                <line x1="12" y1="22.08" x2="12" y2="12"/>
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                <polyline points="3.27,6.96 12,12.01 20.73,6.96" />
+                <line x1="12" y1="22.08" x2="12" y2="12" />
               </svg>
             ) : active === 'Products' ? (
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
-                <line x1="3" y1="6" x2="21" y2="6"/>
-                <path d="M16 10a4 4 0 0 1-8 0"/>
+                <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+                <line x1="3" y1="6" x2="21" y2="6" />
+                <path d="M16 10a4 4 0 0 1-8 0" />
               </svg>
             ) : (
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -692,33 +704,33 @@ const Recentcreation: React.FC = () => {
             )}
           </div>
           <h3 className="text-lg font-medium text-white/70 mb-2">
-            {active === 'All' 
-              ? "No recent creations" 
+            {active === 'All'
+              ? "No recent creations"
               : `No ${active.toLowerCase()} yet`
             }
           </h3>
           <p className="text-white/50 mb-6 max-w-md mx-auto">
-            {active === 'All' 
+            {active === 'All'
               ? "Start creating amazing content to see your recent generations here. Generate images, videos, music, logos, stickers, and more!"
-              : active === 'Images' 
-              ? "Create stunning images with AI. Try text-to-image generation, edit existing photos, or generate product mockups."
-              : active === 'Videos'
-              ? "Bring your ideas to life with AI video generation. Create videos from text prompts or transform images into videos."
-              : active === 'Music'
-              ? "Generate unique music tracks with AI. Create background music, sound effects, or full compositions from text descriptions."
-              :"Start creating to see your recent generations here."
+              : active === 'Images'
+                ? "Create stunning images with AI. Try text-to-image generation, edit existing photos, or generate product mockups."
+                : active === 'Videos'
+                  ? "Bring your ideas to life with AI video generation. Create videos from text prompts or transform images into videos."
+                  : active === 'Music'
+                    ? "Generate unique music tracks with AI. Create background music, sound effects, or full compositions from text descriptions."
+                    : "Start creating to see your recent generations here."
             }
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             {active === 'All' ? (
               <>
-                <button 
+                <button
                   onClick={() => router.push('/text-to-image')}
                   className="px-6 py-2 bg-[#2F6BFF] hover:bg-[#2a5fe3] text-white rounded-full text-sm font-medium transition-colors"
                 >
                   Generate Images
                 </button>
-                <button 
+                <button
                   onClick={() => router.push('/text-to-video')}
                   className="px-6 py-2 bg-white/10 hover:bg-white/20 text-white rounded-full text-sm font-medium transition-colors"
                 >
@@ -726,49 +738,49 @@ const Recentcreation: React.FC = () => {
                 </button>
               </>
             ) : active === 'Images' ? (
-              <button 
+              <button
                 onClick={() => router.push('/text-to-image')}
                 className="px-6 py-2 bg-[#2F6BFF] hover:bg-[#2a5fe3] text-white rounded-full text-sm font-medium transition-colors"
               >
                 Start Creating Images
               </button>
             ) : active === 'Videos' ? (
-              <button 
+              <button
                 onClick={() => router.push('/text-to-video')}
                 className="px-6 py-2 bg-[#2F6BFF] hover:bg-[#2a5fe3] text-white rounded-full text-sm font-medium transition-colors"
               >
                 Start Creating Videos
               </button>
             ) : active === 'Music' ? (
-              <button 
+              <button
                 onClick={() => router.push('/text-to-music')}
                 className="px-6 py-2 bg-[#2F6BFF] hover:bg-[#2a5fe3] text-white rounded-full text-sm font-medium transition-colors"
               >
                 Start Creating Music
               </button>
             ) : active === 'Logo' ? (
-              <button 
+              <button
                 onClick={() => router.push('/logo-generation')}
                 className="px-6 py-2 bg-[#2F6BFF] hover:bg-[#2a5fe3] text-white rounded-full text-sm font-medium transition-colors"
               >
                 Start Creating Logos
               </button>
             ) : active === 'Stickers' ? (
-              <button 
+              <button
                 onClick={() => router.push('/sticker-generation')}
                 className="px-6 py-2 bg-[#2F6BFF] hover:bg-[#2a5fe3] text-white rounded-full text-sm font-medium transition-colors"
               >
                 Start Creating Stickers
               </button>
             ) : active === 'Products' ? (
-              <button 
+              <button
                 onClick={() => router.push('/product-generation')}
                 className="px-6 py-2 bg-[#2F6BFF] hover:bg-[#2a5fe3] text-white rounded-full text-sm font-medium transition-colors"
               >
                 Start Creating Products
               </button>
             ) : (
-              <button 
+              <button
                 onClick={() => router.push('/text-to-image')}
                 className="px-6 py-2 bg-[#2F6BFF] hover:bg-[#2a5fe3] text-white rounded-full text-sm font-medium transition-colors"
               >
@@ -803,319 +815,319 @@ const Recentcreation: React.FC = () => {
               // For large: item 5 (index 4) should be alone in 3rd row (2+2+1 layout)
               mobileGridClass = 'md:col-span-1 col-span-2' // Full width on mobile, normal on desktop
             }
-            
+
             return (
-            <article
-              key={item.id}
-              onClick={() => handleItemClick(item)}
-              className={`rounded-lg bg-white/5 ring-1 ring-white/10 hover:ring-white/20 transition p-0.5 flex flex-col gap-0 cursor-pointer ${mobileGridClass}`}
-            >
-              <div className="relative rounded-lg overflow-hidden">
-                {/* Mobile height */}
-                <div className="md:hidden" style={{height: cardHeightMobile}}>
-                  <div className="w-full h-full">
-                {item.isVideo ? (
-                  item.src && item.src.trim() !== '' ? (
-                    (() => {
-                      const Z = process.env.NEXT_PUBLIC_ZATA_PREFIX || ''
-                      const proxied = item.src.startsWith(Z) ? toMediaProxy(item.src) : ''
-                      const vsrc = proxied || item.src
-                      return (
-                        <video
-                          src={vsrc}
-                          className="w-full h-full object-cover"
-                          muted
-                          loop
-                          playsInline
-                          preload="metadata"
-                          poster={toThumbUrl(item.src, { w: 640, q: 60 , fmt:'avif'}) || undefined}
-                          onLoadedMetadata={(e) => {
-                            const video = e.target as HTMLVideoElement
-                            const w = video.videoWidth || 1
-                            const h = video.videoHeight || 1
-                            const g = gcd(w, h)
-                            const rw = Math.round(w / g)
-                            const rh = Math.round(h / g)
-                            setRatios((prev) => ({ ...prev, [item.id]: `${rw}:${rh}` }))
-                          }}
-                        />
-                      );
-                    })()
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center">
-                      <div className="text-center">
-                        <div className="w-16 h-16 mx-auto mb-3 text-white/60">
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                            <polygon points="23 7 16 12 23 17 23 7"/>
-                            <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
-                          </svg>
+              <article
+                key={item.id}
+                onClick={() => handleItemClick(item)}
+                className={`rounded-lg bg-white/5 ring-1 ring-white/10 hover:ring-white/20 transition p-0.5 flex flex-col gap-0 cursor-pointer ${mobileGridClass}`}
+              >
+                <div className="relative rounded-lg overflow-hidden">
+                  {/* Mobile height */}
+                  <div className="md:hidden" style={{ height: cardHeightMobile }}>
+                    <div className="w-full h-full">
+                      {item.isVideo ? (
+                        item.src && item.src.trim() !== '' ? (
+                          (() => {
+                            const Z = process.env.NEXT_PUBLIC_ZATA_PREFIX || ''
+                            const proxied = item.src.startsWith(Z) ? toMediaProxy(item.src) : ''
+                            const vsrc = proxied || item.src
+                            return (
+                              <video
+                                src={vsrc}
+                                className="w-full h-full object-cover"
+                                muted
+                                loop
+                                playsInline
+                                preload="metadata"
+                                poster={toThumbUrl(item.src, { w: 640, q: 60, fmt: 'avif' }) || undefined}
+                                onLoadedMetadata={(e) => {
+                                  const video = e.target as HTMLVideoElement
+                                  const w = video.videoWidth || 1
+                                  const h = video.videoHeight || 1
+                                  const g = gcd(w, h)
+                                  const rw = Math.round(w / g)
+                                  const rh = Math.round(h / g)
+                                  setRatios((prev) => ({ ...prev, [item.id]: `${rw}:${rh}` }))
+                                }}
+                              />
+                            );
+                          })()
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center">
+                            <div className="text-center">
+                              <div className="w-16 h-16 mx-auto mb-3 text-white/60">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                  <polygon points="23 7 16 12 23 17 23 7" />
+                                  <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+                                </svg>
+                              </div>
+                              <div className="text-white/80 text-sm font-medium">Video</div>
+                              <div className="text-white/60 text-xs mt-1">No preview available</div>
+                            </div>
+                          </div>
+                        )
+                      ) : item.isMusic ? (
+                        // Match tile styling with Music/TTS/SFX history tiles (StaticAudioTile + gradient)
+                        <div className="w-full h-full bg-gradient-to-br from-sky-500/60 via-blue-600/60 to-indigo-600/60 flex items-center justify-center relative rounded-2xl overflow-hidden ring-1 ring-white/10">
+                          <div className="absolute inset-0 opacity-70">
+                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.55),_transparent_60%)]" />
+                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom,_rgba(0,0,0,0.25),_transparent_65%)]" />
+                          </div>
+                          <div className="relative z-10 flex flex-col items-center justify-center">
+                            <div className="w-16 h-16 mx-auto mb-3 text-white/90 flex items-center justify-center">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-12 h-12">
+                                <path d="M9 18V5l12-2v13" />
+                                <circle cx="6" cy="18" r="3" />
+                                <circle cx="18" cy="16" r="3" />
+                              </svg>
+                            </div>
+                            <div className="text-white font-medium text-sm">Music Track</div>
+                            <div className="text-white/70 text-xs mt-1">Click to play</div>
+                          </div>
+                          <div className="absolute inset-0 bg-black/0 hover:bg-black/10 transition-colors duration-300" />
                         </div>
-                        <div className="text-white/80 text-sm font-medium">Video</div>
-                        <div className="text-white/60 text-xs mt-1">No preview available</div>
-                      </div>
-                    </div>
-                  )
-                ) : item.isMusic ? (
-                  // Match tile styling with Music/TTS/SFX history tiles (StaticAudioTile + gradient)
-                  <div className="w-full h-full bg-gradient-to-br from-sky-500/60 via-blue-600/60 to-indigo-600/60 flex items-center justify-center relative rounded-2xl overflow-hidden ring-1 ring-white/10">
-                    <div className="absolute inset-0 opacity-70">
-                      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.55),_transparent_60%)]" />
-                      <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom,_rgba(0,0,0,0.25),_transparent_65%)]" />
-                    </div>
-                    <div className="relative z-10 flex flex-col items-center justify-center">
-                      <div className="w-16 h-16 mx-auto mb-3 text-white/90 flex items-center justify-center">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-12 h-12">
-                          <path d="M9 18V5l12-2v13"/>
-                          <circle cx="6" cy="18" r="3"/>
-                          <circle cx="18" cy="16" r="3"/>
-                        </svg>
-                      </div>
-                      <div className="text-white font-medium text-sm">Music Track</div>
-                      <div className="text-white/70 text-xs mt-1">Click to play</div>
-                    </div>
-                    <div className="absolute inset-0 bg-black/0 hover:bg-black/10 transition-colors duration-300" />
-                  </div>
-                ) : item.src && item.src.trim() !== '' ? (
-                  (() => {
-                    // Find the matching image object in the entry to get thumbnail/avif/blur metadata if present
-                    // Match by comparing normalized URLs or original URLs
-                    const imgObj: any = ((item.entry.images || []) as any).find((im: any) => {
-                      const imUrl = normalizeImageUrl(im);
-                      const imOriginalUrl = im.url || im.firebaseUrl || im.originalUrl || '';
-                      const imAvifUrl = im.avifUrl || '';
-                      const imStoragePath = im.storagePath ? toDirectUrl(im.storagePath) : '';
-                      // Match by normalized URL, original URL, AVIF URL, or storage path
-                      return imUrl === item.src || 
-                             imOriginalUrl === item.src || 
-                             imAvifUrl === item.src ||
-                             imStoragePath === item.src ||
-                             (im.storagePath && toDirectUrl(im.storagePath) === item.src) ||
-                             // Also match if the base URL (without AVIF suffix) matches
-                             (item.src && imOriginalUrl && item.src.replace(/\.(avif|jpg|jpeg|png)$/i, '') === imOriginalUrl.replace(/\.(avif|jpg|jpeg|png)$/i, ''));
-                    }) || ({} as any);
-                    const thumb: string | undefined = imgObj?.thumbnailUrl || toThumbUrl(item.src, { w: 480, q: 60 }) || undefined;
-                    const avif: string | undefined = imgObj?.avifUrl || undefined;
-                    const blur: string | undefined = imgObj?.blurDataUrl || undefined;
-                    // Replace SmartImage with plain <img> to avoid AVIF compatibility issues on some devices
-                    // Prefer thumbnailUrl, then avif, then original src
-                    const displaySrc = thumb || avif || item.src;
-                    return (
-                      <div className="absolute inset-0">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={displaySrc}
-                          alt={item.title || ''}
-                          loading="lazy"
-                          decoding="async"
-                          className="absolute inset-0 w-full h-full object-cover"
-                          // Optimize: Use fetchPriority for first few items
-                          fetchPriority="auto"
-                          onLoad={(e) => {
-                            try {
-                              const img = e.currentTarget as HTMLImageElement;
-                              const w = img.naturalWidth || 1;
-                              const h = img.naturalHeight || 1;
-                              const g = gcd(w, h);
-                              const rw = Math.round(w / g);
-                              const rh = Math.round(h / g);
-                              setRatios((prev) => ({ ...prev, [item.id]: `${rw}:${rh}` }));
-                            } catch {}
-                          }}
-                          onError={(e) => {
-                            // If thumbnail fails, fallback to original src
-                            const img = e.currentTarget as HTMLImageElement;
-                            if (displaySrc !== item.src) {
-                              img.src = item.src;
-                            }
-                          }}
-                        />
-                      </div>
-                    )
-                  })()
-                ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-gray-500/20 to-gray-600/20 flex items-center justify-center">
-                    <div className="text-center">
-                      <div className="w-16 h-16 mx-auto mb-3 text-white/60">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                          <circle cx="8.5" cy="8.5" r="1.5"/>
-                          <polyline points="21,15 16,10 5,21"/>
-                        </svg>
-                      </div>
-                      <div className="text-white/80 text-sm font-medium">No Preview</div>
-                      <div className="text-white/60 text-xs mt-1">Click to view</div>
+                      ) : item.src && item.src.trim() !== '' ? (
+                        (() => {
+                          // Find the matching image object in the entry to get thumbnail/avif/blur metadata if present
+                          // Match by comparing normalized URLs or original URLs
+                          const imgObj: any = ((item.entry.images || []) as any).find((im: any) => {
+                            const imUrl = normalizeImageUrl(im);
+                            const imOriginalUrl = im.url || im.firebaseUrl || im.originalUrl || '';
+                            const imAvifUrl = im.avifUrl || '';
+                            const imStoragePath = im.storagePath ? toDirectUrl(im.storagePath) : '';
+                            // Match by normalized URL, original URL, AVIF URL, or storage path
+                            return imUrl === item.src ||
+                              imOriginalUrl === item.src ||
+                              imAvifUrl === item.src ||
+                              imStoragePath === item.src ||
+                              (im.storagePath && toDirectUrl(im.storagePath) === item.src) ||
+                              // Also match if the base URL (without AVIF suffix) matches
+                              (item.src && imOriginalUrl && item.src.replace(/\.(avif|jpg|jpeg|png)$/i, '') === imOriginalUrl.replace(/\.(avif|jpg|jpeg|png)$/i, ''));
+                          }) || ({} as any);
+                          const thumb: string | undefined = imgObj?.thumbnailUrl || toThumbUrl(item.src, { w: 480, q: 60 }) || undefined;
+                          const avif: string | undefined = imgObj?.avifUrl || undefined;
+                          const blur: string | undefined = imgObj?.blurDataUrl || undefined;
+                          // Replace SmartImage with plain <img> to avoid AVIF compatibility issues on some devices
+                          // Prefer thumbnailUrl, then avif, then original src
+                          const displaySrc = thumb || avif || item.src;
+                          return (
+                            <div className="absolute inset-0">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={displaySrc}
+                                alt={item.title || ''}
+                                loading="lazy"
+                                decoding="async"
+                                className="absolute inset-0 w-full h-full object-cover"
+                                // Optimize: Use fetchPriority for first few items
+                                fetchPriority="auto"
+                                onLoad={(e) => {
+                                  try {
+                                    const img = e.currentTarget as HTMLImageElement;
+                                    const w = img.naturalWidth || 1;
+                                    const h = img.naturalHeight || 1;
+                                    const g = gcd(w, h);
+                                    const rw = Math.round(w / g);
+                                    const rh = Math.round(h / g);
+                                    setRatios((prev) => ({ ...prev, [item.id]: `${rw}:${rh}` }));
+                                  } catch { }
+                                }}
+                                onError={(e) => {
+                                  // If thumbnail fails, fallback to original src
+                                  const img = e.currentTarget as HTMLImageElement;
+                                  if (displaySrc !== item.src) {
+                                    img.src = item.src;
+                                  }
+                                }}
+                              />
+                            </div>
+                          )
+                        })()
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-br from-gray-500/20 to-gray-600/20 flex items-center justify-center">
+                          <div className="text-center">
+                            <div className="w-16 h-16 mx-auto mb-3 text-white/60">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                                <circle cx="8.5" cy="8.5" r="1.5" />
+                                <polyline points="21,15 16,10 5,21" />
+                              </svg>
+                            </div>
+                            <div className="text-white/80 text-sm font-medium">No Preview</div>
+                            <div className="text-white/60 text-xs mt-1">Click to view</div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
-                )}
+                  {/* Desktop height */}
+                  <div className="hidden md:block" style={{ height: cardHeightDesktop }}>
+                    <div className="w-full h-full">
+                      {item.isVideo ? (
+                        item.src && item.src.trim() !== '' ? (
+                          (() => {
+                            const Z = process.env.NEXT_PUBLIC_ZATA_PREFIX || ''
+                            const proxied = item.src.startsWith(Z) ? toMediaProxy(item.src) : ''
+                            const vsrc = proxied || item.src
+                            return (
+                              <video
+                                src={vsrc}
+                                className="w-full h-full object-cover"
+                                muted
+                                loop
+                                playsInline
+                                preload="metadata"
+                                poster={toThumbUrl(item.src, { w: 640, q: 60, fmt: 'avif' }) || undefined}
+                                onLoadedMetadata={(e) => {
+                                  const video = e.target as HTMLVideoElement
+                                  const w = video.videoWidth || 1
+                                  const h = video.videoHeight || 1
+                                  const g = gcd(w, h)
+                                  const rw = Math.round(w / g)
+                                  const rh = Math.round(h / g)
+                                  setRatios((prev) => ({ ...prev, [item.id]: `${rw}:${rh}` }))
+                                }}
+                              />
+                            );
+                          })()
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center">
+                            <div className="text-center">
+                              <div className="w-16 h-16 mx-auto mb-3 text-white/60">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                  <polygon points="23 7 16 12 23 17 23 7" />
+                                  <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+                                </svg>
+                              </div>
+                              <div className="text-white/80 text-sm font-medium">Video</div>
+                              <div className="text-white/60 text-xs mt-1">No preview available</div>
+                            </div>
+                          </div>
+                        )
+                      ) : item.isMusic ? (
+                        // Match tile styling with Music/TTS/SFX history tiles (StaticAudioTile + gradient)
+                        <div className="w-full h-full bg-gradient-to-br from-sky-500/60 via-blue-600/60 to-indigo-600/60 flex items-center justify-center relative rounded-2xl overflow-hidden ring-1 ring-white/10">
+                          <div className="absolute inset-0 opacity-70">
+                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.55),_transparent_60%)]" />
+                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom,_rgba(0,0,0,0.25),_transparent_65%)]" />
+                          </div>
+                          <div className="relative z-10 flex flex-col items-center justify-center">
+                            <div className="w-16 h-16 mx-auto mb-3 text-white/90 flex items-center justify-center">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-12 h-12">
+                                <path d="M9 18V5l12-2v13" />
+                                <circle cx="6" cy="18" r="3" />
+                                <circle cx="18" cy="16" r="3" />
+                              </svg>
+                            </div>
+                            <div className="text-white font-medium text-sm">Music Track</div>
+                            <div className="text-white/70 text-xs mt-1">Click to play</div>
+                          </div>
+                          <div className="absolute inset-0 bg-black/0 hover:bg-black/10 transition-colors duration-300" />
+                        </div>
+                      ) : item.src && item.src.trim() !== '' ? (
+                        (() => {
+                          // Find the matching image object in the entry to get thumbnail/avif/blur metadata if present
+                          // Match by comparing normalized URLs or original URLs
+                          const imgObj: any = ((item.entry.images || []) as any).find((im: any) => {
+                            const imUrl = normalizeImageUrl(im);
+                            const imOriginalUrl = im.url || im.firebaseUrl || im.originalUrl || '';
+                            const imAvifUrl = im.avifUrl || '';
+                            const imStoragePath = im.storagePath ? toDirectUrl(im.storagePath) : '';
+                            // Match by normalized URL, original URL, AVIF URL, or storage path
+                            return imUrl === item.src ||
+                              imOriginalUrl === item.src ||
+                              imAvifUrl === item.src ||
+                              imStoragePath === item.src ||
+                              (im.storagePath && toDirectUrl(im.storagePath) === item.src) ||
+                              // Also match if the base URL (without AVIF suffix) matches
+                              (item.src && imOriginalUrl && item.src.replace(/\.(avif|jpg|jpeg|png)$/i, '') === imOriginalUrl.replace(/\.(avif|jpg|jpeg|png)$/i, ''));
+                          }) || ({} as any);
+                          const thumb: string | undefined = imgObj?.thumbnailUrl || toThumbUrl(item.src, { w: 480, q: 60 }) || undefined;
+                          const avif: string | undefined = imgObj?.avifUrl || undefined;
+                          const blur: string | undefined = imgObj?.blurDataUrl || undefined;
+                          // Replace SmartImage with plain <img> to avoid AVIF compatibility issues on some devices
+                          // Prefer thumbnailUrl, then avif, then original src
+                          const displaySrc = thumb || avif || item.src;
+                          return (
+                            <div className="absolute inset-0">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={displaySrc}
+                                alt={item.title || ''}
+                                loading="lazy"
+                                decoding="async"
+                                className="absolute inset-0 w-full h-full object-cover"
+                                // Optimize: Use fetchPriority for first few items
+                                fetchPriority="auto"
+                                onLoad={(e) => {
+                                  try {
+                                    const img = e.currentTarget as HTMLImageElement;
+                                    const w = img.naturalWidth || 1;
+                                    const h = img.naturalHeight || 1;
+                                    const g = gcd(w, h);
+                                    const rw = Math.round(w / g);
+                                    const rh = Math.round(h / g);
+                                    setRatios((prev) => ({ ...prev, [item.id]: `${rw}:${rh}` }));
+                                  } catch { }
+                                }}
+                                onError={(e) => {
+                                  // If thumbnail fails, fallback to original src
+                                  const img = e.currentTarget as HTMLImageElement;
+                                  if (displaySrc !== item.src) {
+                                    img.src = item.src;
+                                  }
+                                }}
+                              />
+                            </div>
+                          )
+                        })()
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-br from-gray-500/20 to-gray-600/20 flex items-center justify-center">
+                          <div className="text-center">
+                            <div className="w-16 h-16 mx-auto mb-3 text-white/60">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                                <circle cx="8.5" cy="8.5" r="1.5" />
+                                <polyline points="21,15 16,10 5,21" />
+                              </svg>
+                            </div>
+                            <div className="text-white/80 text-sm font-medium">No Preview</div>
+                            <div className="text-white/60 text-xs mt-1">Click to view</div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-                {/* Desktop height */}
-                <div className="hidden md:block" style={{height: cardHeightDesktop}}>
-                  <div className="w-full h-full">
-                {item.isVideo ? (
-                  item.src && item.src.trim() !== '' ? (
-                    (() => {
-                      const Z = process.env.NEXT_PUBLIC_ZATA_PREFIX || ''
-                      const proxied = item.src.startsWith(Z) ? toMediaProxy(item.src) : ''
-                      const vsrc = proxied || item.src
-                      return (
-                        <video
-                          src={vsrc}
-                          className="w-full h-full object-cover"
-                          muted
-                          loop
-                          playsInline
-                          preload="metadata"
-                          poster={toThumbUrl(item.src, { w: 640, q: 60 , fmt:'avif'}) || undefined}
-                          onLoadedMetadata={(e) => {
-                            const video = e.target as HTMLVideoElement
-                            const w = video.videoWidth || 1
-                            const h = video.videoHeight || 1
-                            const g = gcd(w, h)
-                            const rw = Math.round(w / g)
-                            const rh = Math.round(h / g)
-                            setRatios((prev) => ({ ...prev, [item.id]: `${rw}:${rh}` }))
-                          }}
-                        />
-                      );
-                    })()
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center">
-                      <div className="text-center">
-                        <div className="w-16 h-16 mx-auto mb-3 text-white/60">
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                            <polygon points="23 7 16 12 23 17 23 7"/>
-                            <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
-                          </svg>
-                        </div>
-                        <div className="text-white/80 text-sm font-medium">Video</div>
-                        <div className="text-white/60 text-xs mt-1">No preview available</div>
-                      </div>
-                    </div>
-                  )
-                ) : item.isMusic ? (
-                  // Match tile styling with Music/TTS/SFX history tiles (StaticAudioTile + gradient)
-                  <div className="w-full h-full bg-gradient-to-br from-sky-500/60 via-blue-600/60 to-indigo-600/60 flex items-center justify-center relative rounded-2xl overflow-hidden ring-1 ring-white/10">
-                    <div className="absolute inset-0 opacity-70">
-                      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.55),_transparent_60%)]" />
-                      <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom,_rgba(0,0,0,0.25),_transparent_65%)]" />
-                    </div>
-                    <div className="relative z-10 flex flex-col items-center justify-center">
-                      <div className="w-16 h-16 mx-auto mb-3 text-white/90 flex items-center justify-center">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-12 h-12">
-                          <path d="M9 18V5l12-2v13"/>
-                          <circle cx="6" cy="18" r="3"/>
-                          <circle cx="18" cy="16" r="3"/>
-                        </svg>
-                      </div>
-                      <div className="text-white font-medium text-sm">Music Track</div>
-                      <div className="text-white/70 text-xs mt-1">Click to play</div>
-                    </div>
-                    <div className="absolute inset-0 bg-black/0 hover:bg-black/10 transition-colors duration-300" />
-                  </div>
-                ) : item.src && item.src.trim() !== '' ? (
-                  (() => {
-                    // Find the matching image object in the entry to get thumbnail/avif/blur metadata if present
-                    // Match by comparing normalized URLs or original URLs
-                    const imgObj: any = ((item.entry.images || []) as any).find((im: any) => {
-                      const imUrl = normalizeImageUrl(im);
-                      const imOriginalUrl = im.url || im.firebaseUrl || im.originalUrl || '';
-                      const imAvifUrl = im.avifUrl || '';
-                      const imStoragePath = im.storagePath ? toDirectUrl(im.storagePath) : '';
-                      // Match by normalized URL, original URL, AVIF URL, or storage path
-                      return imUrl === item.src || 
-                             imOriginalUrl === item.src || 
-                             imAvifUrl === item.src ||
-                             imStoragePath === item.src ||
-                             (im.storagePath && toDirectUrl(im.storagePath) === item.src) ||
-                             // Also match if the base URL (without AVIF suffix) matches
-                             (item.src && imOriginalUrl && item.src.replace(/\.(avif|jpg|jpeg|png)$/i, '') === imOriginalUrl.replace(/\.(avif|jpg|jpeg|png)$/i, ''));
-                    }) || ({} as any);
-                    const thumb: string | undefined = imgObj?.thumbnailUrl || toThumbUrl(item.src, { w: 480, q: 60 }) || undefined;
-                    const avif: string | undefined = imgObj?.avifUrl || undefined;
-                    const blur: string | undefined = imgObj?.blurDataUrl || undefined;
-                    // Replace SmartImage with plain <img> to avoid AVIF compatibility issues on some devices
-                    // Prefer thumbnailUrl, then avif, then original src
-                    const displaySrc = thumb || avif || item.src;
-                    return (
-                      <div className="absolute inset-0">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={displaySrc}
-                          alt={item.title || ''}
-                          loading="lazy"
-                          decoding="async"
-                          className="absolute inset-0 w-full h-full object-cover"
-                          // Optimize: Use fetchPriority for first few items
-                          fetchPriority="auto"
-                          onLoad={(e) => {
-                            try {
-                              const img = e.currentTarget as HTMLImageElement;
-                              const w = img.naturalWidth || 1;
-                              const h = img.naturalHeight || 1;
-                              const g = gcd(w, h);
-                              const rw = Math.round(w / g);
-                              const rh = Math.round(h / g);
-                              setRatios((prev) => ({ ...prev, [item.id]: `${rw}:${rh}` }));
-                            } catch {}
-                          }}
-                          onError={(e) => {
-                            // If thumbnail fails, fallback to original src
-                            const img = e.currentTarget as HTMLImageElement;
-                            if (displaySrc !== item.src) {
-                              img.src = item.src;
-                            }
-                          }}
-                        />
-                      </div>
-                    )
-                  })()
-                ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-gray-500/20 to-gray-600/20 flex items-center justify-center">
-                    <div className="text-center">
-                      <div className="w-16 h-16 mx-auto mb-3 text-white/60">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                          <circle cx="8.5" cy="8.5" r="1.5"/>
-                          <polyline points="21,15 16,10 5,21"/>
-                        </svg>
-                      </div>
-                      <div className="text-white/80 text-sm font-medium">No Preview</div>
-                      <div className="text-white/60 text-xs mt-1">Click to view</div>
-                    </div>
-                  </div>
-                )}
-                  </div>
-                </div>
-              </div>
-              
-              {/* Title and aspect ratio in one row */}
-              {/* <div className="flex items-baseline justify-between gap-1 p-0.5">
+
+                {/* Title and aspect ratio in one row */}
+                {/* <div className="flex items-baseline justify-between gap-1 p-0.5">
                 <div className="text-white text-xs truncate">{item.title}</div>
                 <div className="text-white/70 text-xs flex-shrink-0">{ratios[item.id] ?? ''}</div>
               </div>
               <div className="text-white/60 text-xs p-0.5">{item.date}</div> */}
-            </article>
+              </article>
             )
           })}
-          
-        </div>
-        
-      )}
-        <div className="flex items-center justify-between">
 
-          <div></div>
-          <div><button 
-            onClick={handleMyCreationsClick}
-            className="flex items-center gap-2 text-white/80 hover:text-white text-sm ml-2 pt-4 mr-0 transition-colors"
-          >
-            <span>More Creations</span>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-              <path d="M5 12h14M13 5l7 7-7 7" />
-            </svg>
-          </button></div>
         </div>
-        
+
+      )}
+      <div className="flex items-center justify-between">
+
+        <div></div>
+        <div><button
+          onClick={handleMyCreationsClick}
+          className="flex items-center gap-2 text-white/80 hover:text-white text-sm ml-2 pt-4 mr-0 transition-colors"
+        >
+          <span>More Creations</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+            <path d="M5 12h14M13 5l7 7-7 7" />
+          </svg>
+        </button></div>
+      </div>
+
 
       {/* Preview Modals */}
       {preview && (
@@ -1124,14 +1136,14 @@ const Recentcreation: React.FC = () => {
           onClose={() => setPreview(null)}
         />
       )}
-      
+
       {videoPreview && (
         <VideoPreviewModal
           preview={videoPreview}
           onClose={() => setVideoPreview(null)}
         />
       )}
-      
+
       {audioPreview && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center p-6">
           <div className="bg-black/90 backdrop-blur-xl rounded-2xl p-6 max-w-md w-full ring-1 ring-white/20">
@@ -1142,7 +1154,7 @@ const Recentcreation: React.FC = () => {
                 className="text-white/60 hover:text-white transition-colors"
               >
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M18 6L6 18M6 6l12 12"/>
+                  <path d="M18 6L6 18M6 6l12 12" />
                 </svg>
               </button>
             </div>
@@ -1166,17 +1178,17 @@ const Recentcreation: React.FC = () => {
           </div>
         </div>
       )}
-      
-      
-      
-      {stickerPreviewEntry && (
+
+
+
+      {/* {stickerPreviewEntry && (
         <StickerImagePreview
           isOpen={!!stickerPreviewEntry}
           onClose={() => setStickerPreviewEntry(null)}
           entry={stickerPreviewEntry}
         />
-      )}
-      
+      )} */}
+
       {productPreviewEntry && (
         <ProductImagePreview
           isOpen={!!productPreviewEntry}

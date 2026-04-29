@@ -164,14 +164,14 @@ export default function MainLayout({
   };
 
   return (
-    <div className="min-h-screen bg-[#07070B]">
+    <div className="min-h-screen bg-[#0E0E12]">
       {/* DEBUG: This is MainLayout component */}
 
 
       <div className="md:ml-[48px] ml-0 ">
         <Suspense fallback={null}>
           {/* Let PageRouter read from Redux; MainLayout already syncs UI state */}
-          <PageRouter />
+          <PageRouter currentView={currentView} currentGenerationType={currentGenerationType} />
         </Suspense>
       </div>
       <NotificationToast />

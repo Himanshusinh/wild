@@ -12,6 +12,7 @@ import { removeHistoryEntry, updateHistoryEntry, loadMoreHistory } from '@/store
 import { downloadFileWithNaming, getFileType, getExtensionFromUrl } from '@/utils/downloadUtils';
 import { toResourceProxy, toMediaProxy, toZataPath, toDirectUrl } from '@/lib/thumb';
 import { getModelDisplayName } from '@/utils/modelDisplayNames';
+import { AUTH_ROUTES, getSignInUrl } from '@/routes/routes';
 
 const RESOLUTION_K_MAP: Record<string, number> = {
   '1k': 1024,
@@ -86,6 +87,27 @@ const getCleanPrompt = (promptText: string): string => {
   return promptText.replace(/\[\s*Style:\s*[^\]]+\]/i, '').trim();
 };
 
+const isBackendStylePrompt = (text: string): boolean => {
+  const t = String(text || "").toLowerCase();
+  if (!t) return false;
+  return (
+    t.includes("primary directive (style lock") ||
+    t.includes("content constraint (strict)") ||
+    t.includes("render settings:") ||
+    t.includes("reference (optional)") ||
+    t.includes("project inputs:")
+  );
+};
+
+/** Same as Image Generation grid: library / device uploads are not real generations — skip in ←/→ navigation. */
+const normalizeModelKey = (t?: string) =>
+  t ? String(t).replace(/[_-]/g, "-").toLowerCase() : "";
+
+const isUploadFileHistoryEntry = (entry?: HistoryEntry | null): boolean => {
+  if (!entry) return false;
+  return normalizeModelKey((entry as any).model) === "upload-file";
+};
+
 interface ImagePreviewModalProps {
   preview: { entry: HistoryEntry; image: { id?: string; url: string } } | null;
   onClose: () => void;
@@ -95,7 +117,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   const dispatch = useAppDispatch();
   const user = useAppSelector((state: any) => state.auth?.user);
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || '';
-          const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || '').replace(/\/$/, '/');
+  const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX || '').replace(/\/$/, '/');
 
   // Use centralized helpers for proxy/resource path handling (toResourceProxy / toMediaProxy)
 
@@ -116,6 +138,13 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   const activeEntryId = currentEntry?.id || preview?.entry?.id || null;
   const isLoadingMoreRef = React.useRef(false);
 
+  /** Prefer full API payload over the shallow list row so model/prompt/uploads stay correct when navigating. */
+  const resolvedEntry = React.useMemo((): HistoryEntry | null => {
+    const id = activeEntryId || "";
+    if (id && entryDetails[id]) return entryDetails[id] as HistoryEntry;
+    return currentEntry || preview?.entry || null;
+  }, [activeEntryId, entryDetails, currentEntry, preview?.entry]);
+
   // Keep ref in sync with state
   React.useEffect(() => {
     entryDetailsRef.current = entryDetails;
@@ -127,6 +156,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
 
     const pushIfValid = (entry?: HistoryEntry | null) => {
       if (!entry || !entry.id) return;
+      if (isUploadFileHistoryEntry(entry)) return;
       const imgs = (entry as any)?.images;
       if (!Array.isArray(imgs) || imgs.length === 0) return;
       if (seen.has(entry.id)) return;
@@ -137,7 +167,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
     historyEntries.forEach((entry: HistoryEntry) => pushIfValid(entry));
 
     const active = currentEntry || preview?.entry || null;
-    if (active && active.id) {
+    if (active && active.id && !isUploadFileHistoryEntry(active)) {
       const activeImgs = (active as any)?.images;
       if (Array.isArray(activeImgs) && activeImgs.length > 0) {
         if (!seen.has(active.id)) {
@@ -163,7 +193,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   // CONTINUOUS NAVIGATION: Flatten ALL images from ALL generations into one sequence
   const flattenedImageSequence = React.useMemo(() => {
     const flattened: Array<{ entry: HistoryEntry; image: any; generationIndex: number; imageIndex: number }> = [];
-    
+
     generationSequence.forEach((entry, genIdx) => {
       const images = (entry as any)?.images || [];
       images.forEach((img: any, imgIdx: number) => {
@@ -175,20 +205,20 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
         });
       });
     });
-    
+
     return flattened;
   }, [generationSequence]);
 
   // Find current position in flattened sequence
   const currentFlatIndex = React.useMemo(() => {
     if (!activeEntryId) return 0;
-    
+
     const idx = flattenedImageSequence.findIndex(item => {
       const entryMatch = item.entry.id === activeEntryId;
       const imgMatch = item.imageIndex === selectedIndex;
       return entryMatch && imgMatch;
     });
-    
+
     return idx >= 0 ? idx : 0;
   }, [flattenedImageSequence, activeEntryId, selectedIndex]);
 
@@ -250,13 +280,13 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   // CONTINUOUS NAVIGATION: Navigate through flattened image sequence
   const goPrevImage = React.useCallback((e?: React.SyntheticEvent | KeyboardEvent) => {
     if (e && 'preventDefault' in e) e.preventDefault();
-    
+
     const prevIndex = currentFlatIndex - 1;
     if (prevIndex < 0) return; // At first image
-    
+
     const prevItem = flattenedImageSequence[prevIndex];
     if (!prevItem) return;
-    
+
     // Update entry and selected index
     setCurrentEntry(prevItem.entry);
     setSelectedIndex(prevItem.imageIndex);
@@ -266,7 +296,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
 
   const goNextImage = React.useCallback((e?: React.SyntheticEvent | KeyboardEvent) => {
     if (e && 'preventDefault' in e) e.preventDefault();
-    
+
     const nextIndex = currentFlatIndex + 1;
     if (nextIndex >= flattenedImageSequence.length) {
       // At last image, try to load more
@@ -275,10 +305,10 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
       }
       return;
     }
-    
+
     const nextItem = flattenedImageSequence[nextIndex];
     if (!nextItem) return;
-    
+
     // Update entry and selected index
     setCurrentEntry(nextItem.entry);
     setSelectedIndex(nextItem.imageIndex);
@@ -402,6 +432,8 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   const [fsNaturalSize, setFsNaturalSize] = React.useState({ width: 0, height: 0 });
   const fsContainerRef = React.useRef<HTMLDivElement>(null);
   const wheelNavCooldown = React.useRef(false);
+  const fsMouseDownTimeRef = React.useRef(0);
+  const fsMouseDownPosRef = React.useRef({ x: 0, y: 0 });
 
   // -------- Fullscreen helpers (declared before any early returns) ---------
   const fsClampOffset = React.useCallback((newOffset: { x: number; y: number }, currentScale: number) => {
@@ -419,31 +451,31 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
 
   const fsZoomToPoint = React.useCallback((cursorPos: { x: number; y: number }, newScale: number) => {
     if (!fsContainerRef.current) return;
-    
+
     // CRITICAL: Proper zoom-at-cursor implementation
     // cursorPos is in viewport coordinates (relative to container)
     // We need to:
     // 1. Find which point in the IMAGE is currently under the cursor
     // 2. Keep that exact point under the cursor after scaling
-    
+
     const currentScale = fsScale;
     const currentOffset = fsOffset;
-    
+
     // Convert cursor position from viewport space to image space
     // The image is displayed with: position = offset + (imageCoord * scale)
     // So: imageCoord = (position - offset) / scale
     const imageX = (cursorPos.x - currentOffset.x) / currentScale;
     const imageY = (cursorPos.y - currentOffset.y) / currentScale;
-    
+
     // Now calculate new offset to keep same image point under cursor
     // We want: cursorPos = newOffset + (imagePoint * newScale)
     // So: newOffset = cursorPos - (imagePoint * newScale)
     const newOffsetX = cursorPos.x - (imageX * newScale);
     const newOffsetY = cursorPos.y - (imageY * newScale);
-    
+
     // Clamp to prevent panning out of bounds
     const clamped = fsClampOffset({ x: newOffsetX, y: newOffsetY }, newScale);
-    
+
     setFsScale(newScale);
     setFsOffset(clamped);
   }, [fsScale, fsOffset, fsClampOffset]);
@@ -463,12 +495,12 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
     const computeFit = () => {
       if (!fsContainerRef.current || !fsNaturalSize.width || !fsNaturalSize.height) return;
       const rect = fsContainerRef.current.getBoundingClientRect();
-      
+
       // FIT TO HEIGHT: Scale image to fit screen height, maintaining aspect ratio
       // Allow upscaling if image is smaller than screen
       const heightFit = rect.height / fsNaturalSize.height;
       const fit = heightFit || 1;
-      
+
       // Remove Math.min(1, fit) to allow upscaling for small images
       const base = fit;
       setFsFitScale(base);
@@ -491,15 +523,16 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   }, [isFsOpen]);
 
   // Build gallery from images in the SAME ENTRY (same generation run)
-  // Use currentEntry instead of preview.entry so it updates after deletion
   const sameDateGallery = React.useMemo(() => {
     try {
-      const entryToUse = currentEntry || preview?.entry;
-      if (!entryToUse) return [] as Array<{ entry: any, image: any }>;
+      const entryToUse = resolvedEntry;
+      if (!entryToUse) return [] as Array<{ entry: any; image: any }>;
       const imgs = (entryToUse as any)?.images || [];
       return imgs.map((im: any) => ({ entry: entryToUse, image: im }));
-    } catch { return []; }
-  }, [currentEntry, preview]);
+    } catch {
+      return [];
+    }
+  }, [resolvedEntry]);
 
   const goPrev = React.useCallback((e?: React.MouseEvent | KeyboardEvent) => {
     try { if (e && 'preventDefault' in e) { e.preventDefault(); } } catch { }
@@ -576,6 +609,9 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
 
   const fsOnMouseDown = React.useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     e.preventDefault();
+    fsMouseDownTimeRef.current = Date.now();
+    fsMouseDownPosRef.current = { x: e.clientX, y: e.clientY };
+
     // Determine click position relative to container for zoom-to-point
     if (fsContainerRef.current) {
       const rect = fsContainerRef.current.getBoundingClientRect();
@@ -632,7 +668,33 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
     setFsLastPoint({ x: e.clientX, y: e.clientY });
   }, [fsIsPanning, fsLastPoint, fsOffset, fsClampOffset, fsScale]);
 
-  const fsOnMouseUp = React.useCallback(() => setFsIsPanning(false), []);
+  const fsOnMouseUp = React.useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    setFsIsPanning(false);
+
+    // Bug 61: Quick click detection for zoom toggle
+    const dt = Date.now() - fsMouseDownTimeRef.current;
+    const dx = Math.abs(e.clientX - fsMouseDownPosRef.current.x);
+    const dy = Math.abs(e.clientY - fsMouseDownPosRef.current.y);
+
+    // If movement is minimal and it was a short press, treat as click
+    if (dt < 300 && dx < 8 && dy < 8) {
+      if (fsContainerRef.current) {
+        const rect = fsContainerRef.current.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+
+        // If already zoomed in, reset to fit. Otherwise, zoom in.
+        if (fsScale > fsFitScale + 0.01) {
+          setFsScale(fsFitScale);
+          setFsOffset({ x: 0, y: 0 });
+        } else {
+          // Jump to 2x fit scale for a meaningful zoom on click
+          const next = Math.min(6, fsFitScale * 2);
+          fsZoomToPoint({ x: mx, y: my }, next);
+        }
+      }
+    }
+  }, [fsScale, fsFitScale, fsZoomToPoint]);
 
   // Keyboard navigation in fullscreen - Navigate through ALL images sequentially
   React.useEffect(() => {
@@ -655,19 +717,32 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
 
   // (moved above for navigation callbacks)
 
-  // Select clicked image within same-date gallery
-  const initialIndex = React.useMemo(() => {
-    if (!preview) return 0;
-    const mUrl = (preview.image as any)?.url;
+  // Only align image index when opening a different asset from the grid — not when navigating with ←/→
+  React.useEffect(() => {
+    if (!preview?.entry) return;
+    const imgs = (preview.entry as any)?.images || [];
     const mId = (preview.image as any)?.id;
-    const mEntryId = (preview.entry as any)?.id;
-    const idx = sameDateGallery.findIndex((pair: any) => {
-      return (pair?.entry?.id === mEntryId) && ((mId && pair?.image?.id === mId) || (mUrl && pair?.image?.url === mUrl));
-    });
-    return idx >= 0 ? idx : 0;
-  }, [sameDateGallery, preview]);
+    const mUrl = (preview.image as any)?.url;
+    let idx = 0;
+    if (imgs.length > 0) {
+      const found = imgs.findIndex(
+        (im: any) =>
+          (mId && im.id === mId) || (mUrl && im.url === mUrl),
+      );
+      if (found >= 0) idx = found;
+    }
+    setSelectedIndex(idx);
+  }, [preview?.entry?.id, preview?.image?.id, preview?.image?.url]);
 
-  React.useEffect(() => setSelectedIndex(initialIndex), [initialIndex]);
+  // If the active generation has fewer images than the current index (e.g. after switching generations), clamp
+  React.useEffect(() => {
+    const n = Array.isArray((resolvedEntry as any)?.images)
+      ? (resolvedEntry as any).images.length
+      : 0;
+    if (n > 0 && selectedIndex > n - 1) {
+      setSelectedIndex(n - 1);
+    }
+  }, [resolvedEntry?.id, (resolvedEntry as any)?.images?.length, selectedIndex]);
 
   // Use refs to avoid dependency issues with keyboard handlers
   const goPrevImageRef = React.useRef(goPrevImage);
@@ -705,10 +780,15 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   // Prefer per-image visibility if present, otherwise fall back to entry-level isPublic.
   React.useEffect(() => {
     try {
-      const selectedPair = sameDateGallery[selectedIndex] || { entry: preview?.entry, image: preview?.image };
-      const selectedImage = selectedPair.image || preview?.image;
-      const imageIsPublic = (selectedImage as any)?.isPublic;
-      const entryIsPublic = (selectedPair.entry as any)?.isPublic ?? (preview?.entry as any)?.isPublic;
+      const imgs = Array.isArray((resolvedEntry as any)?.images)
+        ? (resolvedEntry as any).images
+        : [];
+      const n = imgs.length;
+      const si = n > 0 ? Math.min(Math.max(0, selectedIndex), n - 1) : 0;
+      const img = imgs[si] || preview?.image;
+      const imageIsPublic = (img as any)?.isPublic;
+      const entryIsPublic =
+        (resolvedEntry as any)?.isPublic ?? (preview?.entry as any)?.isPublic;
 
       let nextFlag: boolean;
       if (typeof imageIsPublic === 'boolean') {
@@ -722,18 +802,19 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
 
       setIsPublicFlag(nextFlag);
     } catch { }
-  }, [selectedIndex, sameDateGallery, preview]);
+  }, [selectedIndex, resolvedEntry, preview?.entry]);
 
   // Only show immediate neighbors (left/right) in the sidebar thumbnails
   const windowGallery = React.useMemo(() => {
     const total = (sameDateGallery as any[]).length;
     if (total === 0) return [] as any[];
     if (total === 1) return [sameDateGallery[0]] as any[];
-    const prevIdx = (selectedIndex - 1 + total) % total;
-    const nextIdx = (selectedIndex + 1) % total;
+    const safe = Math.min(Math.max(0, selectedIndex), total - 1);
+    const prevIdx = (safe - 1 + total) % total;
+    const nextIdx = (safe + 1) % total;
     const result: any[] = [];
     result.push(sameDateGallery[prevIdx]);
-    result.push(sameDateGallery[selectedIndex]);
+    result.push(sameDateGallery[safe]);
     if (total > 2) result.push(sameDateGallery[nextIdx]);
     return result;
   }, [sameDateGallery, selectedIndex]);
@@ -765,15 +846,15 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   }, []);
 
   // Resolve the active image URL without issuing duplicate fetches (browser caches handle it)
-  const currentEntryImagesLength = Array.isArray((currentEntry as any)?.images)
-    ? (currentEntry as any).images.length
+  const currentEntryImagesLength = Array.isArray((resolvedEntry as any)?.images)
+    ? (resolvedEntry as any).images.length
     : 0;
 
   // Preload adjacent images for instant navigation (within same generation)
   // ENHANCED: Preload ±3 images instead of ±1 for instant rapid navigation
   React.useEffect(() => {
     if (!preview) return;
-    const entryToUse = currentEntry || preview.entry;
+    const entryToUse = resolvedEntry || preview.entry;
     const images = (entryToUse as any)?.images || [];
     const total = images.length;
     if (total <= 1) return;
@@ -805,7 +886,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
     if (selectedIndex >= total - 2 && showGenerationNav && activeEntryIndex >= 0) {
       loadMoreIfNeededRef.current(activeEntryIndex, generationSequence.length);
     }
-  }, [selectedIndex, currentEntry, preview, showGenerationNav, activeEntryIndex, generationSequence.length]);
+  }, [selectedIndex, resolvedEntry, preview, showGenerationNav, activeEntryIndex, generationSequence.length]);
 
   // Preload images AND entry data from adjacent generations for instant generation navigation
   // ENHANCED: Fetch full entry data proactively to eliminate API delay
@@ -866,10 +947,17 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   React.useEffect(() => {
     if (!preview) return;
 
-    const entryToUse = currentEntry || preview.entry;
+    const entryToUse = resolvedEntry || preview.entry;
     const images = (entryToUse as any)?.images || [];
-    const selectedImage = images[selectedIndex] || preview.image;
-    const imageUrl = (selectedImage as any)?.avifUrl || selectedImage?.url || (preview.image as any)?.avifUrl || preview.image?.url;
+    const n = images.length;
+    const safeIdx =
+      n > 0 ? Math.min(Math.max(0, selectedIndex), n - 1) : 0;
+    const selectedImageForUrl = images[safeIdx] || preview.image;
+    const imageUrl =
+      (selectedImageForUrl as any)?.avifUrl ||
+      selectedImageForUrl?.url ||
+      (preview.image as any)?.avifUrl ||
+      preview.image?.url;
 
     if (!imageUrl) {
       setObjectUrl('');
@@ -881,7 +969,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
     setObjectUrl(proxyUrl);
     setImageDimensions(null);
   }, [
-    currentEntry?.id,
+    resolvedEntry?.id,
     currentEntryImagesLength,
     preview?.entry?.id,
     preview?.image?.id,
@@ -889,19 +977,28 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
     selectedIndex,
   ]);
 
-  const selectedPair: any = sameDateGallery[selectedIndex] || { entry: currentEntry || preview?.entry, image: preview?.image };
-  const selectedImage: any = selectedPair.image || preview?.image;
-  const selectedEntry: any = selectedPair.entry || currentEntry || preview?.entry;
+  const galleryImages: any[] = Array.isArray((resolvedEntry as any)?.images)
+    ? (resolvedEntry as any).images
+    : [];
+  const safeImageIndex =
+    galleryImages.length > 0
+      ? Math.min(Math.max(0, selectedIndex), galleryImages.length - 1)
+      : 0;
+  const selectedImage: any =
+    galleryImages[safeImageIndex] ?? preview?.image;
+  const selectedEntry: any = resolvedEntry || preview?.entry;
 
-  // Compute button visibility
-  const isFirstImage = selectedIndex === 0;
-  const isLastImage = selectedIndex >= sameDateGallery.length - 1;
-  
+  // Compute button visibility (within current generation strip; main arrows use flattened sequence)
+  const isFirstImage = safeImageIndex <= 0;
+  const isLastImage =
+    galleryImages.length > 0 &&
+    safeImageIndex >= galleryImages.length - 1;
+
   // Generation navigation: Index 0 = Latest/Newest, Last = Oldest
   const isFirstGeneration = activeEntryIndex <= 0; // Latest/newest generation
   const isLastGeneration = activeEntryIndex >= generationSequence.length - 1; // Oldest generation
   const hasSingleGeneration = generationSequence.length <= 1;
-  
+
   // Debug logging for navigation button visibility
   if (isFsOpen) {
     console.log('[Navigation Debug]', {
@@ -1123,9 +1220,12 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   const extractedStyle = selectedEntry?.style || extractStyleFromPrompt(selectedEntry?.prompt || '');
   const displayedStyle = extractedStyle && extractedStyle.toLowerCase() !== 'none' ? extractedStyle : null;
   const displayedAspect = getAspectRatio();
-  const promptToDisplay = selectedEntry?.userPrompt || selectedEntry?.prompt || '';
-  const cleanPrompt = getCleanPrompt(promptToDisplay);
-  const isLongPrompt = cleanPrompt.length > 280;
+  const rawUserPrompt = (selectedEntry as any)?.userPrompt?.trim() || '';
+  const userPromptToDisplay = isBackendStylePrompt(rawUserPrompt) ? '' : rawUserPrompt;
+  const cleanUserPrompt = userPromptToDisplay ? getCleanPrompt(userPromptToDisplay) : '';
+  const hasUserPrompt = Boolean(cleanUserPrompt);
+  const promptForActions = cleanUserPrompt || getCleanPrompt((selectedEntry as any)?.prompt || '');
+  const isLongPrompt = cleanUserPrompt.length > 280;
 
   // Check if this is a vectorize generation (should hide certain action buttons)
   const generationType = (selectedEntry as any)?.generationType || '';
@@ -1158,10 +1258,13 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   // removed earlier duplicate definition; using single helper below near navigation
 
   const handleDelete = async () => {
+    if (!user) {
+      router.push(getSignInUrl());
+      return;
+    }
     try {
-      const selectedPair = sameDateGallery[selectedIndex] || { entry: preview?.entry, image: preview?.image };
-      const imageToDelete = selectedPair.image || preview?.image;
-      const entry = selectedPair.entry || preview?.entry;
+      const imageToDelete = selectedImage || preview?.image;
+      const entry = selectedEntry || preview?.entry;
 
       if (!window.confirm('Delete this image permanently? This cannot be undone.')) return;
 
@@ -1183,7 +1286,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
       } else if (updatedItem) {
         // Partial deletion - update entry with new images
         const newImages = updatedItem.images || [];
-        
+
         // Update Redux store
         try {
           dispatch(updateHistoryEntry({ id: entry.id, updates: { images: newImages } as any }));
@@ -1191,7 +1294,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
 
         // Update local entry state so the gallery updates immediately
         setCurrentEntry(updatedItem as HistoryEntry);
-        
+
         // Adjust the selected index
         // If we deleted the last image (and there are still images), go to the previous one
         // If we deleted a middle image, stay at the same index (which now shows the next image)
@@ -1226,6 +1329,10 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   };
 
   const downloadImage = async (url: string) => {
+    if (!user) {
+      router.push(getSignInUrl());
+      return;
+    }
     try {
       await downloadFileWithNaming(url, null, 'image');
     } catch (e) {
@@ -1234,6 +1341,10 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   };
 
   const toggleVisibility = async () => {
+    if (!user) {
+      router.push(getSignInUrl());
+      return;
+    }
     try {
       const next = !isPublicFlag;
       setIsPublicFlag(next);
@@ -1245,15 +1356,15 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
           try {
             const images = Array.isArray((selectedEntry as any).images)
               ? (selectedEntry as any).images.map((im: any) => {
-                  if (
-                    (target?.id && im.id === target.id) ||
-                    (target?.url && im.url === target.url) ||
-                    ((target as any)?.storagePath && im.storagePath === (target as any).storagePath)
-                  ) {
-                    return { ...im, isPublic: next };
-                  }
-                  return im;
-                })
+                if (
+                  (target?.id && im.id === target.id) ||
+                  (target?.url && im.url === target.url) ||
+                  ((target as any)?.storagePath && im.storagePath === (target as any).storagePath)
+                ) {
+                  return { ...im, isPublic: next };
+                }
+                return im;
+              })
               : (selectedEntry as any).images;
 
             // Update both image-level and entry-level visibility so other views (home, history)
@@ -1269,6 +1380,10 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
   };
 
   const shareImage = async (url: string) => {
+    if (!user) {
+      router.push(getSignInUrl());
+      return;
+    }
     try {
       // Check if the Web Share API is available
       if (!navigator.share) {
@@ -1302,7 +1417,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
       // Use Web Share API
       await navigator.share({
         title: 'Wild Mind AI Generated Image',
-        text: `Check out this AI-generated image!\n${cleanPrompt.substring(0, 100)}...`,
+        text: `Check out this AI-generated image!\n${promptForActions.substring(0, 100)}...`,
         files: [file]
       });
 
@@ -1467,9 +1582,10 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
       }}
     >
 
-      <button 
-        aria-label="Close" 
-        className="text-white/100 hover:text-white text-lg absolute md:top-8 top-0 md:right-10 right-0 z-[100]  hover:bg-black/70 rounded-full w-8 h-8 md:w-10 md:h-10 flex items-center justify-center transition-colors pointer-events-auto" 
+      {!isFsOpen && (
+        <button
+          aria-label="Close"
+        className="text-white/100 hover:text-white text-lg absolute md:top-8 top-0 md:right-10 right-0 z-[100]  hover:bg-black/70 rounded-full w-8 h-8 md:w-10 md:h-10 flex items-center justify-center transition-colors pointer-events-auto"
         onClick={(e) => {
           e.stopPropagation()
           e.preventDefault()
@@ -1484,6 +1600,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
           e.stopPropagation()
         }}
       >✕</button>
+      )}
       <div
         className="relative  h-full   md:w-full md:max-w-6xl w-[90%] max-w-[90%] bg-transparent  md:border md:border-white/10 rounded-xl overflow-hidden shadow-3xl"
         onClick={(e) => e.stopPropagation()}
@@ -1523,7 +1640,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
         {/* Content */}
         <div className="flex flex-col md:flex md:flex-row h-[90vh] md:h-full   md:gap-0">
           {/* Media */}
-          <div className="relative bg-transparent h-full md:h-[84vh] md:flex-1 group flex items-center justify-center ">
+          <div className="relative bg-transparent h-full md:h-auto md:flex-1 group flex items-center justify-center py-4 ">
             {(selectedImage?.avifUrl || selectedImage?.url) && (
               <div className="relative w-full h-full flex items-center justify-center ">
                 <img
@@ -1545,7 +1662,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                 )}
               </div>
             )}
-            <button
+            {/* <button
               aria-label="Fullscreen"
               title="Fullscreen"
               className="absolute md:top-3 top-0 md:left-3 left-0 z-30 p-2 rounded-full md:bg-white/10 hover:bg-white/20 text-white transition-opacity"
@@ -1557,7 +1674,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                 <path d="M21 15v4a2 2 0 0 1-2 2h-4" />
                 <path d="M3 15v4a2 2 0 0 0 2 2h4" />
               </svg>
-            </button>
+            </button> */}
           </div>
           {/* Sidebar */}
           <div className="p-4 md:p-5 md:pt-10 text-white white/10 bg-transparent max-h-[18rem] md:max-h-none md:min-h-[70vh] md:w-[34%] overflow-y-auto  custom-scrollbar">
@@ -1628,15 +1745,16 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
 
 
 
-            {/* Prompt */}
+            {/* Prompt (show only userPrompt if provided) */}
+            {hasUserPrompt ? (
             <div className="mb-4">
               <div className="flex items-center justify-between text-white/60 text-xs uppercase tracking-wider mb-0">
                 <span>Prompt</span>
                 <button
-                  onClick={() => copyPrompt(cleanPrompt, `preview-${preview.entry.id}`)}
+                  onClick={() => copyPrompt(cleanUserPrompt, `preview-${preview.entry.id}`)}
                   className={`flex items-center gap-2 px-2 py-1.5 text-white/80 text-xs rounded-lg transition-colors ${copiedButtonId === `preview-${preview.entry.id}`
-                      ? 'bg-green-500/20 text-green-400'
-                      : 'bg-white/10 hover:bg-white/20'
+                    ? 'bg-green-500/20 text-green-400'
+                    : 'bg-white/10 hover:bg-white/20'
                     }`}
                 >
                   {copiedButtonId === `preview-${preview.entry.id}` ? (
@@ -1657,7 +1775,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                 </button>
               </div>
               <div className={`text-white/90 text-xs leading-relaxed whitespace-pre-wrap break-words ${!isPromptExpanded && isLongPrompt ? 'line-clamp-4' : ''}`}>
-                {cleanPrompt}
+                {cleanUserPrompt}
               </div>
               {isLongPrompt && (
                 <button
@@ -1668,6 +1786,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                 </button>
               )}
             </div>
+            ) : null}
 
 
             {/* Details */}
@@ -1733,7 +1852,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                       onClick={() => {
                         try { setSelectedIndex(idx); } catch { }
                       }}
-                      className={`relative aspect-square rounded-md overflow-hidden border transition-colors ${selectedIndex === idx ? 'border-white/10' : 'border-transparent hover:border-white/10'}`}
+                      className={`relative aspect-square rounded-md overflow-hidden border transition-colors ${safeImageIndex === idx ? 'border-white/10' : 'border-transparent hover:border-white/10'}`}
                     >
                       {(() => {
                         const thumbBest = (pair.image?.thumbnailUrl || pair.image?.avifUrl || pair.image?.url);
@@ -1823,7 +1942,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                         // Prefer userPrompt (original user text), then cleanPrompt, then fallback to stored prompt.
                         const remixPrompt =
                           (selectedEntry as any)?.userPrompt ||
-                          cleanPrompt ||
+                          promptForActions ||
                           (selectedEntry as any)?.prompt ||
                           '';
                         if (remixPrompt) qs.set('prompt', String(remixPrompt));
@@ -1889,9 +2008,9 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
       {isFsOpen && (
         <div className="fixed inset-0 z-[80] bg-black/95 backdrop-blur-sm flex items-center justify-center">
           <div className="absolute top-3 right-4 z-[90]">
-            {/* <button aria-label="Close fullscreen" onClick={closeFullscreen} className="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm ring-1 ring-white/30">
+            <button aria-label="Close fullscreen" onClick={closeFullscreen} className="px-3 py-2 rounded-lg bg-black/50 hover:bg-black/80 text-white text-sm ring-1 ring-white/30 backdrop-blur-sm transition-colors">
               ✕
-            </button> */}
+            </button>
           </div>
           {/* Generation Navigation Buttons (Left side) */}
           {/* Show ONLY if: multiple generations exist AND not at latest/newest (index 0) */}

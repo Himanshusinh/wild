@@ -1,9 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useAppDispatch } from '@/store/hooks';
-import { setCurrentGenerationType } from '@/store/slices/uiSlice';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { setCurrentGenerationType, setSidebarExpanded } from '@/store/slices/uiSlice';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { Menu } from 'lucide-react';
+import { getSignInUrl } from '@/routes/routes';
 import MusicGenerationInputBox from './TextToMusic/compo/InputBox';
 import TextToSpeechInputBox from './TextToMusic/compo/TextToSpeechInputBox';
 import SFXInputBox from './TextToMusic/compo/SFXInputBox';
@@ -18,11 +20,13 @@ export default function MusicGenerationPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const featureParam = (searchParams?.get('feature') || '').toLowerCase();
+    const modelParam = searchParams?.get('model') || undefined;
+    const { user } = useAppSelector((state: any) => state?.auth || { user: null });
 
-    // Set UI generation type immediately to prevent showing wrong page on refresh
-    React.useMemo(() => {
-        try { (dispatch as any)(setCurrentGenerationType('text-to-music' as any)); } catch { }
-    }, [dispatch]);
+    // Debug logging to verify auth state
+    useEffect(() => {
+        console.log('MusicGenerationPage: User state:', user);
+    }, [user]);
 
     const validFeatures: MusicFeature[] = ['Music', 'Voice (TTS)', 'SFX', 'Voice Cloning', 'Dialogue'];
 
@@ -102,7 +106,7 @@ export default function MusicGenerationPage() {
 
     // Root container: prevent horizontal scroll artifacts
     return (
-        <div className="h-screen pt-4 -mt-6 bg-[#07070B] overflow-hidden overflow-x-hidden">
+        <div className="min-h-screen bg-[#0E0E12] overflow-x-hidden">
             <style jsx global>{`
                 /* Hide main page scrollbar */
                 body {
@@ -143,100 +147,99 @@ export default function MusicGenerationPage() {
                     overflow: visible !important;
                     position: relative;
                 }
-                
-                .dropdown-container > div[class*="absolute"] {
-                    position: absolute !important;
-                    z-index: 100 !important;
-                }
             `}</style>
-            {/* Root layout renders Nav + SidePanel; add spacing here so content aligns */}
-            <div className="flex h-full">
-                <div className="flex flex-col flex-1 min-w-0 px-4 sm:px-6 md:px-8 h-full overflow-hidden">
-                    {/* Sticky header + filters (pinned under navbar) */}
-                    <div className="sticky top-0 z-20 bg-[#07070B] flex-shrink-0 -mb-4">
-                        <div className="mb-1 pt-6">
-                            <div className='flex items-center gap-3'>
-                                <h3 className="text-white text-xl sm:text-xl md:text-2xl font-semibold md:mb-0 mb-0">
+
+            <div className="flex h-screen overflow-hidden">
+                <div className="flex flex-col flex-1 min-w-0 px-4 sm:px-6 md:px-8 h-full">
+                    {/* Sticky header - moved down slightly to avoid Nav overlap */}
+                    <div className="sticky top-0 z-[50] bg-[#0E0E12] pt-4 pb-2">
+                        <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2 md:gap-3">
+                                <button
+                                    onClick={() => dispatch(setSidebarExpanded(true))}
+                                    className="md:hidden flex h-10 w-10 items-center justify-center shrink-0 text-white/70 hover:text-white transition-colors cursor-pointer"
+                                    aria-label="Toggle Menu"
+                                >
+                                    <Menu size={24} />
+                                </button>
+                                <h3 className="text-white text-xl sm:text-2xl md:text-2xl font-semibold whitespace-nowrap">
                                     Music Generation
                                 </h3>
-                                <div className="ml-4 flex-0">
-                                    <div className="flex items-center flex-nowrap justify-end w-full md:gap-3 gap-1 overflow-x-auto md:pb-0 pb-0 pt-0 scrollbar-none scroll-smooth">
-                                        {(['Music', 'Voice (TTS)', 'Dialogue', 'SFX', 'Voice Cloning'] as MusicFeature[]).map((feature) => (
-                                            <button
-                                                key={feature}
-                                                onClick={() => handleSetFeature(feature)}
-                                                className={`inline-flex flex-shrink-0 whitespace-nowrap items-center gap-2 md:px-3 px-2 md:py-0.75 py-1 rounded-lg md:text-sm text-xs font-medium transition-all border ${activeFeature === feature
-                                                    ? 'bg-white border-white/5 text-black shadow-sm'
-                                                    : 'bg-gradient-to-b from-white/5 to-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10'
-                                                    }`}
-                                            >
-                                                {feature}
-                                            </button>
-                                        ))}
-                                    </div>
+
+                                <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+                                    {(['Music', 'Voice (TTS)', 'Dialogue', 'SFX', 'Voice Cloning'] as MusicFeature[]).map((feature) => (
+                                        <button
+                                            key={feature}
+                                            onClick={() => handleSetFeature(feature)}
+                                            className={`
+                                                flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs 
+                                                transition-all duration-200 whitespace-nowrap relative
+                                                active:scale-95
+                                                ${activeFeature === feature
+                                                    ? 'bg-white text-black font-semibold shadow-[0_0_15px_rgba(255,255,255,0.3)]'
+                                                    : 'bg-white/10 text-white/90 border border-white/5 hover:bg-white hover:text-black hover:scale-105'}
+                                            `}
+                                            aria-label={feature}
+                                            style={{
+                                                pointerEvents: 'auto',
+                                                cursor: 'pointer',
+                                                zIndex: 10000
+                                            }}
+                                        >
+                                            <span>{feature}</span>
+                                        </button>
+                                    ))}
                                 </div>
                             </div>
-                            <p className="text-white/80 text-xs md:text-sm mt-2">
-                                Transform your ideas into stunning audio using advanced AI models
-                            </p>
-                        </div>
 
-                        {/* Feature Filter Bar */}
-                        
+                            {!user && (
+                                <button
+                                    onClick={() => router.push(getSignInUrl())}
+                                    className='flex items-center gap-2 bg-white/10 backdrop-blur-xl border border-white/20 text-white text-sm font-medium px-4 py-1.5 rounded-full hover:bg-white/20 hover:border-white/30 transition-all duration-200 shadow-lg'
+                                >
+                                    Sign In
+                                </button>
+                            )}
+                        </div>
+                        <p className="text-white/60 text-xs sm:text-sm">
+                            Transform your ideas into stunning audio using advanced AI models
+                        </p>
                     </div>
 
-                    {/* Responsive layout: stack on small screens, columns on large */}
-                    <div className="flex flex-col lg:flex-row gap-6 mt-6 items-start flex-1 min-h-0">
-                        {/* Left Column: Input Box (sticky) */}
-                        <div
-                            className="w-full lg:w-[30%] flex-shrink-0"
-                            style={{ position: 'sticky', top: '6.5rem', left: 0, alignSelf: 'flex-start', zIndex: 30, height: 'calc(120vh - 6.5rem)' }}
-                        >
-                            <div
-                                style={{
-                                    height: '100%',
-                                    overflowY: 'auto',
-                                    overflowX: 'hidden',
-                                    WebkitOverflowScrolling: 'touch'
-                                }}
-                                className="input-scrollbar px-1 pt-4 lg:pt-8 pb-20"
-                            >
-                                <div className="pr-2" style={{ position: 'relative', paddingBottom: '160px' }}>
-                                    {activeFeature === 'Music' && (
-                                        <MusicGenerationInputBox />
-                                    )}
-                                    {activeFeature === 'Voice (TTS)' && (
-                                        <TextToSpeechInputBox />
-                                    )}
-                                    {activeFeature === 'Dialogue' && (
-                                        <DialogueInputBox />
-                                    )}
-                                    {activeFeature === 'SFX' && (
-                                        <SFXInputBox />
-                                    )}
-                                    {activeFeature === 'Voice Cloning' && (
-                                        <AudioCloningInputBox />
-                                    )}
+                    {/* Content area: flexbox for main content + history */}
+                    <div className="flex flex-col lg:flex-row gap-6 items-start flex-1 min-h-0 overflow-hidden">
+                        {/* Left Column: Input Box (scrollable) */}
+                        <div className="w-full lg:w-[350px] xl:w-[400px] flex-shrink-0 h-full flex flex-col">
+                            <div className="flex-1 overflow-y-auto input-scrollbar pr-2 py-4">
+                                <div className="space-y-6 pb-32">
+                                    {activeFeature === 'Music' && <MusicGenerationInputBox selectedModel={modelParam} />}
+                                    {activeFeature === 'Voice (TTS)' && <TextToSpeechInputBox selectedModel={modelParam} />}
+                                    {activeFeature === 'Dialogue' && <DialogueInputBox selectedModel={modelParam} />}
+                                    {activeFeature === 'SFX' && <SFXInputBox selectedModel={modelParam} />}
+                                    {activeFeature === 'Voice Cloning' && <AudioCloningInputBox selectedModel={modelParam} />}
                                 </div>
                             </div>
                         </div>
-                        {/* Right Column: History */}
-                        <div className="flex-1 min-w-0 h-full overflow-y-auto history-scrollbar">
-                            {activeFeature === 'Music' && (
-                                <MusicGenerationInputBox key={`music-history-${activeFeature}`} showHistoryOnly={true} />
-                            )}
-                            {activeFeature === 'Voice (TTS)' && (
-                                <TextToSpeechInputBox key={`tts-history-${activeFeature}`} showHistoryOnly={true} />
-                            )}
-                            {activeFeature === 'Dialogue' && (
-                                <DialogueInputBox key={`dialogue-history-${activeFeature}`} showHistoryOnly={true} />
-                            )}
-                            {activeFeature === 'SFX' && (
-                                <SFXInputBox key={`sfx-history-${activeFeature}`} showHistoryOnly={true} />
-                            )}
-                            {activeFeature === 'Voice Cloning' && (
-                                <AudioCloningInputBox key={`voice-cloning-history-${activeFeature}`} showHistoryOnly={true} />
-                            )}
+
+                        {/* Right Column: History (scrollable) */}
+                        <div className="flex-1 min-w-0 h-full overflow-y-auto history-scrollbar py-4">
+                            <div className="pb-20">
+                                {activeFeature === 'Music' && (
+                                    <MusicGenerationInputBox key={`m-hist-${activeFeature}`} showHistoryOnly={true} />
+                                )}
+                                {activeFeature === 'Voice (TTS)' && (
+                                    <TextToSpeechInputBox key={`t-hist-${activeFeature}`} showHistoryOnly={true} />
+                                )}
+                                {activeFeature === 'Dialogue' && (
+                                    <DialogueInputBox key={`d-hist-${activeFeature}`} showHistoryOnly={true} />
+                                )}
+                                {activeFeature === 'SFX' && (
+                                    <SFXInputBox key={`s-hist-${activeFeature}`} showHistoryOnly={true} />
+                                )}
+                                {activeFeature === 'Voice Cloning' && (
+                                    <AudioCloningInputBox key={`v-hist-${activeFeature}`} showHistoryOnly={true} />
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -244,7 +247,3 @@ export default function MusicGenerationPage() {
         </div>
     );
 }
-
-
-
-

@@ -10,6 +10,7 @@ import ImageComparisonSlider from '@/app/view/workflows/components/ImageComparis
 import { useCredits } from '@/hooks/useCredits';
 import { downloadFileWithNaming } from '@/utils/downloadUtils';
 import { WORKFLOWS_DATA } from '@/app/view/workflows/components/data';
+import { getSignInUrl } from '@/routes/routes';
 
 const STYLES = [
   'Minimalist', 'Nature', 'Luxury', 'Industrial',
@@ -21,7 +22,8 @@ export default function ReimagineProduct() {
   const {
     creditBalance,
     deductCreditsOptimisticForGeneration,
-    rollbackOptimisticDeduction
+    rollbackOptimisticDeduction,
+    user
   } = useCredits();
 
   // State
@@ -65,6 +67,10 @@ export default function ReimagineProduct() {
   };
 
   const handleRun = async () => {
+    if (!user) {
+      router.push(getSignInUrl());
+      return;
+    }
     if (!productImage) {
       toast.error('Please upload a product snapshot first');
       return;
@@ -295,6 +301,7 @@ export default function ReimagineProduct() {
 
         {isUploadModalOpen && (
           <UploadModal
+            persistLocalDeviceUploads={false}
             isOpen={isUploadModalOpen}
             onClose={() => setIsUploadModalOpen(false)}
             onAdd={(urls: string[]) => {
@@ -309,5 +316,6 @@ export default function ReimagineProduct() {
     </>
   );
 }
+
 
 

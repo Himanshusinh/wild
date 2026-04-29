@@ -1,0 +1,2 @@
+export { WoodTempleCarvingModal } from "./WoodTempleCarvingModal";
+

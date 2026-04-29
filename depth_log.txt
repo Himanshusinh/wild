@@ -1,0 +1,201 @@
+Line 400: Depth 3 | el.scrollTop = el.scrollHeight;
+Line 401: Depth 2 | }
+Line 402: Depth 1 | }, [liveChatMessages]);
+Line 403: Depth 1 | 
+Line 404: Depth 1 | // Live Chat dropdowns are closed by default; frame dropdown opens only after model selection.
+Line 405: Depth 1 | 
+Line 406: Depth 1 | const liveAllowedModels: Array<{ label: string; value: 'gemini-25-flash-image' | 'google/nano-banana-pro' | 'seedream-v4' | 'seedream-v4.5' | 'openai/gpt-image-1.5' | 'qwen-image-edit-2511' }> = [
+Line 407: Depth 1 | { label: 'Nano Banana', value: 'gemini-25-flash-image' },
+Line 408: Depth 1 | { label: 'Nano Banana Pro', value: 'google/nano-banana-pro' },
+Line 409: Depth 1 | { label: 'Seedream v4 4k', value: 'seedream-v4' },
+Line 410: Depth 1 | { label: 'Seedream v4.5', value: 'seedream-v4.5' },
+Line 411: Depth 1 | { label: 'GPT-IMAGE-1.5 (low)', value: 'openai/gpt-image-1.5' },
+Line 412: Depth 1 | { label: 'Qwen Image Edit 2511', value: 'qwen-image-edit-2511' },
+Line 413: Depth 1 | ];
+Line 414: Depth 1 | 
+Line 415: Depth 2 | const getLiveModelCredits = (value: 'gemini-25-flash-image' | 'google/nano-banana-pro' | 'seedream-v4' | 'seedream-v4.5' | 'openai/gpt-image-1.5' | 'qwen-image-edit-2511', resolution?: string) => {
+Line 416: Depth 2 | const mapped = value;
+Line 417: Depth 2 | const quality = mapped === 'openai/gpt-image-1.5' ? 'low' : undefined;
+Line 418: Depth 2 | const credits = getCreditsForModel(mapped, undefined, resolution, undefined, undefined, quality);
+Line 419: Depth 2 | if (credits != null) return credits;
+Line 420: Depth 2 | // Fallback defaults
+Line 421: Depth 2 | if (mapped === 'gemini-25-flash-image') return 98;
+Line 422: Depth 3 | if (mapped === 'google/nano-banana-pro') {
+Line 423: Depth 3 | if (resolution === '4K') return 620;
+Line 424: Depth 3 | return 320;
+Line 425: Depth 2 | }
+Line 426: Depth 2 | if (mapped === 'seedream-v4') return 80;
+Line 427: Depth 2 | if (mapped === 'seedream-v4.5') return 100;
+Line 428: Depth 2 | if (mapped === 'openai/gpt-image-1.5') return 46;
+Line 429: Depth 2 | if (mapped === 'qwen-image-edit-2511') return 80;
+Line 430: Depth 2 | return 0;
+Line 431: Depth 1 | };
+Line 432: Depth 1 | 
+Line 433: Depth 1 | const liveCredits = useMemo(() => getLiveModelCredits(liveModel, liveResolution), [liveModel, liveResolution]);
+Line 434: Depth 1 | 
+Line 435: Depth 2 | const availableModels = useMemo(() => {
+Line 436: Depth 3 | if (selectedFeature === 'remove-bg') {
+Line 437: Depth 3 | return [
+Line 438: Depth 3 | { label: '851 Labs Remove BG - 10 credits', value: '851-labs/background-remover' },
+Line 439: Depth 3 | { label: 'Lucataco Remove BG - 10 credits', value: 'lucataco/remove-bg' },
+Line 440: Depth 3 | ];
+Line 441: Depth 2 | }
+Line 442: Depth 3 | if (selectedFeature === 'resize') {
+Line 443: Depth 3 | return [
+Line 444: Depth 3 | { label: 'Bria Expand', value: 'fal-ai/bria/expand' },
+Line 445: Depth 3 | ];
+Line 446: Depth 2 | }
+Line 447: Depth 2 | return [
+Line 448: Depth 2 | { label: 'Crystal Upscaler', value: 'philz1337x/crystal-upscaler' },
+Line 449: Depth 2 | { label: 'SeedVR Upscaler (factor)', value: 'fal-ai/seedvr/upscale/image' },
+Line 450: Depth 2 | { label: 'Topaz Upscaler', value: 'fal-ai/topaz/upscale/image' },
+Line 451: Depth 2 | { label: 'Real-ESRGAN', value: 'nightmareai/real-esrgan' },
+Line 452: Depth 2 | ];
+Line 453: Depth 1 | }, [selectedFeature]);
+Line 454: Depth 1 | 
+Line 455: Depth 1 | const liveFrameSizes = [
+Line 456: Depth 1 | { name: 'Square', value: '1:1' },
+Line 457: Depth 1 | { name: 'Portrait', value: '3:4' },
+Line 458: Depth 1 | { name: 'Landscape', value: '4:3' },
+Line 459: Depth 1 | { name: 'Wide', value: '16:9' },
+Line 460: Depth 1 | { name: 'Vertical', value: '9:16' },
+Line 4250: Depth 4 | onChange={(e) => setLivePrompt(e.target.value)}
+Line 4251: Depth 4 | placeholder="Tell me your edit request"
+Line 4252: Depth 4 | className="w-full md:h-[36px] h-[30px] md:px-3 px-2 md:pr-[40px] pr-[32px] bg-transparent border border-white/10 rounded-full md:text-[13px] text-[11px] text-white placeholder-white/50"
+Line 4253: Depth 4 | onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleLiveGenerate(); } }}
+Line 4254: Depth 4 | />
+Line 4255: Depth 4 | <button
+Line 4256: Depth 4 | type="button"
+Line 4257: Depth 4 | onClick={handleLiveGenerate}
+Line 4258: Depth 4 | disabled={processing['live-chat'] || !livePrompt.trim()}
+Line 4259: Depth 4 | aria-label="Generate"
+Line 4260: Depth 4 | className="absolute right-1 top-1/2 -translate-y-1/2 md:w-7 md:h-7 w-5 h-5 bg-blue-500  text-white rounded-full flex items-center justify-center border border-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+Line 4261: Depth 4 | >
+Line 4262: Depth 4 | <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" strokeWidth="1.8">
+Line 4263: Depth 4 | {/* <circle cx="12" cy="12" r="9" /> */}
+Line 4264: Depth 4 | <path d="M10 8l4 4-4 4" strokeLinecap="round" strokeLinejoin="round" />
+Line 4265: Depth 4 | </svg>
+Line 4266: Depth 4 | </button>
+Line 4267: Depth 4 | </div>
+Line 4268: Depth 4 | </div>
+Line 4269: Depth 4 | </div>
+Line 4270: Depth 4 | </div>
+Line 4271: Depth 4 | </div>
+Line 4272: Depth 4 | </>
+Line 4273: Depth 3 | )}
+Line 4274: Depth 4 | {selectedFeature !== 'vectorize' && selectedFeature !== 'live-chat' && (
+Line 4275: Depth 4 | <>
+Line 4276: Depth 4 | <div className="space-y-2">
+Line 4277: Depth 5 | {selectedFeature !== 'fill' && selectedFeature !== 'erase' && selectedFeature !== 'expand' && (
+Line 4278: Depth 5 | <div>
+Line 4279: Depth 5 | <p className="text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-1">AI Model</p>
+Line 4280: Depth 5 | <div className="relative edit-dropdown">
+Line 4281: Depth 6 | {availableModels.length > 1 ? (
+Line 4282: Depth 6 | <button
+Line 4283: Depth 6 | onClick={() => setActiveDropdown(activeDropdown === 'model' ? '' : 'model')}
+Line 4284: Depth 6 | className={`h-[38px] w-full px-4 rounded-xl text-[13px] font-medium border border-white/12 hover:bg-white/3 transition flex items-center justify-between text-white/90`}
+Line 4285: Depth 6 | >
+Line 4286: Depth 6 | <span className="truncate">
+Line 4287: Depth 6 | {model ? getUpscaleModelLabel(model) : 'Select model'}
+Line 4288: Depth 6 | </span>
+Line 4289: Depth 6 | <ChevronUp className={`w-4 h-4 ml-2 shrink-0 transition-transform duration-200 ${activeDropdown === 'model' ? '' : 'rotate-180'}`} />
+Line 4290: Depth 6 | </button>
+Line 4291: Depth 6 | ) : (
+Line 4292: Depth 6 | <div className="h-[38px] w-full px-4 rounded-xl text-[13px] font-medium border border-white/12 flex items-center text-white/90 bg-white/2">
+Line 4293: Depth 6 | <span className="truncate">
+Line 4294: Depth 6 | {model ? getUpscaleModelLabel(model) : 'Select model'}
+Line 4295: Depth 6 | </span>
+Line 4296: Depth 6 | </div>
+Line 4297: Depth 5 | )}
+Line 4298: Depth 5 | 
+Line 4299: Depth 6 | {activeDropdown === 'model' && availableModels.length > 1 && (
+Line 4300: Depth 6 | <div className={`absolute top-full z-100 left-0 w-full bg-black backdrop-blur-xl rounded-xl mt-1 ring-1 ring-white/15 md:max-h-64 max-h-48 overflow-y-auto dropdown-scrollbar`}>
+Line 4301: Depth 7 | {availableModels.map((opt) => (
+Line 4302: Depth 7 | <button
+Line 4303: Depth 7 | key={opt.value}
+Line 4304: Depth 7 | onClick={() => { setModel(opt.value as any); setActiveDropdown(''); }}
+Line 4305: Depth 7 | className={`w-full px-4 py-2.5 text-left text-[13px] flex items-center gap-2 ${model === opt.value ? 'bg-white/10 text-white font-medium' : 'text-white/75 hover:bg-white/8 hover:text-white'}`}
+Line 4306: Depth 7 | >
+Line 4307: Depth 7 | {model === opt.value && <span className="w-1.5 h-1.5 rounded-full bg-[#2F6BFF] shrink-0" />}
+Line 4308: Depth 7 | <span className="truncate">{opt.label}</span>
+Line 4309: Depth 7 | </button>
+Line 4310: Depth 6 | ))}
+Line 4311: Depth 6 | </div>
+Line 4312: Depth 5 | )}
+Line 4313: Depth 5 | </div>
+Line 4314: Depth 5 | </div>
+Line 4315: Depth 4 | )}
+Line 4316: Depth 5 | {selectedFeature === 'remove-bg' && String(model).startsWith('bria/eraser') && (
+Line 4317: Depth 5 | <div>
+Line 4318: Depth 5 | <label className="block text-xs font-medium text-white/70 mb-0 md:text-sm">Brush Size</label>
+Line 4319: Depth 5 | <input type="range" min={3} max={150} value={brushSize} onChange={(e) => setBrushSize(Number(e.target.value))} className="w-full" />
+Line 4320: Depth 5 | <div className="text-[11px] text-white/50 mt-0">{brushSize}px</div>
+Line 4321: Depth 5 | </div>
+Line 4322: Depth 4 | )}
+Line 4323: Depth 4 | {/* Remove-BG (851-labs) specialized controls */}
+Line 4324: Depth 4 | </div>
+Line 4325: Depth 4 | 
+Line 4326: Depth 5 | {selectedFeature === 'fill' && (
+Line 4327: Depth 5 | <EditImageEraseControls
+Line 4328: Depth 5 | brushSize={eraseBrushSize}
+Line 4329: Depth 5 | setBrushSize={setEraseBrushSize}
+Line 4330: Depth 5 | prompt={erasePrompt}
+Line 4331: Depth 5 | setPrompt={setErasePrompt}
+Line 4332: Depth 5 | mode={eraseActionMode}
+Line 4333: Depth 5 | setMode={setEraseActionMode}
+Line 4334: Depth 5 | model={eraseModel}
+Line 4335: Depth 5 | setModel={setEraseModel}
+Line 4336: Depth 5 | isProcessing={processing['fill']}
+Line 4337: Depth 5 | onGenerate={handleRun}
+Line 4338: Depth 5 | onClearMask={() => setEraseMaskData(null)} /* We need a way to clear mask in Frame too */
+Line 4339: Depth 5 | onBrushAdjustStart={() => setIsAdjustingBrush(true)}
+Line 4340: Depth 5 | onBrushAdjustEnd={() => setIsAdjustingBrush(false)}
+Line 4341: Depth 5 | />
+Line 4342: Depth 4 | )}
+Line 4343: Depth 4 | {/* Removed old fill/erase controls logic */}
+Line 4344: Depth 5 | {selectedFeature === 'erase' && (
+Line 4345: Depth 5 | <div className="p-2 text-white/50 text-xs">Erase feature is merged into Replace/Erase.</div>
+Line 4346: Depth 5 | )
+Line 4347: Depth 4 | }
+Line 4348: Depth 4 | 
+Line 4349: Depth 4 | {/* Erase feature - no prompt input, uses hardcoded prompt */}
+Line 4350: Depth 5 | {selectedFeature === 'erase' && (
+Line 6200: Depth 6 | key={`input-thumb`}
+Line 6201: Depth 8 | onClick={() => {
+Line 6202: Depth 8 | setActiveLiveIndex(-1);
+Line 6203: Depth 8 | setOutputs((prev) => ({ ...prev, ['live-chat']: inputUrl }));
+Line 6204: Depth 8 | setInputs((prev) => ({ ...prev, ['live-chat']: inputUrl }));
+Line 6205: Depth 6 | }}
+Line 6206: Depth 6 | className={`bg-white/3 rounded-xl border md:p-2 md:w-36 md:h-36 w-20 h-20 overflow-hidden ${isActiveInput ? 'border-white/5' : 'border-white/10 hover:border-white/30'}`}
+Line 6207: Depth 6 | title={`Input image`}
+Line 6208: Depth 6 | >
+Line 6209: Depth 6 | <img src={normalizeEditImageUrl(inputUrl)} alt={`Input`} className="w-full h-full object-cover" />
+Line 6210: Depth 6 | </button>
+Line 6211: Depth 6 | );
+Line 6212: Depth 5 | })()
+Line 6213: Depth 4 | )}
+Line 6214: Depth 4 | </div>
+Line 6215: Depth 4 | </div>
+Line 6216: Depth 4 | </div>
+Line 6217: Depth 4 | </div>
+Line 6218: Depth 3 | )}
+Line 6219: Depth 3 | 
+Line 6220: Depth 3 | </div>
+Line 6221: Depth 3 | </div>
+Line 6222: Depth 3 | 
+Line 6223: Depth 2 | }
+Line 6224: Depth 3 | statusBar={
+Line 6225: Depth 3 | <EditImageStatusBar
+Line 6226: Depth 3 | isProcessing={Object.values(processing).some(p => p)}
+Line 6227: Depth 3 | statusText={`Processing: ${featureDisplayName[selectedFeature]}...`}
+Line 6228: Depth 3 | progress={65}
+Line 6229: Depth 3 | credits={creditBalance}
+Line 6230: Depth 3 | />
+Line 6231: Depth 2 | }
+Line 6232: Depth 2 | />
+Line 6233: Depth 2 | </div>
+Line 6234: Depth 2 | );
+Line 6235: Depth 1 | };
+Line 6236: Depth 1 | 
+Line 6237: Depth 1 | export default EditImageInterface;
+Final depth: 1

@@ -61,7 +61,16 @@ export default function AiCompanion() {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Move effects and hooks here
+  // Hide on 404 and error pages
+  const is404 = pathname === '/not-found' || pathname?.includes('/404');
+  const isError = pathname === '/error' || pathname?.includes('/error');
+  const isAuthRoute =
+    pathname?.startsWith('/view/signup') ||
+    pathname?.startsWith('/view/signin') ||
+    pathname?.startsWith('/view/forgot-password') ||
+    pathname?.startsWith('/auth/reset-password');
+  const shouldHide = is404 || isError || isAuthRoute;
+
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     if (isOpen) {
@@ -222,6 +231,10 @@ export default function AiCompanion() {
       handleSendMessage();
     }
   };
+
+  if (shouldHide) {
+    return null;
+  }
 
   return (
     <>

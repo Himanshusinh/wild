@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { ChevronDown, ChevronUp, Crop } from "lucide-react";
 
 interface VideoFrameSizeDropdownProps {
@@ -24,20 +25,69 @@ const VideoFrameSizeDropdown: React.FC<VideoFrameSizeDropdownProps> = ({
   miniMaxDuration,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [dropdownPosition, setDropdownPosition] = useState<{
+    top: number;
+    left: number;
+    openUp: boolean;
+  } | null>(null);
+  const dropdownId = "video-frame-size-dropdown";
+  const isKlingV3ProI2V =
+    selectedModel === "kling-v3-pro" && generationMode === "image_to_video";
 
   // Close dropdown when clicking outside
   useEffect(() => {
+    if (!isOpen) return;
+
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
+      const target = event.target as HTMLElement;
+      if (buttonRef.current?.contains(target)) return;
+      if (target.closest(`[data-dropdown="${dropdownId}"]`)) return;
+      setIsOpen(false);
     };
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  }, [dropdownId, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || !buttonRef.current) {
+      setDropdownPosition(null);
+      return;
+    }
+
+    const updateDropdownPosition = () => {
+      if (!buttonRef.current) return;
+      const buttonRect = buttonRef.current.getBoundingClientRect();
+      const dropdownWidth = window.innerWidth >= 768 ? 192 : 112;
+      let left = buttonRect.left;
+      let top = buttonRect.top;
+      let openUp = true;
+
+      if (left + dropdownWidth > window.innerWidth - 8) {
+        left = window.innerWidth - dropdownWidth - 8;
+      }
+      if (left < 8) {
+        left = 8;
+      }
+      if (top < 8) {
+        top = buttonRect.bottom + 8;
+        openUp = false;
+      }
+
+      setDropdownPosition({ top, left, openUp });
+    };
+
+    updateDropdownPosition();
+    window.addEventListener("scroll", updateDropdownPosition, true);
+    window.addEventListener("resize", updateDropdownPosition);
+
+    return () => {
+      window.removeEventListener("scroll", updateDropdownPosition, true);
+      window.removeEventListener("resize", updateDropdownPosition);
+    };
+  }, [isOpen]);
 
   // Auto-close dropdown after 20 seconds
   useEffect(() => {
@@ -46,7 +96,7 @@ const VideoFrameSizeDropdown: React.FC<VideoFrameSizeDropdownProps> = ({
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }
-      
+
       // Set new timeout for 20 seconds
       timeoutRef.current = setTimeout(() => {
         setIsOpen(false);
@@ -80,82 +130,380 @@ const VideoFrameSizeDropdown: React.FC<VideoFrameSizeDropdownProps> = ({
 
   // Get available frame sizes based on model and generation mode
   const getAvailableFrameSizes = () => {
+    if (selectedModel?.startsWith("alibaba/happy-horse")) {
+      return [
+        {
+          value: "16:9",
+          label: "16:9",
+          description: "Widescreen landscape",
+          icon: "landscape",
+        },
+        {
+          value: "9:16",
+          label: "9:16",
+          description: "Widescreen portrait",
+          icon: "portrait",
+        },
+        { value: "1:1", label: "1:1", description: "Square", icon: "square" },
+        {
+          value: "4:3",
+          label: "4:3",
+          description: "Classic landscape",
+          icon: "landscape",
+        },
+        {
+          value: "3:4",
+          label: "3:4",
+          description: "Classic portrait",
+          icon: "portrait",
+        },
+      ];
+    }
     if (selectedModel?.includes("sora2")) {
       // Sora 2 models support limited aspect ratios
       if (generationMode === "image_to_video") {
         // Sora 2 I2V supports auto, 16:9, 9:16
         return [
-          { value: "auto", label: "Auto", description: "Auto-detect aspect ratio", icon: "auto" },
-          { value: "16:9", label: "16:9", description: "1280×720 landscape", icon: "landscape" },
-          { value: "9:16", label: "9:16", description: "720×1280 portrait", icon: "portrait" }
+          {
+            value: "auto",
+            label: "Auto",
+            description: "Auto-detect aspect ratio",
+            icon: "auto",
+          },
+          {
+            value: "16:9",
+            label: "16:9",
+            description: "1280×720 landscape",
+            icon: "landscape",
+          },
+          {
+            value: "9:16",
+            label: "9:16",
+            description: "720×1280 portrait",
+            icon: "portrait",
+          },
         ];
       } else {
         // Sora 2 T2V supports 16:9, 9:16
         return [
-          { value: "16:9", label: "16:9", description: "1280×720 landscape", icon: "landscape" },
-          { value: "9:16", label: "9:16", description: "720×1280 portrait", icon: "portrait" }
+          {
+            value: "16:9",
+            label: "16:9",
+            description: "1280×720 landscape",
+            icon: "landscape",
+          },
+          {
+            value: "9:16",
+            label: "9:16",
+            description: "720×1280 portrait",
+            icon: "portrait",
+          },
         ];
       }
+    } else if (selectedModel?.includes("veo3.1-lite")) {
+      if (generationMode === "image_to_video") {
+        return [
+          {
+            value: "auto",
+            label: "Auto",
+            description: "Auto-detect for single or first-last inputs",
+            icon: "auto",
+          },
+          {
+            value: "16:9",
+            label: "16:9",
+            description: "1280×720 landscape",
+            icon: "landscape",
+          },
+          {
+            value: "9:16",
+            label: "9:16",
+            description: "720×1280 portrait",
+            icon: "portrait",
+          },
+        ];
+      }
+      return [
+        {
+          value: "16:9",
+          label: "16:9",
+          description: "1280×720 landscape",
+          icon: "landscape",
+        },
+        {
+          value: "9:16",
+          label: "9:16",
+          description: "720×1280 portrait",
+          icon: "portrait",
+        },
+      ];
     } else if (selectedModel?.includes("veo3.1")) {
       // Veo 3.1 models support limited aspect ratios
       if (generationMode === "image_to_video") {
         // Veo 3.1 image-to-video only supports auto, 16:9, 9:16
         return [
-          { value: "auto", label: "Auto", description: "Auto-detect aspect ratio", icon: "auto" },
-          { value: "16:9", label: "16:9", description: "1280×720 landscape", icon: "landscape" },
-          { value: "9:16", label: "9:16", description: "720×1280 portrait", icon: "portrait" }
+          {
+            value: "auto",
+            label: "Auto",
+            description: "Auto-detect aspect ratio",
+            icon: "auto",
+          },
+          {
+            value: "16:9",
+            label: "16:9",
+            description: "1280×720 landscape",
+            icon: "landscape",
+          },
+          {
+            value: "9:16",
+            label: "9:16",
+            description: "720×1280 portrait",
+            icon: "portrait",
+          },
         ];
       } else {
         // Veo 3.1 text-to-video supports more ratios
         return [
-          { value: "16:9", label: "16:9", description: "1280×720 landscape", icon: "landscape" },
-          { value: "9:16", label: "9:16", description: "720×1280 portrait", icon: "portrait" },
-          { value: "1:1", label: "1:1", description: "960×960 square", icon: "square" }
+          {
+            value: "16:9",
+            label: "16:9",
+            description: "1280×720 landscape",
+            icon: "landscape",
+          },
+          {
+            value: "9:16",
+            label: "9:16",
+            description: "720×1280 portrait",
+            icon: "portrait",
+          },
+          {
+            value: "1:1",
+            label: "1:1",
+            description: "960×960 square",
+            icon: "square",
+          },
         ];
       }
-    } else if (selectedModel?.includes("veo3") && !selectedModel.includes("veo3.1")) {
+    } else if (
+      selectedModel?.includes("veo3") &&
+      !selectedModel.includes("veo3.1")
+    ) {
       // Veo3 models support limited aspect ratios
       if (generationMode === "image_to_video") {
         // Veo3 image-to-video only supports auto, 16:9, 9:16
         return [
-          { value: "auto", label: "Auto", description: "Auto-detect aspect ratio", icon: "auto" },
-          { value: "16:9", label: "16:9", description: "1280×720 landscape", icon: "landscape" },
-          { value: "9:16", label: "9:16", description: "720×1280 portrait", icon: "portrait" }
+          {
+            value: "auto",
+            label: "Auto",
+            description: "Auto-detect aspect ratio",
+            icon: "auto",
+          },
+          {
+            value: "16:9",
+            label: "16:9",
+            description: "1280×720 landscape",
+            icon: "landscape",
+          },
+          {
+            value: "9:16",
+            label: "9:16",
+            description: "720×1280 portrait",
+            icon: "portrait",
+          },
         ];
       } else {
         // Veo3 text-to-video supports more ratios
         return [
-          { value: "16:9", label: "16:9", description: "1280×720 landscape", icon: "landscape" },
-          { value: "9:16", label: "9:16", description: "720×1280 portrait", icon: "portrait" },
-          { value: "1:1", label: "1:1", description: "960×960 square", icon: "square" }
+          {
+            value: "16:9",
+            label: "16:9",
+            description: "1280×720 landscape",
+            icon: "landscape",
+          },
+          {
+            value: "9:16",
+            label: "9:16",
+            description: "720×1280 portrait",
+            icon: "portrait",
+          },
+          {
+            value: "1:1",
+            label: "1:1",
+            description: "960×960 square",
+            icon: "square",
+          },
         ];
       }
-    } else if (selectedModel?.includes("pixverse")) {
-      // PixVerse supports 16:9, 9:16, 1:1 for both T2V and I2V
+    } else if (selectedModel === "pixverse-v6-t2v") {
       return [
-        { value: "16:9", label: "16:9", description: "Widescreen landscape", icon: "landscape" },
-        { value: "9:16", label: "9:16", description: "Widescreen portrait", icon: "portrait" },
-        { value: "1:1", label: "1:1", description: "Square", icon: "square" }
+        {
+          value: "16:9",
+          label: "16:9",
+          description: "Widescreen landscape",
+          icon: "landscape",
+        },
+        {
+          value: "4:3",
+          label: "4:3",
+          description: "Classic landscape",
+          icon: "landscape",
+        },
+        { value: "1:1", label: "1:1", description: "Square", icon: "square" },
+        {
+          value: "3:4",
+          label: "3:4",
+          description: "Classic portrait",
+          icon: "portrait",
+        },
+        {
+          value: "9:16",
+          label: "9:16",
+          description: "Widescreen portrait",
+          icon: "portrait",
+        },
+        {
+          value: "2:3",
+          label: "2:3",
+          description: "Portrait",
+          icon: "portrait",
+        },
+        {
+          value: "3:2",
+          label: "3:2",
+          description: "Landscape",
+          icon: "landscape",
+        },
+        {
+          value: "21:9",
+          label: "21:9",
+          description: "Ultrawide",
+          icon: "landscape",
+        },
+      ];
+    } else if (
+      selectedModel === "pixverse-v5-t2v" ||
+      selectedModel === "pixverse-v5-i2v"
+    ) {
+      return [
+        {
+          value: "16:9",
+          label: "16:9",
+          description: "Widescreen landscape",
+          icon: "landscape",
+        },
+        {
+          value: "9:16",
+          label: "9:16",
+          description: "Widescreen portrait",
+          icon: "portrait",
+        },
+        { value: "1:1", label: "1:1", description: "Square", icon: "square" },
+      ];
+    } else if (
+      selectedModel === "seedance-2.0-t2v" ||
+      selectedModel === "seedance-2.0-r2v" ||
+      selectedModel === "seedance-2.0-fast" ||
+      selectedModel === "seedance-2.0-fast-i2v" ||
+      selectedModel === "seedance-2.0-fast-r2v"
+    ) {
+      return [
+        {
+          value: "auto",
+          label: "Auto",
+          description: "Let the model decide",
+          icon: "auto",
+        },
+        {
+          value: "21:9",
+          label: "21:9",
+          description: "Ultrawide landscape",
+          icon: "landscape",
+        },
+        {
+          value: "16:9",
+          label: "16:9",
+          description: "Widescreen landscape",
+          icon: "landscape",
+        },
+        {
+          value: "4:3",
+          label: "4:3",
+          description: "Classic landscape",
+          icon: "landscape",
+        },
+        { value: "1:1", label: "1:1", description: "Square", icon: "square" },
+        {
+          value: "3:4",
+          label: "3:4",
+          description: "Classic portrait",
+          icon: "portrait",
+        },
+        {
+          value: "9:16",
+          label: "9:16",
+          description: "Widescreen portrait",
+          icon: "portrait",
+        },
       ];
     } else if (selectedModel?.includes("seedance")) {
       // Seedance supports many aspect ratios, but only for T2V (not I2V)
       if (generationMode === "image_to_video") {
         // For I2V, aspect_ratio is ignored by the API, but we can still show limited options
         return [
-          { value: "16:9", label: "16:9", description: "1280×720 landscape", icon: "landscape" },
-          { value: "9:16", label: "9:16", description: "720×1280 portrait", icon: "portrait" },
-          { value: "1:1", label: "1:1", description: "Square", icon: "square" }
+          {
+            value: "16:9",
+            label: "16:9",
+            description: "1280×720 landscape",
+            icon: "landscape",
+          },
+          {
+            value: "9:16",
+            label: "9:16",
+            description: "720×1280 portrait",
+            icon: "portrait",
+          },
+          { value: "1:1", label: "1:1", description: "Square", icon: "square" },
         ];
       } else {
         // For T2V, show all supported aspect ratios
         return [
-          { value: "16:9", label: "16:9", description: "Widescreen landscape", icon: "landscape" },
-          { value: "4:3", label: "4:3", description: "Classic landscape", icon: "landscape" },
+          {
+            value: "16:9",
+            label: "16:9",
+            description: "Widescreen landscape",
+            icon: "landscape",
+          },
+          {
+            value: "4:3",
+            label: "4:3",
+            description: "Classic landscape",
+            icon: "landscape",
+          },
           { value: "1:1", label: "1:1", description: "Square", icon: "square" },
-          { value: "3:4", label: "3:4", description: "Classic portrait", icon: "portrait" },
-          { value: "9:16", label: "9:16", description: "Widescreen portrait", icon: "portrait" },
-          { value: "21:9", label: "21:9", description: "Ultrawide landscape", icon: "landscape" },
-          { value: "9:21", label: "9:21", description: "Ultrawide portrait", icon: "portrait" }
+          {
+            value: "3:4",
+            label: "3:4",
+            description: "Classic portrait",
+            icon: "portrait",
+          },
+          {
+            value: "9:16",
+            label: "9:16",
+            description: "Widescreen portrait",
+            icon: "portrait",
+          },
+          {
+            value: "21:9",
+            label: "21:9",
+            description: "Ultrawide landscape",
+            icon: "landscape",
+          },
+          {
+            value: "9:21",
+            label: "9:21",
+            description: "Ultrawide portrait",
+            icon: "portrait",
+          },
         ];
       }
     } else if (selectedModel?.includes("wan-2.5")) {
@@ -164,97 +512,376 @@ const VideoFrameSizeDropdown: React.FC<VideoFrameSizeDropdownProps> = ({
       const isFast = selectedModel.includes("fast");
       if (isFast) {
         return [
-          { value: "1280*720", label: "720p", description: "1280×720 landscape", icon: "landscape" },
-          { value: "720*1280", label: "720p", description: "720×1280 portrait", icon: "portrait" },
-          { value: "1920*1080", label: "1080p", description: "1920×1080 landscape", icon: "landscape" },
-          { value: "1080*1920", label: "1080p", description: "1080×1920 portrait", icon: "portrait" }
+          {
+            value: "1280*720",
+            label: "720p",
+            description: "1280×720 landscape",
+            icon: "landscape",
+          },
+          {
+            value: "720*1280",
+            label: "720p",
+            description: "720×1280 portrait",
+            icon: "portrait",
+          },
+          {
+            value: "1920*1080",
+            label: "1080p",
+            description: "1920×1080 landscape",
+            icon: "landscape",
+          },
+          {
+            value: "1080*1920",
+            label: "1080p",
+            description: "1080×1920 portrait",
+            icon: "portrait",
+          },
         ];
       }
       // Standard WAN 2.5 supports all resolutions including 480p
       return [
-        { value: "832*480", label: "480p", description: "832×480 landscape", icon: "landscape" },
-        { value: "480*832", label: "480p", description: "480×832 portrait", icon: "portrait" },
-        { value: "1280*720", label: "720p", description: "1280×720 landscape", icon: "landscape" },
-        { value: "720*1280", label: "720p", description: "720×1280 portrait", icon: "portrait" },
-        { value: "1920*1080", label: "1080p", description: "1920×1080 landscape", icon: "landscape" },
-        { value: "1080*1920", label: "1080p", description: "1080×1920 portrait", icon: "portrait" }
+        {
+          value: "832*480",
+          label: "480p",
+          description: "832×480 landscape",
+          icon: "landscape",
+        },
+        {
+          value: "480*832",
+          label: "480p",
+          description: "480×832 portrait",
+          icon: "portrait",
+        },
+        {
+          value: "1280*720",
+          label: "720p",
+          description: "1280×720 landscape",
+          icon: "landscape",
+        },
+        {
+          value: "720*1280",
+          label: "720p",
+          description: "720×1280 portrait",
+          icon: "portrait",
+        },
+        {
+          value: "1920*1080",
+          label: "1080p",
+          description: "1920×1080 landscape",
+          icon: "landscape",
+        },
+        {
+          value: "1080*1920",
+          label: "1080p",
+          description: "1080×1920 portrait",
+          icon: "portrait",
+        },
       ];
-    } else if (selectedModel?.startsWith('kling-')) {
+    } else if (selectedModel?.startsWith("kling-")) {
+      if (isKlingV3ProI2V) {
+        return [
+          {
+            value: "",
+            label: "Input Image",
+            description: "Use uploaded image aspect ratio",
+            icon: "auto",
+          },
+        ];
+      }
       // Kling models use aspect ratios
       return [
-        { value: "16:9", label: "16:9", description: "Landscape", icon: "landscape" },
-        { value: "9:16", label: "9:16", description: "Portrait", icon: "portrait" },
-        { value: "1:1", label: "1:1", description: "Square", icon: "square" }
+        {
+          value: "16:9",
+          label: "16:9",
+          description: "Landscape",
+          icon: "landscape",
+        },
+        {
+          value: "9:16",
+          label: "9:16",
+          description: "Portrait",
+          icon: "portrait",
+        },
+        { value: "1:1", label: "1:1", description: "Square", icon: "square" },
       ];
     } else if (selectedModel === "gen3a_turbo") {
       return [
-        { value: "16:10", label: "16:10", description: "1280×768 landscape", icon: "landscape" },
-        { value: "10:16", label: "10:16", description: "768×1280 portrait", icon: "portrait" }
+        {
+          value: "16:10",
+          label: "16:10",
+          description: "1280×768 landscape",
+          icon: "landscape",
+        },
+        {
+          value: "10:16",
+          label: "10:16",
+          description: "768×1280 portrait",
+          icon: "portrait",
+        },
       ];
-    } else if (selectedModel?.includes("MiniMax") || selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") {
+    } else if (
+      selectedModel?.includes("MiniMax") ||
+      selectedModel === "T2V-01-Director" ||
+      selectedModel === "I2V-01-Director" ||
+      selectedModel === "S2V-01"
+    ) {
       // MiniMax models use resolution values
-      if (selectedModel === "T2V-01-Director" || selectedModel === "I2V-01-Director" || selectedModel === "S2V-01") {
+      if (
+        selectedModel === "T2V-01-Director" ||
+        selectedModel === "I2V-01-Director" ||
+        selectedModel === "S2V-01"
+      ) {
         // Director models have fixed 720P resolution
         return [
-          { value: "720P", label: "720P", description: "1280×720 HD", icon: "landscape" }
+          {
+            value: "720P",
+            label: "720P",
+            description: "1280×720 HD",
+            icon: "landscape",
+          },
         ];
-      } else if (selectedModel === "MiniMax-Hailuo-2.3" || selectedModel === "MiniMax-Hailuo-2.3-Fast") {
+      } else if (
+        selectedModel === "MiniMax-Hailuo-2.3" ||
+        selectedModel === "MiniMax-Hailuo-2.3-Fast"
+      ) {
         // MiniMax-Hailuo-2.3 supports 768P and 1080P only (no 512P)
         let options = [
-          { value: "768P", label: "768P", description: "768×768 square", icon: "square" },
-          { value: "1080P", label: "1080P", description: "1080×1080 square", icon: "square" }
+          {
+            value: "768P",
+            label: "768P",
+            description: "768×768 square",
+            icon: "square",
+          },
+          {
+            value: "1080P",
+            label: "1080P",
+            description: "1080×1080 square",
+            icon: "square",
+          },
         ];
         // Backend rules:
         // - 10s duration does not support 1080P (only 6s supports 1080P)
         if (miniMaxDuration === 10) {
-          options = options.filter(o => o.value !== "1080P");
+          options = options.filter((o) => o.value !== "1080P");
         }
         return options;
       } else {
         // MiniMax-Hailuo-02 supports multiple resolutions
         let options = [
-          { value: "512P", label: "512P", description: "512×512 square", icon: "square" },
-          { value: "768P", label: "768P", description: "768×768 square", icon: "square" },
-          { value: "1080P", label: "1080P", description: "1080×1080 square", icon: "square" }
+          {
+            value: "512P",
+            label: "512P",
+            description: "512×512 square",
+            icon: "square",
+          },
+          {
+            value: "768P",
+            label: "768P",
+            description: "768×768 square",
+            icon: "square",
+          },
+          {
+            value: "1080P",
+            label: "1080P",
+            description: "1080×1080 square",
+            icon: "square",
+          },
         ];
         // Backend rules:
         // - Text→Video does not support 512P
         if (generationMode === "text_to_video") {
-          options = options.filter(o => o.value !== "512P");
+          options = options.filter((o) => o.value !== "512P");
         }
         // - 10s duration does not support 1080P
         if (miniMaxDuration === 10) {
-          options = options.filter(o => o.value !== "1080P");
+          options = options.filter((o) => o.value !== "1080P");
         }
         return options;
       }
+    } else if (selectedModel?.includes("ltx2")) {
+      // LTX V2 (Pro/Fast) outputs fixed 16:9 only
+      return [
+        {
+          value: "16:9",
+          label: "16:9",
+          description: "Widescreen landscape",
+          icon: "landscape",
+        },
+      ];
+    } else if (
+      selectedModel?.includes("ltx-2.3-fast") ||
+      selectedModel?.includes("ltx-2.3-pro")
+    ) {
+      return [
+        {
+          value: "16:9",
+          label: "16:9",
+          description: "Widescreen landscape",
+          icon: "landscape",
+        },
+        {
+          value: "9:16",
+          label: "9:16",
+          description: "Widescreen portrait",
+          icon: "portrait",
+        },
+      ];
     } else {
       // gen4_turbo and gen4_aleph support more ratios
       return [
-        { value: "16:9", label: "16:9", description: "1280×720 landscape", icon: "landscape" },
-        { value: "9:16", label: "9:16", description: "720×1280 portrait", icon: "portrait" },
-        { value: "4:3", label: "4:3", description: "1104×832 landscape", icon: "landscape" },
-        { value: "3:4", label: "3:4", description: "832×1104 portrait", icon: "portrait" },
-        { value: "1:1", label: "1:1", description: "960×960 square", icon: "square" },
-        { value: "21:9", label: "21:9", description: "1584×672 ultra-wide", icon: "ultrawide" }
+        {
+          value: "16:9",
+          label: "16:9",
+          description: "1280×720 landscape",
+          icon: "landscape",
+        },
+        {
+          value: "9:16",
+          label: "9:16",
+          description: "720×1280 portrait",
+          icon: "portrait",
+        },
+        {
+          value: "4:3",
+          label: "4:3",
+          description: "1104×832 landscape",
+          icon: "landscape",
+        },
+        {
+          value: "3:4",
+          label: "3:4",
+          description: "832×1104 portrait",
+          icon: "portrait",
+        },
+        {
+          value: "1:1",
+          label: "1:1",
+          description: "960×960 square",
+          icon: "square",
+        },
+        {
+          value: "21:9",
+          label: "21:9",
+          description: "1584×672 ultra-wide",
+          icon: "ultrawide",
+        },
       ];
     }
   };
 
   const availableFrameSizes = getAvailableFrameSizes();
-  const selectedFrameSizeInfo = availableFrameSizes.find(size => size.value === selectedFrameSize);
+  const selectedFrameSizeInfo = availableFrameSizes.find(
+    (size) => size.value === selectedFrameSize,
+  );
 
   // Auto-adjust frame size if current selection is not available for the model
   useEffect(() => {
     const availableSizes = getAvailableFrameSizes();
-    if (!availableSizes.find(size => size.value === selectedFrameSize)) {
+    if (isKlingV3ProI2V) {
+      if (selectedFrameSize !== "") {
+        onFrameSizeChange("");
+      }
+      return;
+    }
+    if (!availableSizes.find((size) => size.value === selectedFrameSize)) {
       onFrameSizeChange(availableSizes[0].value);
     }
-  }, [selectedModel, selectedFrameSize, onFrameSizeChange, generationMode, miniMaxDuration]);
+  }, [
+    selectedModel,
+    selectedFrameSize,
+    onFrameSizeChange,
+    generationMode,
+    miniMaxDuration,
+    isKlingV3ProI2V,
+  ]);
+
+  const dropdownContent =
+    isOpen && dropdownPosition ? (
+      <div
+        data-dropdown={dropdownId}
+        className="fixed md:w-48 w-28 bg-black/70 backdrop-blur-xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-[9999]"
+        style={{
+          top: `${dropdownPosition.top}px`,
+          left: `${dropdownPosition.left}px`,
+          transform: dropdownPosition.openUp
+            ? "translateY(calc(-100% - 8px))"
+            : "none",
+        }}
+      >
+        {availableFrameSizes.map((size) => (
+          <button
+            key={size.value}
+            onClick={() => {
+              onFrameSizeChange(size.value);
+              setIsOpen(false);
+            }}
+            className={`w-full md:px-4 md:p-2 p-2 text-left transition md:text-[13px] text-[11px] flex items-center justify-between gap-3 ${
+              selectedFrameSize === size.value
+                ? "bg-white text-black"
+                : "text-white/90 hover:bg-white/10"
+            }`}
+          >
+            <span className="flex items-center gap-2">
+              {size.icon === "square" && (
+                <span
+                  className={`inline-block w-4 h-4 border ${
+                    selectedFrameSize === size.value
+                      ? "border-black"
+                      : "border-white/60"
+                  }`}
+                ></span>
+              )}
+              {size.icon === "portrait" && (
+                <span
+                  className={`inline-block w-3 h-4 border ${
+                    selectedFrameSize === size.value
+                      ? "border-black"
+                      : "border-white/60"
+                  }`}
+                ></span>
+              )}
+              {size.icon === "landscape" && (
+                <span
+                  className={`inline-block w-4 h-3 border ${
+                    selectedFrameSize === size.value
+                      ? "border-black"
+                      : "border-white/60"
+                  }`}
+                ></span>
+              )}
+              {size.icon === "ultrawide" && (
+                <span
+                  className={`inline-block w-5 h-2 border ${
+                    selectedFrameSize === size.value
+                      ? "border-black"
+                      : "border-white/60"
+                  }`}
+                ></span>
+              )}
+              {size.icon === "auto" && (
+                <span
+                  className={`inline-block w-4 h-4 rounded-full border ${
+                    selectedFrameSize === size.value
+                      ? "border-black"
+                      : "border-white/60"
+                  }`}
+                ></span>
+              )}
+              <span className="md:text-sm text-xs">{size.label}</span>
+            </span>
+            {selectedFrameSize === size.value && (
+              <div className="w-2 h-2 bg-black rounded-full"></div>
+            )}
+          </button>
+        ))}
+      </div>
+    ) : null;
 
   return (
+    <>
     <div className="relative dropdown-container">
       <button
+        ref={buttonRef}
         onClick={() => {
           try {
             if (onCloseOtherDropdowns) {
@@ -263,59 +890,19 @@ const VideoFrameSizeDropdown: React.FC<VideoFrameSizeDropdownProps> = ({
           } catch {}
           setIsOpen(!isOpen);
         }}
-        className={`md:h-[32px] h-[28px] md:px-4 px-2 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent backdrop-blur-3xl  text-white`}
+        className={`md:h-[32px] h-[28px] md:px-4 px-2 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent text-white/90 hover:bg-white/5 ml-0.5`}
       >
         <Crop className="w-4 h-4 mr-1" />
-        {selectedFrameSizeInfo?.label || selectedFrameSize}
-        <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+        {selectedFrameSizeInfo?.label || selectedFrameSize || "Aspect Ratio"}
+        <ChevronUp
+          className={`w-4 h-4 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+        />
       </button>
-      {isOpen && (
-        <div className="absolute bottom-full left-0 mb-2 md:w-48 w-28 bg-black/70 backdrop-blur-xl rounded-lg overflow-hidden ring-1 ring-white/30 pb-2 pt-2 z-50">
-          {availableFrameSizes.map((size) => (
-            <button
-              key={size.value}
-              onClick={() => {
-                onFrameSizeChange(size.value);
-                setIsOpen(false);
-              }}
-              className={`w-full md:px-4 md:p-2 p-2 text-left transition md:text-[13px] text-[11px] flex items-center justify-between gap-3 ${
-                selectedFrameSize === size.value
-                  ? 'bg-white text-black'
-                  : 'text-white/90 hover:bg-white/10'
-              }`}
-            >
-              <span className="flex items-center gap-2">
-                {/* Icon */}
-                {size.icon === 'square' && (
-                  <span className={`inline-block w-4 h-4 border ${
-                    selectedFrameSize === size.value ? 'border-black' : 'border-white/60'
-                  }`}></span>
-                )}
-                {size.icon === 'portrait' && (
-                  <span className={`inline-block w-3 h-4 border ${
-                    selectedFrameSize === size.value ? 'border-black' : 'border-white/60'
-                  }`}></span>
-                )}
-                {size.icon === 'landscape' && (
-                  <span className={`inline-block w-4 h-3 border ${
-                    selectedFrameSize === size.value ? 'border-black' : 'border-white/60'
-                  }`}></span>
-                )}
-                {size.icon === 'ultrawide' && (
-                  <span className={`inline-block w-5 h-2 border ${
-                    selectedFrameSize === size.value ? 'border-black' : 'border-white/60'
-                  }`}></span>
-                )}
-                <span className="md:text-sm text-xs">{size.label}</span>
-              </span>
-              {selectedFrameSize === size.value && (
-                <div className="w-2 h-2 bg-black rounded-full"></div>
-              )}
-            </button>
-          ))}
-        </div>
-      )}
     </div>
+    {typeof window !== "undefined" &&
+      dropdownContent &&
+      createPortal(dropdownContent, document.body)}
+    </>
   );
 };
 

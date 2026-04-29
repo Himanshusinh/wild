@@ -134,6 +134,7 @@ export default function ChromeMount() {
   const isLandingRoute = pathnameLower.startsWith('/view/landingpage');
   const isSignupRoute = pathnameLower.startsWith('/view/signup') || pathnameLower.startsWith('/view/signin');
   const isForgotPasswordRoute = pathnameLower.startsWith('/view/forgot-password');
+  const isResetPasswordRoute = pathnameLower.startsWith('/auth/reset-password');
   const isPricingRoute = pathnameLower.startsWith('/view/pricing');
   // Workflows route is now always visible, so isWorkflowsRoute is removed.
   const isArtStationRoute = pathnameLower.startsWith('/view/artstation');
@@ -184,6 +185,7 @@ export default function ChromeMount() {
     isComingSoonRoute ||
     isSignupRoute ||
     isForgotPasswordRoute ||
+    isResetPasswordRoute ||
     isPricingRoute ||
     isArtStationRoute ||
     isLegalRoute ||
@@ -211,64 +213,57 @@ export default function ChromeMount() {
     return null;
   }
 
-  // For ArtStation: hide chrome if not authenticated, show if authenticated
+  // For ArtStation: allow sidebar even if not authenticated
   if (isArtStationRoute) {
-    if (isAuthenticated) {
-      return (
-        <>
-          <Nav />
-          {!isVideoEditorOpen && <SidePannelFeatures />}
-        </>
-      );
-    }
-    return null; // Hide chrome when not authenticated
+    return (
+      <>
+        <Nav />
+        {!isVideoEditorOpen && <SidePannelFeatures />}
+      </>
+    );
   }
 
-  // For Pricing: hide chrome if not authenticated, show if authenticated
+  // For Pricing: allow sidebar even if not authenticated
   if (isPricingRoute) {
-    if (isAuthenticated) {
-      return (
-        <>
-          <Nav />
-          {!isVideoEditorOpen && <SidePannelFeatures />}
-        </>
-      );
-    }
-    return null; // Hide chrome when not authenticated
+    return (
+      <>
+        <Nav />
+        {!isVideoEditorOpen && <SidePannelFeatures />}
+      </>
+    );
   }
 
-  // For Blog: hide chrome if not authenticated, show if authenticated
+  // For Blog: allow sidebar even if not authenticated
   if (isBlogRoute) {
-    if (isAuthenticated) {
-      return (
-        <>
-          <Nav />
-          {!isVideoEditorOpen && <SidePannelFeatures />}
-        </>
-      );
-    }
-    return null; // Hide chrome when not authenticated
+    return (
+      <>
+        <Nav />
+        {!isVideoEditorOpen && <SidePannelFeatures />}
+      </>
+    );
   }
 
   // Canvas Projects route - always hide chrome (page manages own sidebar)
 
   // Hide chrome on all other public pages
-  const shouldHide = isRoot ||
+  // Hide chrome on all other public pages
+  const shouldHide = (isRoot && currentView === 'landing' && !isAuthenticated) ||
     isLandingRoute ||
     isComingSoonRoute ||
     isSignupRoute ||
     isForgotPasswordRoute ||
+    isResetPasswordRoute ||
     isLegalRoute ||
     isProductRoute ||
     isCompanyRoute ||
-    isCanvasRoute ||
-    (isRoot && currentView === 'landing');
+    isCanvasRoute;
 
   // If should hide, return null immediately
   if (shouldHide) return null;
 
   // Show chrome only on authenticated pages
-  const shouldShow = isHomeRoute ||
+  const shouldShow = isRoot ||
+    isHomeRoute ||
     currentView === 'home' ||
     isGenerationRoute ||
     currentView === 'generation' ||

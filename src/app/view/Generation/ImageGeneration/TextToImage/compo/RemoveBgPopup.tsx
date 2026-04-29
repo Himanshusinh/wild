@@ -4,6 +4,10 @@ import React, { useEffect, useRef, useState } from 'react';
 import axiosInstance from '@/lib/axiosInstance';
 import { getIsPublic } from '@/lib/publicFlag';
 import { X } from 'lucide-react';
+import { useAppSelector } from '@/store/hooks';
+import { useRouter } from 'next/navigation';
+import { getSignInUrl } from '@/routes/routes';
+import toast from 'react-hot-toast';
 
 interface RemoveBgPopupProps {
   isOpen: boolean;
@@ -22,6 +26,8 @@ const RemoveBgPopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: R
   const [backgroundType, setBackgroundType] = useState<string>('rgba');
   const [loading, setLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const router = useRouter();
+  const user = useAppSelector((state) => state.auth.user);
 
   useEffect(() => { if (defaultImage) setImage(defaultImage); }, [defaultImage]);
   // Lock background scroll while modal is open (skip for inline)
@@ -40,6 +46,14 @@ const RemoveBgPopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: R
 
   const run = async () => {
     if (!image) return;
+
+    // Auth guard: redirect to sign-in if not authenticated
+    if (!user) {
+      toast('Please sign in to use the remove background feature', { icon: '🔒' });
+      router.push(getSignInUrl());
+      return;
+    }
+
     setLoading(true);
     try {
       const isPublic = await getIsPublic();
@@ -60,91 +74,91 @@ const RemoveBgPopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: R
 
   const content = (
     <div className="p-4 space-y-4">
-            {/* Hidden file input available in both states */}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={async (e)=>{
-                const f = e.currentTarget.files?.[0]; if (!f) return;
-                const max = 2 * 1024 * 1024; if (f.size > max) { alert('Max 2MB'); return; }
-                const fr = new FileReader(); fr.onload = ()=> setImage(String(fr.result||'')); fr.readAsDataURL(f);
-              }}
-            />
-            {!image && (
-              <div className="rounded-xl p-6 text-center bg-white/5 border border-white/10">
-                {/* <div className="text-white/70 text-sm mb-2">Paste a Data URL here or select a file</div> */}
-                <button
-                  onClick={()=> fileInputRef.current?.click()}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white/10 hover:bg-white/15 text-white text-sm ring-1 ring-white/20 transition"
-                >
-                  Choose image
-                </button>
-              </div>
-            )}
-            {image && (
-              <div className="rounded-xl p-4 bg-white/5 border border-white/10 flex items-center gap-4">
-                <div className="w-24 h-24 rounded-lg overflow-hidden ring-1 ring-white/20 bg-black/30 flex items-center justify-center">
-                  {/* Preview thumbnail */}
-                  <img src={image} alt="Selected" className="max-w-full max-h-full object-contain" />
-                </div>
-                <div className="flex-1 text-white/80 text-sm">
-                  Image selected. You can adjust options below or pick another image.
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={()=> fileInputRef.current?.click()}
-                    className="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 text-white text-sm ring-1 ring-white/20 transition"
-                  >
-                    Change image
-                  </button>
-                  <button
-                    onClick={()=> setImage(null)}
-                    className="px-3 py-2 rounded-lg bg-red-600/70 hover:bg-red-600 text-white text-sm transition"
-                  >
-                    Remove
-                  </button>
-                </div>
-              </div>
-            )}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="col-span-2">
-                <label className="text-sm text-white/80">Model</label>
-                <select value={model} onChange={(e)=>setModel(e.target.value as any)} className="w-full bg-white/10 border border-white/10 rounded rounded-lg px-2 py-2 text-white text-sm">
-                  <option className='text-white bg-black/70' value="851-labs/background-remover">851-labs/background-remover (default)</option>
-                  <option className='text-white bg-black/70' value="lucataco/remove-bg">lucataco/remove-bg</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-sm text-white/80">Format</label>
-                <select value={format} onChange={(e)=>setFormat(e.target.value as any)} className="w-full bg-white/10 border border-white/10 rounded rounded-lg px-2 py-2 text-white text-sm">
-                  <option className='text-white bg-black/70' value="png">PNG</option>
-                  <option className='text-white bg-black/70' value="jpg">JPG</option>
-                  <option className='text-white bg-black/70' value="jpeg">JPEG</option>
-                  <option className='text-white bg-black/70' value="webp">WEBP</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-sm text-white/80">Background Type</label>
-                <input value={backgroundType} onChange={(e)=>setBackgroundType(e.target.value)} className="w-full bg-white/10 border border-white/10 rounded rounded-lg px-2 py-2  text-white text-sm" />
-              </div>
-              <div>
-                <label className="text-sm text-white/80">Threshold (0-1)</label>
-                <input type="number" min={0} max={1} step={0.05} value={threshold} onChange={(e)=>setThreshold(Number(e.target.value)||0)} className="w-full bg-white/10 border border-white/10 rounded rounded-lg px-2 py-2 text-white text-sm" />
-              </div>
-              {/* <div className="flex items-end gap-2">
+      {/* Hidden file input available in both states */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={async (e) => {
+          const f = e.currentTarget.files?.[0]; if (!f) return;
+          const max = 2 * 1024 * 1024; if (f.size > max) { alert('Max 2MB'); return; }
+          const fr = new FileReader(); fr.onload = () => setImage(String(fr.result || '')); fr.readAsDataURL(f);
+        }}
+      />
+      {!image && (
+        <div className="rounded-xl p-6 text-center bg-white/5 border border-white/10">
+          {/* <div className="text-white/70 text-sm mb-2">Paste a Data URL here or select a file</div> */}
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white/10 hover:bg-white/15 text-white text-sm ring-1 ring-white/20 transition"
+          >
+            Choose image
+          </button>
+        </div>
+      )}
+      {image && (
+        <div className="rounded-xl p-4 bg-white/5 border border-white/10 flex items-center gap-4">
+          <div className="w-24 h-24 rounded-lg overflow-hidden ring-1 ring-white/20 bg-black/30 flex items-center justify-center">
+            {/* Preview thumbnail */}
+            <img src={image} alt="Selected" className="max-w-full max-h-full object-contain" />
+          </div>
+          <div className="flex-1 text-white/80 text-sm">
+            Image selected. You can adjust options below or pick another image.
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 text-white text-sm ring-1 ring-white/20 transition"
+            >
+              Change image
+            </button>
+            <button
+              onClick={() => setImage(null)}
+              className="px-3 py-2 rounded-lg bg-red-600/70 hover:bg-red-600 text-white text-sm transition"
+            >
+              Remove
+            </button>
+          </div>
+        </div>
+      )}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="col-span-2">
+          <label className="text-sm text-white/80">Model</label>
+          <select value={model} onChange={(e) => setModel(e.target.value as any)} className="w-full bg-white/10 border border-white/10 rounded rounded-lg px-2 py-2 text-white text-sm">
+            <option className='text-white bg-black/70' value="851-labs/background-remover">851-labs/background-remover (default)</option>
+            <option className='text-white bg-black/70' value="lucataco/remove-bg">lucataco/remove-bg</option>
+          </select>
+        </div>
+        <div>
+          <label className="text-sm text-white/80">Format</label>
+          <select value={format} onChange={(e) => setFormat(e.target.value as any)} className="w-full bg-white/10 border border-white/10 rounded rounded-lg px-2 py-2 text-white text-sm">
+            <option className='text-white bg-black/70' value="png">PNG</option>
+            <option className='text-white bg-black/70' value="jpg">JPG</option>
+            <option className='text-white bg-black/70' value="jpeg">JPEG</option>
+            <option className='text-white bg-black/70' value="webp">WEBP</option>
+          </select>
+        </div>
+        <div>
+          <label className="text-sm text-white/80">Background Type</label>
+          <input value={backgroundType} onChange={(e) => setBackgroundType(e.target.value)} className="w-full bg-white/10 border border-white/10 rounded rounded-lg px-2 py-2  text-white text-sm" />
+        </div>
+        <div>
+          <label className="text-sm text-white/80">Threshold (0-1)</label>
+          <input type="number" min={0} max={1} step={0.05} value={threshold} onChange={(e) => setThreshold(Number(e.target.value) || 0)} className="w-full bg-white/10 border border-white/10 rounded rounded-lg px-2 py-2 text-white text-sm" />
+        </div>
+        {/* <div className="flex items-end gap-2">
                 <input id="rev" type="checkbox" checked={reverse} onChange={(e)=>setReverse(e.target.checked)} />
                 <label htmlFor="rev" className="text-sm text-white/80">Reverse (remove foreground)</label>
               </div> */}
-            </div>
-            <div className="flex gap-3 pt-2">
-              <button onClick={inline ? (()=>{ setImage(null); }) : onClose} className="flex-1 bg-white/10 hover:bg-white/20 text-white border border-white/10 px-4 py-2 rounded-lg">{inline ? 'Clear' : 'Cancel'}</button>
-              <button onClick={run} disabled={loading || !image} className="flex-1 bg-[#2F6BFF] hover:bg-[#2a5fe3] text-white px-4 py-2 rounded-lg disabled:opacity-50">{loading ? 'Running...' : 'Run'}</button>
-            </div>
+      </div>
+      <div className="flex gap-3 pt-2">
+        <button onClick={inline ? (() => { setImage(null); }) : onClose} className="flex-1 bg-white/10 hover:bg-white/20 text-white border border-white/10 px-4 py-2 rounded-lg">{inline ? 'Clear' : 'Cancel'}</button>
+        <button onClick={run} disabled={loading || !image} className="flex-1 bg-[#2F6BFF] hover:bg-[#2a5fe3] text-white px-4 py-2 rounded-lg disabled:opacity-50">{loading ? 'Running...' : 'Run'}</button>
+      </div>
     </div>
   );
-  
+
   if (inline) return content;
 
   return (
@@ -154,7 +168,7 @@ const RemoveBgPopup = ({ isOpen, onClose, defaultImage, onCompleted, inline }: R
         <div className="bg-white/5 backdrop-blur-3xl rounded-2xl border border-white/10 max-w-2xl w-full">
           <div className="flex items-center justify-between p-4 border-b border-white/10">
             <h2 className="text-white text-md font-semibold">Remove Background</h2>
-            <button className="p-2 hover:bg-white/10 rounded" onClick={onClose}><X className="w-5 h-5 text-white"/></button>
+            <button className="p-2 hover:bg-white/10 rounded" onClick={onClose}><X className="w-5 h-5 text-white" /></button>
           </div>
           {content}
         </div>

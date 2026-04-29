@@ -9,6 +9,8 @@ import UploadModal from '@/app/view/Generation/ImageGeneration/TextToImage/compo
 import ImageComparisonSlider from '@/app/view/workflows/components/ImageComparisonSlider';
 import { useCredits } from '@/hooks/useCredits';
 import { downloadFileWithNaming } from '@/utils/downloadUtils';
+import { AUTH_ROUTES, getSignInUrl } from '@/routes/routes';
+import { saveAutoResumeIntent, getAutoResumeIntent, clearAutoResumeIntent } from '@/lib/autoResume';
 
 export default function CreativelyUpscale() {
     const router = useRouter();
@@ -18,6 +20,7 @@ export default function CreativelyUpscale() {
         deductCreditsOptimisticForGeneration,
         rollbackOptimisticDeduction,
         refreshCredits,
+        user,
     } = useCredits();
 
     // State
@@ -77,6 +80,28 @@ export default function CreativelyUpscale() {
         setTimeout(() => setIsOpen(true), 50);
     }, []);
 
+    // Check for auto-resume intent on mount
+    useEffect(() => {
+        if (!user) return;
+
+        const intent = getAutoResumeIntent();
+        if (intent && intent.type === 'workflow' && intent.data.workflowId === 'creatively-upscale') {
+            const { data } = intent;
+            console.log('[AutoResume] Found upscale intent, restoring state:', data);
+
+            if (data.originalImage) setOriginalImage(data.originalImage);
+            if (data.upscaleFactor) setUpscaleFactor(data.upscaleFactor);
+            if (data.additionalText) setAdditionalText(data.additionalText);
+
+            clearAutoResumeIntent();
+
+            // Auto-trigger generation after a short delay
+            setTimeout(() => {
+                handleRun();
+            }, 1500);
+        }
+    }, [user]);
+
     const onClose = () => {
         setIsOpen(false);
         setTimeout(() => {
@@ -92,6 +117,18 @@ export default function CreativelyUpscale() {
 
     const handleRun = async () => {
         if (isGenerating) return;
+
+        if (!user) {
+            saveAutoResumeIntent('workflow', {
+                workflowId: 'creatively-upscale',
+                originalImage,
+                upscaleFactor,
+                additionalText
+            });
+            router.push(getSignInUrl());
+            return;
+        }
+
         if (!originalImage) {
             toast.error('Please upload an image first');
             return;
@@ -314,8 +351,9 @@ export default function CreativelyUpscale() {
                                         afterImage={generatedImage}
                                         beforeLabel="Original"
                                         afterLabel="Upscaled"
-                                        imageFit="object-contain"
-                                    />
+                                        imageFit="object-cover"
+                    imagePosition="object-top"
+                  />
                                     <button
                                         onClick={handleDownload}
                                         className="absolute bottom-10 right-10 z-30 flex items-center gap-2 px-5 py-2.5 bg-black/50 hover:bg-black/70 backdrop-blur-md border border-white/10 rounded-full text-white text-sm font-medium transition-all active:scale-95 group shadow-2xl"
@@ -342,7 +380,8 @@ export default function CreativelyUpscale() {
                                         beforeLabel="Before"
                                         afterLabel="After"
                                         imageFit="object-contain"
-                                    />
+                    imagePosition="object-top"
+                  />
                                 </div>
                             )}
                         </div>
@@ -352,6 +391,7 @@ export default function CreativelyUpscale() {
 
             {isUploadModalOpen && (
                 <UploadModal
+                    persistLocalDeviceUploads={false}
                     isOpen={isUploadModalOpen}
                     onClose={() => setIsUploadModalOpen(false)}
                     onAdd={(urls: string[]) => {
@@ -365,3 +405,4 @@ export default function CreativelyUpscale() {
         </>
     );
 }
+

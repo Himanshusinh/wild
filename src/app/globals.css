@@ -21,6 +21,12 @@
   /* Mobile 430×932px specific styles */
 }
 
+/* Warli modal shimmer loading animation */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
 /* Mobile menu slide animations */
 @keyframes slide-in-from-right {
   from {
@@ -42,6 +48,43 @@ body {
   font-family: var(--font-poppins, "Poppins"), sans-serif;
   font-weight: 400;
   min-height: 100px;
+  overflow-x: hidden;
+}
+
+html {
+  overflow-x: hidden;
+}
+
+button:not(:disabled),
+a[href],
+[role="button"]:not([aria-disabled="true"]),
+input[type="button"]:not(:disabled),
+input[type="submit"]:not(:disabled),
+input[type="reset"]:not(:disabled),
+label[for],
+select:not(:disabled),
+summary,
+details > summary,
+[data-clickable="true"] {
+  cursor: pointer !important;
+}
+
+button:not(:disabled) *,
+a[href] *,
+[role="button"]:not([aria-disabled="true"]) *,
+label[for] *,
+summary *,
+details > summary *,
+[data-clickable="true"] * {
+  cursor: inherit !important;
+}
+
+button:disabled,
+input:disabled,
+select:disabled,
+textarea:disabled,
+[aria-disabled="true"] {
+  cursor: not-allowed !important;
 }
 
 /* Apply Satoshi to all headings - body text remains Poppins */
@@ -121,6 +164,33 @@ h6 {
 .thumbnails-scroll::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.3);
 }
+
+/* Very thin scrollbar for compact areas */
+.very-thin-scrollbar {
+  scrollbar-width: thin !important;
+  scrollbar-color: rgba(255, 255, 255, 0.1) transparent !important;
+}
+
+.very-thin-scrollbar::-webkit-scrollbar {
+  display: block !important;
+  width: 4px !important;
+  height: 4px !important;
+}
+
+.very-thin-scrollbar::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+.very-thin-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-radius: 10px !important;
+}
+
+.very-thin-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2) !important;
+}
+
+
 
 /* Unified custom scrollbar - Modern thin with gradient */
 .custom-scrollbar {

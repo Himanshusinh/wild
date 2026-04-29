@@ -6,51 +6,48 @@ import Link from "next/link"
 import axios from "axios"
 import axiosInstance, { getApiClient } from '@/lib/axiosInstance'
 import Image from "next/image"
-import { useUsernameAvailability } from "./useUsernameAvailability"
+import { useUsernameAvailability, USERNAME_ALLOWED_CHAR_REGEX, USERNAME_REGEX_CONST, USERNAME_RULE_MESSAGE } from "./useUsernameAvailability"
+import { isValidSignupEmail } from "./emailValidation"
 import { getImageUrl } from "@/routes/imageroute"
 import { signInWithCustomToken, signInWithPopup, GoogleAuthProvider } from 'firebase/auth'
 import { auth } from '../../../lib/firebase'
 import { APP_ROUTES, LEGAL_ROUTES } from '../../../routes/routes'
 import toast from 'react-hot-toast'
 import LoadingScreen from '@/components/ui/LoadingScreen'
+import TextField from '@mui/material/TextField'
+import InputAdornment from '@mui/material/InputAdornment'
+import IconButton from '@mui/material/IconButton'
 import TurnstileCaptcha from '@/components/TurnstileCaptcha'
+import { setCookie, clearCookie, LoadingSpinner, textFieldSx, ValidationPopup, OtpInput, EyeIcon, EyeOffIcon } from "./components/shared"
+import { SignInForm as SignInFormComponent } from "./components/SignInForm"
+import { SignUpForm } from "./components/SignUpForm"
+import { UsernameForm } from "./components/UsernameForm"
+import { ForgotPasswordModal } from "./components/ForgotPasswordModal"
 
-// Cookie utility functions
-const setCookie = (name: string, value: string, days: number = 7) => {
-  console.log("🍪 Starting cookie setting process...")
-  console.log("🍪 Cookie name:", name)
-  console.log("🍪 Cookie value length:", value.length)
-
-  const expires = new Date()
-  expires.setTime(expires.getTime() + (days * 24 * 60 * 60 * 1000))
-  const cookieString = `${name}=${value};expires=${expires.toUTCString()};path=/;SameSite=Lax`
-
-  console.log("🍪 Setting cookie string:", cookieString)
-  console.log("🍪 Current cookies before setting:", document.cookie)
-
-  document.cookie = cookieString
-
-  // Immediate verification
-  console.log("🍪 Current cookies immediately after setting:", document.cookie)
-
-  // Verify cookie was set after a delay
-  setTimeout(() => {
-    const cookies = document.cookie.split(';').map(c => c.trim())
-    console.log("🍪 All cookies after timeout:", cookies)
-    const targetCookie = cookies.find(c => c.startsWith(`${name}=`))
-    console.log("🍪 Cookie verification:", targetCookie ? "SET" : "NOT SET")
-    if (targetCookie) {
-      console.log("🍪 Found cookie:", targetCookie)
-      console.log("🍪 Cookie value extracted:", targetCookie.split('=')[1])
-    } else {
-      console.log("❌ Cookie NOT found in document.cookie")
-    }
-  }, 100)
+export function UsernameAvailabilityFeedback({ status, result, error, onSuggestion }: { status: 'idle' | 'checking' | 'available' | 'taken' | 'invalid' | 'error'; result: any; error: string | null; onSuggestion: (v: string) => void }) {
+  if (status === 'idle') return null;
+  if (status === 'invalid') return <div className="p-2 mt-0 mb-1 bg-amber-900/10 border border-amber-800 rounded-lg"><p className="text-amber-300 text-[10px]">{USERNAME_RULE_MESSAGE}</p></div>;
+  if (status === 'checking') return <div className="p-2 mt-0 mb-1 text-gray-400 text-[10px] animate-pulse">Checking availability...</div>;
+  if (status === 'error') return <div className="p-2 mt-0 mb-1 bg-red-900/10 border border-red-800 rounded-lg"><p className="text-red-300 text-[10px]">{error || 'Something went wrong'}</p></div>;
+  if (status === 'available') return null;
+  if (status === 'taken') {
+    return (
+      <div className="space-y-2 mt-0 mb-1">
+        <div className="p-2 bg-red-900/10 border border-red-800 rounded-lg">
+          <p className="text-red-300 text-[10px]">Username taken. Suggestions:</p>
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          {result?.suggestions?.map((s: string) => (
+            <button key={s} type="button" onClick={() => onSuggestion(s)} className="px-2 py-0.5 rounded bg-gray-800 text-gray-300 text-[10px] hover:bg-gray-700">{s}</button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+  return null;
 }
 
-const clearCookie = (name: string) => {
-  document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;SameSite=Lax`
-}
+const OTP_RESEND_COOLDOWN_SECONDS = 120
 
 export default function SignInForm() {
   const searchParams = useSearchParams()
@@ -81,26 +78,34 @@ export default function SignInForm() {
   // Live validation states
   const [passwordError, setPasswordError] = useState("")
   const [emailError, setEmailError] = useState("")
-  const [showLoginForm, setShowLoginForm] = useState(false) // Login flow toggle
+  const [showLoginForm, setShowLoginForm] = useState(showLoginParam === 'true') // Login flow toggle initialized from URL
   const [rememberMe, setRememberMe] = useState(false) // Remember me checkbox
   const [isRedirecting, setIsRedirecting] = useState(false)
   const [showForgotPassword, setShowForgotPassword] = useState(false) // Forgot password modal
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState("") // Email for forgot password
   const [forgotPasswordSent, setForgotPasswordSent] = useState(false) // Track if email was sent
+  const [forgotPasswordError, setForgotPasswordError] = useState("") // Isolated error for forgot password modal
+  const [loginRetryAfterSeconds, setLoginRetryAfterSeconds] = useState(0)
+  const [loginAttemptsLeft, setLoginAttemptsLeft] = useState<number | null>(null)
+  const [isGoogleOnlyUser, setIsGoogleOnlyUser] = useState(false) // True when user signed up via Google
+  const [resendCooldown, setResendCooldown] = useState(0) // Seconds remaining before resend is allowed
   const [isUsernameSubmitting, setIsUsernameSubmitting] = useState(false)
   const [authLoading, setAuthLoading] = useState(false) // full-screen overlay during sign-ins
-  const [showPassword, setShowPassword] = useState(false) // Password visibility toggle (synced for both fields)
+  const [showPassword, setShowPassword] = useState(false) // Password visibility toggle
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false) // Confirm Password visibility toggle
+  const [mounted, setMounted] = useState(false) // Component mount state for SSR
+
 
   // Captcha states
   const [captchaToken, setCaptchaToken] = useState<string>('')
   const [captchaError, setCaptchaError] = useState(false)
+  const loginRetryStorageKey = 'wildmind_login_retry_until'
+  const loginAttemptsStorageKey = 'wildmind_login_failed_attempts'
+  const LOGIN_MAX_ATTEMPTS = 5
 
-  // Redeem code states
-  const [showRedeemCodeForm, setShowRedeemCodeForm] = useState(false)
-  const [redeemCode, setRedeemCode] = useState("")
-  const [redeemCodeValidated, setRedeemCodeValidated] = useState(false)
-  const [redeemCodeInfo, setRedeemCodeInfo] = useState<any>(null)
-
+  // Focus and Validation Popup states
+  const [isUsernameFocused, setIsUsernameFocused] = useState(false)
+  const [isPasswordFocused, setIsPasswordFocused] = useState(false)
   // Username live availability (always declared to keep hook order stable)
   const availability = useUsernameAvailability(process.env.NEXT_PUBLIC_API_BASE_URL ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/api` : '')
   useEffect(() => {
@@ -109,11 +114,16 @@ export default function SignInForm() {
 
   // Check for capital letters in username
   const hasCapitalLetters = /[A-Z]/.test(username)
+  const normalizedUsernameForPasswordCheck = username.toLowerCase().replace(/[^a-z0-9]/g, '')
+  const PASSWORD_ALLOWED_SPECIAL_CHAR_REGEX = /^[A-Za-z0-9!@#$%]*$/
+  const PASSWORD_REQUIRED_SPECIAL_CHAR_REGEX = /[!@#$%]/
+  const isPasswordContainingUsername =
+    normalizedUsernameForPasswordCheck.length >= 3 &&
+    password.toLowerCase().replace(/[^a-z0-9]/g, '').includes(normalizedUsernameForPasswordCheck)
 
   // Email validation function
   const isValidEmail = (email: string): boolean => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    return emailRegex.test(email.trim())
+    return isValidSignupEmail(email)
   }
 
   // Live validation: Check passwords match and email is valid
@@ -132,7 +142,7 @@ export default function SignInForm() {
     // Validate email - only show error if email field has value
     if (email.length > 0) {
       if (!isValidEmail(email)) {
-        setEmailError("Invalid email address")
+        setEmailError("Please enter a valid email")
       } else {
         setEmailError("")
       }
@@ -141,39 +151,59 @@ export default function SignInForm() {
     }
   }, [password, confirmPassword, email])
 
-  // Check if form is valid (passwords match, email valid, password length >= 6)
+  // Check if form is valid (passwords match, email valid, password length >= 6, valid username)
+  // Validation requirement tests
+  const usernameRequirements = [
+    { label: "Username must be 6-14 characters", test: (v: string) => v.length >= 6 && v.length <= 14, required: true },
+    { label: "Can use digits (0-9)", test: (v: string) => /[0-9]/.test(v), required: false },
+    { label: "Can use alphabets (a-z)", test: (v: string) => /[a-zA-Z]/.test(v), required: false },
+    {
+      label: "Can use special characters (only _ and -)",
+      test: (v: string) => /[_-]/.test(v),
+      invalidTest: (v: string) => /[^A-Za-z0-9_-]/.test(v),
+      invalidLabel: "Only _ and - are allowed as special characters",
+      required: false
+    },
+  ]
+
+  const passwordRequirements = [
+    { label: "Password must be 8-14 character", test: (v: string) => v.length >= 8 && v.length <= 14 },
+    { label: "At least 1 uppercase letter (A-Z)", test: (v: string) => /[A-Z]/.test(v) },
+    { label: "At least 1 lowercase letter (a-z)", test: (v: string) => /[a-z]/.test(v) },
+    { label: "At least 1 number (0-9)", test: (v: string) => /[0-9]/.test(v) },
+    { label: "At least 1 special character (! @ # $ %)", test: (v: string) => PASSWORD_REQUIRED_SPECIAL_CHAR_REGEX.test(v) },
+    {
+      label: "Only ! @ # $ % are allowed as special characters",
+      test: (v: string) => PASSWORD_REQUIRED_SPECIAL_CHAR_REGEX.test(v) && PASSWORD_ALLOWED_SPECIAL_CHAR_REGEX.test(v),
+      invalidTest: (v: string) => /[^A-Za-z0-9!@#$%]/.test(v),
+      invalidLabel: "Only ! @ # $ % are allowed as special characters",
+    },
+    {
+      label: "Password must not contain your username",
+      hidden: true,
+      test: (v: string) => {
+        const normalizedPassword = v.toLowerCase().replace(/[^a-z0-9]/g, '')
+        if (!normalizedUsernameForPasswordCheck) {
+          return false
+        }
+        return !normalizedPassword.includes(normalizedUsernameForPasswordCheck)
+      }
+    },
+  ]
+
+  const isUsernameValid = usernameRequirements
+    .filter(req => req.required !== false)
+    .every(req => req.test(username)) && USERNAME_ALLOWED_CHAR_REGEX.test(username)
+  const isPasswordValid = passwordRequirements.every(req => req.test(password))
+
   const isFormValid =
-    password.length >= 6 &&
+    isPasswordValid &&
     password === confirmPassword &&
     isValidEmail(email) &&
     email.length > 0 &&
-    confirmPassword.length > 0
-
-  // Test cookie setting function
-  const testCookieSetting = () => {
-    console.log("🧪 Testing cookie setting...")
-    setCookie('test_cookie', 'test_value_123', 1)
-
-    setTimeout(() => {
-      console.log("🧪 Test cookies after setting:", document.cookie)
-      const testCookie = document.cookie.split(';').find(c => c.trim().startsWith('test_cookie='))
-      console.log("🧪 Test cookie found:", testCookie)
-    }, 200)
-  }
-
-  // Loading Spinner Component (light theme)
-  const LoadingSpinner = () => (
-    <div className="flex items-center justify-center py-1">
-      <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-300 border-t-blue-600"></div>
-    </div>
-  )
-
-  // Redirect Spinner Component (light theme)
-  const RedirectSpinner = () => (
-    <div className="flex items-center justify-center py-1">
-      <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-300 border-t-blue-600"></div>
-    </div>
-  )
+    confirmPassword.length > 0 &&
+    isUsernameValid &&
+    availability.isAvailable
 
   const switchToGoogleSignIn = () => {
     setShowLoginForm(false) // Ensure we're in sign-up mode for Google
@@ -191,15 +221,108 @@ export default function SignInForm() {
     // Don't reset captcha - keep token valid across form switch
   }
 
+  const redirectAfterAuthSuccess = (toastKey: string = 'LOGIN_SUCCESS') => {
+    setIsRedirecting(true)
+    let finalUrl = returnUrl || APP_ROUTES.HOME
+    if (!finalUrl.includes('toast=')) {
+      finalUrl += (finalUrl.includes('?') ? '&' : '?') + `toast=${toastKey}`
+    }
+    window.location.replace(finalUrl)
+  }
+
+  const startLoginRetryTimer = (retryAfterSeconds: number) => {
+    const safeSeconds = Math.max(1, Math.floor(retryAfterSeconds))
+    setLoginRetryAfterSeconds(safeSeconds)
+    setLoginAttemptsLeft(0)
+    try {
+      window.sessionStorage.setItem(loginRetryStorageKey, String(Date.now() + safeSeconds * 1000))
+      window.localStorage.removeItem(loginRetryStorageKey)
+    } catch { }
+  }
+
+  const clearLoginAttemptState = () => {
+    setLoginAttemptsLeft(null)
+    try {
+      window.sessionStorage.removeItem(loginAttemptsStorageKey)
+      window.sessionStorage.removeItem(loginRetryStorageKey)
+      window.localStorage.removeItem(loginRetryStorageKey)
+    } catch { }
+  }
+
+  const getStoredFailedAttempts = (): number => {
+    try {
+      const value = Number(window.sessionStorage.getItem(loginAttemptsStorageKey) || 0)
+      if (!Number.isFinite(value)) {
+        return 0
+      }
+      return Math.max(0, Math.min(LOGIN_MAX_ATTEMPTS, value))
+    } catch {
+      return 0
+    }
+  }
+
+  const setStoredFailedAttempts = (failedAttempts: number) => {
+    const safeValue = Math.max(0, Math.min(LOGIN_MAX_ATTEMPTS, failedAttempts))
+    try {
+      window.sessionStorage.setItem(loginAttemptsStorageKey, String(safeValue))
+    } catch { }
+  }
+
+  const getRemainingAttemptsFromHeaders = (headers: any): number | null => {
+    const rawRemaining =
+      headers?.['ratelimit-remaining'] ??
+      headers?.['RateLimit-Remaining'] ??
+      headers?.['x-ratelimit-remaining'] ??
+      headers?.['X-RateLimit-Remaining']
+
+    const remaining = Number(rawRemaining)
+    if (!Number.isFinite(remaining)) {
+      return null
+    }
+
+    return Math.max(0, Math.min(LOGIN_MAX_ATTEMPTS, remaining))
+  }
+
+  const updateLoginAttemptsLeft = (headers: any) => {
+    const remaining = getRemainingAttemptsFromHeaders(headers)
+    if (remaining !== null) {
+      setLoginAttemptsLeft(remaining)
+      setStoredFailedAttempts(LOGIN_MAX_ATTEMPTS - remaining)
+      return
+    }
+
+    const failedAttempts = Math.min(LOGIN_MAX_ATTEMPTS, getStoredFailedAttempts() + 1)
+    setStoredFailedAttempts(failedAttempts)
+    setLoginAttemptsLeft(Math.max(0, LOGIN_MAX_ATTEMPTS - failedAttempts))
+  }
+
   // Handle login form submission
-  const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
+  const handleLogin = async (e: FormEvent) => {
     e.preventDefault()
     console.log("🔐 Starting login process...")
     console.log("📧 Email:", email.trim())
     console.log("🔒 Password provided:", password ? "***" : "empty")
 
-    if (!email.trim() || !password) {
+    if (loginRetryAfterSeconds > 0) {
+      const errorMsg = `Too many authentication attempts. Please try again after ${Math.floor(loginRetryAfterSeconds / 60)
+        .toString()
+        .padStart(2, '0')}:${(loginRetryAfterSeconds % 60).toString().padStart(2, '0')}.`
+      setError(errorMsg)
+      toast.error(errorMsg, { duration: 4000 })
+      return
+    }
+
+    const identifier = email.trim()
+
+    if (!identifier || !password) {
       setError("Please enter both email and password")
+      return
+    }
+
+    if (identifier.includes('@') && !isValidEmail(identifier)) {
+      const errorMsg = "Enter valid email"
+      setError(errorMsg)
+      toast.error(errorMsg, { duration: 4000 })
       return
     }
 
@@ -221,10 +344,12 @@ export default function SignInForm() {
       // Step 1: Send credentials to backend
       console.log("🌐 Step 1: Sending credentials to backend...")
       const response = await axiosInstance.post("/api/auth/login", {
-        email: email.trim(),
-        password: password
+        identifier,
+        password: password,
+        captchaToken: captchaToken
       }, {
-        withCredentials: true
+        withCredentials: true,
+        skipGlobalErrorToast: true,
       })
 
       console.log("📥 Login response status:", response.status)
@@ -316,6 +441,7 @@ export default function SignInForm() {
 
         // Persist toast flag for next page (faster redirect)
         try { localStorage.setItem('toastMessage', 'LOGIN_SUCCESS') } catch { }
+        clearLoginAttemptState()
         setIsRedirecting(true)
         setEmail("")
         setPassword("")
@@ -334,7 +460,7 @@ export default function SignInForm() {
 
         console.log("🏠 Redirecting to:", finalRedirectUrl)
         console.log("🔗 Return URL was:", returnUrl)
-        window.location.href = finalRedirectUrl
+        window.location.replace(finalRedirectUrl)
 
       } else {
         console.error("❌ Login failed:", response.data?.message)
@@ -342,7 +468,6 @@ export default function SignInForm() {
         setError(errorMsg)
         toast.error(errorMsg, { duration: 4000 })
       }
-
     } catch (error: any) {
       console.error("❌ Login error:", error)
 
@@ -356,19 +481,49 @@ export default function SignInForm() {
           .filter(Boolean)
           .join('\n')
         errorMessage = detailedMessage || 'Please fix the highlighted fields and try again.'
+        if (
+          detailedMessage.toLowerCase().includes('valid email') ||
+          detailedMessage.toLowerCase().includes('enter valid email')
+        ) {
+          errorMessage = 'Enter valid email'
+        }
         setError(errorMessage)
         toast.error(errorMessage, { duration: 4000 })
       } else {
         errorMessage = error.response?.data?.message || 'An error occurred'
-        if (errorMessage.includes('already have an account with Google')) {
-          errorMessage = "This email is registered with Google. Please use the Google sign-in button below."
-          setError(errorMessage)
-          toast.error(errorMessage, { duration: 4000 })
-        } else if (error.response?.status === 401) {
-          errorMessage = "Invalid credentials. Please check your email and password."
-          setError(errorMessage)
+          if (errorMessage.includes('already have an account with Google')) {
+            errorMessage = "This email is registered with Google. Please use the Google sign-in button below."
+            setError(errorMessage)
+            toast.error(errorMessage, { duration: 4000 })
+          } else if (
+            errorMessage.toLowerCase().includes('enter valid email') ||
+            errorMessage.toLowerCase().includes('valid email') ||
+            errorMessage.toLowerCase().includes('invalid email')
+          ) {
+            errorMessage = 'Enter valid email'
+            setError(errorMessage)
+            toast.error(errorMessage, { duration: 4000 })
+          } else if (
+            error.response?.status === 429 ||
+            errorMessage.toLowerCase().includes('too many authentication attempts') ||
+            errorMessage.toLowerCase().includes('too many failed login attempts')
+          ) {
+            const retryAfterSeconds =
+              Number(error.response?.data?.data?.retryAfterSeconds) ||
+              Number(error.response?.headers?.['retry-after']) ||
+              5 * 60
+            startLoginRetryTimer(retryAfterSeconds)
+            setStoredFailedAttempts(LOGIN_MAX_ATTEMPTS)
+            errorMessage = "Too many authentication attempts. Please try again later."
+            setError(errorMessage)
+            toast.error(errorMessage, { duration: 4000 })
+          } else if (error.response?.status === 401) {
+            updateLoginAttemptsLeft(error?.response?.headers)
+            errorMessage = "Invalid credentials. Please check your email and password."
+            setError(errorMessage)
           toast.error(errorMessage, { duration: 4000 })
         } else if (error.response?.status === 404) {
+          updateLoginAttemptsLeft(error?.response?.headers)
           errorMessage = "User not found. Please check your email."
           setError(errorMessage)
           toast.error(errorMessage, { duration: 4000 })
@@ -411,34 +566,62 @@ export default function SignInForm() {
     setCaptchaError(true)
   }
 
-  // API handlers for form flow
-  const handleSendOtp = async (e: FormEvent<HTMLFormElement>) => {
+  const handleSendOtp = async (e: FormEvent) => {
     e.preventDefault()
-    console.log("🚀 Starting OTP send process...")
-    console.log("📧 Email:", email.trim())
-    console.log("🔒 Password provided:", !!password)
+    // console.log("🚀 Starting OTP send process...")
+    // console.log("📧 Email:", email.trim())
+    // console.log("🔒 Password provided:", !!password)
 
-    // Verify captcha token is present
+    // Explicit validation feedback
+    if (!username.trim()) {
+      const errorMsg = "Name is required"
+      setError(errorMsg)
+      toast.error(errorMsg)
+      return
+    }
+    if (!isUsernameValid) {
+      toast.error("Username format is invalid")
+      return
+    }
+    if (isPasswordContainingUsername) {
+      const errorMsg = "Password must not contain your username."
+      setError(errorMsg)
+      toast.error(errorMsg)
+      return
+    }
+    if (!availability.isAvailable) {
+      toast.error("Username is already taken")
+      return
+    }
+    if (!email.trim()) {
+      const errorMsg = "Email is required"
+      setError(errorMsg)
+      toast.error(errorMsg)
+      return
+    }
+    if (!isValidEmail(email)) {
+      const errorMsg = "Please enter a valid email"
+      setError(errorMsg)
+      toast.error(errorMsg)
+      return
+    }
+    if (!password) {
+      const errorMsg = "Password is required"
+      setError(errorMsg)
+      toast.error(errorMsg)
+      return
+    }
+    if (!isPasswordValid) {
+      toast.error("Password does not meet requirements")
+      return
+    }
+    if (password !== confirmPassword) {
+      toast.error("Passwords don't match")
+      return
+    }
     if (!captchaToken) {
       setCaptchaError(true)
-      const errorMsg = "Please complete the captcha verification"
-      setError(errorMsg)
-      toast.error(errorMsg, { duration: 4000 })
-      return
-    }
-
-    if (password !== confirmPassword) {
-      console.log("❌ Password mismatch")
-      const errorMsg = "Password doesn't match"
-      setError(errorMsg)
-      toast.error(errorMsg, { duration: 4000 })
-      return
-    }
-    if (password.length < 6) {
-      console.log("❌ Password too short")
-      const errorMsg = "Password must be at least 6 characters"
-      setError(errorMsg)
-      toast.error(errorMsg, { duration: 4000 })
+      toast.error("Please complete the captcha verification")
       return
     }
 
@@ -451,12 +634,13 @@ export default function SignInForm() {
       const requestData = {
         email: email.trim()
       }
-      console.log("📤 Sending request to:", "http://localhost:5000/api/auth/email/start")
-      console.log("📤 Request data:", requestData)
+      // console.log("📤 Sending request to:", "http://localhost:5000/api/auth/email/start")
+      // console.log("📤 Request data:", requestData)
 
       // Call backend API to start email OTP
       const response = await axiosInstance.post("/api/auth/email/start", requestData, {
-        withCredentials: true // Include cookies
+        withCredentials: true, // Include cookies
+        skipGlobalErrorToast: true,
       })
 
       console.log("📥 Response status:", response.status)
@@ -467,6 +651,7 @@ export default function SignInForm() {
       if (response.data && response.data.data && response.data.data.sent) {
         console.log("✅ OTP sent successfully!")
         setOtpSent(true)
+        setResendCooldown(OTP_RESEND_COOLDOWN_SECONDS) // Start 2 minute timer
         toast.success(`OTP sent to ${email.trim()}`)
         setError("")
         setSuccess(`OTP sent to ${email.trim()}`)
@@ -502,17 +687,19 @@ export default function SignInForm() {
         setError(errorMsg)
         toast.error(errorMsg, { duration: 4000 })
       } else if (errorMessage.includes('Account already exists')) {
-        const errorMsg = "Account already exists. Please use sign-in instead."
+        const errorMsg = "This email is already registered. Please login instead or try with other email."
         setError(errorMsg)
         toast.error(errorMsg, { duration: 4000 })
       } else if (errorMessage.includes('Temporary') || errorMessage.includes('disposable')) {
         // Temporary/disposable email error
-        setError(errorMessage)
-        toast.error(errorMessage, { duration: 5000 })
+        const errorMsg = "Temporary domain email are not allowed."
+        setError(errorMsg)
+        toast.error(errorMsg, { duration: 5000 })
       } else if (errorMessage.includes('Invalid email address') || errorMessage.includes('mail server')) {
         // MX record validation error
-        setError(errorMessage)
-        toast.error(errorMessage, { duration: 5000 })
+        const errorMsg = "Please enter a valid email"
+        setError(errorMsg)
+        toast.error(errorMsg, { duration: 5000 })
       } else {
         // Handle other errors normally
         setError(errorMessage)
@@ -523,9 +710,8 @@ export default function SignInForm() {
       setProcessing(false)
     }
   }
-
-  const handleVerifyOtp = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
+  const handleVerifyOtp = async (e?: FormEvent) => {
+    if (e) e.preventDefault()
     console.log("🔍 Starting OTP verification process...")
     console.log("📧 Email:", email.trim())
     console.log("🔢 OTP entered:", otp.trim())
@@ -539,14 +725,16 @@ export default function SignInForm() {
       const requestData = {
         email: email.trim(),
         code: otp.trim(), // Backend expects 'code' field, not 'otp'
-        password: password
+        password: password,
+        username: username.trim().toLowerCase(),
       }
       console.log("📤 Sending verification request to:", "http://localhost:5000/api/auth/email/verify")
       console.log("📤 Request data:", requestData)
 
       // Call backend API to verify OTP and create user
       const response = await axiosInstance.post("/api/auth/email/verify", requestData, {
-        withCredentials: true // Include cookies
+        withCredentials: true, // Include cookies
+        skipGlobalErrorToast: true,
       })
 
       console.log("📥 Verification response status:", response.status)
@@ -556,6 +744,22 @@ export default function SignInForm() {
       if (response.data) {
         console.log("✅ OTP verification successful!")
         console.log("🔍 Full response data:", JSON.stringify(response.data, null, 2))
+
+        // Legacy follow-up username step is disabled; OTP verification now receives the final username.
+        if (false && username.trim()) {
+          try {
+            console.log("👤 Setting username for newly verified email user...");
+            const usernameResponse = await axiosInstance.post("/api/auth/email/username", {
+              username: username.trim(),
+              email: email.trim()
+            }, { withCredentials: true });
+
+            console.log("✅ Username set successfully!");
+          } catch (usernameError) {
+            console.error("❌ Failed to set username after verification:", usernameError);
+            // Non-fatal, user account was already created. Just proceed to session.
+          }
+        }
 
         // Get custom token from backend response
         const customToken = response.data.customToken || response.data.data?.customToken || response.data.token || response.data.data?.token || response.data.idToken || response.data.data?.idToken
@@ -609,11 +813,9 @@ export default function SignInForm() {
                 localStorage.setItem('lastAuthMethod', 'email')
               } catch { }
 
-              toast.success('OTP verified successfully! Please choose a username.', { duration: 3000 })
-              setShowUsernameForm(true)
-              setOtp("")
-              setOtpSent(false)
-              setError("")
+              toast.success('Account created successfully! Welcome to WildMind AI!', { duration: 3000 })
+              setTimeout(() => redirectAfterAuthSuccess(), 300)
+
             } else {
               console.error("❌ Session creation failed:", sessionResponse.status)
               const errorMsg = "Session creation failed. Please try again."
@@ -673,19 +875,32 @@ export default function SignInForm() {
     console.log("🔄 Starting OTP resend process...")
     console.log("📧 Email for resend:", email.trim())
 
+    if (!email.trim()) {
+      const errorMsg = "Email is required to resend OTP."
+      setError(errorMsg)
+      toast.error(errorMsg, { duration: 4000 })
+      return
+    }
+
+    if (resendCooldown > 0) {
+      return
+    }
+
     setProcessing(true)
     setError("")
+    setSuccess("")
 
     try {
       const requestData = {
         email: email.trim()
       }
-      console.log("📤 Resending OTP to:", "http://localhost:5000/api/auth/email/start")
+      console.log("📤 Resending OTP to:", "/api/auth/email/start")
       console.log("📤 Resend request data:", requestData)
 
       // Call backend API to resend OTP
-      const response = await axios.post("http://localhost:5000/api/auth/email/start", requestData, {
-        withCredentials: true // Include cookies
+      const response = await axiosInstance.post("/api/auth/email/start", requestData, {
+        withCredentials: true, // Include cookies
+        skipGlobalErrorToast: true,
       })
 
       console.log("📥 Resend response status:", response.status)
@@ -696,6 +911,7 @@ export default function SignInForm() {
         const successMsg = `OTP resent to ${email.trim()}`
         setError("")
         setSuccess(successMsg)
+        setResendCooldown(OTP_RESEND_COOLDOWN_SECONDS)
         toast.success(successMsg, { duration: 3000 })
       } else {
         console.log("❌ OTP not resent - checking response structure:")
@@ -721,8 +937,23 @@ export default function SignInForm() {
     }
   }
 
+  // Countdown timer for resend cooldown
+  useEffect(() => {
+    if (resendCooldown <= 0) return
+    const timer = setInterval(() => {
+      setResendCooldown((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer)
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [resendCooldown])
+
   // Handle forgot password
-  const handleForgotPassword = async (e: FormEvent<HTMLFormElement>) => {
+  const handleForgotPassword = async (e: FormEvent) => {
     e.preventDefault()
     console.log("🔐 Starting forgot password process...")
     console.log("📧 Email:", forgotPasswordEmail.trim())
@@ -733,47 +964,51 @@ export default function SignInForm() {
     }
 
     setProcessing(true)
-    setError("")
+    setForgotPasswordError("")
+    setIsGoogleOnlyUser(false)
 
     try {
       const response = await axiosInstance.post("/api/auth/forgot-password", {
         email: forgotPasswordEmail.trim()
+      }, {
+        skipGlobalErrorToast: true
       })
 
       console.log("📥 Forgot password response:", response.data)
 
       if (response.data?.responseStatus === 'success') {
-        // Success - email sent
+        // Success - email sent — start resend cooldown
         setForgotPasswordSent(true)
+        setResendCooldown(OTP_RESEND_COOLDOWN_SECONDS)
         toast.success(response.data?.message || "Password reset link has been sent to your email.", { duration: 5000 })
       } else {
-        // Handle error cases
-        const errorMessage = response.data?.message || "Failed to send password reset email. Please try again."
         const reason = response.data?.data?.reason
+        const errorMessage = response.data?.message || "Failed to send password reset email. Please try again."
 
         if (reason === 'GOOGLE_ONLY_USER') {
-          toast.error("You signed up with Google. Please sign in with Google instead.", { duration: 5000 })
+          setIsGoogleOnlyUser(true)
         } else if (reason === 'USER_NOT_FOUND') {
-          toast.error("No account found with this email address.", { duration: 4000 })
+          setForgotPasswordError("No account found with this email address.")
+        } else if (reason === 'TOO_MANY_REQUESTS') {
+          const retryAfter = response.data?.data?.retryAfterSeconds || 60
+          setResendCooldown(retryAfter)
+          setForgotPasswordSent(true) // Show the success/cooldown panel
         } else {
-          toast.error(errorMessage, { duration: 4000 })
+          setForgotPasswordError(errorMessage)
         }
-        setError(errorMessage)
       }
     } catch (error: any) {
       console.error("❌ Forgot password error:", error)
-      const errorMessage = error.response?.data?.message || "Failed to send password reset email. Please try again."
       const reason = error.response?.data?.data?.reason
+      const errorMessage = error.response?.data?.message || "Failed to send password reset email. Please try again."
 
-      // Handle specific error cases
       if (reason === 'GOOGLE_ONLY_USER') {
-        toast.error("You signed up with Google. Please sign in with Google instead.", { duration: 5000 })
+        setIsGoogleOnlyUser(true)
       } else if (reason === 'USER_NOT_FOUND') {
-        toast.error("No account found with this email address.", { duration: 4000 })
+        setForgotPasswordError("No account found with this email address.")
       } else {
-        toast.error(errorMessage, { duration: 4000 })
+        setForgotPasswordError(errorMessage)
       }
-      setError(errorMessage)
     } finally {
       setProcessing(false)
     }
@@ -878,7 +1113,7 @@ export default function SignInForm() {
           console.log("🔗 Return URL was:", returnUrl)
 
           setTimeout(() => {
-            window.location.href = finalRedirectUrl
+            window.location.replace(finalRedirectUrl)
           }, 2000)
         }
       }
@@ -927,9 +1162,9 @@ export default function SignInForm() {
     }
 
     // Validate username format
-    const usernameRegex = /^[a-z0-9_.-]{3,30}$/
+    const usernameRegex = USERNAME_REGEX_CONST
     if (!usernameRegex.test(username.trim())) {
-      const errorMsg = "Username must be 3-30 characters, lowercase letters, numbers, dots, underscores, and hyphens only"
+      const errorMsg = USERNAME_RULE_MESSAGE
       setError(errorMsg)
       toast.error(errorMsg, { duration: 4000 })
       return
@@ -986,15 +1221,13 @@ export default function SignInForm() {
 
           console.log("✅ Google authentication complete!")
           setShowUsernameForm(false)
-          setShowRedeemCodeForm(true)
-          setSuccess("Account created successfully! You can now apply a redeem code to get additional credits or continue with the free plan.")
-
-          // Track that email/password was used (for "Last Used" tag) - already set during OTP verification, but ensure it's set here too
+          // Track the auth method used for the next session
           try {
-            localStorage.setItem('lastAuthMethod', 'email')
+            localStorage.setItem('lastAuthMethod', 'google')
           } catch { }
 
           toast.success('Account created successfully! Welcome to WildMind AI!', { duration: 3000 })
+          setTimeout(() => redirectAfterAuthSuccess(), 300)
         }
 
       } else {
@@ -1095,10 +1328,8 @@ export default function SignInForm() {
             setEmailError("")
             setError("")
 
-            // Show redeem code form
-            setShowRedeemCodeForm(true)
-            setSuccess("Account created successfully! You can now apply a redeem code to get additional credits or continue with the free plan.")
             toast.success('Account created successfully! Welcome to WildMind AI!', { duration: 3000 })
+            setTimeout(() => redirectAfterAuthSuccess(), 300)
           }
         } else {
           console.log("❌ No user data found in localStorage")
@@ -1107,9 +1338,7 @@ export default function SignInForm() {
           toast.error(errorMsg, { duration: 4000 })
         }
       }
-
     } catch (error: any) {
-      console.error("❌ Username submission error details:")
       console.error("Error object:", error)
       console.error("Error message:", error.message)
       console.error("Error response:", error.response)
@@ -1138,95 +1367,6 @@ export default function SignInForm() {
     }
   }
 
-  // Redeem Code Functions
-  const handleRedeemCodeValidation = async () => {
-    if (!redeemCode.trim()) {
-      setError("Please enter a redeem code")
-      return
-    }
-
-    setError("")
-    setProcessing(true)
-
-    try {
-      const response = await axiosInstance.post("/api/redeem-codes/validate", {
-        redeemCode: redeemCode.trim().toUpperCase()
-      })
-
-      if (response.data?.data?.valid) {
-        setRedeemCodeValidated(true)
-        setRedeemCodeInfo(response.data.data)
-        const timeInfo = response.data.data.remainingTime ? ` (expires in ${response.data.data.remainingTime})` : ''
-        setSuccess(`✓ Valid ${response.data.data.planName}! You'll get ${response.data.data.creditsToGrant.toLocaleString()} credits when you apply this code${timeInfo}.`)
-      } else {
-        setError(response.data?.data?.error || "Invalid redeem code")
-        setRedeemCodeValidated(false)
-        setRedeemCodeInfo(null)
-      }
-    } catch (error: any) {
-      console.error("❌ Redeem code validation failed:", error)
-      setError(error.response?.data?.message || "Failed to validate redeem code")
-      setRedeemCodeValidated(false)
-      setRedeemCodeInfo(null)
-    } finally {
-      setProcessing(false)
-    }
-  }
-
-  const handleRedeemCodeSubmit = async () => {
-    if (!redeemCodeValidated) {
-      setError("Please validate your redeem code first")
-      return
-    }
-
-    setError("")
-    setProcessing(true)
-
-    try {
-      const response = await axiosInstance.post("/api/auth/redeem-code/apply", {
-        redeemCode: redeemCode.trim().toUpperCase()
-      }, {
-        withCredentials: true
-      })
-
-      if (response.data?.responseStatus === 'success') {
-        setSuccess(`🎉 ${response.data.data.planName} activated! You received ${response.data.data.creditsGranted.toLocaleString()} credits.`)
-
-        // Redirect to home or returnUrl after successful redeem
-        setTimeout(() => {
-          setIsRedirecting(true)
-          setShowRedeemCodeForm(false)
-
-          let finalUrl = returnUrl || APP_ROUTES.HOME
-          if (!finalUrl.includes('toast=')) {
-            finalUrl += (finalUrl.includes('?') ? '&' : '?') + 'toast=LOGIN_SUCCESS'
-          }
-          window.location.href = finalUrl
-        }, 2000)
-      } else {
-        setError(response.data?.message || "Failed to apply redeem code")
-      }
-    } catch (error: any) {
-      console.error("❌ Redeem code application failed:", error)
-      setError(error.response?.data?.message || "Failed to apply redeem code")
-    } finally {
-      setProcessing(false)
-    }
-  }
-
-  const handleSkipRedeemCode = () => {
-    setIsRedirecting(true)
-    setShowRedeemCodeForm(false)
-    setTimeout(() => {
-      let finalUrl = returnUrl || APP_ROUTES.HOME
-      if (!finalUrl.includes('toast=')) {
-        finalUrl += (finalUrl.includes('?') ? '&' : '?') + 'toast=LOGIN_SUCCESS'
-      }
-      window.location.href = finalUrl
-    }, 1000)
-  }
-
-
   // Check which authentication method was last used (for "Last Used" tag)
   const [lastAuthMethod, setLastAuthMethod] = useState<'google' | 'email' | null>(null)
   useEffect(() => {
@@ -1253,6 +1393,17 @@ export default function SignInForm() {
     }
   }, [])
 
+  // Handle resend cooldown timer
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (resendCooldown > 0) {
+      timer = setInterval(() => {
+        setResendCooldown((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
+
   // Handle showLogin query parameter
   useEffect(() => {
     if (showLoginParam === 'true') {
@@ -1260,898 +1411,288 @@ export default function SignInForm() {
     }
   }, [showLoginParam])
 
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (!mounted) return
+
+    let cancelled = false
+
+    ; (async () => {
+      try {
+        const hasCookie =
+          typeof document !== 'undefined' &&
+          (document.cookie.includes('app_session=') ||
+            document.cookie.includes('auth_hint='))
+
+        const hasStoredAuth =
+          typeof localStorage !== 'undefined' &&
+          Boolean(localStorage.getItem('user') || localStorage.getItem('authToken'))
+
+        const hasFirebaseUser = Boolean(auth.currentUser)
+
+        if (!hasCookie && !hasStoredAuth && !hasFirebaseUser) {
+          return
+        }
+
+        try {
+          const api = getApiClient()
+          const response = await api.get('/api/auth/me', {
+            skipGlobalErrorToast: true,
+          })
+          const resolvedUser =
+            response?.data?.data?.user || response?.data?.user || response?.data
+
+          if (!cancelled && resolvedUser) {
+            window.location.replace(returnUrl || APP_ROUTES.HOME)
+          }
+        } catch { }
+      } catch { }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [mounted, returnUrl])
+
+  useEffect(() => {
+    try {
+      window.localStorage.removeItem(loginRetryStorageKey)
+      const storedUntil = Number(window.sessionStorage.getItem(loginRetryStorageKey) || 0)
+      if (!storedUntil) {
+        const storedFailedAttempts = getStoredFailedAttempts()
+        if (storedFailedAttempts > 0 && storedFailedAttempts < LOGIN_MAX_ATTEMPTS) {
+          setLoginAttemptsLeft(LOGIN_MAX_ATTEMPTS - storedFailedAttempts)
+        }
+        return
+      }
+      const remaining = Math.max(0, Math.ceil((storedUntil - Date.now()) / 1000))
+      if (remaining > 0) {
+        setLoginRetryAfterSeconds(remaining)
+        setLoginAttemptsLeft(0)
+      } else {
+        clearLoginAttemptState()
+      }
+    } catch { }
+  }, [])
+
+  useEffect(() => {
+    if (loginRetryAfterSeconds <= 0) {
+      try { window.sessionStorage.removeItem(loginRetryStorageKey) } catch { }
+      return
+    }
+
+    const timer = window.setInterval(() => {
+      setLoginRetryAfterSeconds((prev) => {
+        if (prev <= 1) {
+          clearLoginAttemptState()
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+
+    return () => window.clearInterval(timer)
+  }, [loginRetryAfterSeconds])
+
+  useEffect(() => {
+    if (!showLoginForm) {
+      clearLoginAttemptState()
+    }
+  }, [showLoginForm])
+
+  if (!mounted) {
+    return <div className="w-full h-full min-h-screen bg-[#1C1C20] relative overflow-x-hidden"></div>
+  }
+
   return (
-    <div className="w-full h-full flex flex-col bg-gray-900 relative overflow-x-hidden">
+    <div className="w-full h-full min-h-screen lg:min-h-0 flex flex-col bg-[#1C1C20] relative overflow-x-hidden">
       {(authLoading || isRedirecting) && (
         <LoadingScreen message={isRedirecting ? 'Redirecting…' : 'Signing you in…'} subMessage={isRedirecting ? 'Just a moment while we finish up' : undefined} />
       )}
 
-      {/* Form Content - Centered (Krea Style) */}
-      <div className="flex-1 flex items-center justify-center overflow-hidden px-6 md:px-12">
-        <div className="w-full max-w-md space-y-6">
-          {/* Welcome Section - Only show when not on OTP screen, username screen, login screen, or redeem code screen */}
-          {!otpSent && !showUsernameForm && !showLoginForm && !showRedeemCodeForm && (
-            <div className="text-center space-y-4 mb-8">
-              {/* Logo - Just above Welcome text */}
-              <div className="flex justify-center mb-2">
-                <div className="w-12 h-12 flex items-center justify-center">
-                  <img
-                    src="/core/logosquare.png"
-                    alt="WildMind Logo"
-                    width={48}
-                    height={48}
-                    className="w-full h-full object-contain"
-                    onError={(e) => {
-                      // Silently handle error - don't log to console
-                      const target = e.target as HTMLImageElement;
-                      if (target) {
-                        target.style.display = 'none';
-                      }
-                    }}
-                  />
-                </div>
-              </div>
-              <h1 className="text-3xl md:text-4xl font-bold text-white">Welcome to WildMind AI</h1>
-              <p className="text-gray-400 text-base">Log in or sign up.</p>
-            </div>
-          )}
+      {/* Form Content - Scrollable inside left column on desktop to keep consistent height when switching Sign In / Sign up */}
+      <div className="flex-1 flex flex-col items-center justify-start pt-12 md:pt-10 lg:pt-16 xl:pt-12 2xl:pt-30 p-12 min-h-0 lg:overflow-y-auto">
+        <div className="w-full max-w-[90%] sm:max-w-[340px] md:max-w-[180px] lg:max-w-[220px] xl:max-w-[260px] 2xl:max-w-[360px] mx-auto flex flex-col items-center">
 
-          {showUsernameForm ? (
-            <div className="space-y-6">
-              {/* Title (Dark) */}
-              <div className="text-center space-y-4 mb-8">
-                {/* Logo - Just above Username text */}
-                <div className="flex justify-center mb-2">
-                  <div className="w-12 h-12 flex items-center justify-center">
-                    <img
-                      src="/core/logosquare.png"
-                      alt="WildMind Logo"
-                      width={48}
-                      height={48}
-                      className="w-full h-full object-contain"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        if (target) {
-                          target.style.display = 'none';
-                        }
-                      }}
-                    />
-                  </div>
-                </div>
-                <h1 className="text-3xl md:text-4xl font-bold text-white">Verification Successful!</h1>
-                <p className="text-gray-400 text-base">Last step, Make a Unique Username</p>
-              </div>
-
-              {/* Username Input (Krea Style - Dark) */}
-              <div>
-                <input
-                  type="text"
-                  placeholder="Username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="w-full px-4 py-3 bg-gray-800 border border-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-lg text-white text-base"
-                  required
-                />
-                {/* Capital letters validation (Dark) */}
-                {hasCapitalLetters && (
-                  <div className="mt-2 rounded-lg p-2 bg-red-900/30 border border-red-800">
-                    <p className="text-red-300 text-xs">Capital letters are not allowed in usernames. Please use lowercase letters only.</p>
-                  </div>
-                )}
-
-                {/* Live availability feedback - only show if no capital letters */}
-                {!hasCapitalLetters && (
-                  <div className="mt-2">
-                    <UsernameAvailabilityFeedback
-                      status={availability.status}
-                      result={availability.result}
-                      error={availability.error}
-                      onSuggestion={setUsername}
-                    />
-                  </div>
-                )}
-              </div>
-
-              {/* Continue Button (Krea Style - Dark) */}
-              <button
-                onClick={handleUsernameSubmit}
-                disabled={!availability.isAvailable || hasCapitalLetters || isUsernameSubmitting}
-                className={`w-full py-3 px-4 rounded-lg font-medium text-base transition-colors flex items-center justify-center gap-2 ${!availability.isAvailable || hasCapitalLetters || isUsernameSubmitting
-                    ? "bg-gray-700 text-gray-500 cursor-not-allowed"
-                    : "bg-blue-600 hover:bg-blue-700 text-white"
-                  }`}
-              >
-                {isUsernameSubmitting ? <LoadingSpinner /> : (
-                  <>
-                    Continue
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </>
-                )}
-              </button>
-            </div>
-          ) : showRedeemCodeForm ? (
-            <div className="space-y-6">
-              {/* Title (Dark) */}
-              <div className="text-center space-y-4 mb-8">
-                {/* Logo - Just above Redeem Code text */}
-                <div className="flex justify-center mb-2">
-                  <div className="w-12 h-12 flex items-center justify-center">
-                    <img
-                      src="/core/logosquare.png"
-                      alt="WildMind Logo"
-                      width={48}
-                      height={48}
-                      className="w-full h-full object-contain"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        if (target) {
-                          target.style.display = 'none';
-                        }
-                      }}
-                    />
-                  </div>
-                </div>
-                <h1 className="text-3xl md:text-4xl font-bold text-white">Almost There!</h1>
-                <p className="text-gray-400 text-base">Do you have a redeem code? Apply it now to get additional credits, or continue with the free plan.</p>
-              </div>
-
-              {/* Success Message (Dark) */}
-              {success && (
-                <div className="rounded-lg p-3 bg-green-900/30 border border-green-800">
-                  <p className="text-green-300 text-sm leading-relaxed">{success}</p>
-                </div>
-              )}
-
-              {/* Error Message (Dark) */}
-              {error && (
-                <div className="rounded-lg p-3 bg-red-900/30 border border-red-800">
-                  <p className="text-red-300 text-sm leading-relaxed">{error}</p>
-                </div>
-              )}
-
-              {/* Redeem Code Input (Krea Style - Dark) */}
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Redeem Code <span className="text-gray-500 font-normal">(Optional)</span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="Enter your redeem code (e.g., STU-123456-ABC123)"
-                  value={redeemCode}
-                  onChange={(e) => {
-                    setRedeemCode(e.target.value.toUpperCase())
-                    setRedeemCodeValidated(false)
-                    setRedeemCodeInfo(null)
-                    setError("")
-                    setSuccess("")
+          {/* Constant Shared Header - Static for both Sign In and Sign Up */}
+          <div className="text-center w-full mb-4 sm:mb-4 lg:mb-4 xl:mb-4 2xl:mb-8">
+            <p className="text-white text-md">Welcome to</p>
+            <Link
+              href={APP_ROUTES.HOME}
+              className="flex justify-center items-center gap-1 mt-0 sm:mb-2 lg:mb-2 xl:mb-2 2xl:mb-4 cursor-pointer hover:opacity-90 transition-opacity no-underline"
+              aria-label="Go to home page"
+            >
+              <div className="w-12 h-12 flex items-center justify-center">
+                <img
+                  src="/core/logosquare.png"
+                  alt="WildMind Logo"
+                  width={32}
+                  height={32}
+                  className="w-full h-full object-contain"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    if (target) target.style.display = 'none';
                   }}
-                  className="w-full px-4 py-3 bg-gray-800 border border-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-lg text-white text-base uppercase"
                 />
-
-                {/* Validation feedback (Dark) */}
-                {redeemCodeInfo && redeemCodeValidated && (
-                  <div className="mt-2 text-sm text-green-300 flex items-center space-x-2">
-                    <span>✓</span>
-                    <span>
-                      Valid {redeemCodeInfo.planName} - You'll get {redeemCodeInfo.creditsToGrant.toLocaleString()} credits!
-                      {redeemCodeInfo.remainingTime && (
-                        <span className="text-green-400 ml-1">(expires in {redeemCodeInfo.remainingTime})</span>
-                      )}
-                    </span>
-                  </div>
-                )}
-
-                {/* Help text (Dark) */}
-                <div className="mt-1 text-xs text-gray-500">
-                  Student codes start with "STU-" and Business codes start with "BUS-"
-                </div>
               </div>
+              <h1 className="text-2xl font-bold text-white tracking-wide whitespace-nowrap">WildMind AI </h1>
+            </Link>
 
-              {/* Buttons (Krea Style - Dark) */}
-              <div className="space-y-3">
-                {/* Validate/Apply Code Button */}
-                {redeemCode && !redeemCodeValidated ? (
-                  <button
-                    onClick={handleRedeemCodeValidation}
-                    disabled={processing || !redeemCode.trim()}
-                    className={`w-full py-3 px-4 rounded-lg font-medium text-base transition-colors ${processing || !redeemCode.trim()
-                        ? "bg-gray-700 text-gray-500 cursor-not-allowed"
-                        : "bg-blue-600 hover:bg-blue-700 text-white"
-                      }`}
-                  >
-                    {processing ? <LoadingSpinner /> : "Validate Code"}
-                  </button>
-                ) : redeemCodeValidated ? (
-                  <button
-                    onClick={handleRedeemCodeSubmit}
-                    disabled={processing}
-                    className={`w-full py-3 px-4 rounded-lg font-medium text-base transition-colors ${processing
-                        ? "bg-gray-700 text-gray-500 cursor-not-allowed"
-                        : "bg-green-600 hover:bg-green-700 text-white"
-                      }`}
-                  >
-                    {processing ? <LoadingSpinner /> : "Apply Redeem Code"}
-                  </button>
-                ) : null}
-
-                {/* Skip Button (Krea Style - Dark) */}
-                <button
-                  onClick={handleSkipRedeemCode}
-                  disabled={processing}
-                  className="w-full py-3 px-4 rounded-lg font-medium text-base bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white transition-colors"
+            {/* Form Toggle Switcher */}
+            {!showUsernameForm && !otpSent && (
+              <div className="flex justify-center gap-6">
+                <span
+                  className={`pb-0 font-medium cursor-pointer transition-colors text-sm ${showLoginForm ? 'text-[#4182CF] border-b-2 border-[#4182CF]' : 'text-gray-500 hover:text-gray-300'}`}
+                  onClick={() => setShowLoginForm(true)}
                 >
-                  Continue with Free Plan
-                </button>
-
-                {/* Info about free plan (Dark) */}
-                <div className="text-center">
-                  <p className="text-xs text-gray-500">
-                    Free plan includes 4,120 credits to get you started
-                  </p>
-                </div>
-              </div>
-            </div>
-          ) : showLoginForm ? (
-            <form onSubmit={handleLogin} className="space-y-6">
-              {/* Title (Krea Style - Dark) */}
-              <div className="text-center space-y-4 mb-8">
-                {/* Logo - Just above Welcome text */}
-                <div className="flex justify-center mb-2">
-                  <div className="w-12 h-12 flex items-center justify-center">
-                    <img
-                      src="/core/logosquare.png"
-                      alt="WildMind Logo"
-                      width={48}
-                      height={48}
-                      className="w-full h-full object-contain"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        if (target) {
-                          target.style.display = 'none';
-                        }
-                      }}
-                    />
-                  </div>
-                </div>
-                <h1 className="text-3xl md:text-4xl font-bold text-white">Welcome to WildMind AI</h1>
-                <p className="text-gray-400 text-base">Log in or sign up.</p>
-              </div>
-
-              {/* Google Sign-in Button First (Krea Style - Dark) */}
-              <div className="relative">
-                {lastAuthMethod === 'google' && (
-                  <div className="absolute -top-2 right-0 z-10">
-                    <span className="bg-blue-600 text-white text-xs font-medium px-2 py-0.5 rounded">Last Used</span>
-                  </div>
-                )}
-                <button
-                  type="button"
-                  onClick={handleGoogleLogin}
-                  className="w-full bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white font-medium py-3 px-4 rounded-lg flex items-center justify-center gap-3 transition-colors"
+                  Sign In
+                </span>
+                <span
+                  className={`pb-0 font-medium cursor-pointer transition-colors text-sm ${!showLoginForm ? 'text-[#4182CF] border-b-2 border-[#4182CF]' : 'text-gray-500 hover:text-gray-300'}`}
+                  onClick={() => setShowLoginForm(false)}
                 >
-                  <Image src={getImageUrl('core', 'google')} alt="Google" width={20} height={20} className="w-5 h-5" />
-                  <span className="text-base">Continue with Google</span>
-                </button>
+                  Sign up
+                </span>
               </div>
+            )}
+          </div>
 
-              {/* OR Separator (Krea Style - Dark) */}
-              <div className="flex items-center gap-4">
-                <div className="flex-grow h-px bg-gray-700"></div>
-                <span className="text-gray-500 text-sm font-medium">OR</span>
-                <div className="flex-grow h-px bg-gray-700"></div>
-              </div>
+          {/* Conditional Form Body */}
+          <div className="w-full">
+            {showUsernameForm ? (
+              <UsernameForm
+                username={username} setUsername={setUsername}
+                isUsernameFocused={isUsernameFocused} setIsUsernameFocused={setIsUsernameFocused}
+                usernameRequirements={usernameRequirements} hasCapitalLetters={hasCapitalLetters}
+                availability={availability} isUsernameSubmitting={isUsernameSubmitting}
+                handleUsernameSubmit={handleUsernameSubmit}
+                UsernameFeedbackComponent={UsernameAvailabilityFeedback}
+              />
+            ) : showLoginForm ? (
+              <form onSubmit={handleLogin} className="flex flex-col gap-3">
 
-              {/* Email/Password Form - Show "Last Used" badge if email was last used */}
-              {lastAuthMethod === 'email' && (
-                <div className="relative -mb-2">
-                  <div className="absolute -top-2 right-0 z-10">
-                    <span className="bg-blue-600 text-white text-xs font-medium px-2 py-0.5 rounded">Last Used</span>
-                  </div>
-                </div>
-              )}
-
-              {/* Error Message (Dark) */}
-              {error && (
-                <div className="rounded-lg p-3 bg-red-900/30 border border-red-800">
-                  <p className="text-red-300 text-sm leading-relaxed">{error}</p>
-                </div>
-              )}
-
-              {/* Success Message or Redirect Spinner (Dark) */}
-              {isRedirecting ? (
-                <RedirectSpinner />
-              ) : success && (
-                <div className="rounded-lg p-3 bg-green-900/30 border border-green-800">
-                  <p className="text-green-300 text-sm leading-relaxed">{success}</p>
-                </div>
-              )}
-
-              {/* Email Input (Krea Style - Dark with Icon) */}
-              <div className="relative">
-                <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10">
-                  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                  </svg>
-                </div>
-                <input
-                  type="text"
-                  placeholder="Email"
+                <TextField
+                  label="Email/Username"
+                  variant="outlined"
+                  fullWidth
+                  size="small"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  autoComplete="email"
-                  className="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-lg text-white text-base"
+                  onChange={(e) => setEmail(e.target.value.trim())}
                   required
+                  sx={textFieldSx}
                 />
-              </div>
 
-              {/* Password Input (Krea Style - Dark with Icon and Eye Toggle) */}
-              <div className="relative">
-                <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10">
-                  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                  </svg>
-                </div>
-                <input
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Password"
+                <TextField
+                  label="Password"
+                  variant="outlined"
+                  fullWidth
+                  size="small"
+                  type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  autoComplete="current-password"
-                  className="w-full pl-10 pr-12 py-3 bg-gray-800 border border-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-lg text-white text-base"
                   required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 z-10 text-gray-400 hover:text-gray-300 focus:outline-none"
-                >
-                  {showPassword ? (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                    </svg>
-                  ) : (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
-                  )}
-                </button>
-              </div>
-
-              {/* Cloudflare Turnstile Captcha */}
-              <TurnstileCaptcha
-                onVerify={handleCaptchaVerify}
-                onError={handleCaptchaError}
-                theme="dark"
-              />
-
-              {/* Captcha Error */}
-              {captchaError && (
-                <p className="text-sm text-red-400 text-center">Please complete the captcha verification</p>
-              )}
-
-              {/* Forgot Password Link */}
-              <div className="flex justify-end -mt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowForgotPassword(true)}
-                  className="text-blue-400 hover:text-blue-300 text-sm font-medium transition-colors"
-                >
-                  Forgot Password?
-                </button>
-              </div>
-
-              {/* Continue with Email Button (Krea Style - Dark) */}
-              <button
-                type="submit"
-                disabled={processing || !captchaToken}
-                className={`w-full py-3 px-4 rounded-lg font-medium text-base transition-colors flex items-center justify-center gap-2 ${processing || !captchaToken
-                    ? "bg-gray-700 text-gray-500 cursor-not-allowed"
-                    : "bg-blue-600 hover:bg-blue-700 text-white"
-                  }`}
-              >
-                {processing ? "Logging in..." : (
-                  <>
-                    Continue with Email
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </>
-                )}
-              </button>
-
-              {/* Sign Up Link (Dark) */}
-              <div className="text-center pt-4">
-                <span className="text-gray-400 text-sm">Don&apos;t have an account? </span>
-                <button
-                  type="button"
-                  onClick={() => setShowLoginForm(false)}
-                  className="text-blue-400 underline cursor-pointer text-sm font-medium hover:text-blue-300"
-                >
-                  Sign Up
-                </button>
-              </div>
-            </form>
-          ) : otpSent ? (
-            <form onSubmit={handleVerifyOtp} className="space-y-6">
-              {/* Title (Krea Style - Dark) */}
-              <div className="text-center space-y-4 mb-8">
-                {/* Logo - Just above Verify text */}
-                <div className="flex justify-center mb-2">
-                  <div className="w-12 h-12 flex items-center justify-center">
-                    <img
-                      src="/core/logosquare.png"
-                      alt="WildMind Logo"
-                      width={48}
-                      height={48}
-                      className="w-full h-full object-contain"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        if (target) {
-                          target.style.display = 'none';
-                        }
-                      }}
-                    />
-                  </div>
-                </div>
-                <h1 className="text-3xl md:text-4xl font-bold text-white">Verify code</h1>
-                <p className="text-gray-400 text-base">An authentication code has been sent to your email.</p>
-              </div>
-
-              {/* Code Input (Krea Style - Dark) */}
-              <div>
-                <input
-                  type="text"
-                  placeholder="Enter 6-digit code"
-                  value={otp}
-                  onChange={(e) => {
-                    const value = e.target.value.replace(/\D/g, "").slice(0, 6)
-                    setOtp(value)
+                  inputProps={{ maxLength: 14 }}
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton onClick={() => setShowPassword(!showPassword)} sx={{ color: '#858585' }}>
+                          {showPassword ? <EyeIcon /> : <EyeOffIcon />}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
                   }}
-                  className="w-full px-4 py-3 bg-gray-800 border border-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-lg text-white text-base text-center tracking-widest"
-                  required
-                  maxLength={6}
+                  sx={textFieldSx}
                 />
-              </div>
 
-              {/* Error Message (Dark) */}
-              {error && (
-                <div className="rounded-lg p-3 bg-red-900/30 border border-red-800">
-                  <p className="text-red-300 text-sm text-center leading-relaxed">{error}</p>
-                </div>
-              )}
-
-              {/* Success Message or Redirect Spinner (Dark) */}
-              {isRedirecting ? (
-                <RedirectSpinner />
-              ) : success && (
-                <div className="rounded-lg p-3 bg-green-900/30 border border-green-800">
-                  <p className="text-green-300 text-sm text-center leading-relaxed">{success}</p>
-                </div>
-              )}
-
-              {/* Verify Button (Krea Style - Dark) */}
-              <button
-                type="submit"
-                disabled={processing || otp.length < 6}
-                className={`w-full py-3 px-4 rounded-lg font-medium text-base transition-colors flex items-center justify-center gap-2 ${processing || otp.length < 6
-                    ? "bg-gray-700 text-gray-500 cursor-not-allowed"
-                    : "bg-blue-600 hover:bg-blue-700 text-white"
-                  }`}
-              >
-                {processing ? "Verifying..." : (
-                  <>
-                    Continue with Email
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </>
-                )}
-              </button>
-
-              {/* Resend Link (Dark) */}
-              <div className="text-center">
-                <span className="text-gray-400 text-sm">Not receive email? </span>
-                <button
-                  type="button"
-                  onClick={handleResendOtp}
-                  className="text-blue-400 underline cursor-pointer text-sm font-medium hover:text-blue-300"
-                >
-                  Resend
-                </button>
-              </div>
-            </form>
-          ) : (
-            <>
-              {/* Google Sign-in Button First (Krea Style - Dark) */}
-              <div className="relative">
-                {lastAuthMethod === 'google' && (
-                  <div className="absolute -top-2 right-0 z-10">
-                    <span className="bg-blue-600 text-white text-xs font-medium px-2 py-0.5 rounded">Last Used</span>
-                  </div>
-                )}
-                <button
-                  type="button"
-                  onClick={handleGoogleLogin}
-                  className="w-full bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white font-medium py-3 px-4 rounded-lg flex items-center justify-center gap-3 transition-colors"
-                >
-                  <Image src={getImageUrl('core', 'google')} alt="Google" width={20} height={20} className="w-5 h-5" />
-                  <span className="text-base">Continue with Google</span>
-                </button>
-              </div>
-
-              {/* OR Separator (Krea Style - Dark) */}
-              <div className="flex items-center gap-4">
-                <div className="flex-grow h-px bg-gray-700"></div>
-                <span className="text-gray-500 text-sm font-medium">OR</span>
-                <div className="flex-grow h-px bg-gray-700"></div>
-              </div>
-
-              {/* Email/Password Form - Show "Last Used" badge if email was last used */}
-              {lastAuthMethod === 'email' && (
-                <div className="relative -mb-2">
-                  <div className="absolute -top-2 right-0 z-10">
-                    <span className="bg-blue-600 text-white text-xs font-medium px-2 py-0.5 rounded">Last Used</span>
-                  </div>
-                </div>
-              )}
-
-              {/* Email Form (Krea Style - Dark) */}
-              <form onSubmit={handleSendOtp} className="space-y-4">
-                {/* Email Input with Icon */}
-                <div>
-                  <div className="relative">
-                    <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10 pointer-events-none">
-                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                      </svg>
-                    </div>
-                    <input
-                      type="email"
-                      placeholder="Email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value.trim())}
-                      autoComplete="email"
-                      className={`w-full pl-10 pr-4 py-3 bg-gray-800 border ${emailError ? 'border-red-500' : 'border-gray-700'
-                        } placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-lg text-white text-base`}
-                      required
-                    />
-                  </div>
-                  {emailError && (
-                    <p className="mt-1.5 text-xs text-red-400">{emailError}</p>
-                  )}
-                </div>
-
-                {/* Password Fields with Icons and Eye Toggle */}
-                <div className="space-y-2">
-                  <div className="relative">
-                    <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10">
-                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                      </svg>
-                    </div>
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      placeholder="Password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      autoComplete="new-password"
-                      className="w-full pl-10 pr-12 py-3 bg-gray-800 border border-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-lg text-white text-base"
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 z-10 text-gray-400 hover:text-gray-300 focus:outline-none"
-                    >
-                      {showPassword ? (
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                        </svg>
-                      ) : (
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
-                      )}
+                  <div className="flex items-center justify-between px-1">
+                    {loginRetryAfterSeconds > 0 ? (
+                      <span className="text-[10px] font-medium text-[#ff7a7d]">
+                        Try again after {Math.floor(loginRetryAfterSeconds / 60).toString().padStart(2, '0')}:{(loginRetryAfterSeconds % 60).toString().padStart(2, '0')}
+                      </span>
+                    ) : loginAttemptsLeft !== null ? (
+                      <span className="text-[10px] font-medium text-[#ff7a7d]">
+                        Attempts left {loginAttemptsLeft} of {LOGIN_MAX_ATTEMPTS}
+                      </span>
+                    ) : (
+                      <span />
+                    )}
+                    <button type="button" onClick={() => setShowForgotPassword(true)} className="text-[#4182CF] text-xs font-normal hover:text-blue-400">
+                      Forgot Password?
                     </button>
                   </div>
 
-                  <div>
-                    <div className="relative">
-                      <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10 pointer-events-none">
-                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                        </svg>
-                      </div>
-                      <input
-                        type={showPassword ? "text" : "password"}
-                        placeholder="Confirm Password"
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        autoComplete="new-password"
-                        className={`w-full pl-10 pr-12 py-3 bg-gray-800 border ${passwordError ? 'border-red-500' : 'border-gray-700'
-                          } placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-lg text-white text-base`}
-                        required
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 z-10 text-gray-400 hover:text-gray-300 focus:outline-none"
-                      >
-                        {showPassword ? (
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                          </svg>
-                        ) : (
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                          </svg>
-                        )}
-                      </button>
+                <div className="flex justify-center pt-4 md:pt-2 lg:pt-2 xl:pt-2 2xl:pt-4">
+                  <button
+                    type="submit"
+                      disabled={processing || !email || !password || loginRetryAfterSeconds > 0}
+                      className={`w-3/4 md:w-1/4 lg:w-2/4 xl:w-2/4 2xl:w-2/4 py-2 md:py-1.5 lg:py-1.5 xl:py-1 2xl:py-1.5 md:rounded-sm lg:rounded-md xl:rounded-lg 2xl:rounded-xl font-semibold transition-all md:text-sm lg:text-md xl:text-md 2xl:text-[16px] ${processing || !email || !password || loginRetryAfterSeconds > 0
+                        ? "bg-[#4182CF]/47 text-white/50 cursor-not-allowed"
+                        : "bg-[#4182CF] hover:bg-[#4B8EDF] text-white"
+                        }`}
+                  >
+                    {processing ? "Signing in..." : "Sign In"}
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-4 py-2">
+                  <div className="flex-grow h-px bg-[#2D3035]"></div>
+                  <span className="text-gray-500 text-xs font-medium">OR</span>
+                  <div className="flex-grow h-px bg-[#2D3035]"></div>
+                </div>
+
+                <div className="relative">
+                  {lastAuthMethod === 'google' && !error && (
+                    <div className="absolute -top-2 right-0 z-10">
+                      <span className="bg-blue-600/20 text-blue-400 border border-blue-500/30 text-[10px] font-medium px-2 py-0.5 rounded-full">Last Used</span>
                     </div>
-                    {passwordError && (
-                      <p className="mt-1.5 text-xs text-red-400">{passwordError}</p>
-                    )}
-                  </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => handleGoogleLogin()}
+                    className="w-full bg-[#24242A] hover:bg-[#2D3035] text-white font-medium py-2.5 px-4 rounded-xl flex items-center justify-center gap-3 transition-colors"
+                  >
+                    <img src={getImageUrl('core', 'google')} alt="Google" width={18} height={18} className="w-4 h-4" />
+                    <span className="text-sm font-semibold">Continue with Google</span>
+                  </button>
                 </div>
 
-                {/* Terms Text (Dark) - Checkbox removed, text only */}
-                <div className="text-xs text-center text-gray-400 leading-relaxed">
-                  By signing up, you agree to our{" "}
-                  <Link
-                    href={LEGAL_ROUTES.TERMS_CONDITIONS}
-                    className="text-blue-400 underline hover:text-blue-300 transition-colors"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    Terms and Conditions
-                  </Link>{" "}
-                  &{" "}
-                  <Link
-                    href={LEGAL_ROUTES.PRIVACY_PAGE}
-                    className="text-blue-400 underline hover:text-blue-300 transition-colors"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    Privacy Policy
-                  </Link>.
-                </div>
-
-                {/* Cloudflare Turnstile Captcha */}
                 <TurnstileCaptcha
                   onVerify={handleCaptchaVerify}
                   onError={handleCaptchaError}
                   theme="dark"
                 />
-
-                {/* Captcha Error */}
-                {captchaError && (
-                  <p className="text-sm text-red-400 text-center">Please complete the captcha verification</p>
-                )}
-
-                {/* Error Message (Dark) - Only show server/API errors */}
-                {error && (
-                  <div className="rounded-lg p-3 bg-red-900/30 border border-red-800">
-                    <p className="text-red-300 text-sm leading-relaxed">{error}</p>
-                  </div>
-                )}
-
-                {/* Continue with Email Button (Krea Style - Dark) */}
-                <button
-                  type="submit"
-                  disabled={processing || !isFormValid || !captchaToken}
-                  className={`w-full py-3 px-4 rounded-lg font-medium text-base transition-colors flex items-center justify-center gap-2 ${processing || !isFormValid || !captchaToken
-                      ? "bg-gray-700 text-gray-500 cursor-not-allowed"
-                      : "bg-blue-600 hover:bg-blue-700 text-white"
-                    }`}
-                >
-                  {processing ? "Sending..." : (
-                    <>
-                      Continue with Email
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    </>
-                  )}
-                </button>
               </form>
-
-              {/* Already have an account link (Dark) */}
-              <div className="text-center pt-4">
-                <span className="text-gray-400 text-sm">Already have an account? </span>
-                <button
-                  type="button"
-                  onClick={() => setShowLoginForm(true)}
-                  className="text-blue-400 underline cursor-pointer text-sm font-medium hover:text-blue-300"
-                >
-                  Sign In
-                </button>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Footer - Terms & Privacy (Krea Style - Dark) - Only show when not on OTP screen, username screen, or login screen */}
-      {/* {!otpSent && !showUsernameForm && !showLoginForm && (
-        <div className="absolute bottom-6 left-0 right-0 text-center px-6">
-          <p className="text-xs text-gray-500">
-            By signing up, you agree to our{" "}
-            <span className="text-blue-400 underline cursor-pointer hover:text-blue-300">Terms of Service</span> &{" "}
-            <span className="text-blue-400 underline cursor-pointer hover:text-blue-300">Privacy Policy</span>.
-          </p>
-        </div>
-      )} */}
-
-      {/* Debug: Test Cookie Button - Always visible for debugging */}
-      {/* <div className="text-center mb-4">
-        <button
-          type="button"
-          onClick={testCookieSetting}
-          className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white text-sm font-bold rounded-lg shadow-lg border-2 border-red-400"
-        >
-          🧪 Test Cookie Setting (Debug)
-        </button>
-        <p className="text-xs text-gray-400 mt-1">Click to test if cookies work in this browser</p>
-      </div> */}
-
-      {/* Cookies Settings - Individual Div - Only show when not on OTP screen, username screen, or login screen */}
-      {/* {!otpSent && !showUsernameForm && !showLoginForm && (
-        <div className="text-center mb-12">
-          <span className="text-[#4285F4] text-xs">Cookies Settings</span>
-        </div>
-      )} */}
-
-      {/* Forgot Password Modal */}
-      {showForgotPassword && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-gray-800 rounded-2xl border border-gray-700 w-full max-w-md p-6 space-y-6">
-            {/* Header */}
-            <div className="text-center space-y-2">
-              <h2 className="text-2xl font-bold text-white">Reset Password</h2>
-              <p className="text-gray-400 text-sm">
-                {forgotPasswordSent
-                  ? "Check your email for password reset instructions."
-                  : "Enter your email address and we'll send you a link to reset your password."}
-              </p>
-            </div>
-
-            {/* Success Message */}
-            {forgotPasswordSent ? (
-              <div className="space-y-4">
-                <div className="rounded-lg p-4 bg-green-900/30 border border-green-800">
-                  <p className="text-green-300 text-sm">
-                    If an account exists with this email, a password reset link has been sent to <strong>{forgotPasswordEmail}</strong>
-                  </p>
-                </div>
-                <button
-                  onClick={() => {
-                    setShowForgotPassword(false)
-                    setForgotPasswordSent(false)
-                    setForgotPasswordEmail("")
-                  }}
-                  className="w-full py-3 px-4 rounded-lg font-medium text-base bg-blue-600 hover:bg-blue-700 text-white transition-colors"
-                >
-                  Close
-                </button>
-              </div>
             ) : (
-              <form onSubmit={handleForgotPassword} className="space-y-4">
-                {/* Error Message */}
-                {error && (
-                  <div className="rounded-lg p-3 bg-red-900/30 border border-red-800">
-                    <p className="text-red-300 text-sm">{error}</p>
-                  </div>
-                )}
-
-                {/* Email Input */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Email Address
-                  </label>
-                  <input
-                    type="email"
-                    placeholder="Enter your email"
-                    value={forgotPasswordEmail}
-                    onChange={(e) => setForgotPasswordEmail(e.target.value)}
-                    className="w-full px-4 py-3 bg-gray-900 border border-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 rounded-lg text-white text-base"
-                    required
-                    autoFocus
-                  />
-                </div>
-
-                {/* Buttons */}
-                <div className="flex gap-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowForgotPassword(false)
-                      setForgotPasswordEmail("")
-                      setError("")
-                    }}
-                    className="flex-1 py-3 px-4 rounded-lg font-medium text-base bg-gray-700 hover:bg-gray-600 text-white transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={processing || !forgotPasswordEmail.trim()}
-                    className={`flex-1 py-3 px-4 rounded-lg font-medium text-base transition-colors ${processing || !forgotPasswordEmail.trim()
-                        ? "bg-gray-700 text-gray-500 cursor-not-allowed"
-                        : "bg-blue-600 hover:bg-blue-700 text-white"
-                      }`}
-                  >
-                    {processing ? "Sending..." : "Send Reset Link"}
-                  </button>
-                </div>
-              </form>
+                <SignUpForm
+                  username={username} setUsername={setUsername}
+                  isUsernameFocused={isUsernameFocused} setIsUsernameFocused={setIsUsernameFocused}
+                  usernameRequirements={usernameRequirements} hasCapitalLetters={hasCapitalLetters} availability={availability}
+                  email={email} setEmail={setEmail}
+                  password={password} setPassword={setPassword}
+                  showPassword={showPassword} setShowPassword={setShowPassword}
+                  isPasswordFocused={isPasswordFocused} setIsPasswordFocused={setIsPasswordFocused} passwordRequirements={passwordRequirements}
+                  confirmPassword={confirmPassword} setConfirmPassword={setConfirmPassword} passwordError={passwordError}
+                  showConfirmPassword={showConfirmPassword} setShowConfirmPassword={setShowConfirmPassword}
+                  otpSent={otpSent} otp={otp} setOtp={setOtp} processing={processing} resendCooldown={resendCooldown}
+                  handleSendOtp={handleSendOtp} handleVerifyOtp={handleVerifyOtp} handleResendOtp={handleResendOtp}
+                  handleGoogleLogin={handleGoogleLogin} handleCaptchaVerify={handleCaptchaVerify} handleCaptchaError={handleCaptchaError}
+                  UsernameFeedbackComponent={UsernameAvailabilityFeedback}
+              />
             )}
           </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-function UsernameAvailabilityFeedback({ status, result, error, onSuggestion }: { status: 'idle' | 'checking' | 'available' | 'taken' | 'invalid' | 'error'; result: any; error: string | null; onSuggestion: (v: string) => void }) {
-
-  if (status === 'idle') return null
-  if (status === 'invalid') {
-    return (
-      <div className="rounded-lg p-2 bg-amber-900/30 border border-amber-800">
-        <p className="text-amber-300 text-xs">Use 3-30 chars: a-z 0-9 _ . -</p>
-      </div>
-    )
-  }
-  if (status === 'checking') {
-    return (
-      <div className="rounded-lg p-2 bg-gray-800 border border-gray-700 inline-flex items-center gap-2">
-        <div className="animate-spin rounded-full h-3 w-3 border-2 border-gray-600 border-t-blue-500" />
-        <span className="text-gray-400 text-xs">Checking…</span>
-      </div>
-    )
-  }
-  if (status === 'error') {
-    return (
-      <div className="rounded-lg p-2 bg-red-900/30 border border-red-800">
-        <p className="text-red-300 text-xs">{error || 'Something went wrong'}</p>
-      </div>
-    )
-  }
-  if (status === 'available') {
-    return (
-      <div className="rounded-lg p-2 bg-green-900/30 border border-green-800">
-        <p className="text-green-300 text-xs">Username "{result?.normalized}" is available</p>
-      </div>
-    )
-  }
-  if (status === 'taken') {
-    return (
-      <div className="space-y-2">
-        <div className="rounded-lg p-2 bg-red-900/30 border border-red-800">
-          <p className="text-red-300 text-xs">Username is already taken</p>
-        </div>
-        {result?.suggestions && result.suggestions.length > 0 && (
-          <div className="flex gap-2 flex-wrap">
-            {result.suggestions.map((s: string) => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => onSuggestion(s)}
-                className="px-3 py-1 rounded-lg border border-gray-700 bg-gray-800 text-gray-300 text-xs hover:bg-gray-700"
-              >
-                {s}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-    )
-  }
-  return null
+        </div >
+      </div >
+      <ForgotPasswordModal
+        showForgotPassword={showForgotPassword} setShowForgotPassword={setShowForgotPassword}
+        forgotPasswordSent={forgotPasswordSent} setForgotPasswordSent={setForgotPasswordSent}
+        forgotPasswordEmail={forgotPasswordEmail} setForgotPasswordEmail={setForgotPasswordEmail}
+        forgotPasswordError={forgotPasswordError} processing={processing}
+        handleForgotPassword={handleForgotPassword}
+      />
+    </div >
+  );
 }
 

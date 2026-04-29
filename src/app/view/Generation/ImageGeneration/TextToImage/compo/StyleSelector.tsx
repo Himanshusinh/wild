@@ -1,12 +1,17 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect, useRef } from 'react';
-import { useAppSelector } from '@/store/hooks';
-import StylePopup from '@/app/view/Generation/ImageGeneration/TextToImage/compo/StylePopup';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import React, { useState, useEffect, useRef } from "react";
+import { useAppSelector } from "@/store/hooks";
+import StylePopup from "@/app/view/Generation/ImageGeneration/TextToImage/compo/StylePopup";
+import { ChevronDown, ChevronUp } from "lucide-react";
 
 const StyleSelector = () => {
-  const style = useAppSelector((state: any) => state.generation?.style || 'none');
+  const style = useAppSelector(
+    (state: any) => state.generation?.style || "none",
+  );
+  const selectedModel = useAppSelector(
+    (state: any) => state.generation?.selectedModel || "new-turbo-model",
+  );
   const [isStylePopupOpen, setIsStylePopupOpen] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -19,11 +24,11 @@ const StyleSelector = () => {
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }
-      
-      // Set new timeout for 5 seconds
+
+      // Set new timeout for 1 minute (Bug 46 fix)
       timeoutRef.current = setTimeout(() => {
         setIsStylePopupOpen(false);
-      }, 20000);
+      }, 60000);
     } else {
       // Clear timeout if popup is closed
       if (timeoutRef.current) {
@@ -45,17 +50,24 @@ const StyleSelector = () => {
       <div className="relative dropdown-container">
         <button
           onClick={() => setIsStylePopupOpen(true)}
-          className={`h-[28px] md:h-[32px] md:px-4 px-2 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex justify-center items-center gap-2 ${style !== 'none'
-              ? 'bg-transparent text-white/90'
-              : 'bg-transparent text-white/90 hover:bg-white/5'
-            }`}
+          className={`h-[23px] md:h-[32px] md:px-4 px-2 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex justify-center items-center gap-2 ${
+            style !== "none"
+              ? "bg-transparent text-white/90"
+              : "bg-transparent text-white/90 hover:bg-white/5"
+          }`}
         >
-          <span className="capitalize">{style === 'none' ? 'Style' : style}</span>
-          <div className={`w-4 h-4 flex  items-center justify-center ${style !== 'none' ? 'text-white/90' : 'text-white/90'
-            }`}>
-            <ChevronUp className={`w-4 h-4 transition-transform duration-200 ${isStylePopupOpen ? 'rotate-180' : ''}`} />
+          <span className="capitalize">
+            {style === "none" ? "Style" : style}
+          </span>
+          <div
+            className={`w-4 h-4 flex  items-center justify-center ${
+              style !== "none" ? "text-white/90" : "text-white/90"
+            }`}
+          >
+            <ChevronUp
+              className={`w-4 h-4 transition-transform duration-200 ${isStylePopupOpen ? "rotate-180" : ""}`}
+            />
           </div>
-          
         </button>
       </div>
 

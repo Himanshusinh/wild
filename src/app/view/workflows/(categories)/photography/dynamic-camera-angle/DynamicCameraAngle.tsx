@@ -10,6 +10,7 @@ import ImageComparisonSlider from '@/app/view/workflows/components/ImageComparis
 import { useCredits } from '@/hooks/useCredits';
 import { downloadFileWithNaming } from '@/utils/downloadUtils';
 import { WORKFLOWS_DATA } from '@/app/view/workflows/components/data';
+import { getSignInUrl } from '@/routes/routes';
 
 const CAMERA_ANGLES = [
   'Eye-Level', 'Low Angle', 'High Angle', 'Top-Down', 'Side Angle',
@@ -21,7 +22,8 @@ export default function DynamicCameraAngle() {
   const {
     creditBalance,
     deductCreditsOptimisticForGeneration,
-    rollbackOptimisticDeduction
+    rollbackOptimisticDeduction,
+    user
   } = useCredits();
 
   // State
@@ -65,6 +67,10 @@ export default function DynamicCameraAngle() {
   };
 
   const handleRun = async () => {
+    if (!user) {
+      router.push(getSignInUrl());
+      return;
+    }
     if (!productImage) {
       toast.error('Please upload a product snapshot first');
       return;
@@ -238,7 +244,7 @@ export default function DynamicCameraAngle() {
                     afterImage={generatedImage}
                     beforeLabel="Reference"
                     afterLabel="Dynamic Angle"
-                    imageFit="object-contain"
+                    imageFit="object-cover"
                     imagePosition={workflowData.imagePosition || 'object-center'}
                   />
                   <button
@@ -270,7 +276,7 @@ export default function DynamicCameraAngle() {
                     afterImage={workflowData.sampleAfter}
                     beforeLabel="Before"
                     afterLabel="After"
-                    imageFit="object-contain"
+                    imageFit="object-cover"
                     imagePosition={workflowData.imagePosition || 'object-center'}
                   />
                 </div>
@@ -282,6 +288,7 @@ export default function DynamicCameraAngle() {
 
       {isUploadModalOpen && (
         <UploadModal
+          persistLocalDeviceUploads={false}
           isOpen={isUploadModalOpen}
           onClose={() => setIsUploadModalOpen(false)}
           onAdd={(urls: string[]) => {
@@ -295,3 +302,4 @@ export default function DynamicCameraAngle() {
     </>
   );
 }
+

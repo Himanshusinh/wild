@@ -4,13 +4,15 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { getApiClient } from '@/lib/axiosInstance';
-import { getMeCached } from '@/lib/me';
+import { getMeCached, clearMeCache } from '@/lib/me';
 import { onCreditsRefresh } from '@/lib/creditsBus';
+import { useCredits } from '@/hooks/useCredits';
 import { ArrowLeft } from 'lucide-react';
 import { getPublicPolicyFromUser } from '@/hooks/usePublicPolicy';
 import { signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import toast from 'react-hot-toast';
+import { getPlanLabel } from '@/utils/planLabel';
 
 interface UserData {
   uid: string;
@@ -28,6 +30,7 @@ interface UserData {
   userAgent?: string;
   credits?: number;
   plan?: string;
+  planCode?: string;
   metadata?: {
     accountStatus: string;
     roles: string[];
@@ -43,108 +46,98 @@ interface UserData {
   };
 }
 
-const ProfileManagement = () => {
+const ProfileManagement = ({ initialUserData }: { initialUserData?: UserData }) => {
   const router = useRouter();
   // const fileInputRef = useRef<HTMLInputElement>(null); // DISABLED
-  
+
+  const { creditBalance: hookCreditBalance, refreshCredits: hookRefreshCredits, loading: creditsLoading } = useCredits();
+
   // State management
-  const [userData, setUserData] = useState<UserData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [userData, setUserData] = useState<UserData | null>(initialUserData || null);
+  const [loading, setLoading] = useState(!initialUserData);
   const [saving, setSaving] = useState(false);
-  const [creditBalance, setCreditBalance] = useState<number | null>(null);
+  // Use hook balance if available, otherwise fallback to initialUserData
+  const [creditBalance, setCreditBalance] = useState<number | null>(() => {
+    if (hookCreditBalance !== undefined && hookCreditBalance !== null) return hookCreditBalance;
+    return initialUserData?.credits ?? null;
+  });
   const [isPublic, setIsPublic] = useState<boolean>(false);
   const [avatarFailed, setAvatarFailed] = useState(false);
   const [canTogglePublic, setCanTogglePublic] = useState<boolean>(false);
   const [policyMessage, setPolicyMessage] = useState<string>('');
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  
+
   // Edit states
   // Username editing states - DISABLED
   // const [isEditingUsername, setIsEditingUsername] = useState(false);
   // const [editedUsername, setEditedUsername] = useState('');
   // const [usernameError, setUsernameError] = useState('');
-  
+
   // Upload states - DISABLED
   // const [uploadingPhoto, setUploadingPhoto] = useState(false);
   // const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
 
   // Fetch user data
   useEffect(() => {
     const fetchUserData = async () => {
       try {
         const token = localStorage.getItem('authToken') || localStorage.getItem('user');
-        
-        if (!token) {
+
+        if (!token && !initialUserData) {
           router.push('/view/signup');
           return;
         }
 
-        // Parse token if needed
-        let authToken = token;
-        try {
-          const userObj = JSON.parse(token);
-          authToken = userObj.token || userObj.idToken;
-        } catch {
-          // Token is already a string
-        }
+        const api = getApiClient();
 
-  const api = getApiClient();
-  const userData = await getMeCached();
-        try { console.log('[PublicGen][me] plan:', userData?.plan, 'canTogglePublicGenerations:', (userData as any)?.canTogglePublicGenerations, 'forcePublicGenerations:', (userData as any)?.forcePublicGenerations) } catch {}
-        setUserData(userData);
-        // setEditedUsername(userData.username || ''); // DISABLED
-        
-        // Get public policy from user data
-        const policy = getPublicPolicyFromUser(userData);
-        setCanTogglePublic(policy.canToggle);
-        setPolicyMessage(policy.message);
-        
-        // Initialize public flag (same logic as Nav.tsx)
-        try {
-          const stored = localStorage.getItem('isPublicGenerations');
-          const server = userData && (userData as any).isPublic;
-          const next = (stored != null) ? (stored === 'true') : (server !== undefined ? Boolean(server) : false);
-          // If user is restricted (cannot toggle), force to true
-          if (!policy.canToggle) {
-            setIsPublic(true);
-          } else {
-            setIsPublic(next);
-          }
-        } catch {}
+        // Fetch user data and credits in parallel
+        // useCredits hook handles credit fetching, but we can call refreshCredits to be sure
+        const [meData] = await Promise.all([
+          getMeCached(),
+          hookRefreshCredits().catch(() => null)
+        ]);
 
-        // Fetch credits
-        try {
-          const creditsRes = await api.get('/api/credits/me');
-          const creditsPayload = creditsRes.data?.data || creditsRes.data;
-          const balance = Number(creditsPayload?.creditBalance);
-          if (!Number.isNaN(balance)) setCreditBalance(balance);
-        } catch (e) {
-          // silent fail
+        if (meData) {
+          try { console.log('[PublicGen][me] plan:', meData?.plan, 'canTogglePublicGenerations:', (meData as any)?.canTogglePublicGenerations, 'forcePublicGenerations:', (meData as any)?.forcePublicGenerations) } catch { }
+          setUserData(meData);
+
+          // Get public policy from user data
+          const policy = getPublicPolicyFromUser(meData);
+          setCanTogglePublic(policy.canToggle);
+          setPolicyMessage(policy.message);
+
+          // Initialize public flag
+          try {
+            const stored = localStorage.getItem('isPublicGenerations');
+            const server = meData && (meData as any).isPublic;
+            const next = (stored != null) ? (stored === 'true') : (server !== undefined ? Boolean(server) : false);
+            if (!policy.canToggle) {
+              setIsPublic(true);
+            } else {
+              setIsPublic(next);
+            }
+          } catch { }
         }
       } catch (error) {
         console.error('Error fetching user data:', error);
-        router.push('/view/signup');
+        if (!initialUserData) {
+          router.push('/view/signup');
+        }
       } finally {
         setLoading(false);
       }
     };
 
     fetchUserData();
-  }, [router]);
+  }, [router, initialUserData, hookRefreshCredits]);
 
-  // Listen for credits refresh
+  // Handle credits sync
   useEffect(() => {
-    const api = getApiClient();
-    const unsubscribe = onCreditsRefresh(async () => {
-      try {
-        const creditsRes = await api.get('/api/credits/me');
-        const creditsPayload = creditsRes.data?.data || creditsRes.data;
-        const balance = Number(creditsPayload?.creditBalance);
-        if (!Number.isNaN(balance)) setCreditBalance(balance);
-      } catch {}
-    });
-    return unsubscribe;
-  }, []);
+    if (hookCreditBalance !== undefined && hookCreditBalance !== null) {
+      setCreditBalance(hookCreditBalance);
+    }
+  }, [hookCreditBalance]);
 
   // Handle username editing - DISABLED
   // const handleEditUsername = () => {
@@ -173,7 +166,7 @@ const ProfileManagement = () => {
   //   try {
   //     const api = getApiClient();
   //     await api.patch('/api/auth/me', { username: editedUsername.trim() });
-      
+
   //     setUserData(prev => prev ? { ...prev, username: editedUsername.trim() } : null);
   //     setIsEditingUsername(false);
   //     setUsernameError('');
@@ -244,7 +237,7 @@ const ProfileManagement = () => {
   //     setUserData(prev => prev ? { ...prev, photoURL: newPhotoURL } : null);
   //     setAvatarFailed(false);
   //     setPreviewUrl(null);
-      
+
   //     if (fileInputRef.current) {
   //       fileInputRef.current.value = '';
   //     }
@@ -263,14 +256,14 @@ const ProfileManagement = () => {
       setShowUpgradeModal(true);
       return;
     }
-    
+
     const next = !isPublic;
     setIsPublic(next);
     try {
       const api = getApiClient();
       await api.patch('/api/auth/me', { isPublic: next });
-    } catch {}
-    try { localStorage.setItem('isPublicGenerations', String(next)); } catch {}
+    } catch { }
+    try { localStorage.setItem('isPublicGenerations', String(next)); } catch { }
   };
 
   // Handle back navigation
@@ -284,12 +277,14 @@ const ProfileManagement = () => {
       // Clear local storage
       localStorage.removeItem('user');
       localStorage.removeItem('authToken');
+      localStorage.removeItem('me_cache');
+      clearMeCache();
 
       // Call Next.js logout proxy to clear server and client cookies robustly
       await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
 
       // Also sign out from Firebase to stop background token refresh
-      try { await signOut(auth) } catch {}
+      try { await signOut(auth) } catch { }
 
       // Proactively clear cookie variants on current domain and parent domain
       const expired = 'Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Path=/';
@@ -298,7 +293,7 @@ const ProfileManagement = () => {
         document.cookie = `app_session=; Domain=.wildmindai.com; ${expired}; SameSite=None; Secure`;
         document.cookie = `app_session=; ${expired}; SameSite=Lax`;
         document.cookie = `app_session=; Domain=.wildmindai.com; ${expired}; SameSite=Lax`;
-      } catch {}
+      } catch { }
 
       // Clear history stack: prevent navigating back into the app
       if (typeof window !== 'undefined') {
@@ -307,8 +302,8 @@ const ProfileManagement = () => {
           window.addEventListener('popstate', () => {
             history.pushState(null, document.title, location.href);
           });
-        } catch {}
-        window.location.replace('/view/Landingpage?toast=LOGOUT_SUCCESS');
+        } catch { }
+        window.location.replace('/view/HomePage?toast=LOGOUT_SUCCESS');
       }
     } catch (err) {
       console.error('Logout error:', err);
@@ -316,7 +311,7 @@ const ProfileManagement = () => {
       if (typeof window !== 'undefined') {
         // Still redirect even on error to prevent user from being stuck
         setTimeout(() => {
-          window.location.replace('/view/Landingpage?toast=LOGOUT_FAILED');
+          window.location.replace('/view/HomePage?toast=LOGOUT_FAILED');
         }, 2000);
       }
     }
@@ -360,10 +355,15 @@ const ProfileManagement = () => {
                 <div className="text-white font-semibold text-lg md:text-xl truncate">{userData?.username || 'User'}</div>
                 <div className="text-white/70 text-xs md:text-sm truncate">{userData?.email || 'user@example.com'}</div>
                 <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <span className="px-2.5 py-1 rounded-full text-xs bg-white/10 text-white border border-white/10">Plan: {userData?.plan || 'Free'}</span>
-                  <span className="px-2.5 py-1 rounded-full text-xs bg-white/10 text-white border border-white/10 flex items-center gap-1">
+                  <span className="px-2.5 py-1 rounded-full text-xs bg-white/10 text-white border border-white/10">
+                    Plan: {getPlanLabel((userData as any)?.planCode || userData?.plan).label}
+                  </span>
+                  <span className="px-2.5 py-1 rounded-full text-xs bg-white/10 text-white border border-white/10 flex items-center gap-1 min-w-[45px] justify-center">
                     <Image src="/icons/coinswhite.svg" alt="credits" width={14} height={14} className="dark:brightness-100" />
                     {creditBalance ?? userData?.credits ?? 0}
+                    {creditsLoading && (
+                      <div className="w-2.5 h-2.5 border-2 border-white/20 border-t-white/80 rounded-full animate-spin ml-0.5" />
+                    )}
                   </span>
                 </div>
               </div>
@@ -404,7 +404,7 @@ const ProfileManagement = () => {
                 <div className="flex-1">
                   <h3 className="text-gray-900 dark:text-white font-semibold text-sm mb-1">Make Generations Public</h3>
                   <p className="text-gray-600 dark:text-gray-300 text-xs">
-                    {canTogglePublic 
+                    {canTogglePublic
                       ? 'Allow others to see your generated content on the public feed'
                       : '🔒 Your plan requires all generations to be public'}
                   </p>
@@ -419,13 +419,12 @@ const ProfileManagement = () => {
                     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleTogglePublic(); } }}
                     tabIndex={0}
                     disabled={!canTogglePublic}
-                    className={`relative z-10 w-12 h-6 rounded-full transition-colors outline-none ${
-                      !canTogglePublic 
-                        ? 'bg-gray-300 dark:bg-white/20 cursor-not-allowed opacity-60' 
-                        : isPublic 
-                          ? 'bg-blue-500 dark:bg-blue-600 cursor-pointer' 
-                          : 'bg-gray-300 dark:bg-white/20 cursor-pointer'
-                    }`}
+                    className={`relative z-10 w-12 h-6 rounded-full transition-colors outline-none ${!canTogglePublic
+                      ? 'bg-gray-300 dark:bg-white/20 cursor-not-allowed opacity-60'
+                      : isPublic
+                        ? 'bg-blue-500 dark:bg-blue-600 cursor-pointer'
+                        : 'bg-gray-300 dark:bg-white/20 cursor-pointer'
+                      }`}
                   >
                     <span className={`block w-5 h-5 bg-white dark:bg-white rounded-full shadow-md transition-transform transform ${isPublic ? 'translate-x-6' : 'translate-x-0.5'} relative top-0`} />
                   </button>
@@ -438,7 +437,7 @@ const ProfileManagement = () => {
               </div>
             </div>
           </div>
-         
+
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-3 mt-5">
             <button
@@ -457,7 +456,7 @@ const ProfileManagement = () => {
           </div>
         </div>
       </div>
-      
+
       {/* Upgrade Modal */}
       {showUpgradeModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">

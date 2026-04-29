@@ -3,19 +3,21 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Share2, X, ChevronLeft, Calendar, User, Camera, Plus, Zap, Download } from 'lucide-react';
-import toast, { Toaster } from 'react-hot-toast';
+import { toast } from 'sonner';
 import axiosInstance from '@/lib/axiosInstance';
 import UploadModal from '@/app/view/Generation/ImageGeneration/TextToImage/compo/UploadModal';
 import ImageComparisonSlider from '@/app/view/workflows/components/ImageComparisonSlider';
 import { downloadFileWithNaming } from '@/utils/downloadUtils';
 import { useCredits } from '@/hooks/useCredits';
+import { getSignInUrl } from '@/routes/routes';
 
 export default function RemoveWatermark() {
     const router = useRouter();
     const {
         creditBalance,
         deductCreditsOptimisticForGeneration,
-        rollbackOptimisticDeduction
+        rollbackOptimisticDeduction,
+        user
     } = useCredits();
 
     // State
@@ -60,6 +62,10 @@ export default function RemoveWatermark() {
     };
 
     const handleRun = async () => {
+        if (!user) {
+            router.push(getSignInUrl());
+            return;
+        }
         if (!originalImage) {
             toast.error('Please upload an image first');
             return;
@@ -117,13 +123,11 @@ export default function RemoveWatermark() {
     };
 
     return (
-        <>
+        <div className="watermark-remover-container">
             <style jsx global>{`
         @keyframes shimmer { 100% { left: 150%; } }
       `}</style>
-            <Toaster position="bottom-center" toastOptions={{
-                style: { background: '#333', color: '#fff' }
-            }} />
+
 
             <div className={`fixed inset-0 z-[80] flex items-center justify-center px-4 md:pl-20 transition-all duration-300 ${isOpen ? 'opacity-100 visible' : 'opacity-0 invisible pointer-events-none'}`}>
                 <div className="absolute top-0 right-0 bottom-0 left-0 md:left-20 bg-black/80 backdrop-blur-xl" onClick={onClose}></div>
@@ -228,8 +232,9 @@ export default function RemoveWatermark() {
                                         afterImage={generatedImage}
                                         beforeLabel="Before"
                                         afterLabel="Result"
-                                        imageFit="object-contain"
-                                    />
+                                        imageFit="object-cover"
+                    imagePosition="object-center"
+                  />
                                     <button
                                         onClick={handleDownload}
                                         className="absolute bottom-10 right-10 z-30 flex items-center gap-2 px-5 py-2.5 bg-black/50 hover:bg-black/70 backdrop-blur-md border border-white/10 rounded-full text-white text-sm font-medium transition-all active:scale-95 group"
@@ -251,12 +256,13 @@ export default function RemoveWatermark() {
                             ) : (
                                 <div className="relative w-full h-full flex items-center justify-center p-8">
                                     <ImageComparisonSlider
-                                        beforeImage="/workflow-samples/remove-watermark-before.jpg"
-                                        afterImage="/workflow-samples/remove-watermark-after.jpg"
+                                        beforeImage="/workflow-samples/remove-watermark-before-v2.jpg"
+                                        afterImage="/workflow-samples/remove-watermark-after-v2.jpg"
                                         beforeLabel="Before"
                                         afterLabel="After"
-                                        imageFit="object-contain"
-                                    />
+                                        imageFit="object-cover"
+                    imagePosition="object-center"
+                  />
 
                                 </div>
                             )}
@@ -267,6 +273,7 @@ export default function RemoveWatermark() {
 
             {isUploadModalOpen && (
                 <UploadModal
+                    persistLocalDeviceUploads={false}
                     isOpen={isUploadModalOpen}
                     onClose={() => setIsUploadModalOpen(false)}
                     onAdd={(urls: string[]) => {
@@ -277,6 +284,7 @@ export default function RemoveWatermark() {
                     remainingSlots={1}
                 />
             )}
-        </>
+        </div>
     );
 }
+

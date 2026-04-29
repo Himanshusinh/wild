@@ -9,13 +9,15 @@ import UploadModal from '@/app/view/Generation/ImageGeneration/TextToImage/compo
 import ImageComparisonSlider from '@/app/view/workflows/components/ImageComparisonSlider';
 import { downloadFileWithNaming } from '@/utils/downloadUtils';
 import { useCredits } from '@/hooks/useCredits';
+import { getSignInUrl } from '@/routes/routes';
 
 export default function RemoveElement() {
     const router = useRouter();
     const {
         creditBalance,
         deductCreditsOptimisticForGeneration,
-        rollbackOptimisticDeduction
+        rollbackOptimisticDeduction,
+        user
     } = useCredits();
 
     // State
@@ -61,6 +63,10 @@ export default function RemoveElement() {
     };
 
     const handleRun = async () => {
+        if (!user) {
+            router.push(getSignInUrl());
+            return;
+        }
         if (!originalImage) {
             toast.error('Please upload an image first');
             return;
@@ -246,7 +252,8 @@ export default function RemoveElement() {
                                         beforeLabel="Before"
                                         afterLabel="Object Removed"
                                         imageFit="object-contain" // Use object-contain to see full images properly
-                                    />
+                    imagePosition="object-center"
+                  />
                                     <button
                                         onClick={handleDownload}
                                         className="absolute bottom-10 right-10 z-30 flex items-center gap-2 px-5 py-2.5 bg-black/50 hover:bg-black/70 backdrop-blur-md border border-white/10 rounded-full text-white text-sm font-medium transition-all active:scale-95 group"
@@ -273,7 +280,8 @@ export default function RemoveElement() {
                                         beforeLabel="Before"
                                         afterLabel="After"
                                         imageFit="object-contain"
-                                    />
+                    imagePosition="object-center"
+                  />
 
                                 </div>
                             )}
@@ -284,6 +292,7 @@ export default function RemoveElement() {
 
             {isUploadModalOpen && (
                 <UploadModal
+                    persistLocalDeviceUploads={false}
                     isOpen={isUploadModalOpen}
                     onClose={() => setIsUploadModalOpen(false)}
                     onAdd={(urls: string[]) => {
@@ -297,3 +306,4 @@ export default function RemoveElement() {
         </>
     );
 }
+

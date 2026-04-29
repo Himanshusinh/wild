@@ -1,0 +1,2 @@
+export { LeatherToysModal } from "./LeatherToysModal";
+

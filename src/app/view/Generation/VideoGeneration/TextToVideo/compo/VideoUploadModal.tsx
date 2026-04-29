@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { toThumbUrl, toDirectUrl } from '@/lib/thumb';
 
 // Helper functions for proxy URLs (same as InputBox.tsx and History.tsx)
@@ -82,6 +83,7 @@ type VideoUploadModalProps = {
 };
 
 const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, onAdd, remainingSlots }) => {
+  const [mounted, setMounted] = React.useState(false);
   const [tab, setTab] = React.useState<'library' | 'computer'>('library');
   const [selection, setSelection] = React.useState<Set<string>>(new Set());
   const [localUploads, setLocalUploads] = React.useState<string[]>([]);
@@ -103,6 +105,10 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
   const STORAGE_KEY = 'wm_video_upload_modal_scroll_positions';
   const prevTabRef = React.useRef<typeof tab | null>(null);
   const visitedTabsRef = React.useRef<Record<string, boolean>>({});
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Load persisted scroll positions (if any) from sessionStorage on mount
   React.useEffect(() => {
@@ -311,10 +317,13 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
     };
   });
 
-  return (
+  const modal = (
     <div className="fixed inset-0 z-[90]" onClick={onClose}>
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-      <div className="absolute inset-0 flex items-center justify-center p-4" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="absolute inset-0 flex items-center justify-center p-4"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="w-full max-w-3xl bg-black/70 backdrop-blur-xl ring-1 ring-white/20 rounded-lg overflow-hidden shadow-2xl">
           <div className="flex items-center justify-between md:px-4 px-3 md:py-3 py-2 border-b border-white/10 gap-2">
             <div className="flex items-center gap-2">
@@ -332,19 +341,19 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
                   ref={listRef}
                   onScroll={async (e) => {
                     const el = e.currentTarget as HTMLDivElement;
-                    try { 
-                      scrollPositionsRef.current[tab] = el.scrollTop; 
+                    try {
+                      scrollPositionsRef.current[tab] = el.scrollTop;
                       try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(scrollPositionsRef.current || {})); } catch {}
                     } catch {}
-                    
+
                     if (libraryLoading || isLoadingMoreRef.current || !libraryHasMore) return;
                     const nearBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 200;
-                    
+
                     if (nearBottom) {
                       const scrollTopBefore = el.scrollTop;
                       const scrollHeightBefore = el.scrollHeight;
                       isLoadingMoreRef.current = true;
-                      
+
                       try {
                         setLibraryLoading(true);
                         const result = await getLibraryPage(50, libraryNextCursor, 'video');
@@ -357,7 +366,7 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
                         setLibraryNextCursor(result.nextCursor);
                         setLibraryHasMore(result.hasMore);
                         setLibraryLoading(false);
-                        
+
                         // Maintain scroll position
                         requestAnimationFrame(() => {
                           requestAnimationFrame(() => {
@@ -385,23 +394,39 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
                     const selected = selection.has(videoUrl);
                     // Create unique key using id, url, and index to prevent duplicates
                     const key = `video-${item.id || videoUrl || index}-${index}`;
-                    
+
                     // Get thumbnail URL with proxy for caching
                     const thumbnailUrl = item.thumbnailUrl;
-                    const posterUrl = thumbnailUrl 
+                    const posterUrl = thumbnailUrl
                       ? (toMediaProxy(thumbnailUrl) || thumbnailUrl)
                       : (toThumbUrl(videoUrl, { w: 480, q: 60 }) || undefined);
-                    
+
                     // Get video source URL with proxy support for caching
                     const mediaUrl = item.storagePath || item.url;
                     const proxied = toFrontendProxyMediaUrl(mediaUrl);
                     const vsrc = proxied || (mediaUrl && (mediaUrl.startsWith('http://') || mediaUrl.startsWith('https://')) ? mediaUrl : '');
-                    
+
                     return (
                       <button key={key} onClick={() => {
-                        const next = new Set(selection);
-                        if (selected) next.delete(videoUrl); else next.add(videoUrl);
-                        setSelection(next);
+                        setSelection(prev => {
+                          const next = new Set(prev);
+                          if (selected) {
+                            next.delete(videoUrl);
+                            return next;
+                          }
+                          // Enforce selection limit (typically 1) without changing UI.
+                          // If user selects a new video beyond the limit, replace selection with the latest.
+                          if (remainingSlots <= 1) {
+                            return new Set([videoUrl]);
+                          }
+                          next.add(videoUrl);
+                          // If we somehow exceed the limit, keep the most recent selections.
+                          const arr = Array.from(next);
+                          if (arr.length > remainingSlots) {
+                            return new Set(arr.slice(arr.length - remainingSlots));
+                          }
+                          return next;
+                        });
                       }} className={`relative w-full md:h-32 h-24 rounded-lg overflow-hidden ring-1 ${selected ? 'ring-white' : 'ring-white/20'} bg-black/50`}>
                         {vsrc ? (
                           <video
@@ -412,13 +437,13 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
                             loop
                             preload="metadata"
                             poster={posterUrl}
-                            onMouseEnter={async (e) => { 
-                              try { 
+                            onMouseEnter={async (e) => {
+                              try {
                                 await (e.currentTarget as HTMLVideoElement).play();
-                              } catch { } 
+                              } catch { }
                             }}
-                            onMouseLeave={(e) => { 
-                              const v = e.currentTarget as HTMLVideoElement; 
+                            onMouseLeave={(e) => {
+                              const v = e.currentTarget as HTMLVideoElement;
                               try { v.pause(); v.currentTime = 0 } catch { }
                             }}
                             onError={(e) => {
@@ -526,7 +551,7 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
                                 videoReadyState: video.readyState,
                                 videoPaused: video.paused
                               });
-                              
+
                               try {
                                 // Force video to load if not ready
                                 if (video.readyState < 2) {
@@ -537,7 +562,7 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
                                     video.addEventListener('error', resolve, { once: true });
                                   });
                                 }
-                                
+
                                 console.log('🎥 Video ready, attempting to play...');
                                 video.currentTime = 1; // Start from 1 second for preview
                                 await video.play();
@@ -551,7 +576,7 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
                                   readyState: video.readyState,
                                   networkState: video.networkState
                                 });
-                                
+
                                 // Try alternative approach - muted autoplay
                                 console.log('🔄 Trying alternative play method...');
                                 video.muted = true; // Ensure muted for autoplay
@@ -574,7 +599,7 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
                               e.stopPropagation();
                               const video = e.currentTarget;
                               console.log('🎥 VIDEO CLICKED (LocalUpload)');
-                              
+
                               if (video.paused) {
                                 try {
                                   video.currentTime = 1; // Start from 1 second for preview
@@ -603,12 +628,12 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
                             title="Remove"
                             onClick={(e) => {
                               e.stopPropagation();
-                                try { URL.revokeObjectURL(url); } catch {}
-                                setLocalUploadFiles(prev => {
-                                  const next = { ...(prev || {}) };
-                                  delete next[url];
-                                  return next;
-                                });
+                              try { URL.revokeObjectURL(url); } catch {}
+                              setLocalUploadFiles(prev => {
+                                const next = { ...(prev || {}) };
+                                delete next[url];
+                                return next;
+                              });
                               setLocalUploads(prev => prev.filter((u, i) => !(u === url && i === idx)));
                             }}
                             className="absolute top-1.5 right-1.5 w-7 h-7 rounded-full bg-black/60 hover:bg-black/80 text-white/90 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
@@ -639,6 +664,10 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ isOpen, onClose, on
       </div>
     </div>
   );
+
+  // Render in a portal so it doesn't get trapped under transformed/sticky parents (the input box uses transforms).
+  if (!mounted) return null;
+  return createPortal(modal, document.body);
 };
 
 export default VideoUploadModal;

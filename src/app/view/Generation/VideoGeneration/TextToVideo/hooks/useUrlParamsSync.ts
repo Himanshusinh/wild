@@ -1,0 +1,132 @@
+import { useEffect, useRef } from 'react';
+import { ReadonlyURLSearchParams, useRouter } from 'next/navigation';
+
+interface UseUrlParamsSyncProps {
+  searchParams: ReadonlyURLSearchParams;
+  setPrompt: (value: string) => void;
+  setSelectedModel: (value: string) => void;
+  setFrameSize: (value: string) => void;
+  setDuration: (value: number | "auto") => void;
+  setSelectedQuality: (value: any) => void;
+  setSelectedResolution: (value: any) => void;
+  setGenerationMode: (value: "text_to_video" | "image_to_video" | "video_to_video") => void;
+  setUploadedImages: (value: string[]) => void;
+}
+
+export const useUrlParamsSync = ({
+  searchParams,
+  setPrompt,
+  setSelectedModel,
+  setFrameSize,
+  setDuration,
+  setSelectedQuality,
+  setSelectedResolution,
+  setGenerationMode,
+  setUploadedImages
+}: UseUrlParamsSyncProps) => {
+  const router = useRouter();
+  const lastProcessedStr = useRef('');
+
+  useEffect(() => {
+    // Prevent double processing or processing empty params
+    const searchString = searchParams?.toString();
+    if (!searchString) return;
+
+    if (lastProcessedStr.current === searchString) return;
+    lastProcessedStr.current = searchString;
+
+    console.log('Video generation - syncing URL params');
+    let hasUpdates = false;
+
+    const imageUrl = searchParams.get('image');
+    const promptParam = searchParams.get('prompt');
+    const modelParam = searchParams.get('model');
+    const frameParam = searchParams.get('frame') || searchParams.get('aspect') || searchParams.get('aspectRatio');
+    const durationParam = searchParams.get('duration');
+    const qualityParam = searchParams.get('quality');
+    const resolutionParam = searchParams.get('resolution');
+
+    // Apply text params
+    if (promptParam) {
+      try { setPrompt(decodeURIComponent(promptParam)); } catch { setPrompt(promptParam); }
+      hasUpdates = true;
+    }
+    if (modelParam) {
+      try { setSelectedModel(decodeURIComponent(modelParam)); } catch { setSelectedModel(modelParam); }
+      hasUpdates = true;
+    }
+    if (frameParam) {
+      try { setFrameSize(decodeURIComponent(frameParam)); } catch { setFrameSize(frameParam); }
+      hasUpdates = true;
+    }
+    if (durationParam) {
+      if (durationParam.toLowerCase() === "auto") {
+        setDuration("auto");
+        hasUpdates = true;
+      } else {
+        const d = Number(durationParam);
+        if (Number.isFinite(d) && d > 0) {
+          setDuration(d);
+          hasUpdates = true;
+        }
+      }
+    }
+    if (qualityParam) {
+      try {
+        const q = decodeURIComponent(qualityParam).toLowerCase();
+        if (q.includes('1080')) setSelectedQuality('1080p');
+        else if (q.includes('720')) setSelectedQuality('720p');
+        else if (q.includes('480')) setSelectedQuality('480p');
+        hasUpdates = true;
+      } catch { }
+    }
+    if (resolutionParam) {
+      try {
+        const r = decodeURIComponent(resolutionParam).toLowerCase();
+        if (r.includes('1080')) setSelectedResolution('1080P');
+        else if (r.includes('768')) setSelectedResolution('768P');
+        else if (r.includes('720')) setSelectedResolution('720P');
+        else if (r.includes('480')) setSelectedResolution('480P');
+        hasUpdates = true;
+      } catch { }
+    }
+
+    // Handle Image Param
+    if (imageUrl) {
+      let decodedImageUrl = decodeURIComponent(imageUrl);
+
+      // Convert proxy URL to full Zata URL if needed (matching existing logic)
+      if (decodedImageUrl.startsWith('/api/proxy/resource/')) {
+        const ZATA_PREFIX = (process.env.NEXT_PUBLIC_ZATA_PREFIX as string) || '';
+        const path = decodedImageUrl.replace('/api/proxy/resource/', '');
+        decodedImageUrl = `${ZATA_PREFIX}${decodeURIComponent(path)}`;
+      }
+
+      setUploadedImages([decodedImageUrl]);
+      setGenerationMode("image_to_video");
+      hasUpdates = true;
+    }
+
+    if (hasUpdates) {
+      // Clean up URL without hardcoding the path
+      if (typeof window !== 'undefined') {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('image');
+        url.searchParams.delete('prompt');
+        url.searchParams.delete('model');
+        url.searchParams.delete('frame');
+        url.searchParams.delete('aspect');
+        url.searchParams.delete('aspectRatio');
+        url.searchParams.delete('duration');
+        url.searchParams.delete('quality');
+        url.searchParams.delete('resolution');
+
+        const next = url.pathname + (url.searchParams.toString() ? `?${url.searchParams.toString()}` : '');
+        router.replace(next, { scroll: false });
+      } else {
+        // Fallback for SSR if somehow executed there
+        router.replace('/text-to-video', { scroll: false });
+      }
+    }
+  }, [searchParams, router, setPrompt, setSelectedModel, setFrameSize, setDuration, setSelectedQuality, setSelectedResolution, setGenerationMode, setUploadedImages]);
+};

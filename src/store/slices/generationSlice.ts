@@ -7,7 +7,7 @@ import { getModelMapping } from '@/utils/modelMapping';
 import type { ActiveGeneration } from '@/lib/generationPersistence';
 import * as generationPersistence from '@/lib/generationPersistence';
 // Import Runway thunks from generationsApi to synchronize active generation lifecycle for Runway flows
-import { runwayGenerate, runwayVideo } from '@/store/slices/generationsApi';
+import { runwayGenerate, runwayVideo, bflGenerate, falGenerate, replicateGenerate, minimaxGenerate } from '@/store/slices/generationsApi';
 
 interface GenerationState {
   prompt: string;
@@ -47,11 +47,86 @@ interface GenerationState {
   // Parallel generation support
   activeGenerations: ActiveGeneration[];
   maxConcurrentGenerations: number;
+  // Google Nano Banana 2 options
+  nanoBananaResolution: string;
+  nanoBananaGoogleSearch: boolean;
+  nanoBananaImageSearch: boolean;
+  nanoBananaThinkingLevel: "minimal" | "high";
+  nanoBananaLimitGenerations: boolean;
 }
+
+const sanitizeErrorMessage = (msg: string | undefined | null, fallback = "Generation failed"): string => {
+  if (!msg) return fallback;
+  if (msg.includes('The input or output was flagged as sensitive.')) {
+    return 'The input or output was flagged as sensitive. Please try again with different inputs.';
+  }
+  return msg;
+};
+
+const mapGenerationErrorCodeToMessage = (
+  code: string | undefined | null,
+): string | null => {
+  const normalized = String(code || "").trim().toUpperCase();
+  if (!normalized) return null;
+  if (normalized === "FREE_Z_IMAGE_TURBO_LIMIT_REACHED") {
+    return "Free users can generate up to 10 lifetime z-image-turbo images. Upgrade your plan to continue.";
+  }
+  return null;
+};
+
+const extractRejectedMessage = (
+  payload: unknown,
+  fallback?: string,
+): string => {
+  const codeCandidates = [
+    (payload as any)?.code,
+    (payload as any)?.responseData?.code,
+  ];
+  const mappedMessage = mapGenerationErrorCodeToMessage(
+    codeCandidates.find((value) => typeof value === "string"),
+  );
+  if (mappedMessage) {
+    return mappedMessage;
+  }
+
+  const candidates = [
+    (payload as any)?.message,
+    (payload as any)?.detail,
+    (payload as any)?.error,
+    (payload as any)?.responseData?.message,
+    (payload as any)?.responseData?.detail,
+    (payload as any)?.responseData?.error,
+    typeof payload === "string" ? payload : undefined,
+    fallback,
+  ];
+  const resolved = candidates.find(
+    (value) => typeof value === "string" && value.trim().length > 0,
+  ) as string | undefined;
+  return sanitizeErrorMessage(resolved, fallback || "Generation failed");
+};
+
+const getMaxOutputImageCountForModel = (model?: string): number => {
+  const normalizedModel = String(model || '').trim().toLowerCase();
+  if (
+    normalizedModel === 'seedream-4.5' ||
+    normalizedModel === 'bytedance/seedream-4.5' ||
+    normalizedModel === 'seedream-5-lite' ||
+    normalizedModel === 'bytedance/seedream-5-lite'
+  ) {
+    return 15;
+  }
+  if (
+    normalizedModel === 'openai/gpt-image-2' ||
+    normalizedModel === 'gpt-image-2'
+  ) {
+    return 10;
+  }
+  return 4;
+};
 
 const initialState: GenerationState = {
   prompt: '',
-  selectedModel: 'new-turbo-model', // Default to Infinite (z-image-turbo) - free unlimited
+  selectedModel: 'new-turbo-model', // Default free-tier image model (lifetime cap enforced by backend)
   imageCount: 1,
   frameSize: '1:1',
   style: 'none',
@@ -76,6 +151,12 @@ const initialState: GenerationState = {
   // Parallel generation defaults
   activeGenerations: [],
   maxConcurrentGenerations: 4,
+  // Google Nano Banana 2 defaults
+  nanoBananaResolution: "1K",
+  nanoBananaGoogleSearch: false,
+  nanoBananaImageSearch: false,
+  nanoBananaThinkingLevel: "minimal",
+  nanoBananaLimitGenerations: true,
 };
 
 type GenerationTypeLocal = SharedGenerationType;
@@ -84,7 +165,7 @@ type GenerationTypeLocal = SharedGenerationType;
 export const generateImages = createAsyncThunk(
   'generation/generateImages',
   async (
-    { prompt, model, imageCount, frameSize, style, generationType, uploadedImages, width, height, isPublic, quality, output_format }: {
+    { prompt, model, imageCount, frameSize, style, generationType, uploadedImages, width, height, isPublic, quality, output_format, size, aspect_ratio, image_input }: {
       prompt: string;
       model: string;
       imageCount: number;
@@ -98,12 +179,17 @@ export const generateImages = createAsyncThunk(
       generationId?: string; // For parallel generation tracking
       quality?: string; // For models that support quality parameter (e.g., GPT Image 1.5)
       output_format?: string; // For models that support output_format parameter (e.g., GPT Image 1.5)
+      size?: string; // For Seedream models
+      aspect_ratio?: string; // For explicit aspect ratio overriding (like Seedream and Qwen)
+      image_input?: string[]; // Specifically for Replicate APIs like Seedream
     },
-    { rejectWithValue }
+    { rejectWithValue, getState }
   ) => {
     try {
-      // Enforce app-wide max of 4 images
-      const requestedCount = Math.min(imageCount, 4);
+      const requestedCount = Math.min(
+        imageCount,
+        getMaxOutputImageCountForModel(model),
+      );
       const clientRequestId = `req-${Date.now()}-${Math.random().toString(36).slice(2)}`;
       const api = getApiClient();
 
@@ -121,7 +207,8 @@ export const generateImages = createAsyncThunk(
         model === 'seedream-4.5' ||
         model === 'imagen-4-ultra' ||
         model === 'imagen-4' ||
-        model === 'imagen-4-fast';
+        model === 'imagen-4-fast' ||
+        model === 'google/nano-banana-2';
 
       let endpoint: string;
       if (provider === 'wildmind') {
@@ -142,7 +229,7 @@ export const generateImages = createAsyncThunk(
           const mod = await import('@/lib/publicFlag');
           resolvedIsPublic = await mod.getIsPublic();
         }
-      } catch {}
+      } catch { }
 
       const coerceGptImage15AspectRatio = (raw?: string): '1:1' | '3:2' | '2:3' | undefined => {
         if (!raw) return undefined;
@@ -162,6 +249,16 @@ export const generateImages = createAsyncThunk(
       };
 
       // Build payload
+      const shouldOmitUploadedImages =
+        Array.isArray(image_input) &&
+        image_input.length > 0 &&
+        typeof model === 'string' &&
+        (
+          model === 'seedream-v4' ||
+          model === 'seedream-5-lite' ||
+          model === 'bytedance/seedream-4' ||
+          model === 'bytedance/seedream-5-lite'
+        );
       const body: any = {
         prompt,
         model,
@@ -171,32 +268,49 @@ export const generateImages = createAsyncThunk(
         frameSize,
         style,
         generationType,
-        uploadedImages,
+        ...(shouldOmitUploadedImages ? {} : { uploadedImages }),
         clientRequestId,
         ...(width && height ? { width, height } : {}),
         ...(typeof resolvedIsPublic === 'boolean' ? { isPublic: resolvedIsPublic } : {}),
         ...(quality ? { quality } : {}), // Add quality parameter if provided
-        ...(output_format ? { output_format } : {}) // Add output_format parameter if provided
+        ...(output_format ? { output_format } : {}), // Add output_format parameter if provided
+        ...(size ? { size } : {}), // Add size parameter for Seedream models
+        ...(aspect_ratio ? { aspect_ratio } : {}), // Add aspect_ratio parameter if provided
+        ...(image_input ? { image_input } : {}), // Add specific image array if provided by model specific logics
+        ...(model === "google/nano-banana-2"
+          ? {
+              resolution: (getState() as any).generation.nanoBananaResolution,
+              enable_web_search: (getState() as any).generation
+                .nanoBananaGoogleSearch,
+              thinking_level: (getState() as any).generation
+                .nanoBananaThinkingLevel,
+              limit_generations: (getState() as any).generation
+                .nanoBananaLimitGenerations,
+            }
+          : {}),
       };
       // For FAL image models, prefer aspect_ratio over frameSize naming
       if (isFalModel) {
         if (frameSize) body.aspect_ratio = frameSize;
       }
       // For GPT Image 1.5 (Replicate), use aspect_ratio from frameSize
-      if (model === 'openai/gpt-image-1.5' && frameSize) {
+      if (
+        model === 'openai/gpt-image-1.5' &&
+        frameSize
+      ) {
         // GPT Image 1.5 schema only supports: 1:1 | 3:2 | 2:3
         // Coerce common wides (e.g. 16:9) to the closest supported landscape ratio (3:2).
         const coerced = coerceGptImage15AspectRatio(frameSize);
         if (coerced) body.aspect_ratio = coerced;
       }
-      // For GPT Image 1.5 (Replicate), schema uses `number_of_images`.
-      if (model === 'openai/gpt-image-1.5') {
+      // For GPT Image models (Replicate), schema uses `number_of_images`.
+      if (model === 'openai/gpt-image-1.5' || model === 'openai/gpt-image-2') {
         body.number_of_images = requestedCount;
       }
 
       console.log('[generateImages] POST', endpoint, { body, isPublic: body.isPublic });
       const { data } = await api.post(endpoint, body);
-      console.log('[generateImages] RESPONSE', endpoint, { status: (data && data.status) || 'ok', keys: Object.keys(data || {}) });
+      console.log('[generateImages] RESPONSE', endpoint, { status: (data && data.status) || 'ok', keys: Object.keys(data || {}), data });
       const payload = data?.data || data;
       // Trigger credits refresh after successful charge
       requestCreditsRefresh();
@@ -204,8 +318,37 @@ export const generateImages = createAsyncThunk(
         images: payload.images,
         historyId: payload.historyId,
       };
-    } catch (error) {
-      return rejectWithValue(error instanceof Error ? error.message : 'Failed to generate images');
+    } catch (error: any) {
+      const backendMessage =
+        error?.response?.data?.message ||
+        error?.response?.data?.detail ||
+        error?.data?.message ||
+        error?.data?.detail ||
+        error?.payload?.message ||
+        error?.payload?.detail ||
+        error?.raw?.response?.data?.message ||
+        error?.raw?.response?.data?.detail;
+      const resolvedMessage =
+        (typeof backendMessage === 'string' && backendMessage.trim().length > 0
+          ? backendMessage
+          : undefined) ||
+        (typeof error?.message === 'string' && error.message.trim().length > 0
+          ? error.message
+          : undefined) ||
+        'Failed to generate images';
+
+      const finalResolvedMessage = sanitizeErrorMessage(resolvedMessage, 'Failed to generate images');
+
+      return rejectWithValue({
+        message: finalResolvedMessage,
+        status: error?.response?.status,
+        responseData: error?.response?.data,
+        detail:
+          error?.response?.data?.detail ||
+          error?.response?.data?.error ||
+          error?.data?.detail ||
+          error?.data?.error,
+      });
     }
   }
 );
@@ -237,7 +380,8 @@ export const generateLiveChatImage = createAsyncThunk(
         model === 'seedream-4.5' ||
         model === 'imagen-4-ultra' ||
         model === 'imagen-4' ||
-        model === 'imagen-4-fast';
+        model === 'imagen-4-fast' ||
+        model === 'google/nano-banana-2';
 
       let endpoint: string;
       if (provider === 'replicate') {
@@ -247,7 +391,7 @@ export const generateLiveChatImage = createAsyncThunk(
       } else {
         endpoint = '/api/bfl/generate';
       }
-      
+
       // Resolve isPublic if absent
       let resolvedIsPublic: boolean | undefined = isPublic;
       try {
@@ -255,7 +399,7 @@ export const generateLiveChatImage = createAsyncThunk(
           const mod = await import('@/lib/publicFlag');
           resolvedIsPublic = await mod.getIsPublic();
         }
-      } catch {}
+      } catch { }
 
       const body: any = { prompt, model, frameSize, uploadedImages, n: 1, generationType: 'live-chat' as any, ...(typeof resolvedIsPublic === 'boolean' ? { isPublic: resolvedIsPublic } : {}) };
       if (isFalModel && frameSize) body.aspect_ratio = frameSize;
@@ -265,7 +409,7 @@ export const generateLiveChatImage = createAsyncThunk(
       requestCreditsRefresh();
       return { images: payload.images, requestId: payload.requestId };
     } catch (error) {
-      return rejectWithValue(error instanceof Error ? error.message : 'Live chat generation failed');
+      return rejectWithValue(sanitizeErrorMessage(error instanceof Error ? error.message : 'Live chat generation failed', 'Live chat generation failed'));
     }
   }
 );
@@ -298,7 +442,7 @@ export const generateRunwayImages = createAsyncThunk(
           const mod = await import('@/lib/publicFlag');
           resolvedIsPublic = await mod.getIsPublic();
         }
-      } catch {}
+      } catch { }
 
       const payload = {
         promptText: prompt,
@@ -322,7 +466,7 @@ export const generateRunwayImages = createAsyncThunk(
         ratio,
       };
     } catch (error) {
-      return rejectWithValue(error instanceof Error ? error.message : 'Failed to generate images with Runway');
+      return rejectWithValue(sanitizeErrorMessage(error instanceof Error ? error.message : 'Failed to generate images with Runway', 'Failed to generate images with Runway'));
     }
   }
 );
@@ -361,7 +505,7 @@ export const generateMiniMaxImages = createAsyncThunk(
           const mod = await import('@/lib/publicFlag');
           resolvedIsPublic = await mod.getIsPublic();
         }
-      } catch {}
+      } catch { }
 
       const payload: any = {
         prompt,
@@ -409,7 +553,7 @@ export const generateMiniMaxImages = createAsyncThunk(
         aspect_ratio: aspect_ratio || `${width}:${height}`,
       };
     } catch (error) {
-      return rejectWithValue(error instanceof Error ? error.message : 'Failed to generate images with MiniMax');
+      return rejectWithValue(sanitizeErrorMessage(error instanceof Error ? error.message : 'Failed to generate images with MiniMax', 'Failed to generate images with MiniMax'));
     }
   }
 );
@@ -423,9 +567,13 @@ const generationSlice = createSlice({
     },
     setSelectedModel: (state, action: PayloadAction<string>) => {
       state.selectedModel = action.payload;
+      const maxAllowed = getMaxOutputImageCountForModel(action.payload);
+      state.imageCount = Math.min(Math.max(1, state.imageCount || 1), maxAllowed);
     },
     setImageCount: (state, action: PayloadAction<number>) => {
-      state.imageCount = action.payload;
+      const requested = Math.max(1, Number(action.payload) || 1);
+      const maxAllowed = getMaxOutputImageCountForModel(state.selectedModel);
+      state.imageCount = Math.min(requested, maxAllowed);
     },
     setFrameSize: (state, action: PayloadAction<string>) => {
       state.frameSize = action.payload;
@@ -517,6 +665,25 @@ const generationSlice = createSlice({
     setOutputFormat: (state, action: PayloadAction<string>) => {
       state.outputFormat = action.payload;
     },
+    // Google Nano Banana 2 options
+    setNanoBananaResolution: (state, action: PayloadAction<string>) => {
+      state.nanoBananaResolution = action.payload;
+    },
+    setNanoBananaGoogleSearch: (state, action: PayloadAction<boolean>) => {
+      state.nanoBananaGoogleSearch = action.payload;
+    },
+    setNanoBananaImageSearch: (state, action: PayloadAction<boolean>) => {
+      state.nanoBananaImageSearch = action.payload;
+    },
+    setNanoBananaThinkingLevel: (
+      state,
+      action: PayloadAction<"minimal" | "high">,
+    ) => {
+      state.nanoBananaThinkingLevel = action.payload;
+    },
+    setNanoBananaLimitGenerations: (state, action: PayloadAction<boolean>) => {
+      state.nanoBananaLimitGenerations = action.payload;
+    },
     clearGenerationState: (state) => {
       state.prompt = '';
       state.uploadedImages = [];
@@ -554,12 +721,12 @@ const generationSlice = createSlice({
           updatedAt: Date.now(),
         };
         state.activeGenerations[index] = updatedGen;
-        
+
         // Update isGenerating flag
         state.isGenerating = state.activeGenerations.some(
           g => g.status === 'pending' || g.status === 'generating'
         );
-        
+
         // Sync to localStorage
         // updateGeneration will automatically remove from persistence if status becomes completed/failed
         generationPersistence.updateGeneration(action.payload.id, action.payload.updates);
@@ -601,7 +768,179 @@ const generationSlice = createSlice({
       })
       .addCase(generateLiveChatImage.rejected, (state, action) => {
         state.isGenerating = false;
-        state.error = action.payload as string;
+        state.error = extractRejectedMessage(action.payload, action.error?.message);
+      })
+      // BFL Generate
+      .addCase(bflGenerate.pending, (state, action) => {
+        state.isGenerating = true;
+        state.error = null;
+        const genId = (action.meta as any).arg?.generationId;
+        if (genId) {
+          const idx = state.activeGenerations.findIndex(g => g.id === genId);
+          if (idx !== -1) {
+            state.activeGenerations[idx].status = 'generating';
+            state.activeGenerations[idx].updatedAt = Date.now();
+            generationPersistence.updateGeneration(genId, { status: 'generating' });
+          }
+        }
+      })
+      .addCase(bflGenerate.fulfilled, (state, action) => {
+        state.isGenerating = false;
+        state.error = null;
+        const genId = (action.meta as any).arg?.generationId;
+        if (genId) {
+          const idx = state.activeGenerations.findIndex(g => g.id === genId);
+          if (idx !== -1) {
+            state.activeGenerations[idx].status = 'completed';
+            state.activeGenerations[idx].images = action.payload.images || [];
+            state.activeGenerations[idx].historyId = action.payload.historyId;
+            state.activeGenerations[idx].updatedAt = Date.now();
+            generationPersistence.updateGeneration(genId, { status: 'completed', images: action.payload.images, historyId: action.payload.historyId });
+          }
+        }
+      })
+      .addCase(bflGenerate.rejected, (state, action) => {
+        state.isGenerating = false;
+        state.error = extractRejectedMessage(action.payload, action.error?.message);
+        const genId = (action.meta as any).arg?.generationId;
+        if (genId) {
+          const idx = state.activeGenerations.findIndex(g => g.id === genId);
+          if (idx !== -1) {
+            state.activeGenerations[idx].status = 'failed';
+            state.activeGenerations[idx].error = sanitizeErrorMessage(action.payload as string, 'BFL Generation failed');
+            state.activeGenerations[idx].updatedAt = Date.now();
+            generationPersistence.updateGeneration(genId, { status: 'failed', error: state.activeGenerations[idx].error });
+          }
+        }
+      })
+      // FAL Generate
+      .addCase(falGenerate.pending, (state, action) => {
+        state.isGenerating = true;
+        state.error = null;
+        const genId = (action.meta as any).arg?.generationId;
+        if (genId) {
+          const idx = state.activeGenerations.findIndex(g => g.id === genId);
+          if (idx !== -1) {
+            state.activeGenerations[idx].status = 'generating';
+            state.activeGenerations[idx].updatedAt = Date.now();
+            generationPersistence.updateGeneration(genId, { status: 'generating' });
+          }
+        }
+      })
+      .addCase(falGenerate.fulfilled, (state, action) => {
+        state.isGenerating = false;
+        state.error = null;
+        const genId = (action.meta as any).arg?.generationId;
+        if (genId) {
+          const idx = state.activeGenerations.findIndex(g => g.id === genId);
+          if (idx !== -1) {
+            state.activeGenerations[idx].status = 'completed';
+            state.activeGenerations[idx].images = action.payload.images || [];
+            state.activeGenerations[idx].historyId = action.payload.historyId;
+            state.activeGenerations[idx].updatedAt = Date.now();
+            generationPersistence.updateGeneration(genId, { status: 'completed', images: action.payload.images, historyId: action.payload.historyId });
+          }
+        }
+      })
+      .addCase(falGenerate.rejected, (state, action) => {
+        state.isGenerating = false;
+        state.error = extractRejectedMessage(action.payload, action.error?.message);
+        const genId = (action.meta as any).arg?.generationId;
+        if (genId) {
+          const idx = state.activeGenerations.findIndex(g => g.id === genId);
+          if (idx !== -1) {
+            state.activeGenerations[idx].status = 'failed';
+            state.activeGenerations[idx].error = sanitizeErrorMessage((action.payload as any)?.message || action.payload as string, 'FAL Generation failed');
+            state.activeGenerations[idx].updatedAt = Date.now();
+            generationPersistence.updateGeneration(genId, { status: 'failed', error: state.activeGenerations[idx].error });
+          }
+        }
+      })
+      // Replicate Generate
+      .addCase(replicateGenerate.pending, (state, action) => {
+        state.isGenerating = true;
+        state.error = null;
+        const genId = (action.meta as any).arg?.generationId;
+        if (genId) {
+          const idx = state.activeGenerations.findIndex(g => g.id === genId);
+          if (idx !== -1) {
+            state.activeGenerations[idx].status = 'generating';
+            state.activeGenerations[idx].updatedAt = Date.now();
+            generationPersistence.updateGeneration(genId, { status: 'generating' });
+          }
+        }
+      })
+      .addCase(replicateGenerate.fulfilled, (state, action) => {
+        state.isGenerating = false;
+        state.error = null;
+        const genId = (action.meta as any).arg?.generationId;
+        if (genId) {
+          const idx = state.activeGenerations.findIndex(g => g.id === genId);
+          if (idx !== -1) {
+            state.activeGenerations[idx].status = 'completed';
+            state.activeGenerations[idx].images = action.payload.images || [];
+            state.activeGenerations[idx].historyId = action.payload.historyId;
+            state.activeGenerations[idx].updatedAt = Date.now();
+            generationPersistence.updateGeneration(genId, { status: 'completed', images: action.payload.images, historyId: action.payload.historyId });
+          }
+        }
+      })
+      .addCase(replicateGenerate.rejected, (state, action) => {
+        state.isGenerating = false;
+        state.error = extractRejectedMessage(action.payload, action.error?.message);
+        const genId = (action.meta as any).arg?.generationId;
+        if (genId) {
+          const idx = state.activeGenerations.findIndex(g => g.id === genId);
+          if (idx !== -1) {
+            state.activeGenerations[idx].status = 'failed';
+            state.activeGenerations[idx].error = sanitizeErrorMessage((action.payload as any)?.message || action.payload as string, 'Replicate Generation failed');
+            state.activeGenerations[idx].updatedAt = Date.now();
+            generationPersistence.updateGeneration(genId, { status: 'failed', error: state.activeGenerations[idx].error });
+          }
+        }
+      })
+      // MiniMax Generate (API)
+      .addCase(minimaxGenerate.pending, (state, action) => {
+        state.isGenerating = true;
+        state.error = null;
+        const genId = (action.meta as any).arg?.generationId;
+        if (genId) {
+          const idx = state.activeGenerations.findIndex(g => g.id === genId);
+          if (idx !== -1) {
+            state.activeGenerations[idx].status = 'generating';
+            state.activeGenerations[idx].updatedAt = Date.now();
+            generationPersistence.updateGeneration(genId, { status: 'generating' });
+          }
+        }
+      })
+      .addCase(minimaxGenerate.fulfilled, (state, action) => {
+        state.isGenerating = false;
+        state.error = null;
+        const genId = (action.meta as any).arg?.generationId;
+        if (genId) {
+          const idx = state.activeGenerations.findIndex(g => g.id === genId);
+          if (idx !== -1) {
+            state.activeGenerations[idx].status = 'completed';
+            state.activeGenerations[idx].images = action.payload.images || [];
+            state.activeGenerations[idx].historyId = action.payload.historyId;
+            state.activeGenerations[idx].updatedAt = Date.now();
+            generationPersistence.updateGeneration(genId, { status: 'completed', images: action.payload.images, historyId: action.payload.historyId });
+          }
+        }
+      })
+      .addCase(minimaxGenerate.rejected, (state, action) => {
+        state.isGenerating = false;
+        state.error = extractRejectedMessage(action.payload, action.error?.message);
+        const genId = (action.meta as any).arg?.generationId;
+        if (genId) {
+          const idx = state.activeGenerations.findIndex(g => g.id === genId);
+          if (idx !== -1) {
+            state.activeGenerations[idx].status = 'failed';
+            state.activeGenerations[idx].error = sanitizeErrorMessage(action.payload as string, 'MiniMax Generation failed');
+            state.activeGenerations[idx].updatedAt = Date.now();
+            generationPersistence.updateGeneration(genId, { status: 'failed', error: state.activeGenerations[idx].error });
+          }
+        }
       })
       .addCase(generateImages.pending, (state, action) => {
         state.isGenerating = true;
@@ -611,7 +950,7 @@ const generationSlice = createSlice({
           total: state.imageCount,
           status: 'Starting generation...',
         };
-        
+
         // Update active generation if ID exists
         const genId = action.meta.arg.generationId;
         if (genId) {
@@ -628,7 +967,7 @@ const generationSlice = createSlice({
         state.lastGeneratedImages = action.payload.images;
         state.generationProgress = null;
         state.error = null;
-        
+
         // Update active generation if ID exists
         const genId = action.meta.arg.generationId;
         if (genId) {
@@ -639,32 +978,36 @@ const generationSlice = createSlice({
             state.activeGenerations[index].historyId = action.payload.historyId;
             state.activeGenerations[index].updatedAt = Date.now();
             // Don't persist completed generations - updateGeneration will remove from persistence
-            generationPersistence.updateGeneration(genId, { 
+            generationPersistence.updateGeneration(genId, {
               status: 'completed',
               images: action.payload.images,
-              historyId: action.payload.historyId 
+              historyId: action.payload.historyId
             });
           }
         }
       })
       .addCase(generateImages.rejected, (state, action) => {
         state.isGenerating = false;
-        state.error = action.payload as string;
+        const rejectedMessage = extractRejectedMessage(
+          action.payload,
+          action.error?.message,
+        );
+        state.error = rejectedMessage;
         state.generationProgress = null;
-        
+
         // Update active generation if ID exists
         const genId = action.meta.arg.generationId;
         if (genId) {
           const index = state.activeGenerations.findIndex(g => g.id === genId);
           if (index !== -1) {
             // Check if error is a cancellation
-            const errorMessage = action.payload as string;
-            const isCancelled = errorMessage?.includes('cancelled') || 
-                               errorMessage?.includes('canceled') ||
-                               errorMessage?.includes('aborted') ||
-                               (action.error as any)?.code === 'ERR_CANCELED' ||
-                               (action.error as any)?.isCancelled === true;
-            
+            const errorMessage = rejectedMessage;
+            const isCancelled = errorMessage?.includes('cancelled') ||
+              errorMessage?.includes('canceled') ||
+              errorMessage?.includes('aborted') ||
+              (action.error as any)?.code === 'ERR_CANCELED' ||
+              (action.error as any)?.isCancelled === true;
+
             if (isCancelled) {
               state.activeGenerations[index].status = 'cancelled';
               state.activeGenerations[index].error = 'Generation was cancelled';
@@ -674,7 +1017,7 @@ const generationSlice = createSlice({
             }
             state.activeGenerations[index].updatedAt = Date.now();
             // Don't persist failed/cancelled generations - updateGeneration will remove from persistence
-            generationPersistence.updateGeneration(genId, { 
+            generationPersistence.updateGeneration(genId, {
               status: isCancelled ? 'cancelled' : 'failed',
               error: isCancelled ? 'Generation was cancelled' : (errorMessage || 'Generation failed')
             });
@@ -724,19 +1067,22 @@ const generationSlice = createSlice({
       })
       .addCase(generateRunwayImages.rejected, (state, action) => {
         state.isGenerating = false;
-        state.error = action.payload as string;
+        state.error = sanitizeErrorMessage(action.payload as string);
         state.generationProgress = null;
         const genId = (action.meta as any).arg?.generationId;
         if (genId) {
           const idx = state.activeGenerations.findIndex(g => g.id === genId);
           if (idx !== -1) {
-            const errorMessage = action.payload as string;
-            const isCancelled = errorMessage?.includes('cancelled') || 
-                               errorMessage?.includes('canceled') ||
-                               errorMessage?.includes('aborted') ||
-                               (action.error as any)?.code === 'ERR_CANCELED' ||
-                               (action.error as any)?.isCancelled === true;
-            
+            const errorMessage = extractRejectedMessage(
+              action.payload,
+              action.error?.message,
+            );
+            const isCancelled = errorMessage?.includes('cancelled') ||
+              errorMessage?.includes('canceled') ||
+              errorMessage?.includes('aborted') ||
+              (action.error as any)?.code === 'ERR_CANCELED' ||
+              (action.error as any)?.isCancelled === true;
+
             if (isCancelled) {
               state.activeGenerations[idx].status = 'cancelled';
               state.activeGenerations[idx].error = 'Generation was cancelled';
@@ -745,7 +1091,7 @@ const generationSlice = createSlice({
               state.activeGenerations[idx].error = errorMessage || 'Generation failed';
             }
             state.activeGenerations[idx].updatedAt = Date.now();
-            generationPersistence.updateGeneration(genId, { 
+            generationPersistence.updateGeneration(genId, {
               status: isCancelled ? 'cancelled' : 'failed',
               error: isCancelled ? 'Generation was cancelled' : (errorMessage || 'Generation failed')
             });
@@ -779,27 +1125,34 @@ const generationSlice = createSlice({
         if (genId) {
           const idx = state.activeGenerations.findIndex(g => g.id === genId);
           if (idx !== -1) {
+            state.activeGenerations[idx].status = 'completed'; // Ensure status is set to completed
             state.activeGenerations[idx].updatedAt = Date.now();
             state.activeGenerations[idx].historyId = action.payload.historyId || state.activeGenerations[idx].historyId;
-            generationPersistence.updateGeneration(genId, { historyId: action.payload.historyId });
+            generationPersistence.updateGeneration(genId, {
+              status: 'completed',
+              historyId: action.payload.historyId
+            });
           }
         }
       })
       .addCase(runwayGenerate.rejected, (state, action) => {
         state.isGenerating = false;
-        state.error = action.payload as string;
+        state.error = extractRejectedMessage(action.payload, action.error?.message);
         state.generationProgress = null;
         const genId = (action.meta as any).arg?.generationId;
         if (genId) {
           const idx = state.activeGenerations.findIndex(g => g.id === genId);
           if (idx !== -1) {
-            const errorMessage = action.payload as string;
-            const isCancelled = errorMessage?.includes('cancelled') || 
-                               errorMessage?.includes('canceled') ||
-                               errorMessage?.includes('aborted') ||
-                               (action.error as any)?.code === 'ERR_CANCELED' ||
-                               (action.error as any)?.isCancelled === true;
-            
+            const errorMessage = extractRejectedMessage(
+              action.payload,
+              action.error?.message,
+            );
+            const isCancelled = errorMessage?.includes('cancelled') ||
+              errorMessage?.includes('canceled') ||
+              errorMessage?.includes('aborted') ||
+              (action.error as any)?.code === 'ERR_CANCELED' ||
+              (action.error as any)?.isCancelled === true;
+
             if (isCancelled) {
               state.activeGenerations[idx].status = 'cancelled';
               state.activeGenerations[idx].error = 'Generation was cancelled';
@@ -808,7 +1161,7 @@ const generationSlice = createSlice({
               state.activeGenerations[idx].error = errorMessage || 'Generation failed';
             }
             state.activeGenerations[idx].updatedAt = Date.now();
-            generationPersistence.updateGeneration(genId, { 
+            generationPersistence.updateGeneration(genId, {
               status: isCancelled ? 'cancelled' : 'failed',
               error: isCancelled ? 'Generation was cancelled' : (errorMessage || 'Generation failed')
             });
@@ -842,27 +1195,34 @@ const generationSlice = createSlice({
         if (genId) {
           const idx = state.activeGenerations.findIndex(g => g.id === genId);
           if (idx !== -1) {
+            state.activeGenerations[idx].status = 'completed'; // Ensure status is set to completed
             state.activeGenerations[idx].updatedAt = Date.now();
             state.activeGenerations[idx].historyId = action.payload.historyId || state.activeGenerations[idx].historyId;
-            generationPersistence.updateGeneration(genId, { historyId: action.payload.historyId });
+            generationPersistence.updateGeneration(genId, {
+              status: 'completed',
+              historyId: action.payload.historyId
+            });
           }
         }
       })
       .addCase(runwayVideo.rejected, (state, action) => {
         state.isGenerating = false;
-        state.error = action.payload as string;
+        state.error = extractRejectedMessage(action.payload, action.error?.message);
         state.generationProgress = null;
         const genId = (action.meta as any).arg?.generationId;
         if (genId) {
           const idx = state.activeGenerations.findIndex(g => g.id === genId);
           if (idx !== -1) {
-            const errorMessage = action.payload as string;
-            const isCancelled = errorMessage?.includes('cancelled') || 
-                               errorMessage?.includes('canceled') ||
-                               errorMessage?.includes('aborted') ||
-                               (action.error as any)?.code === 'ERR_CANCELED' ||
-                               (action.error as any)?.isCancelled === true;
-            
+            const errorMessage = extractRejectedMessage(
+              action.payload,
+              action.error?.message,
+            );
+            const isCancelled = errorMessage?.includes('cancelled') ||
+              errorMessage?.includes('canceled') ||
+              errorMessage?.includes('aborted') ||
+              (action.error as any)?.code === 'ERR_CANCELED' ||
+              (action.error as any)?.isCancelled === true;
+
             if (isCancelled) {
               state.activeGenerations[idx].status = 'cancelled';
               state.activeGenerations[idx].error = 'Generation was cancelled';
@@ -871,7 +1231,7 @@ const generationSlice = createSlice({
               state.activeGenerations[idx].error = errorMessage || 'Generation failed';
             }
             state.activeGenerations[idx].updatedAt = Date.now();
-            generationPersistence.updateGeneration(genId, { 
+            generationPersistence.updateGeneration(genId, {
               status: isCancelled ? 'cancelled' : 'failed',
               error: isCancelled ? 'Generation was cancelled' : (errorMessage || 'Generation failed')
             });
@@ -895,7 +1255,7 @@ const generationSlice = createSlice({
       })
       .addCase(generateMiniMaxImages.rejected, (state, action) => {
         state.isGenerating = false;
-        state.error = action.payload as string;
+        state.error = extractRejectedMessage(action.payload, action.error?.message);
         state.generationProgress = null;
       });
   },
@@ -935,6 +1295,11 @@ export const {
   removeActiveGeneration,
   hydrateGenerations,
   clearOldGenerations,
+  setNanoBananaResolution,
+  setNanoBananaGoogleSearch,
+  setNanoBananaImageSearch,
+  setNanoBananaThinkingLevel,
+  setNanoBananaLimitGenerations,
 } = generationSlice.actions;
 
 export default generationSlice.reducer;

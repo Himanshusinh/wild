@@ -1,7 +1,7 @@
 // Blog Section Component - Converted from blog-page BlogSection.jsx
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 interface BlogPost {
@@ -25,6 +25,18 @@ export default function BlogSection({ blogPosts }: BlogSectionProps) {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [isCategoryOpen, setIsCategoryOpen] = useState(false);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (isCategoryOpen && !(event.target as Element).closest('.custom-dropdown-container')) {
+        setIsCategoryOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isCategoryOpen]);
 
   const categories = useMemo(() => {
     const normalized = new Map();
@@ -95,35 +107,50 @@ export default function BlogSection({ blogPosts }: BlogSectionProps) {
           </div>
 
           <div className="category-field-wrapper">
-            <label className="category-field">
-              <span className="visually-hidden">Filter by category</span>
-              <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
+            <div className="custom-dropdown-container">
+              <button
+                className="category-field-trigger"
+                onClick={() => setIsCategoryOpen(!isCategoryOpen)}
+                type="button"
               >
-                {categories.map((category) => (
-                  <option key={category} value={category}>
-                    {category === 'all' ? 'All Categories' : category}
-                  </option>
-                ))}
-              </select>
-              <svg
-                className="chevron-icon"
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M6 9l6 6 6-6"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </label>
+                <span className="current-category">
+                  {selectedCategory === 'all' ? 'All Categories' : selectedCategory}
+                </span>
+                <svg
+                  className={`chevron-icon ${isCategoryOpen ? 'open' : ''}`}
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M6 9l6 6 6-6"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+
+              {isCategoryOpen && (
+                <div className="custom-dropdown-list">
+                  {categories.map((category) => (
+                    <button
+                      key={category}
+                      className={`dropdown-item ${selectedCategory === category ? 'active' : ''}`}
+                      onClick={() => {
+                        setSelectedCategory(category);
+                        setIsCategoryOpen(false);
+                      }}
+                    >
+                      {category === 'all' ? 'All Categories' : category}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

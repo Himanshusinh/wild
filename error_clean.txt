@@ -1,0 +1,2 @@
+﻿src/app/view/EditImage/compo/EditImageInterface.tsx(4777,9): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+src/app/view/EditImage/compo/EditImageInterface.tsx(4807,11): error TS1005: '}' expected.

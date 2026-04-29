@@ -22,9 +22,10 @@ const FileTypeDropdown = ({ openDirection = 'up' }: FileTypeDropdownProps) => {
   const [isActiveInstance, setIsActiveInstance] = useState(false);
   const buttonJustClickedRef = useRef(false);
   const shouldCloseRef = useRef(false);
+  const selectingRef = useRef(false);
 
   // Check if current model is an Imagen model
-  const isImagenModel = selectedModel === 'imagen-4-ultra' || selectedModel === 'imagen-4' || selectedModel === 'imagen-4-fast';
+  const isImagenModel = selectedModel === 'imagen-4-ultra' || selectedModel === 'imagen-4' || selectedModel === 'imagen-4-fast' || selectedModel === 'openai/gpt-image-2';
 
   const fileTypes = [
     { name: 'JPEG', value: 'jpeg', description: 'Best for photos' },
@@ -113,7 +114,7 @@ const FileTypeDropdown = ({ openDirection = 'up' }: FileTypeDropdownProps) => {
       // Use bubble phase (default) so React's onClick runs first, then this handler
       const handleClickOutside = (event: MouseEvent) => {
         // Don't close if button was just clicked or we're in the process of closing
-        if (buttonJustClickedRef.current || shouldCloseRef.current) {
+        if (buttonJustClickedRef.current || shouldCloseRef.current || selectingRef.current) {
           return;
         }
         
@@ -204,9 +205,17 @@ const FileTypeDropdown = ({ openDirection = 'up' }: FileTypeDropdownProps) => {
   }, [activeDropdown, dispatch]);
 
   const handleFileTypeSelect = (fileTypeValue: string) => {
+    // Mark that we're selecting to prevent click outside handler from interfering
+    selectingRef.current = true;
+    
     dispatch(setOutputFormat(fileTypeValue));
     setIsActiveInstance(false);
     dispatch(toggleDropdown(''));
+    
+    // Reset the flag after a short delay
+    setTimeout(() => {
+      selectingRef.current = false;
+    }, 100);
   };
 
   const selectedFileType = fileTypes.find(ft => ft.value === outputFormat);
@@ -225,11 +234,24 @@ const FileTypeDropdown = ({ openDirection = 'up' }: FileTypeDropdownProps) => {
         left: `${dropdownPosition.left}px`,
         transform: dropdownPosition.openUp ? 'translateY(calc(-100% - 8px))' : 'none',
       }}
+      onMouseDown={(e) => {
+        // Prevent mousedown from triggering click outside handler
+        e.stopPropagation();
+      }}
+      onClick={(e) => {
+        // Prevent clicks inside dropdown from bubbling to document
+        e.stopPropagation();
+      }}
     >
       {fileTypes.map((fileType) => (
         <button
           key={fileType.value}
+          onMouseDown={(e) => {
+            // Prevent mousedown from triggering click outside handler
+            e.stopPropagation();
+          }}
           onClick={(e) => {
+            e.preventDefault();
             e.stopPropagation();
             handleFileTypeSelect(fileType.value);
           }}
@@ -256,7 +278,7 @@ const FileTypeDropdown = ({ openDirection = 'up' }: FileTypeDropdownProps) => {
         <button
           ref={buttonRef}
           onClick={handleDropdownClick}
-          className="md:h-[32px] h-[28px] md:px-4 px-2 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 bg-transparent text-white/90 hover:bg-white/5 transition flex items-center gap-1"
+          className="md:h-[32px] h-[23px] md:px-4 px-2 rounded-lg md:text-[13px] text-[11px] font-medium ring-1 ring-white/20 bg-transparent text-white/90 hover:bg-white/5 transition flex items-center gap-1"
         >
           <FileImage className="w-4 h-4 mr-1" />
           {selectedFileType?.name || 'File Type'}

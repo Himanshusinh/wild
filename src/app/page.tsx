@@ -17,7 +17,7 @@ export default function App() {
   const currentView = useAppSelector((state: any) => state?.ui?.currentView || 'landing');
   const currentGenerationType = useAppSelector((state: any) => state?.ui?.currentGenerationType || 'text-to-image');
   const pathname = usePathname();
-  
+
   console.log('🔍 App - Redux state:', { currentView, currentGenerationType });
   const isFirstLoad = React.useRef(true);
 
@@ -55,9 +55,13 @@ export default function App() {
   }
   if (pathname?.startsWith('/view/HomePage')) {
     console.log('🔍 App - Route override: rendering HomePage for', pathname);
-    return <HomePage />;
+    return (
+      <div className="min-h-screen bg-[#0E0E12]">
+        <HomePage />
+      </div>
+    );
   }
-  
+
   // Root path: Publicly accessible - always render LandingPage
   // This ensures Razorpay verification works and the site is publicly accessible
   if (pathname === '/') {
@@ -76,7 +80,9 @@ export default function App() {
             }),
           }}
         />
-        <LandingPage />
+        <div className="min-h-screen bg-[#0E0E12]">
+          <HomePage />
+        </div>
       </>
     );
   }
@@ -84,7 +90,7 @@ export default function App() {
   console.log('🔍 App - Rendering decision for currentView:', currentView);
   console.log('🔍 App - currentView type:', typeof currentView);
   console.log('🔍 App - currentView value:', currentView);
-  
+
   if (currentView === 'landing') {
     console.log('🔍 App - Rendering LandingPage');
     return (
@@ -95,7 +101,9 @@ export default function App() {
   if (currentView === 'home') {
     console.log('🔍 App - Rendering HomePage');
     return (
-      <HomePage />
+      <div className="min-h-screen bg-[#0E0E12]">
+        <HomePage />
+      </div>
     );
   }
 
@@ -116,7 +124,7 @@ export default function App() {
   if (currentView === 'generation') {
     console.log('🔍 App - Rendering MainLayout');
     return (
-      <MainLayout 
+      <MainLayout
         onViewChange={handleViewChange}
         onGenerationTypeChange={handleGenerationTypeChange}
         currentView={currentView}
@@ -124,7 +132,7 @@ export default function App() {
       />
     );
   }
-  
+
   console.log('🔍 App - No matching view, returning null');
   return null;
 }

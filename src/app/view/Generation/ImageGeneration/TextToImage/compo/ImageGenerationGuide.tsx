@@ -26,22 +26,22 @@ const ImageGenerationGuide = () => {
     const [activeTab, setActiveTab] = useState('image');
 
     return (
-        <section className="h-auto  text-white font-sans selection:bg-[#60a5fa] selection:text-white relative overflow-hidden pt-10 pb-40">
+        <section className="h-auto text-white font-sans selection:bg-[#60a5fa] selection:text-white relative overflow-hidden pt-0 pb-40">
 
             {/* --- Ambient Background (Matches WildCanvas) --- */}
             {/* <div className="absolute inset-0 pointer-events-none">
-                <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] mix-blend-overlay"></div> */}
-                {/* Abstract Grid */}
-                {/* <div className="absolute inset-0" style={{
+                <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-[0.03] mix-blend-overlay"></div> */}
+            {/* Abstract Grid */}
+            {/* <div className="absolute inset-0" style={{
                     backgroundImage: 'linear-gradient(rgba(96, 165, 250, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(96, 165, 250, 0.03) 1px, transparent 1px)',
                     backgroundSize: '100px 100px'
                 }}></div> */}
-                {/* Deep Blue Glows */}
-                {/* <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] bg-blue-600/[0.08] rounded-full blur-[120px]" />
+            {/* Deep Blue Glows */}
+            {/* <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] bg-blue-600/[0.08] rounded-full blur-[120px]" />
                 <div className="absolute bottom-[-20%] right-[-10%] w-[500px] h-[500px] bg-indigo-600/[0.08] rounded-full blur-[100px]" />
             </div> */}
 
-            <div className="max-w-[1500px] mx-auto px-6 relative z-10">
+            <div className="max-w-[1500px] mx-auto px-6 relative z-0">
 
                 {/* --- Header --- */}
                 <div className="text-center mb-8">
@@ -62,7 +62,7 @@ const ImageGenerationGuide = () => {
                 </div>
 
                 {/* --- The 3 Steps Grid --- */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 relative">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 relative overflow-visible">
 
                     {/* STEP 01: PROMPT + IMG2IMG */}
                     <StepCard
@@ -73,7 +73,7 @@ const ImageGenerationGuide = () => {
                     >
                         <BackgroundDots />
                         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[85%] transition-transform duration-500 group-hover:scale-105 group-hover:-translate-y-[60%] z-20">
-                            <div className="bg-[#0A0A0A]/90 backdrop-blur-xl border border-white/10 rounded-xl p-2 shadow-2xl relative overflow-hidden flex flex-col gap-10">
+                            <div className="bg-black/60 backdrop-blur-md border border-white/10 rounded-xl p-2 shadow-2xl relative overflow-hidden flex flex-col gap-4 md:gap-7 xl:gap-7 2xl:gap-10">
                                 {/* Prompt */}
                                 <div className="flex flex-col gap-2">
                                     <div className="flex items-center gap-2 border-b border-white/5 pb-2">
@@ -134,19 +134,19 @@ function TabButton({ active, onClick, icon, label }: { active: boolean; onClick:
 
 function StepCard({ number, title, desc, children, color }: { number: string; title: string; desc: string; children: React.ReactNode; color: string }) {
     // Determine glow colors based on step number
-    const glowGradient = number === "01" 
-        ? "from-purple-500/20 to-blue-500/20" 
-        : number === "02" 
-        ? "from-blue-500/20 to-cyan-500/20" 
-        : "from-indigo-500/20 to-purple-500/20";
-    
-    return (
-        <div className={`group relative h-[28rem] md:max-h-[28rem] rounded-3xl bg-[#0A0A0A] border border-white/10 overflow-hidden hover:border-[#60a5fa]/40 transition-all duration-500 hover:shadow-[0_0_50px_-12px_rgba(96,165,250,0.2)]`}>
+    const glowGradient = number === "01"
+        ? "from-purple-500/20 to-blue-500/20"
+        : number === "02"
+            ? "from-blue-500/20 to-cyan-500/20"
+            : "from-indigo-500/20 to-purple-500/20";
+
+      return (
+          <div className={`group relative h-[24rem] md:max-h-[26rem] rounded-3xl bg-[#0A0A0A] border border-white/10 overflow-hidden hover:border-[#60a5fa]/40 transition-all duration-500 hover:shadow-[0_0_50px_-12px_rgba(96,165,250,0.2)]`}>
             {/* Outline Glow Effect */}
             <div className={`absolute inset-0 bg-gradient-to-br ${glowGradient} opacity-0 group-hover:opacity-20 transition-opacity duration-700 blur-xl pointer-events-none`}></div>
-            
+
             {children}
-            <div className="absolute top-2 md:top-2 left-2 md:left-2 w-8 h-8 rounded-full border border-white/10 bg-black/40 backdrop-blur flex items-center justify-center text-xs font-mono font-bold text-white/70 z-20 group-hover:bg-white group-hover:text-black transition-colors">{number}</div>
+            <div className="absolute top-2 md:top-2 left-2 md:left-2 w-8 h-8 rounded-full border border-white/10 bg-black/40 backdrop-blur flex items-center justify-center text-xs font-mono font-bold text-white/70 z-50 group-hover:bg-white group-hover:text-black transition-colors">{number}</div>
             <div className="absolute bottom-0 left-0 right-0 h-[35%] p-2 pl-4 flex flex-col justify-end pointer-events-none z-20">
                 <h3 className={`text-xl font-medium text-white mb-1 transition-colors ${color}`}>{title}</h3>
                 <p className="text-xs text-slate-400 leading-relaxed">{desc}</p>
@@ -180,13 +180,35 @@ function Typewriter({ text }: { text: string }) {
 function ImageDragSimulation() {
     const [dragState, setDragState] = useState(0);
     useEffect(() => {
+        let cancelled = false;
+        const timers = new Set<ReturnType<typeof setTimeout>>();
+        const wait = (ms: number) =>
+            new Promise<void>((resolve) => {
+                const timer = setTimeout(() => {
+                    timers.delete(timer);
+                    resolve();
+                }, ms);
+                timers.add(timer);
+            });
         const sequence = async () => {
-            await new Promise(r => setTimeout(r, 2000));
-            setDragState(1); await new Promise(r => setTimeout(r, 1500));
-            setDragState(2); await new Promise(r => setTimeout(r, 4000));
-            setDragState(0); sequence();
+            while (!cancelled) {
+                await wait(2000);
+                if (cancelled) break;
+                setDragState(1);
+                await wait(1500);
+                if (cancelled) break;
+                setDragState(2);
+                await wait(4000);
+                if (cancelled) break;
+                setDragState(0);
+            }
         };
         sequence();
+        return () => {
+            cancelled = true;
+            timers.forEach((timer) => clearTimeout(timer));
+            timers.clear();
+        };
     }, []);
 
     return (
@@ -222,24 +244,39 @@ function Step2_ConfigPanel() {
     const [ratio, setRatio] = useState('Square');
 
     useEffect(() => {
+        let cancelled = false;
+        const timers = new Set<ReturnType<typeof setTimeout>>();
+        const wait = (ms: number) =>
+            new Promise<void>((resolve) => {
+                const timer = setTimeout(() => {
+                    timers.delete(timer);
+                    resolve();
+                }, ms);
+                timers.add(timer);
+            });
         const sequence = async () => {
-            const wait = (ms: number) => new Promise(res => setTimeout(res, ms));
-            setStep(0); setModel('Flux 1.1 Pro'); setCount(1); setRatio('Square'); await wait(1000);
-
-            // 1. Model
-            setStep(1); await wait(600); setStep(2); await wait(600); setStep(3); await wait(600);
-            setModel('Nano Banana Pro'); setStep(4); await wait(400);
-
-            // 2. Count
-            setStep(5); await wait(600); setStep(6); setCount(2); await wait(200); setStep(7); await wait(400);
-
-            // 3. Ratio
-            setStep(8); await wait(600); setStep(9); await wait(600); setStep(10); await wait(600);
-            setRatio('Portrait 3:4'); setStep(11); await wait(4000);
-
-            sequence();
+            while (!cancelled) {
+                setStep(0); setModel('Flux 1.1 Pro'); setCount(1); setRatio('Square'); await wait(1000);
+                if (cancelled) break;
+                setStep(1); await wait(600); if (cancelled) break;
+                setStep(2); await wait(600); if (cancelled) break;
+                setStep(3); await wait(600); if (cancelled) break;
+                setModel('Nano Banana Pro'); setStep(4); await wait(400); if (cancelled) break;
+                setStep(5); await wait(600); if (cancelled) break;
+                setStep(6); setCount(2); await wait(200); if (cancelled) break;
+                setStep(7); await wait(400); if (cancelled) break;
+                setStep(8); await wait(600); if (cancelled) break;
+                setStep(9); await wait(600); if (cancelled) break;
+                setStep(10); await wait(600); if (cancelled) break;
+                setRatio('Portrait 3:4'); setStep(11); await wait(4000);
+            }
         };
         sequence();
+        return () => {
+            cancelled = true;
+            timers.forEach((timer) => clearTimeout(timer));
+            timers.clear();
+        };
     }, []);
 
     const getCursorStyle = (s: number) => {
@@ -316,26 +353,41 @@ function Step3_GenerateProcess() {
     const [genState, setGenState] = useState(0);
 
     useEffect(() => {
+        let cancelled = false;
+        const timers = new Set<ReturnType<typeof setTimeout>>();
+        const wait = (ms: number) =>
+            new Promise<void>((resolve) => {
+                const timer = setTimeout(() => {
+                    timers.delete(timer);
+                    resolve();
+                }, ms);
+                timers.add(timer);
+            });
         const sequence = async () => {
-            const wait = (ms: number) => new Promise(r => setTimeout(r, ms));
-            setGenState(0); await wait(1000);
-            setGenState(1); await wait(800);
-            setGenState(2); await wait(200);
-            setGenState(3); await wait(2000);
-            setGenState(4); await wait(4000);
-            sequence();
+            while (!cancelled) {
+                setGenState(0); await wait(1000); if (cancelled) break;
+                setGenState(1); await wait(800); if (cancelled) break;
+                setGenState(2); await wait(200); if (cancelled) break;
+                setGenState(3); await wait(2000); if (cancelled) break;
+                setGenState(4); await wait(4000);
+            }
         };
         sequence();
+        return () => {
+            cancelled = true;
+            timers.forEach((timer) => clearTimeout(timer));
+            timers.clear();
+        };
     }, []);
 
     return (
         <>
-            <div className="absolute inset-0 h-[60%] md:max-h-[60%] overflow-hidden ">
+            <div className="absolute inset-0 h-[52%] md:h-[56%] xl:h-[60%] overflow-hidden ">
                 {/* Result Image */}
                 <div className={`absolute inset-0 z-10 transition-opacity duration-1000 ${genState === 4 ? 'opacity-100' : 'opacity-0'}`}>
-                    <img 
-                        src="https://www.wildmindai.com/api/proxy/media/users%2Fwildchild%2Fimage%2F2iHcApu42QmYEftiQWyA%2F2iHcApu42QmYEftiQWyA-image-1_optimized.avif" 
-                        alt="Generated image" 
+                    <img
+                        src="https://www.wildmindai.com/api/proxy/media/users%2Fwildchild%2Fimage%2F2iHcApu42QmYEftiQWyA%2F2iHcApu42QmYEftiQWyA-image-1_optimized.avif"
+                        alt="Generated image"
                         className="w-full h-full object-cover"
                     />
                     <div className="absolute top-4 right-4 px-3 py-1 bg-[#60a5fa] text-black text-[10px] font-bold rounded-full animate-in fade-in zoom-in shadow-lg">IMAGE GENERATED</div>
@@ -349,7 +401,7 @@ function Step3_GenerateProcess() {
 
             {/* <div className="absolute top-4 left-4 w-8 h-8 rounded-full border border-white/10 bg-black/40 backdrop-blur flex items-center justify-center text-xs font-mono font-bold text-white/70 z-20 group-hover:bg-white group-hover:text-black transition-colors">03</div> */}
 
-            <div className="absolute bottom-12 left-0 right-0 h-[40%] p-4 flex flex-col justify-end z-20 pointer-events-none">
+            <div className="absolute bottom-7 md:bottom-10 xl:bottom-12 left-0 right-0 h-[44%] md:h-[40%] p-3 md:p-4 flex flex-col justify-end z-20 pointer-events-none">
                 <div
                     className="absolute w-4 h-4 z-50 transition-all duration-500 ease-in-out drop-shadow-xl"
                     style={{

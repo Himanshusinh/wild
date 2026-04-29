@@ -4,11 +4,9 @@ import React, { useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import TextToImageInputBox from '../ImageGeneration/TextToImage/TextToImage';
-import StickerGenerationInputBox from '../ImageGeneration/StickerGeneration/compo/InputBox';
 import TextToVideoInputBox from '../VideoGeneration/TextToVideo/TextToVideo';
 import VideoGenerationPage from '../VideoGeneration/VideoGenerationPage';
 import MusicGenerationPage from '../MusicGeneration/MusicGenerationPage';
-import MockupGenerationInputBox from '../MockupGeneation/compo/InputBox';
 import ProductGenerationInputBox from '../ProductGeneration/compo/ProductWithModelPoseInputBox';
 import AdGenerationInputBox from '../AdGeneration/compo/InputBox';
 import History from './History';
@@ -20,8 +18,7 @@ const EditImageInterface = dynamic(() => import('../../EditImage/compo/EditImage
 const EditVideoInterface = dynamic(() => import('../../EditVideo/compo/EditVideoInterface'), { ssr: false });
 
 
-type ViewType = 'generation' | 'history' | 'bookmarks';
-type GenerationType = 'text-to-image' | 'image-to-image' | 'logo' | 'sticker-generation' | 'text-to-video' | 'image-to-video' | 'text-to-music' | 'mockup-generation' | 'product-generation' | 'ad-generation' | 'live-chat' | 'edit-image' | 'edit-video';
+import { ViewType, GenerationType } from '@/types/generation';
 
 interface GeneratorComponentMap {
   [key: string]: React.ComponentType;
@@ -31,7 +28,6 @@ const generators: GeneratorComponentMap = {
   // Image Generation Features
   'text-to-image': TextToImageInputBox,
   'image-to-image': TextToImageInputBox, // Uses same component as text-to-image (supports image uploads)
-  'sticker-generation': StickerGenerationInputBox,
 
   // Video Generation Features
   'text-to-video': VideoGenerationPage,
@@ -41,7 +37,6 @@ const generators: GeneratorComponentMap = {
   'text-to-music': MusicGenerationPage,
 
   // Branding Kit Features
-  'mockup-generation': MockupGenerationInputBox,
   'product-generation': ProductGenerationInputBox,
   'ad-generation': AdGenerationInputBox,
   'live-chat': LiveChatInputBox,
@@ -77,6 +72,7 @@ export default function PageRouter({ currentView: propCurrentView, currentGenera
   const effectiveGenerationType: GenerationType = pathType ?? currentGenerationType;
   const historyEntries = useAppSelector((state: any) => state.history?.entries || []);
   const currentFilters = useAppSelector((state: any) => state.history?.filters || {});
+  const user = useAppSelector((state: any) => state.auth?.user);
   const isHistoryLoading = useAppSelector((state: any) => state.history?.loading || false);
 
   // Use ref to track which generation types we've already loaded history for
@@ -127,6 +123,7 @@ export default function PageRouter({ currentView: propCurrentView, currentGenera
     }
 
     effectTimeoutRef.current = setTimeout(() => {
+      if (!user) return; // Suppress fetching if not logged in
       if (currentView === 'generation') {
         // Prevent multiple simultaneous loads
         if (isLoadingRef.current) {
@@ -147,7 +144,6 @@ export default function PageRouter({ currentView: propCurrentView, currentGenera
           'text-to-music',
           'product-generation',
           'ad-generation',
-          'mockup-generation',
           'live-chat',
           'edit-image',
           'edit-video',

@@ -1,53 +1,25 @@
-// @ts-nocheck - This file was converted from JavaScript and contains complex nested structures
-'use client'
-
-import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
+import { useEffect, JSX } from 'react'
 import './styles.css'
-import FooterNew from '../../view/core/FooterNew'
-import RelatedPosts from './RelatedPosts'
-import { blogPosts } from '../data/blogPosts'
+
+interface BlogPost {
+  id: number;
+  title: string;
+  metaTitle?: string;
+  readTime: string;
+  image?: string;
+  content?: {
+    introduction?: string;
+    [key: string]: any;
+  };
+  [key: string]: any;
+}
 
 interface BlogPostDetailProps {
-  post: any;
+  post: BlogPost;
   onBack: () => void;
 }
 
-function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
-  const router = useRouter()
-  // Deterministic publish dates between Dec 4–15, 2025
-  const datePool = [
-    '2025-12-04',
-    '2025-12-05',
-    '2025-12-06',
-    '2025-12-07',
-    '2025-12-08',
-    '2025-12-09',
-    '2025-12-10',
-    '2025-12-11',
-    '2025-12-12',
-    '2025-12-13',
-    '2025-12-14',
-    '2025-12-15',
-  ].map((d) => new Date(d));
-
-  const publishDate = datePool[(post?.id ?? 0) % datePool.length];
-  const formattedDate = publishDate.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
-
-  // Deterministic related posts selection using post.id as seed to avoid hydration mismatch
-  const filteredPosts = blogPosts.filter((p: any) => p.id !== post.id);
-  const seed = post?.id ?? 0;
-  const relatedPosts = filteredPosts
-    .map((p: any) => ({
-      post: p,
-      // Deterministic hash based on post id and seed (same result every time for same post.id)
-      hash: ((p.id * 9301 + seed * 49297) % 233280) / 233280
-    }))
-    .sort((a: any, b: any) => a.hash - b.hash)
-    .map((item: any) => item.post)
-    .slice(0, 3)
-
+function BlogPostDetail({ post, onBack }: BlogPostDetailProps): JSX.Element {
   // Update page title
   useEffect(() => {
     const originalTitle = document.title
@@ -68,7 +40,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
     const regex = /(WildMind AI|Wildmind AI)/gi
     const parts = text.split(regex)
 
-    return parts.map((part: string, index: number) => {
+    return parts.map((part, index) => {
       // Check if this part matches "WildMind AI" (case insensitive)
       if (part && /^WildMind AI$/i.test(part)) {
         return (
@@ -135,13 +107,6 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                   <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5" />
                   <path d="M8 4V8L11 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
                 </svg>
-                {formattedDate}
-              </div>
-              <div className="read-time-post">
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5" />
-                  <path d="M8 4V8L11 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                </svg>
                 {post.readTime}
               </div>
               <button className="share-button" type="button" aria-label="Share">
@@ -160,16 +125,16 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
             {/* Generic sections fallback */}
             {Array.isArray(post.content.sections) && post.content.sections.length > 0 && (
               post.content.sections.map((section: any, idx: number) => (
-                <section className="blog-section-content" key={`generic-section-${idx}`}>
+                <section className="blog-section-content" key={section.title || `section-${idx}`}>
                   {section.title && <h2>{section.title}</h2>}
                   {Array.isArray(section.paragraphs) &&
                     section.paragraphs.map((p: string, pIdx: number) => (
-                      <p key={`p-${pIdx}`}>{p}</p>
+                      <p key={section.title ? `${section.title}-p-${pIdx}` : `p-${idx}-${pIdx}`}>{p}</p>
                     ))}
                   {Array.isArray(section.bullets) && section.bullets.length > 0 && (
                     <ul className="blog-list">
                       {section.bullets.map((item: string, bIdx: number) => (
-                        <li key={`b-${bIdx}`}>{item}</li>
+                        <li key={section.title ? `${section.title}-b-${bIdx}` : `b-${idx}-${bIdx}`}>{item}</li>
                       ))}
                     </ul>
                   )}
@@ -190,7 +155,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                       <p>{post.content.whatIsMultimodal.neuroscience.text}</p>
                       {post.content.whatIsMultimodal.neuroscience.items && (
                         <ul className="blog-list">
-                          {post.content.whatIsMultimodal.neuroscience.items.map((item, index) => (
+                          {post.content.whatIsMultimodal.neuroscience.items.map((item: string, index: number) => (
                             <li key={index}>{item}</li>
                           ))}
                         </ul>
@@ -208,7 +173,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                     <p>{post.content.aiRevolution.text}</p>
                     {post.content.aiRevolution.traditionalRequirements && (
                       <ul className="blog-list">
-                        {post.content.aiRevolution.traditionalRequirements.items.map((item, index) => (
+                        {post.content.aiRevolution.traditionalRequirements.items.map((item: string, index: number) => (
                           <li key={index}>{item}</li>
                         ))}
                       </ul>
@@ -250,7 +215,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                             <h4>{post.content.practicalTypes.animatedStory.components.title}</h4>
                             {post.content.practicalTypes.animatedStory.components.items && (
                               <ul className="blog-list">
-                                {post.content.practicalTypes.animatedStory.components.items.map((item, index) => (
+                                {post.content.practicalTypes.animatedStory.components.items.map((item: string, index: number) => (
                                   <li key={index}>{item}</li>
                                 ))}
                               </ul>
@@ -265,7 +230,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                             <h4>{post.content.practicalTypes.animatedStory.aiWorkflow.title}</h4>
                             {post.content.practicalTypes.animatedStory.aiWorkflow.steps && (
                               <ol className="blog-list numbered">
-                                {post.content.practicalTypes.animatedStory.aiWorkflow.steps.map((item, index) => (
+                                {post.content.practicalTypes.animatedStory.aiWorkflow.steps.map((item: string, index: number) => (
                                   <li key={index}>{item}</li>
                                 ))}
                               </ol>
@@ -284,7 +249,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                             <h4>{post.content.practicalTypes.interactiveBrand.components.title}</h4>
                             {post.content.practicalTypes.interactiveBrand.components.items && (
                               <ul className="blog-list">
-                                {post.content.practicalTypes.interactiveBrand.components.items.map((item, index) => (
+                                {post.content.practicalTypes.interactiveBrand.components.items.map((item: string, index: number) => (
                                   <li key={index}>{item}</li>
                                 ))}
                               </ul>
@@ -299,7 +264,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                             <h4>{post.content.practicalTypes.interactiveBrand.aiWorkflow.title}</h4>
                             {post.content.practicalTypes.interactiveBrand.aiWorkflow.steps && (
                               <ol className="blog-list numbered">
-                                {post.content.practicalTypes.interactiveBrand.aiWorkflow.steps.map((item, index) => (
+                                {post.content.practicalTypes.interactiveBrand.aiWorkflow.steps.map((item: string, index: number) => (
                                   <li key={index}>{item}</li>
                                 ))}
                               </ol>
@@ -318,7 +283,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                             <h4>{post.content.practicalTypes.sensorySocial.components.title}</h4>
                             {post.content.practicalTypes.sensorySocial.components.items && (
                               <ul className="blog-list">
-                                {post.content.practicalTypes.sensorySocial.components.items.map((item, index) => (
+                                {post.content.practicalTypes.sensorySocial.components.items.map((item: string, index: number) => (
                                   <li key={index}>{item}</li>
                                 ))}
                               </ul>
@@ -333,7 +298,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                             <h4>{post.content.practicalTypes.sensorySocial.aiWorkflow.title}</h4>
                             {post.content.practicalTypes.sensorySocial.aiWorkflow.steps && (
                               <ol className="blog-list numbered">
-                                {post.content.practicalTypes.sensorySocial.aiWorkflow.steps.map((item, index) => (
+                                {post.content.practicalTypes.sensorySocial.aiWorkflow.steps.map((item: string, index: number) => (
                                   <li key={index}>{item}</li>
                                 ))}
                               </ol>
@@ -369,7 +334,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                             <h4>{post.content.creationProcess.phase2.visualAudioSync.title}</h4>
                             {post.content.creationProcess.phase2.visualAudioSync.items && (
                               <ul className="blog-list">
-                                {post.content.creationProcess.phase2.visualAudioSync.items.map((item, index) => (
+                                {post.content.creationProcess.phase2.visualAudioSync.items.map((item: string, index: number) => (
                                   <li key={index}>{item}</li>
                                 ))}
                               </ul>
@@ -382,7 +347,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                             <h4>{post.content.creationProcess.phase2.textVisualHarmony.title}</h4>
                             {post.content.creationProcess.phase2.textVisualHarmony.items && (
                               <ul className="blog-list">
-                                {post.content.creationProcess.phase2.textVisualHarmony.items.map((item, index) => (
+                                {post.content.creationProcess.phase2.textVisualHarmony.items.map((item: string, index: number) => (
                                   <li key={index}>{item}</li>
                                 ))}
                               </ul>
@@ -402,7 +367,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                             <h4>{post.content.creationProcess.phase3.layeringTechniques.title}</h4>
                             {post.content.creationProcess.phase3.layeringTechniques.items && (
                               <ul className="blog-list">
-                                {post.content.creationProcess.phase3.layeringTechniques.items.map((item, index) => (
+                                {post.content.creationProcess.phase3.layeringTechniques.items.map((item: string, index: number) => (
                                   <li key={index}>{item}</li>
                                 ))}
                               </ul>
@@ -415,7 +380,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                             <h4>{post.content.creationProcess.phase3.qualityControl.title}</h4>
                             {post.content.creationProcess.phase3.qualityControl.items && (
                               <ul className="blog-list">
-                                {post.content.creationProcess.phase3.qualityControl.items.map((item, index) => (
+                                {post.content.creationProcess.phase3.qualityControl.items.map((item: string, index: number) => (
                                   <li key={index}>{item}</li>
                                 ))}
                               </ul>
@@ -451,7 +416,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                             <h4>{post.content.caseStudy.solution.integratedDelivery.title}</h4>
                             {post.content.caseStudy.solution.integratedDelivery.items && (
                               <ul className="blog-list">
-                                {post.content.caseStudy.solution.integratedDelivery.items.map((item, index) => (
+                                {post.content.caseStudy.solution.integratedDelivery.items.map((item: string, index: number) => (
                                   <li key={index}>{item}</li>
                                 ))}
                               </ul>
@@ -466,7 +431,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.caseStudy.results.title}</h3>
                         {post.content.caseStudy.results.items && (
                           <ul className="blog-list">
-                            {post.content.caseStudy.results.items.map((item, index) => (
+                            {post.content.caseStudy.results.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -486,7 +451,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <p>{post.content.tools.aiPlatforms.text}</p>
                         {post.content.tools.aiPlatforms.items && (
                           <ul className="blog-list">
-                            {post.content.tools.aiPlatforms.items.map((item, index) => (
+                            {post.content.tools.aiPlatforms.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -500,7 +465,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <p>{post.content.tools.wildmindApproach.text}</p>
                         {post.content.tools.wildmindApproach.items && (
                           <ul className="blog-list">
-                            {post.content.tools.wildmindApproach.items.map((item, index) => (
+                            {post.content.tools.wildmindApproach.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -520,7 +485,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.measuring.engagementDepth.title}</h3>
                         {post.content.measuring.engagementDepth.items && (
                           <ul className="blog-list">
-                            {post.content.measuring.engagementDepth.items.map((item, index) => (
+                            {post.content.measuring.engagementDepth.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -533,7 +498,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.measuring.emotionalImpact.title}</h3>
                         {post.content.measuring.emotionalImpact.items && (
                           <ul className="blog-list">
-                            {post.content.measuring.emotionalImpact.items.map((item, index) => (
+                            {post.content.measuring.emotionalImpact.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -546,7 +511,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.measuring.businessResults.title}</h3>
                         {post.content.measuring.businessResults.items && (
                           <ul className="blog-list">
-                            {post.content.measuring.businessResults.items.map((item, index) => (
+                            {post.content.measuring.businessResults.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -596,7 +561,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                     <p>{post.content.future.text}</p>
                     {post.content.future.items && (
                       <ul className="blog-list">
-                        {post.content.future.items.map((item, index) => (
+                        {post.content.future.items.map((item: string, index: number) => (
                           <li key={index}>{item}</li>
                         ))}
                       </ul>
@@ -613,7 +578,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.gettingStarted.beginner.title}</h3>
                         {post.content.gettingStarted.beginner.steps && (
                           <ol className="blog-list numbered">
-                            {post.content.gettingStarted.beginner.steps.map((item, index) => (
+                            {post.content.gettingStarted.beginner.steps.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ol>
@@ -626,7 +591,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.gettingStarted.intermediate.title}</h3>
                         {post.content.gettingStarted.intermediate.steps && (
                           <ol className="blog-list numbered">
-                            {post.content.gettingStarted.intermediate.steps.map((item, index) => (
+                            {post.content.gettingStarted.intermediate.steps.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ol>
@@ -639,7 +604,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.gettingStarted.advanced.title}</h3>
                         {post.content.gettingStarted.advanced.steps && (
                           <ol className="blog-list numbered">
-                            {post.content.gettingStarted.advanced.steps.map((item, index) => (
+                            {post.content.gettingStarted.advanced.steps.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ol>
@@ -667,7 +632,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                           <h4>{post.content.phase1.defineCoreIdentity.aiAssistedResearch.title}</h4>
                           {post.content.phase1.defineCoreIdentity.aiAssistedResearch.items && (
                             <ul className="blog-list">
-                              {post.content.phase1.defineCoreIdentity.aiAssistedResearch.items.map((item, index) => (
+                              {post.content.phase1.defineCoreIdentity.aiAssistedResearch.items.map((item: string, index: number) => (
                                 <li key={index}>{item}</li>
                               ))}
                             </ul>
@@ -680,7 +645,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                           <h4>{post.content.phase1.defineCoreIdentity.brandPersonality.title}</h4>
                           {post.content.phase1.defineCoreIdentity.brandPersonality.items && (
                             <ul className="blog-list">
-                              {post.content.phase1.defineCoreIdentity.brandPersonality.items.map((item, index) => (
+                              {post.content.phase1.defineCoreIdentity.brandPersonality.items.map((item: string, index: number) => (
                                 <li key={index}>{item}</li>
                               ))}
                             </ul>
@@ -700,7 +665,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                       <p>{post.content.phase1.brandStrategyDocument.text}</p>
                       {post.content.phase1.brandStrategyDocument.items && (
                         <ul className="blog-list">
-                          {post.content.phase1.brandStrategyDocument.items.map((item, index) => (
+                          {post.content.phase1.brandStrategyDocument.items.map((item: string, index: number) => (
                             <li key={index}>{item}</li>
                           ))}
                         </ul>
@@ -724,7 +689,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                             <h4>{post.content.phase2.logoDevelopment.process.title}</h4>
                             {post.content.phase2.logoDevelopment.process.steps && (
                               <ol className="blog-list numbered">
-                                {post.content.phase2.logoDevelopment.process.steps.map((item, index) => (
+                                {post.content.phase2.logoDevelopment.process.steps.map((item: string, index: number) => (
                                   <li key={index}>{item}</li>
                                 ))}
                               </ol>
@@ -747,7 +712,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                             <h4>{post.content.phase2.colorAndTypography.aiColorTheory.title}</h4>
                             {post.content.phase2.colorAndTypography.aiColorTheory.items && (
                               <ul className="blog-list">
-                                {post.content.phase2.colorAndTypography.aiColorTheory.items.map((item, index) => (
+                                {post.content.phase2.colorAndTypography.aiColorTheory.items.map((item: string, index: number) => (
                                   <li key={index}>{item}</li>
                                 ))}
                               </ul>
@@ -760,7 +725,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                             <h4>{post.content.phase2.colorAndTypography.typographySystem.title}</h4>
                             {post.content.phase2.colorAndTypography.typographySystem.items && (
                               <ul className="blog-list">
-                                {post.content.phase2.colorAndTypography.typographySystem.items.map((item, index) => (
+                                {post.content.phase2.colorAndTypography.typographySystem.items.map((item: string, index: number) => (
                                   <li key={index}>{item}</li>
                                 ))}
                               </ul>
@@ -776,7 +741,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <p>{post.content.phase2.brandKit.text}</p>
                         {post.content.phase2.brandKit.items && (
                           <ul className="blog-list">
-                            {post.content.phase2.brandKit.items.map((item, index) => (
+                            {post.content.phase2.brandKit.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -796,7 +761,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <p>{post.content.phase3.brandVoice.text}</p>
                         {post.content.phase3.brandVoice.items && (
                           <ul className="blog-list">
-                            {post.content.phase3.brandVoice.items.map((item, index) => (
+                            {post.content.phase3.brandVoice.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -813,7 +778,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                             <h4>{post.content.phase3.marketingCopy.aiGenerated.title}</h4>
                             {post.content.phase3.marketingCopy.aiGenerated.items && (
                               <ul className="blog-list">
-                                {post.content.phase3.marketingCopy.aiGenerated.items.map((item, index) => (
+                                {post.content.phase3.marketingCopy.aiGenerated.items.map((item: string, index: number) => (
                                   <li key={index}>{item}</li>
                                 ))}
                               </ul>
@@ -826,7 +791,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                             <h4>{post.content.phase3.marketingCopy.humanRefinement.title}</h4>
                             {post.content.phase3.marketingCopy.humanRefinement.items && (
                               <ul className="blog-list">
-                                {post.content.phase3.marketingCopy.humanRefinement.items.map((item, index) => (
+                                {post.content.phase3.marketingCopy.humanRefinement.items.map((item: string, index: number) => (
                                   <li key={index}>{item}</li>
                                 ))}
                               </ul>
@@ -845,7 +810,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                             <h4>{post.content.phase3.contentStrategy.aiContentPlanning.title}</h4>
                             {post.content.phase3.contentStrategy.aiContentPlanning.items && (
                               <ul className="blog-list">
-                                {post.content.phase3.contentStrategy.aiContentPlanning.items.map((item, index) => (
+                                {post.content.phase3.contentStrategy.aiContentPlanning.items.map((item: string, index: number) => (
                                   <li key={index}>{item}</li>
                                 ))}
                               </ul>
@@ -870,7 +835,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                             <h4>{post.content.phase4.visualAssets.productPhotography.title}</h4>
                             {post.content.phase4.visualAssets.productPhotography.items && (
                               <ul className="blog-list">
-                                {post.content.phase4.visualAssets.productPhotography.items.map((item, index) => (
+                                {post.content.phase4.visualAssets.productPhotography.items.map((item: string, index: number) => (
                                   <li key={index}>{item}</li>
                                 ))}
                               </ul>
@@ -883,7 +848,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                             <h4>{post.content.phase4.visualAssets.marketingMaterials.title}</h4>
                             {post.content.phase4.visualAssets.marketingMaterials.items && (
                               <ul className="blog-list">
-                                {post.content.phase4.visualAssets.marketingMaterials.items.map((item, index) => (
+                                {post.content.phase4.visualAssets.marketingMaterials.items.map((item: string, index: number) => (
                                   <li key={index}>{item}</li>
                                 ))}
                               </ul>
@@ -902,7 +867,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                             <h4>{post.content.phase4.multimedia.videoContent.title}</h4>
                             {post.content.phase4.multimedia.videoContent.items && (
                               <ul className="blog-list">
-                                {post.content.phase4.multimedia.videoContent.items.map((item, index) => (
+                                {post.content.phase4.multimedia.videoContent.items.map((item: string, index: number) => (
                                   <li key={index}>{item}</li>
                                 ))}
                               </ul>
@@ -915,7 +880,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                             <h4>{post.content.phase4.multimedia.audioElements.title}</h4>
                             {post.content.phase4.multimedia.audioElements.items && (
                               <ul className="blog-list">
-                                {post.content.phase4.multimedia.audioElements.items.map((item, index) => (
+                                {post.content.phase4.multimedia.audioElements.items.map((item: string, index: number) => (
                                   <li key={index}>{item}</li>
                                 ))}
                               </ul>
@@ -940,7 +905,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                             <h4>{post.content.phase5.preLaunch.aiAssistedOutreach.title}</h4>
                             {post.content.phase5.preLaunch.aiAssistedOutreach.items && (
                               <ul className="blog-list">
-                                {post.content.phase5.preLaunch.aiAssistedOutreach.items.map((item, index) => (
+                                {post.content.phase5.preLaunch.aiAssistedOutreach.items.map((item: string, index: number) => (
                                   <li key={index}>{item}</li>
                                 ))}
                               </ul>
@@ -953,7 +918,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                             <h4>{post.content.phase5.preLaunch.communityBuilding.title}</h4>
                             {post.content.phase5.preLaunch.communityBuilding.items && (
                               <ul className="blog-list">
-                                {post.content.phase5.preLaunch.communityBuilding.items.map((item, index) => (
+                                {post.content.phase5.preLaunch.communityBuilding.items.map((item: string, index: number) => (
                                   <li key={index}>{item}</li>
                                 ))}
                               </ul>
@@ -969,7 +934,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <p><strong>{post.content.phase5.launchExecution.text}</strong></p>
                         {post.content.phase5.launchExecution.items && (
                           <ul className="blog-list">
-                            {post.content.phase5.launchExecution.items.map((item, index) => (
+                            {post.content.phase5.launchExecution.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -989,7 +954,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.caseStudy.process.title}</h3>
                         {post.content.caseStudy.process.items && (
                           <ul className="blog-list">
-                            {post.content.caseStudy.process.items.map((item, index) => (
+                            {post.content.caseStudy.process.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -1002,7 +967,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.caseStudy.results.title}</h3>
                         {post.content.caseStudy.results.items && (
                           <ul className="blog-list">
-                            {post.content.caseStudy.results.items.map((item, index) => (
+                            {post.content.caseStudy.results.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -1023,7 +988,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <p>{post.content.maintainingRelevance.trendMonitoring.text}</p>
                         {post.content.maintainingRelevance.trendMonitoring.items && (
                           <ul className="blog-list">
-                            {post.content.maintainingRelevance.trendMonitoring.items.map((item, index) => (
+                            {post.content.maintainingRelevance.trendMonitoring.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -1040,7 +1005,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                             <h4>{post.content.maintainingRelevance.rapidIteration.abTesting.title}</h4>
                             {post.content.maintainingRelevance.rapidIteration.abTesting.items && (
                               <ul className="blog-list">
-                                {post.content.maintainingRelevance.rapidIteration.abTesting.items.map((item, index) => (
+                                {post.content.maintainingRelevance.rapidIteration.abTesting.items.map((item: string, index: number) => (
                                   <li key={index}>{item}</li>
                                 ))}
                               </ul>
@@ -1059,7 +1024,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                             <h4>{post.content.maintainingRelevance.contentRefreshing.aiContentOptimization.title}</h4>
                             {post.content.maintainingRelevance.contentRefreshing.aiContentOptimization.items && (
                               <ul className="blog-list">
-                                {post.content.maintainingRelevance.contentRefreshing.aiContentOptimization.items.map((item, index) => (
+                                {post.content.maintainingRelevance.contentRefreshing.aiContentOptimization.items.map((item: string, index: number) => (
                                   <li key={index}>{item}</li>
                                 ))}
                               </ul>
@@ -1080,7 +1045,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.costComparison.traditional.title}</h3>
                         {post.content.costComparison.traditional.items && (
                           <ul className="blog-list">
-                            {post.content.costComparison.traditional.items.map((item, index) => (
+                            {post.content.costComparison.traditional.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -1093,7 +1058,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.costComparison.aiPowered.title}</h3>
                         {post.content.costComparison.aiPowered.items && (
                           <ul className="blog-list">
-                            {post.content.costComparison.aiPowered.items.map((item, index) => (
+                            {post.content.costComparison.aiPowered.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -1143,7 +1108,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                     <p>{post.content.wildmindAdvantage.text}</p>
                     {post.content.wildmindAdvantage.items && (
                       <ul className="blog-list">
-                        {post.content.wildmindAdvantage.items.map((item, index) => (
+                        {post.content.wildmindAdvantage.items.map((item: string, index: number) => (
                           <li key={index}>{item}</li>
                         ))}
                       </ul>
@@ -1163,7 +1128,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.actionPlan.week1.title}</h3>
                         {post.content.actionPlan.week1.items && (
                           <ul className="blog-list">
-                            {post.content.actionPlan.week1.items.map((item, index) => (
+                            {post.content.actionPlan.week1.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -1176,7 +1141,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.actionPlan.week2.title}</h3>
                         {post.content.actionPlan.week2.items && (
                           <ul className="blog-list">
-                            {post.content.actionPlan.week2.items.map((item, index) => (
+                            {post.content.actionPlan.week2.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -1189,7 +1154,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.actionPlan.week3.title}</h3>
                         {post.content.actionPlan.week3.items && (
                           <ul className="blog-list">
-                            {post.content.actionPlan.week3.items.map((item, index) => (
+                            {post.content.actionPlan.week3.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -1202,7 +1167,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.actionPlan.week4.title}</h3>
                         {post.content.actionPlan.week4.items && (
                           <ul className="blog-list">
-                            {post.content.actionPlan.week4.items.map((item, index) => (
+                            {post.content.actionPlan.week4.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -1231,7 +1196,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                           <h4>{post.content.fundamentalQuestion.currentLegalLandscape.keyCourtGuidance.title}</h4>
                           {post.content.fundamentalQuestion.currentLegalLandscape.keyCourtGuidance.items && (
                             <ul className="blog-list">
-                              {post.content.fundamentalQuestion.currentLegalLandscape.keyCourtGuidance.items.map((item, index) => (
+                              {post.content.fundamentalQuestion.currentLegalLandscape.keyCourtGuidance.items.map((item: string, index: number) => (
                                 <li key={index}>{item}</li>
                               ))}
                             </ul>
@@ -1251,7 +1216,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                           <h4>{post.content.fundamentalQuestion.platformTerms.somePlatformsGrant.title}</h4>
                           {post.content.fundamentalQuestion.platformTerms.somePlatformsGrant.items && (
                             <ul className="blog-list">
-                              {post.content.fundamentalQuestion.platformTerms.somePlatformsGrant.items.map((item, index) => (
+                              {post.content.fundamentalQuestion.platformTerms.somePlatformsGrant.items.map((item: string, index: number) => (
                                 <li key={index}>{item}</li>
                               ))}
                             </ul>
@@ -1264,7 +1229,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                           <h4>{post.content.fundamentalQuestion.platformTerms.othersMay.title}</h4>
                           {post.content.fundamentalQuestion.platformTerms.othersMay.items && (
                             <ul className="blog-list">
-                              {post.content.fundamentalQuestion.platformTerms.othersMay.items.map((item, index) => (
+                              {post.content.fundamentalQuestion.platformTerms.othersMay.items.map((item: string, index: number) => (
                                 <li key={index}>{item}</li>
                               ))}
                             </ul>
@@ -1288,7 +1253,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                             <h4>{post.content.typesOfContent.aiImages.challenges.title}</h4>
                             {post.content.typesOfContent.aiImages.challenges.items && (
                               <ul className="blog-list">
-                                {post.content.typesOfContent.aiImages.challenges.items.map((item, index) => (
+                                {post.content.typesOfContent.aiImages.challenges.items.map((item: string, index: number) => (
                                   <li key={index}>{item}</li>
                                 ))}
                               </ul>
@@ -1301,7 +1266,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                             <h4>{post.content.typesOfContent.aiImages.bestPractices.title}</h4>
                             {post.content.typesOfContent.aiImages.bestPractices.items && (
                               <ul className="blog-list">
-                                {post.content.typesOfContent.aiImages.bestPractices.items.map((item, index) => (
+                                {post.content.typesOfContent.aiImages.bestPractices.items.map((item: string, index: number) => (
                                   <li key={index}>{item}</li>
                                 ))}
                               </ul>
@@ -1320,7 +1285,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                             <h4>{post.content.typesOfContent.aiText.challenges.title}</h4>
                             {post.content.typesOfContent.aiText.challenges.items && (
                               <ul className="blog-list">
-                                {post.content.typesOfContent.aiText.challenges.items.map((item, index) => (
+                                {post.content.typesOfContent.aiText.challenges.items.map((item: string, index: number) => (
                                   <li key={index}>{item}</li>
                                 ))}
                               </ul>
@@ -1333,7 +1298,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                             <h4>{post.content.typesOfContent.aiText.bestPractices.title}</h4>
                             {post.content.typesOfContent.aiText.bestPractices.items && (
                               <ul className="blog-list">
-                                {post.content.typesOfContent.aiText.bestPractices.items.map((item, index) => (
+                                {post.content.typesOfContent.aiText.bestPractices.items.map((item: string, index: number) => (
                                   <li key={index}>{item}</li>
                                 ))}
                               </ul>
@@ -1352,7 +1317,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                             <h4>{post.content.typesOfContent.aiMusic.challenges.title}</h4>
                             {post.content.typesOfContent.aiMusic.challenges.items && (
                               <ul className="blog-list">
-                                {post.content.typesOfContent.aiMusic.challenges.items.map((item, index) => (
+                                {post.content.typesOfContent.aiMusic.challenges.items.map((item: string, index: number) => (
                                   <li key={index}>{item}</li>
                                 ))}
                               </ul>
@@ -1365,7 +1330,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                             <h4>{post.content.typesOfContent.aiMusic.bestPractices.title}</h4>
                             {post.content.typesOfContent.aiMusic.bestPractices.items && (
                               <ul className="blog-list">
-                                {post.content.typesOfContent.aiMusic.bestPractices.items.map((item, index) => (
+                                {post.content.typesOfContent.aiMusic.bestPractices.items.map((item: string, index: number) => (
                                   <li key={index}>{item}</li>
                                 ))}
                               </ul>
@@ -1387,7 +1352,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <p>{post.content.howToProtect.documentProcess.text}</p>
                         {post.content.howToProtect.documentProcess.items && (
                           <ul className="blog-list">
-                            {post.content.howToProtect.documentProcess.items.map((item, index) => (
+                            {post.content.howToProtect.documentProcess.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -1401,7 +1366,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <p>{post.content.howToProtect.understandLicenses.text}</p>
                         {post.content.howToProtect.understandLicenses.items && (
                           <ul className="blog-list">
-                            {post.content.howToProtect.understandLicenses.items.map((item, index) => (
+                            {post.content.howToProtect.understandLicenses.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -1415,7 +1380,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <p>{post.content.howToProtect.addHumanCreativity.text}</p>
                         {post.content.howToProtect.addHumanCreativity.items && (
                           <ul className="blog-list">
-                            {post.content.howToProtect.addHumanCreativity.items.map((item, index) => (
+                            {post.content.howToProtect.addHumanCreativity.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -1431,7 +1396,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                     <p>{post.content.wildmindApproach.text}</p>
                     {post.content.wildmindApproach.items && (
                       <ul className="blog-list">
-                        {post.content.wildmindApproach.items.map((item, index) => (
+                        {post.content.wildmindApproach.items.map((item: string, index: number) => (
                           <li key={index}>{item}</li>
                         ))}
                       </ul>
@@ -1478,7 +1443,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                     <p>{post.content.international.text}</p>
                     {post.content.international.items && (
                       <ul className="blog-list">
-                        {post.content.international.items.map((item, index) => (
+                        {post.content.international.items.map((item: string, index: number) => (
                           <li key={index}>{item}</li>
                         ))}
                       </ul>
@@ -1498,7 +1463,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.bestPractices.personalProjects.title}</h3>
                         {post.content.bestPractices.personalProjects.items && (
                           <ul className="blog-list">
-                            {post.content.bestPractices.personalProjects.items.map((item, index) => (
+                            {post.content.bestPractices.personalProjects.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -1511,7 +1476,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.bestPractices.freelanceWork.title}</h3>
                         {post.content.bestPractices.freelanceWork.items && (
                           <ul className="blog-list">
-                            {post.content.bestPractices.freelanceWork.items.map((item, index) => (
+                            {post.content.bestPractices.freelanceWork.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -1524,7 +1489,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.bestPractices.businessContent.title}</h3>
                         {post.content.bestPractices.businessContent.items && (
                           <ul className="blog-list">
-                            {post.content.bestPractices.businessContent.items.map((item, index) => (
+                            {post.content.bestPractices.businessContent.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -1537,7 +1502,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.bestPractices.commercialProducts.title}</h3>
                         {post.content.bestPractices.commercialProducts.items && (
                           <ul className="blog-list">
-                            {post.content.bestPractices.commercialProducts.items.map((item, index) => (
+                            {post.content.bestPractices.commercialProducts.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -1553,7 +1518,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                     <p>{post.content.future.text}</p>
                     {post.content.future.items && (
                       <ul className="blog-list">
-                        {post.content.future.items.map((item, index) => (
+                        {post.content.future.items.map((item: string, index: number) => (
                           <li key={index}>{item}</li>
                         ))}
                       </ul>
@@ -1567,7 +1532,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                     <p>{post.content.ethical.text}</p>
                     {post.content.ethical.items && (
                       <ul className="blog-list">
-                        {post.content.ethical.items.map((item, index) => (
+                        {post.content.ethical.items.map((item: string, index: number) => (
                           <li key={index}>{item}</li>
                         ))}
                       </ul>
@@ -1584,7 +1549,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.practicalSteps.immediateActions.title}</h3>
                         {post.content.practicalSteps.immediateActions.items && (
                           <ol className="blog-list numbered">
-                            {post.content.practicalSteps.immediateActions.items.map((item, index) => (
+                            {post.content.practicalSteps.immediateActions.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ol>
@@ -1597,7 +1562,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.practicalSteps.ongoingPractices.title}</h3>
                         {post.content.practicalSteps.ongoingPractices.items && (
                           <ol className="blog-list numbered">
-                            {post.content.practicalSteps.ongoingPractices.items.map((item, index) => (
+                            {post.content.practicalSteps.ongoingPractices.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ol>
@@ -1651,7 +1616,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                   <p>{post.content.whatIsSonicIdentity.text}</p>
                   {post.content.whatIsSonicIdentity.items && (
                     <ul className="blog-list">
-                      {post.content.whatIsSonicIdentity.items.map((item, index) => (
+                      {post.content.whatIsSonicIdentity.items.map((item: string, index: number) => (
                         <li key={index}>{item}</li>
                       ))}
                     </ul>
@@ -1671,7 +1636,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.science.memoryAndRecognition.title}</h3>
                         {post.content.science.memoryAndRecognition.items && (
                           <ul className="blog-list">
-                            {post.content.science.memoryAndRecognition.items.map((item, index) => (
+                            {post.content.science.memoryAndRecognition.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -1684,7 +1649,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.science.emotionalConnection.title}</h3>
                         {post.content.science.emotionalConnection.items && (
                           <ul className="blog-list">
-                            {post.content.science.emotionalConnection.items.map((item, index) => (
+                            {post.content.science.emotionalConnection.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -1697,7 +1662,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.science.multiSensory.title}</h3>
                         {post.content.science.multiSensory.items && (
                           <ul className="blog-list">
-                            {post.content.science.multiSensory.items.map((item, index) => (
+                            {post.content.science.multiSensory.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -1717,7 +1682,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                     <p>{post.content.audioFirst.text}</p>
                     {post.content.audioFirst.items && (
                       <ul className="blog-list">
-                        {post.content.audioFirst.items.map((item, index) => (
+                        {post.content.audioFirst.items.map((item: string, index: number) => (
                           <li key={index}>{item}</li>
                         ))}
                       </ul>
@@ -1739,7 +1704,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                             <h4>{post.content.howAI.accessibility.beforeAI.title}</h4>
                             {post.content.howAI.accessibility.beforeAI.items && (
                               <ul className="blog-list">
-                                {post.content.howAI.accessibility.beforeAI.items.map((item, index) => (
+                                {post.content.howAI.accessibility.beforeAI.items.map((item: string, index: number) => (
                                   <li key={index}>{item}</li>
                                 ))}
                               </ul>
@@ -1752,7 +1717,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                             <h4>{post.content.howAI.accessibility.withAI.title}</h4>
                             {post.content.howAI.accessibility.withAI.items && (
                               <ul className="blog-list">
-                                {post.content.howAI.accessibility.withAI.items.map((item, index) => (
+                                {post.content.howAI.accessibility.withAI.items.map((item: string, index: number) => (
                                   <li key={index}>{item}</li>
                                 ))}
                               </ul>
@@ -1768,7 +1733,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <p>{post.content.howAI.rapidIteration.text}</p>
                         {post.content.howAI.rapidIteration.items && (
                           <ul className="blog-list">
-                            {post.content.howAI.rapidIteration.items.map((item, index) => (
+                            {post.content.howAI.rapidIteration.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -1782,7 +1747,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <p>{post.content.howAI.consistency.text}</p>
                         {post.content.howAI.consistency.items && (
                           <ul className="blog-list">
-                            {post.content.howAI.consistency.items.map((item, index) => (
+                            {post.content.howAI.consistency.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -1802,7 +1767,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <p>{post.content.stepByStep.step1.text}</p>
                         {post.content.stepByStep.step1.items && (
                           <ul className="blog-list">
-                            {post.content.stepByStep.step1.items.map((item, index) => (
+                            {post.content.stepByStep.step1.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -1816,7 +1781,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <p>{post.content.stepByStep.step2.text}</p>
                         {post.content.stepByStep.step2.items && (
                           <ul className="blog-list">
-                            {post.content.stepByStep.step2.items.map((item, index) => (
+                            {post.content.stepByStep.step2.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -1833,7 +1798,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                             <h4>{post.content.stepByStep.step3.sonicLogo.title}</h4>
                             {post.content.stepByStep.step3.sonicLogo.items && (
                               <ul className="blog-list">
-                                {post.content.stepByStep.step3.sonicLogo.items.map((item, index) => (
+                                {post.content.stepByStep.step3.sonicLogo.items.map((item: string, index: number) => (
                                   <li key={index}>{item}</li>
                                 ))}
                               </ul>
@@ -1846,7 +1811,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                             <h4>{post.content.stepByStep.step3.brandMusic.title}</h4>
                             {post.content.stepByStep.step3.brandMusic.items && (
                               <ul className="blog-list">
-                                {post.content.stepByStep.step3.brandMusic.items.map((item, index) => (
+                                {post.content.stepByStep.step3.brandMusic.items.map((item: string, index: number) => (
                                   <li key={index}>{item}</li>
                                 ))}
                               </ul>
@@ -1862,7 +1827,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <p>{post.content.stepByStep.step4.text}</p>
                         {post.content.stepByStep.step4.items && (
                           <ul className="blog-list">
-                            {post.content.stepByStep.step4.items.map((item, index) => (
+                            {post.content.stepByStep.step4.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -1882,7 +1847,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.caseStudy.solution.title}</h3>
                         {post.content.caseStudy.solution.steps && (
                           <ol className="blog-list numbered">
-                            {post.content.caseStudy.solution.steps.map((item, index) => (
+                            {post.content.caseStudy.solution.steps.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ol>
@@ -1895,7 +1860,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.caseStudy.results.title}</h3>
                         {post.content.caseStudy.results.items && (
                           <ul className="blog-list">
-                            {post.content.caseStudy.results.items.map((item, index) => (
+                            {post.content.caseStudy.results.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -1911,7 +1876,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                     <p>{post.content.integrating.text}</p>
                     {post.content.integrating.items && (
                       <ul className="blog-list">
-                        {post.content.integrating.items.map((item, index) => (
+                        {post.content.integrating.items.map((item: string, index: number) => (
                           <li key={index}>{item}</li>
                         ))}
                       </ul>
@@ -1928,7 +1893,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                     <p>{post.content.measuring.text}</p>
                     {post.content.measuring.items && (
                       <ul className="blog-list">
-                        {post.content.measuring.items.map((item, index) => (
+                        {post.content.measuring.items.map((item: string, index: number) => (
                           <li key={index}>{item}</li>
                         ))}
                       </ul>
@@ -1941,7 +1906,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                     <h2>{post.content.commonMistakes.title}</h2>
                     {post.content.commonMistakes.items && (
                       <ul className="blog-list">
-                        {post.content.commonMistakes.items.map((item, index) => (
+                        {post.content.commonMistakes.items.map((item: string, index: number) => (
                           <li key={index}>{item}</li>
                         ))}
                       </ul>
@@ -1955,7 +1920,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                     <p>{post.content.future.text}</p>
                     {post.content.future.items && (
                       <ul className="blog-list">
-                        {post.content.future.items.map((item, index) => (
+                        {post.content.future.items.map((item: string, index: number) => (
                           <li key={index}>{item}</li>
                         ))}
                       </ul>
@@ -1975,7 +1940,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.gettingStarted.week1.title}</h3>
                         {post.content.gettingStarted.week1.items && (
                           <ul className="blog-list">
-                            {post.content.gettingStarted.week1.items.map((item, index) => (
+                            {post.content.gettingStarted.week1.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -1988,7 +1953,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.gettingStarted.week2.title}</h3>
                         {post.content.gettingStarted.week2.items && (
                           <ul className="blog-list">
-                            {post.content.gettingStarted.week2.items.map((item, index) => (
+                            {post.content.gettingStarted.week2.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -2001,7 +1966,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.gettingStarted.week3.title}</h3>
                         {post.content.gettingStarted.week3.items && (
                           <ul className="blog-list">
-                            {post.content.gettingStarted.week3.items.map((item, index) => (
+                            {post.content.gettingStarted.week3.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -2014,7 +1979,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.gettingStarted.week4.title}</h3>
                         {post.content.gettingStarted.week4.items && (
                           <ul className="blog-list">
-                            {post.content.gettingStarted.week4.items.map((item, index) => (
+                            {post.content.gettingStarted.week4.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -2042,7 +2007,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                           <h4>{post.content.stateOfAI.whereAIExcels.speedAndScale.title}</h4>
                           {post.content.stateOfAI.whereAIExcels.speedAndScale.items && (
                             <ul className="blog-list">
-                              {post.content.stateOfAI.whereAIExcels.speedAndScale.items.map((item, index) => (
+                              {post.content.stateOfAI.whereAIExcels.speedAndScale.items.map((item: string, index: number) => (
                                 <li key={index}>{item}</li>
                               ))}
                             </ul>
@@ -2055,7 +2020,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                           <h4>{post.content.stateOfAI.whereAIExcels.researchAndOrganization.title}</h4>
                           {post.content.stateOfAI.whereAIExcels.researchAndOrganization.items && (
                             <ul className="blog-list">
-                              {post.content.stateOfAI.whereAIExcels.researchAndOrganization.items.map((item, index) => (
+                              {post.content.stateOfAI.whereAIExcels.researchAndOrganization.items.map((item: string, index: number) => (
                                 <li key={index}>{item}</li>
                               ))}
                             </ul>
@@ -2068,7 +2033,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                           <h4>{post.content.stateOfAI.whereAIExcels.consistency.title}</h4>
                           {post.content.stateOfAI.whereAIExcels.consistency.items && (
                             <ul className="blog-list">
-                              {post.content.stateOfAI.whereAIExcels.consistency.items.map((item, index) => (
+                              {post.content.stateOfAI.whereAIExcels.consistency.items.map((item: string, index: number) => (
                                 <li key={index}>{item}</li>
                               ))}
                             </ul>
@@ -2091,7 +2056,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                           <h4>{post.content.stateOfAI.whereAIStruggles.authenticEmotion.title}</h4>
                           {post.content.stateOfAI.whereAIStruggles.authenticEmotion.items && (
                             <ul className="blog-list">
-                              {post.content.stateOfAI.whereAIStruggles.authenticEmotion.items.map((item, index) => (
+                              {post.content.stateOfAI.whereAIStruggles.authenticEmotion.items.map((item: string, index: number) => (
                                 <li key={index}>{item}</li>
                               ))}
                             </ul>
@@ -2104,7 +2069,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                           <h4>{post.content.stateOfAI.whereAIStruggles.originalThought.title}</h4>
                           {post.content.stateOfAI.whereAIStruggles.originalThought.items && (
                             <ul className="blog-list">
-                              {post.content.stateOfAI.whereAIStruggles.originalThought.items.map((item, index) => (
+                              {post.content.stateOfAI.whereAIStruggles.originalThought.items.map((item: string, index: number) => (
                                 <li key={index}>{item}</li>
                               ))}
                             </ul>
@@ -2117,7 +2082,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                           <h4>{post.content.stateOfAI.whereAIStruggles.culturalNuance.title}</h4>
                           {post.content.stateOfAI.whereAIStruggles.culturalNuance.items && (
                             <ul className="blog-list">
-                              {post.content.stateOfAI.whereAIStruggles.culturalNuance.items.map((item, index) => (
+                              {post.content.stateOfAI.whereAIStruggles.culturalNuance.items.map((item: string, index: number) => (
                                 <li key={index}>{item}</li>
                               ))}
                             </ul>
@@ -2139,7 +2104,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <p>{post.content.humanTouch.empathyAdvantage.text}</p>
                         {post.content.humanTouch.empathyAdvantage.items && (
                           <ul className="blog-list">
-                            {post.content.humanTouch.empathyAdvantage.items.map((item, index) => (
+                            {post.content.humanTouch.empathyAdvantage.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -2156,7 +2121,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <p>{post.content.humanTouch.insightAdvantage.text}</p>
                         {post.content.humanTouch.insightAdvantage.items && (
                           <ul className="blog-list">
-                            {post.content.humanTouch.insightAdvantage.items.map((item, index) => (
+                            {post.content.humanTouch.insightAdvantage.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -2170,7 +2135,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <p>{post.content.humanTouch.creativeLeap.text}</p>
                         {post.content.humanTouch.creativeLeap.items && (
                           <ul className="blog-list">
-                            {post.content.humanTouch.creativeLeap.items.map((item, index) => (
+                            {post.content.humanTouch.creativeLeap.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -2194,7 +2159,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                             <h4>{post.content.sweetSpot.useAIForFoundation.aiRole.title}</h4>
                             {post.content.sweetSpot.useAIForFoundation.aiRole.items && (
                               <ul className="blog-list">
-                                {post.content.sweetSpot.useAIForFoundation.aiRole.items.map((item, index) => (
+                                {post.content.sweetSpot.useAIForFoundation.aiRole.items.map((item: string, index: number) => (
                                   <li key={index}>{item}</li>
                                 ))}
                               </ul>
@@ -2207,7 +2172,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                             <h4>{post.content.sweetSpot.useAIForFoundation.humanRole.title}</h4>
                             {post.content.sweetSpot.useAIForFoundation.humanRole.items && (
                               <ul className="blog-list">
-                                {post.content.sweetSpot.useAIForFoundation.humanRole.items.map((item, index) => (
+                                {post.content.sweetSpot.useAIForFoundation.humanRole.items.map((item: string, index: number) => (
                                   <li key={index}>{item}</li>
                                 ))}
                               </ul>
@@ -2223,7 +2188,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <p>{post.content.sweetSpot.seventyThirtyRule.text}</p>
                         {post.content.sweetSpot.seventyThirtyRule.items && (
                           <ul className="blog-list">
-                            {post.content.sweetSpot.seventyThirtyRule.items.map((item, index) => (
+                            {post.content.sweetSpot.seventyThirtyRule.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -2245,7 +2210,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.realWorldWorkflows.blogPost.title}</h3>
                         {post.content.realWorldWorkflows.blogPost.steps && (
                           <ol className="blog-list numbered">
-                            {post.content.realWorldWorkflows.blogPost.steps.map((item, index) => (
+                            {post.content.realWorldWorkflows.blogPost.steps.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ol>
@@ -2258,7 +2223,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.realWorldWorkflows.socialMedia.title}</h3>
                         {post.content.realWorldWorkflows.socialMedia.steps && (
                           <ol className="blog-list numbered">
-                            {post.content.realWorldWorkflows.socialMedia.steps.map((item, index) => (
+                            {post.content.realWorldWorkflows.socialMedia.steps.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ol>
@@ -2271,7 +2236,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.realWorldWorkflows.productDescription.title}</h3>
                         {post.content.realWorldWorkflows.productDescription.steps && (
                           <ol className="blog-list numbered">
-                            {post.content.realWorldWorkflows.productDescription.steps.map((item, index) => (
+                            {post.content.realWorldWorkflows.productDescription.steps.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ol>
@@ -2290,7 +2255,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.whenToPrioritize.prioritizeAI.title}</h3>
                         {post.content.whenToPrioritize.prioritizeAI.items && (
                           <ul className="blog-list">
-                            {post.content.whenToPrioritize.prioritizeAI.items.map((item, index) => (
+                            {post.content.whenToPrioritize.prioritizeAI.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -2303,7 +2268,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.whenToPrioritize.prioritizeHumans.title}</h3>
                         {post.content.whenToPrioritize.prioritizeHumans.items && (
                           <ul className="blog-list">
-                            {post.content.whenToPrioritize.prioritizeHumans.items.map((item, index) => (
+                            {post.content.whenToPrioritize.prioritizeHumans.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -2323,7 +2288,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.caseStudy.solution.title}</h3>
                         {post.content.caseStudy.solution.steps && (
                           <ol className="blog-list numbered">
-                            {post.content.caseStudy.solution.steps.map((item, index) => (
+                            {post.content.caseStudy.solution.steps.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ol>
@@ -2336,7 +2301,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.caseStudy.results.title}</h3>
                         {post.content.caseStudy.results.items && (
                           <ul className="blog-list">
-                            {post.content.caseStudy.results.items.map((item, index) => (
+                            {post.content.caseStudy.results.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -2356,7 +2321,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <p>{post.content.psychology.overcomingResistance.text}</p>
                         {post.content.psychology.overcomingResistance.items && (
                           <ul className="blog-list">
-                            {post.content.psychology.overcomingResistance.items.map((item, index) => (
+                            {post.content.psychology.overcomingResistance.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -2370,7 +2335,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <p>{post.content.psychology.managingExpectations.text}</p>
                         {post.content.psychology.managingExpectations.items && (
                           <ul className="blog-list">
-                            {post.content.psychology.managingExpectations.items.map((item, index) => (
+                            {post.content.psychology.managingExpectations.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -2390,7 +2355,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <p>{post.content.toolsAndSystems.choosingRightAI.text}</p>
                         {post.content.toolsAndSystems.choosingRightAI.items && (
                           <ul className="blog-list">
-                            {post.content.toolsAndSystems.choosingRightAI.items.map((item, index) => (
+                            {post.content.toolsAndSystems.choosingRightAI.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -2406,7 +2371,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.toolsAndSystems.qualityControl.title}</h3>
                         {post.content.toolsAndSystems.qualityControl.items && (
                           <ul className="blog-list">
-                            {post.content.toolsAndSystems.qualityControl.items.map((item, index) => (
+                            {post.content.toolsAndSystems.qualityControl.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -2422,7 +2387,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                     <p>{post.content.future.text}</p>
                     {post.content.future.items && (
                       <ul className="blog-list">
-                        {post.content.future.items.map((item, index) => (
+                        {post.content.future.items.map((item: string, index: number) => (
                           <li key={index}>{item}</li>
                         ))}
                       </ul>
@@ -2436,7 +2401,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                     <p>{post.content.ethical.text}</p>
                     {post.content.ethical.items && (
                       <ul className="blog-list">
-                        {post.content.ethical.items.map((item, index) => (
+                        {post.content.ethical.items.map((item: string, index: number) => (
                           <li key={index}>{item}</li>
                         ))}
                       </ul>
@@ -2458,7 +2423,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                       <h3>{post.content.barriers.costBarrier.title}</h3>
                       {post.content.barriers.costBarrier.items && (
                         <ul className="blog-list">
-                          {post.content.barriers.costBarrier.items.map((item, index) => (
+                          {post.content.barriers.costBarrier.items.map((item: string, index: number) => (
                             <li key={index}>{item}</li>
                           ))}
                         </ul>
@@ -2471,7 +2436,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                       <h3>{post.content.barriers.timeBarrier.title}</h3>
                       {post.content.barriers.timeBarrier.items && (
                         <ul className="blog-list">
-                          {post.content.barriers.timeBarrier.items.map((item, index) => (
+                          {post.content.barriers.timeBarrier.items.map((item: string, index: number) => (
                             <li key={index}>{item}</li>
                           ))}
                         </ul>
@@ -2484,7 +2449,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                       <h3>{post.content.barriers.expertiseBarrier.title}</h3>
                       {post.content.barriers.expertiseBarrier.items && (
                         <ul className="blog-list">
-                          {post.content.barriers.expertiseBarrier.items.map((item, index) => (
+                          {post.content.barriers.expertiseBarrier.items.map((item: string, index: number) => (
                             <li key={index}>{item}</li>
                           ))}
                         </ul>
@@ -2508,7 +2473,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <p>{post.content.howAIChanges.textTo3D.text}</p>
                         {post.content.howAIChanges.textTo3D.examples && (
                           <ul className="blog-list">
-                            {post.content.howAIChanges.textTo3D.examples.map((item, index) => (
+                            {post.content.howAIChanges.textTo3D.examples.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -2525,7 +2490,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <p>{post.content.howAIChanges.imageTo3D.text}</p>
                         {post.content.howAIChanges.imageTo3D.items && (
                           <ul className="blog-list">
-                            {post.content.howAIChanges.imageTo3D.items.map((item, index) => (
+                            {post.content.howAIChanges.imageTo3D.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -2539,7 +2504,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <p>{post.content.howAIChanges.aiAssisted.text}</p>
                         {post.content.howAIChanges.aiAssisted.items && (
                           <ul className="blog-list">
-                            {post.content.howAIChanges.aiAssisted.items.map((item, index) => (
+                            {post.content.howAIChanges.aiAssisted.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -2607,7 +2572,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.toolkit.entryLevel.title}</h3>
                         {post.content.toolkit.entryLevel.items && (
                           <ul className="blog-list">
-                            {post.content.toolkit.entryLevel.items.map((item, index) => (
+                            {post.content.toolkit.entryLevel.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -2620,7 +2585,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.toolkit.intermediate.title}</h3>
                         {post.content.toolkit.intermediate.items && (
                           <ul className="blog-list">
-                            {post.content.toolkit.intermediate.items.map((item, index) => (
+                            {post.content.toolkit.intermediate.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -2633,7 +2598,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.toolkit.advanced.title}</h3>
                         {post.content.toolkit.advanced.items && (
                           <ul className="blog-list">
-                            {post.content.toolkit.advanced.items.map((item, index) => (
+                            {post.content.toolkit.advanced.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -2653,7 +2618,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.costComparison.traditional.title}</h3>
                         {post.content.costComparison.traditional.items && (
                           <ul className="blog-list">
-                            {post.content.costComparison.traditional.items.map((item, index) => (
+                            {post.content.costComparison.traditional.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -2666,7 +2631,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.costComparison.aiAssisted.title}</h3>
                         {post.content.costComparison.aiAssisted.items && (
                           <ul className="blog-list">
-                            {post.content.costComparison.aiAssisted.items.map((item, index) => (
+                            {post.content.costComparison.aiAssisted.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -2689,7 +2654,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.implementation.phase1.title}</h3>
                         {post.content.implementation.phase1.items && (
                           <ul className="blog-list">
-                            {post.content.implementation.phase1.items.map((item, index) => (
+                            {post.content.implementation.phase1.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -2702,7 +2667,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.implementation.phase2.title}</h3>
                         {post.content.implementation.phase2.items && (
                           <ul className="blog-list">
-                            {post.content.implementation.phase2.items.map((item, index) => (
+                            {post.content.implementation.phase2.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -2715,7 +2680,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.implementation.phase3.title}</h3>
                         {post.content.implementation.phase3.items && (
                           <ul className="blog-list">
-                            {post.content.implementation.phase3.items.map((item, index) => (
+                            {post.content.implementation.phase3.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -2728,7 +2693,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.implementation.phase4.title}</h3>
                         {post.content.implementation.phase4.items && (
                           <ul className="blog-list">
-                            {post.content.implementation.phase4.items.map((item, index) => (
+                            {post.content.implementation.phase4.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -2774,7 +2739,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                     <p>{post.content.future.text}</p>
                     {post.content.future.items && (
                       <ul className="blog-list">
-                        {post.content.future.items.map((item, index) => (
+                        {post.content.future.items.map((item: string, index: number) => (
                           <li key={index}>{item}</li>
                         ))}
                       </ul>
@@ -2791,7 +2756,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                     <p>{post.content.ethical.text}</p>
                     {post.content.ethical.items && (
                       <ul className="blog-list">
-                        {post.content.ethical.items.map((item, index) => (
+                        {post.content.ethical.items.map((item: string, index: number) => (
                           <li key={index}>{item}</li>
                         ))}
                       </ul>
@@ -2809,7 +2774,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                   <p>{post.content.understandingAI.text}</p>
                   {post.content.understandingAI.types && (
                     <ul className="blog-list">
-                      {post.content.understandingAI.types.map((item, index) => (
+                      {post.content.understandingAI.types.map((item: string, index: number) => (
                         <li key={index}>{item}</li>
                       ))}
                     </ul>
@@ -2829,7 +2794,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.firstTool.essentialFeatures.title}</h3>
                         {post.content.firstTool.essentialFeatures.items && (
                           <ul className="blog-list">
-                            {post.content.firstTool.essentialFeatures.items.map((item, index) => (
+                            {post.content.firstTool.essentialFeatures.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -2860,7 +2825,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                             <p><strong>{post.content.workflow.phase1.startWithConstraints.title}</strong></p>
                             {post.content.workflow.phase1.startWithConstraints.items && (
                               <ul className="blog-list">
-                                {post.content.workflow.phase1.startWithConstraints.items.map((item, index) => (
+                                {post.content.workflow.phase1.startWithConstraints.items.map((item: string, index: number) => (
                                   <li key={index}>{item}</li>
                                 ))}
                               </ul>
@@ -2894,7 +2859,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                             <p><strong>{post.content.workflow.phase2.iterationMindset.title}</strong></p>
                             {post.content.workflow.phase2.iterationMindset.items && (
                               <ul className="blog-list">
-                                {post.content.workflow.phase2.iterationMindset.items.map((item, index) => (
+                                {post.content.workflow.phase2.iterationMindset.items.map((item: string, index: number) => (
                                   <li key={index}>{item}</li>
                                 ))}
                               </ul>
@@ -2907,7 +2872,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                             <p><strong>{post.content.workflow.phase2.commonIssues.title}</strong></p>
                             {post.content.workflow.phase2.commonIssues.items && (
                               <ul className="blog-list">
-                                {post.content.workflow.phase2.commonIssues.items.map((item, index) => (
+                                {post.content.workflow.phase2.commonIssues.items.map((item: string, index: number) => (
                                   <li key={index}>{item}</li>
                                 ))}
                               </ul>
@@ -2925,7 +2890,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         )}
                         {post.content.workflow.phase3.items && (
                           <ul className="blog-list">
-                            {post.content.workflow.phase3.items.map((item, index) => (
+                            {post.content.workflow.phase3.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -2941,7 +2906,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                     <p>{post.content.terminology.text}</p>
                     {post.content.terminology.terms && (
                       <ul className="blog-list">
-                        {post.content.terminology.terms.map((item, index) => (
+                        {post.content.terminology.terms.map((item: string, index: number) => (
                           <li key={index}>{item}</li>
                         ))}
                       </ul>
@@ -3035,7 +3000,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                     <p>{post.content.toolkit.text}</p>
                     {post.content.toolkit.items && (
                       <ul className="blog-list">
-                        {post.content.toolkit.items.map((item, index) => (
+                        {post.content.toolkit.items.map((item: string, index: number) => (
                           <li key={index}>{item}</li>
                         ))}
                       </ul>
@@ -3055,7 +3020,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.thirtyDayPlan.week1.title}</h3>
                         {post.content.thirtyDayPlan.week1.items && (
                           <ul className="blog-list">
-                            {post.content.thirtyDayPlan.week1.items.map((item, index) => (
+                            {post.content.thirtyDayPlan.week1.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -3068,7 +3033,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.thirtyDayPlan.week2.title}</h3>
                         {post.content.thirtyDayPlan.week2.items && (
                           <ul className="blog-list">
-                            {post.content.thirtyDayPlan.week2.items.map((item, index) => (
+                            {post.content.thirtyDayPlan.week2.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -3081,7 +3046,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.thirtyDayPlan.week3.title}</h3>
                         {post.content.thirtyDayPlan.week3.items && (
                           <ul className="blog-list">
-                            {post.content.thirtyDayPlan.week3.items.map((item, index) => (
+                            {post.content.thirtyDayPlan.week3.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -3094,7 +3059,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.thirtyDayPlan.week4.title}</h3>
                         {post.content.thirtyDayPlan.week4.items && (
                           <ul className="blog-list">
-                            {post.content.thirtyDayPlan.week4.items.map((item, index) => (
+                            {post.content.thirtyDayPlan.week4.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -3120,7 +3085,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                     <p>{post.content.noLongerBeginner.text}</p>
                     {post.content.noLongerBeginner.items && (
                       <ul className="blog-list">
-                        {post.content.noLongerBeginner.items.map((item, index) => (
+                        {post.content.noLongerBeginner.items.map((item: string, index: number) => (
                           <li key={index}>{item}</li>
                         ))}
                       </ul>
@@ -3138,7 +3103,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                   <p>{post.content.whyAestheticsMatter.text}</p>
                   {post.content.whyAestheticsMatter.items && (
                     <ul className="blog-list">
-                      {post.content.whyAestheticsMatter.items.map((item, index) => (
+                      {post.content.whyAestheticsMatter.items.map((item: string, index: number) => (
                         <li key={index}>{item}</li>
                       ))}
                     </ul>
@@ -3162,7 +3127,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         )}
                         {post.content.aiAestheticSystem.colorPaletteManager.items && (
                           <ul className="blog-list">
-                            {post.content.aiAestheticSystem.colorPaletteManager.items.map((item, index) => (
+                            {post.content.aiAestheticSystem.colorPaletteManager.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -3182,7 +3147,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         )}
                         {post.content.aiAestheticSystem.styleTransfer.items && (
                           <ul className="blog-list">
-                            {post.content.aiAestheticSystem.styleTransfer.items.map((item, index) => (
+                            {post.content.aiAestheticSystem.styleTransfer.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -3205,7 +3170,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <p>{post.content.workflow.step1.text}</p>
                         {post.content.workflow.step1.items && (
                           <ul className="blog-list">
-                            {post.content.workflow.step1.items.map((item, index) => (
+                            {post.content.workflow.step1.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -3219,7 +3184,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <p>{post.content.workflow.step2.text}</p>
                         {post.content.workflow.step2.items && (
                           <ul className="blog-list">
-                            {post.content.workflow.step2.items.map((item, index) => (
+                            {post.content.workflow.step2.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -3237,7 +3202,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                             <p><strong>{post.content.workflow.step3.generatedContent.title}</strong></p>
                             {post.content.workflow.step3.generatedContent.items && (
                               <ul className="blog-list">
-                                {post.content.workflow.step3.generatedContent.items.map((item, index) => (
+                                {post.content.workflow.step3.generatedContent.items.map((item: string, index: number) => (
                                   <li key={index}>{item}</li>
                                 ))}
                               </ul>
@@ -3250,7 +3215,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                             <p><strong>{post.content.workflow.step3.existingPhotos.title}</strong></p>
                             {post.content.workflow.step3.existingPhotos.items && (
                               <ul className="blog-list">
-                                {post.content.workflow.step3.existingPhotos.items.map((item, index) => (
+                                {post.content.workflow.step3.existingPhotos.items.map((item: string, index: number) => (
                                   <li key={index}>{item}</li>
                                 ))}
                               </ul>
@@ -3276,7 +3241,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <p>{post.content.advancedStrategies.gridPlanner.text}</p>
                         {post.content.advancedStrategies.gridPlanner.items && (
                           <ul className="blog-list">
-                            {post.content.advancedStrategies.gridPlanner.items.map((item, index) => (
+                            {post.content.advancedStrategies.gridPlanner.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -3293,7 +3258,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <p>{post.content.advancedStrategies.contentRepurposing.text}</p>
                         {post.content.advancedStrategies.contentRepurposing.items && (
                           <ul className="blog-list">
-                            {post.content.advancedStrategies.contentRepurposing.items.map((item, index) => (
+                            {post.content.advancedStrategies.contentRepurposing.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -3310,7 +3275,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         )}
                         {post.content.advancedStrategies.seasonalAdaptation.items && (
                           <ul className="blog-list">
-                            {post.content.advancedStrategies.seasonalAdaptation.items.map((item, index) => (
+                            {post.content.advancedStrategies.seasonalAdaptation.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -3330,7 +3295,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.caseStudy.day1to7.title}</h3>
                         {post.content.caseStudy.day1to7.items && (
                           <ul className="blog-list">
-                            {post.content.caseStudy.day1to7.items.map((item, index) => (
+                            {post.content.caseStudy.day1to7.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -3343,7 +3308,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.caseStudy.day8to21.title}</h3>
                         {post.content.caseStudy.day8to21.items && (
                           <ul className="blog-list">
-                            {post.content.caseStudy.day8to21.items.map((item, index) => (
+                            {post.content.caseStudy.day8to21.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -3356,7 +3321,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.caseStudy.day22to30.title}</h3>
                         {post.content.caseStudy.day22to30.items && (
                           <ul className="blog-list">
-                            {post.content.caseStudy.day22to30.items.map((item, index) => (
+                            {post.content.caseStudy.day22to30.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -3376,7 +3341,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                     <p>{post.content.tools.text}</p>
                     {post.content.tools.items && (
                       <ul className="blog-list">
-                        {post.content.tools.items.map((item, index) => (
+                        {post.content.tools.items.map((item: string, index: number) => (
                           <li key={index}>{item}</li>
                         ))}
                       </ul>
@@ -3429,7 +3394,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                     <p>{post.content.measuringSuccess.text}</p>
                     {post.content.measuringSuccess.items && (
                       <ul className="blog-list">
-                        {post.content.measuringSuccess.items.map((item, index) => (
+                        {post.content.measuringSuccess.items.map((item: string, index: number) => (
                           <li key={index}>{item}</li>
                         ))}
                       </ul>
@@ -3443,7 +3408,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                     <p>{post.content.future.text}</p>
                     {post.content.future.items && (
                       <ul className="blog-list">
-                        {post.content.future.items.map((item, index) => (
+                        {post.content.future.items.map((item: string, index: number) => (
                           <li key={index}>{item}</li>
                         ))}
                       </ul>
@@ -3486,7 +3451,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <p>{post.content.prototypingRevolution.virtualPrototyping.text}</p>
                         {post.content.prototypingRevolution.virtualPrototyping.items && (
                           <ul className="blog-list">
-                            {post.content.prototypingRevolution.virtualPrototyping.items.map((item, index) => (
+                            {post.content.prototypingRevolution.virtualPrototyping.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -3503,7 +3468,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <p>{post.content.prototypingRevolution.aiDrivenTesting.text}</p>
                         {post.content.prototypingRevolution.aiDrivenTesting.items && (
                           <ul className="blog-list">
-                            {post.content.prototypingRevolution.aiDrivenTesting.items.map((item, index) => (
+                            {post.content.prototypingRevolution.aiDrivenTesting.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -3530,7 +3495,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <p>{post.content.materialIntelligence.sustainableInnovation.text}</p>
                         {post.content.materialIntelligence.sustainableInnovation.items && (
                           <ul className="blog-list">
-                            {post.content.materialIntelligence.sustainableInnovation.items.map((item, index) => (
+                            {post.content.materialIntelligence.sustainableInnovation.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -3639,7 +3604,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                     <p>{post.content.future.text}</p>
                     {post.content.future.items && (
                       <ul className="blog-list">
-                        {post.content.future.items.map((item, index) => (
+                        {post.content.future.items.map((item: string, index: number) => (
                           <li key={index}>{item}</li>
                         ))}
                       </ul>
@@ -3653,7 +3618,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                     <p>{post.content.gettingStarted.text}</p>
                     {post.content.gettingStarted.items && (
                       <ol className="blog-list numbered">
-                        {post.content.gettingStarted.items.map((item, index) => (
+                        {post.content.gettingStarted.items.map((item: string, index: number) => (
                           <li key={index}>{item}</li>
                         ))}
                       </ol>
@@ -3677,7 +3642,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                   )}
                   {post.content.hack1.items && (
                     <ul className="blog-list">
-                      {post.content.hack1.items.map((item, index) => (
+                      {post.content.hack1.items.map((item: string, index: number) => (
                         <li key={index}>{item}</li>
                       ))}
                     </ul>
@@ -3718,7 +3683,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                     )}
                     {post.content.hack3.steps && (
                       <ol className="blog-list numbered">
-                        {post.content.hack3.steps.map((item, index) => (
+                        {post.content.hack3.steps.map((item: string, index: number) => (
                           <li key={index}>{item}</li>
                         ))}
                       </ol>
@@ -3741,7 +3706,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                     )}
                     {post.content.hack4.features && (
                       <ul className="blog-list">
-                        {post.content.hack4.features.map((item, index) => (
+                        {post.content.hack4.features.map((item: string, index: number) => (
                           <li key={index}>{item}</li>
                         ))}
                       </ul>
@@ -3764,7 +3729,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                     )}
                     {post.content.hack5.items && (
                       <ul className="blog-list">
-                        {post.content.hack5.items.map((item, index) => (
+                        {post.content.hack5.items.map((item: string, index: number) => (
                           <li key={index}>{item}</li>
                         ))}
                       </ul>
@@ -3787,7 +3752,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                     )}
                     {post.content.hack6.scheduleItems && (
                       <ul className="blog-list">
-                        {post.content.hack6.scheduleItems.map((item, index) => (
+                        {post.content.hack6.scheduleitems.map((item: string, index: number) => (
                           <li key={index}>{item}</li>
                         ))}
                       </ul>
@@ -3807,7 +3772,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                     )}
                     {post.content.hack7.items && (
                       <ul className="blog-list">
-                        {post.content.hack7.items.map((item, index) => (
+                        {post.content.hack7.items.map((item: string, index: number) => (
                           <li key={index}>{item}</li>
                         ))}
                       </ul>
@@ -3827,7 +3792,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.implementation.startSmall.title}</h3>
                         {post.content.implementation.startSmall.items && (
                           <ol className="blog-list numbered">
-                            {post.content.implementation.startSmall.items.map((item, index) => (
+                            {post.content.implementation.startSmall.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ol>
@@ -3841,7 +3806,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <p>{post.content.implementation.toolsThatGrow.text}</p>
                         {post.content.implementation.toolsThatGrow.items && (
                           <ul className="blog-list">
-                            {post.content.implementation.toolsThatGrow.items.map((item, index) => (
+                            {post.content.implementation.toolsThatGrow.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -3873,7 +3838,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                     <p>{post.content.psychologicalBarriers.text}</p>
                     {post.content.psychologicalBarriers.concerns && (
                       <ul className="blog-list">
-                        {post.content.psychologicalBarriers.concerns.map((item, index) => (
+                        {post.content.psychologicalBarriers.concerns.map((item: string, index: number) => (
                           <li key={index}>{item}</li>
                         ))}
                       </ul>
@@ -3898,7 +3863,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                       <h3>{post.content.globalChallenge.visualMissteps.title}</h3>
                       {post.content.globalChallenge.visualMissteps.items && (
                         <ul className="blog-list">
-                          {post.content.globalChallenge.visualMissteps.items.map((item, index) => (
+                          {post.content.globalChallenge.visualMissteps.items.map((item: string, index: number) => (
                             <li key={index}>{item}</li>
                           ))}
                         </ul>
@@ -3911,7 +3876,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                       <h3>{post.content.globalChallenge.messagingMishaps.title}</h3>
                       {post.content.globalChallenge.messagingMishaps.items && (
                         <ul className="blog-list">
-                          {post.content.globalChallenge.messagingMishaps.items.map((item, index) => (
+                          {post.content.globalChallenge.messagingMishaps.items.map((item: string, index: number) => (
                             <li key={index}>{item}</li>
                           ))}
                         </ul>
@@ -3924,7 +3889,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                       <h3>{post.content.globalChallenge.audioAmbiguities.title}</h3>
                       {post.content.globalChallenge.audioAmbiguities.items && (
                         <ul className="blog-list">
-                          {post.content.globalChallenge.audioAmbiguities.items.map((item, index) => (
+                          {post.content.globalChallenge.audioAmbiguities.items.map((item: string, index: number) => (
                             <li key={index}>{item}</li>
                           ))}
                         </ul>
@@ -3948,7 +3913,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <p>{post.content.aiRevolution.visualLocalization.text}</p>
                         {post.content.aiRevolution.visualLocalization.items && (
                           <ul className="blog-list">
-                            {post.content.aiRevolution.visualLocalization.items.map((item, index) => (
+                            {post.content.aiRevolution.visualLocalization.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -3965,7 +3930,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <p>{post.content.aiRevolution.messagingTranscreation.text}</p>
                         {post.content.aiRevolution.messagingTranscreation.items && (
                           <ul className="blog-list">
-                            {post.content.aiRevolution.messagingTranscreation.items.map((item, index) => (
+                            {post.content.aiRevolution.messagingTranscreation.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -3982,7 +3947,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <p>{post.content.aiRevolution.sonicBranding.text}</p>
                         {post.content.aiRevolution.sonicBranding.items && (
                           <ul className="blog-list">
-                            {post.content.aiRevolution.sonicBranding.items.map((item, index) => (
+                            {post.content.aiRevolution.sonicBranding.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -4008,7 +3973,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         )}
                         {post.content.framework.step1.items && (
                           <ul className="blog-list">
-                            {post.content.framework.step1.items.map((item, index) => (
+                            {post.content.framework.step1.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -4035,7 +4000,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         )}
                         {post.content.framework.step3.items && (
                           <ul className="blog-list">
-                            {post.content.framework.step3.items.map((item, index) => (
+                            {post.content.framework.step3.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -4052,7 +4017,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         )}
                         {post.content.framework.step4.items && (
                           <ul className="blog-list">
-                            {post.content.framework.step4.items.map((item, index) => (
+                            {post.content.framework.step4.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -4081,7 +4046,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                     )}
                     {post.content.caseStudy.steps && (
                       <ol className="blog-list numbered">
-                        {post.content.caseStudy.steps.map((item, index) => (
+                        {post.content.caseStudy.steps.map((item: string, index: number) => (
                           <li key={index}>{item}</li>
                         ))}
                       </ol>
@@ -4098,7 +4063,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                     <p>{post.content.humanAIPartnership.text}</p>
                     {post.content.humanAIPartnership.aiUses && (
                       <ul className="blog-list">
-                        {post.content.humanAIPartnership.aiUses.map((item, index) => (
+                        {post.content.humanAIPartnership.aiUses.map((item: string, index: number) => (
                           <li key={index}>{item}</li>
                         ))}
                       </ul>
@@ -4108,7 +4073,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                     )}
                     {post.content.humanAIPartnership.humanUses && (
                       <ul className="blog-list">
-                        {post.content.humanAIPartnership.humanUses.map((item, index) => (
+                        {post.content.humanAIPartnership.humanUses.map((item: string, index: number) => (
                           <li key={index}>{item}</li>
                         ))}
                       </ul>
@@ -4122,7 +4087,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                     <p>{post.content.ethicalConsiderations.text}</p>
                     {post.content.ethicalConsiderations.items && (
                       <ul className="blog-list">
-                        {post.content.ethicalConsiderations.items.map((item, index) => (
+                        {post.content.ethicalConsiderations.items.map((item: string, index: number) => (
                           <li key={index}>{item}</li>
                         ))}
                       </ul>
@@ -4136,7 +4101,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                     <p>{post.content.future.text}</p>
                     {post.content.future.items && (
                       <ul className="blog-list">
-                        {post.content.future.items.map((item, index) => (
+                        {post.content.future.items.map((item: string, index: number) => (
                           <li key={index}>{item}</li>
                         ))}
                       </ul>
@@ -4161,7 +4126,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                       <h3>{post.content.soundQuality.freeLimitations.title}</h3>
                       {post.content.soundQuality.freeLimitations.items && (
                         <ul className="blog-list">
-                          {post.content.soundQuality.freeLimitations.items.map((item, index) => (
+                          {post.content.soundQuality.freeLimitations.items.map((item: string, index: number) => (
                             <li key={index}>{item}</li>
                           ))}
                         </ul>
@@ -4174,7 +4139,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                       <h3>{post.content.soundQuality.premiumAdvantages.title}</h3>
                       {post.content.soundQuality.premiumAdvantages.items && (
                         <ul className="blog-list">
-                          {post.content.soundQuality.premiumAdvantages.items.map((item, index) => (
+                          {post.content.soundQuality.premiumAdvantages.items.map((item: string, index: number) => (
                             <li key={index}>{item}</li>
                           ))}
                         </ul>
@@ -4197,7 +4162,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.licensing.freePitfalls.title}</h3>
                         {post.content.licensing.freePitfalls.items && (
                           <ul className="blog-list">
-                            {post.content.licensing.freePitfalls.items.map((item, index) => (
+                            {post.content.licensing.freePitfalls.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -4210,7 +4175,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.licensing.premiumPeace.title}</h3>
                         {post.content.licensing.premiumPeace.items && (
                           <ul className="blog-list">
-                            {post.content.licensing.premiumPeace.items.map((item, index) => (
+                            {post.content.licensing.premiumPeace.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -4240,7 +4205,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                     <p>{post.content.hiddenCost.text}</p>
                     {post.content.hiddenCost.items && (
                       <ul className="blog-list">
-                        {post.content.hiddenCost.items.map((item, index) => (
+                        {post.content.hiddenCost.items.map((item: string, index: number) => (
                           <li key={index}>{item}</li>
                         ))}
                       </ul>
@@ -4260,7 +4225,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.whoNeedsPremium.stickWithFree.title}</h3>
                         {post.content.whoNeedsPremium.stickWithFree.items && (
                           <ul className="blog-list">
-                            {post.content.whoNeedsPremium.stickWithFree.items.map((item, index) => (
+                            {post.content.whoNeedsPremium.stickWithFree.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -4273,7 +4238,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.whoNeedsPremium.upgradeToPremium.title}</h3>
                         {post.content.whoNeedsPremium.upgradeToPremium.items && (
                           <ul className="blog-list">
-                            {post.content.whoNeedsPremium.upgradeToPremium.items.map((item, index) => (
+                            {post.content.whoNeedsPremium.upgradeToPremium.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -4293,7 +4258,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.middleGround.entryLevel.title}</h3>
                         {post.content.middleGround.entryLevel.items && (
                           <ul className="blog-list">
-                            {post.content.middleGround.entryLevel.items.map((item, index) => (
+                            {post.content.middleGround.entryLevel.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -4309,7 +4274,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.middleGround.professional.title}</h3>
                         {post.content.middleGround.professional.items && (
                           <ul className="blog-list">
-                            {post.content.middleGround.professional.items.map((item, index) => (
+                            {post.content.middleGround.professional.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -4325,7 +4290,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.middleGround.enterprise.title}</h3>
                         {post.content.middleGround.enterprise.items && (
                           <ul className="blog-list">
-                            {post.content.middleGround.enterprise.items.map((item, index) => (
+                            {post.content.middleGround.enterprise.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -4344,7 +4309,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                     <p>{post.content.wildmindBalance.text}</p>
                     {post.content.wildmindBalance.items && (
                       <ul className="blog-list">
-                        {post.content.wildmindBalance.items.map((item, index) => (
+                        {post.content.wildmindBalance.items.map((item: string, index: number) => (
                           <li key={index}>{item}</li>
                         ))}
                       </ul>
@@ -4361,7 +4326,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                     <p>{post.content.decisionFramework.text}</p>
                     {post.content.decisionFramework.items && (
                       <ol className="blog-list numbered">
-                        {post.content.decisionFramework.items.map((item, index) => (
+                        {post.content.decisionFramework.items.map((item: string, index: number) => (
                           <li key={index}>{item}</li>
                         ))}
                       </ol>
@@ -4378,7 +4343,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                     <p>{post.content.upgradeMoment.text}</p>
                     {post.content.upgradeMoment.items && (
                       <ul className="blog-list">
-                        {post.content.upgradeMoment.items.map((item, index) => (
+                        {post.content.upgradeMoment.items.map((item: string, index: number) => (
                           <li key={index}>{item}</li>
                         ))}
                       </ul>
@@ -4397,7 +4362,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                   <p><strong>{post.content.caseStudy1.solution}</strong></p>
                   {post.content.caseStudy1.solutionItems && (
                     <ol className="blog-list numbered">
-                      {post.content.caseStudy1.solutionItems.map((item, index) => (
+                      {post.content.caseStudy1.solutionitems.map((item: string, index: number) => (
                         <li key={index}>{item}</li>
                       ))}
                     </ol>
@@ -4405,7 +4370,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                   <p><strong>{post.content.caseStudy1.growthImpact}</strong></p>
                   {post.content.caseStudy1.growthItems && (
                     <ul className="blog-list">
-                      {post.content.caseStudy1.growthItems.map((item, index) => (
+                      {post.content.caseStudy1.growthitems.map((item: string, index: number) => (
                         <li key={index}>{item}</li>
                       ))}
                     </ul>
@@ -4420,7 +4385,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                     <p><strong>{post.content.caseStudy2.solution}</strong></p>
                     {post.content.caseStudy2.solutionItems && (
                       <ol className="blog-list numbered">
-                        {post.content.caseStudy2.solutionItems.map((item, index) => (
+                        {post.content.caseStudy2.solutionitems.map((item: string, index: number) => (
                           <li key={index}>{item}</li>
                         ))}
                       </ol>
@@ -4428,7 +4393,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                     <p><strong>{post.content.caseStudy2.growthImpact}</strong></p>
                     {post.content.caseStudy2.growthItems && (
                       <ul className="blog-list">
-                        {post.content.caseStudy2.growthItems.map((item, index) => (
+                        {post.content.caseStudy2.growthitems.map((item: string, index: number) => (
                           <li key={index}>{item}</li>
                         ))}
                       </ul>
@@ -4444,7 +4409,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                     <p><strong>{post.content.caseStudy3.solution}</strong></p>
                     {post.content.caseStudy3.solutionItems && (
                       <ol className="blog-list numbered">
-                        {post.content.caseStudy3.solutionItems.map((item, index) => (
+                        {post.content.caseStudy3.solutionitems.map((item: string, index: number) => (
                           <li key={index}>{item}</li>
                         ))}
                       </ol>
@@ -4452,7 +4417,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                     <p><strong>{post.content.caseStudy3.growthImpact}</strong></p>
                     {post.content.caseStudy3.growthItems && (
                       <ul className="blog-list">
-                        {post.content.caseStudy3.growthItems.map((item, index) => (
+                        {post.content.caseStudy3.growthitems.map((item: string, index: number) => (
                           <li key={index}>{item}</li>
                         ))}
                       </ul>
@@ -4467,7 +4432,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                     <p>{post.content.thePattern.text}</p>
                     {post.content.thePattern.items && (
                       <ol className="blog-list numbered">
-                        {post.content.thePattern.items.map((item, index) => (
+                        {post.content.thePattern.items.map((item: string, index: number) => (
                           <li key={index}>{item}</li>
                         ))}
                       </ol>
@@ -4481,7 +4446,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                     <p>{post.content.implementation.text}</p>
                     {post.content.implementation.items && (
                       <ol className="blog-list numbered">
-                        {post.content.implementation.items.map((item, index) => (
+                        {post.content.implementation.items.map((item: string, index: number) => (
                           <li key={index}>{item}</li>
                         ))}
                       </ol>
@@ -4506,7 +4471,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                   <p>{post.content.beyondTemplates.text}</p>
                   {post.content.beyondTemplates.items && (
                     <ul className="blog-list">
-                      {post.content.beyondTemplates.items.map((item, index) => (
+                      {post.content.beyondTemplates.items.map((item: string, index: number) => (
                         <li key={index}>{item}</li>
                       ))}
                     </ul>
@@ -4527,7 +4492,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         )}
                         {post.content.creativeWorkflow.phase1.items && (
                           <ul className="blog-list">
-                            {post.content.creativeWorkflow.phase1.items.map((item, index) => (
+                            {post.content.creativeWorkflow.phase1.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -4547,7 +4512,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         )}
                         {post.content.creativeWorkflow.phase2.items && (
                           <ul className="blog-list">
-                            {post.content.creativeWorkflow.phase2.items.map((item, index) => (
+                            {post.content.creativeWorkflow.phase2.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -4561,7 +4526,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <p>{post.content.creativeWorkflow.phase3.text}</p>
                         {post.content.creativeWorkflow.phase3.items && (
                           <ul className="blog-list">
-                            {post.content.creativeWorkflow.phase3.items.map((item, index) => (
+                            {post.content.creativeWorkflow.phase3.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -4577,7 +4542,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                     <p>{post.content.creativeBlocks.text}</p>
                     {post.content.creativeBlocks.items && (
                       <ol className="blog-list numbered">
-                        {post.content.creativeBlocks.items.map((item, index) => (
+                        {post.content.creativeBlocks.items.map((item: string, index: number) => (
                           <li key={index}>{item}</li>
                         ))}
                       </ol>
@@ -4607,7 +4572,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                     <p>{post.content.realWorldApplications.text}</p>
                     {post.content.realWorldApplications.items && (
                       <ul className="blog-list">
-                        {post.content.realWorldApplications.items.map((item, index) => (
+                        {post.content.realWorldApplications.items.map((item: string, index: number) => (
                           <li key={index}>{item}</li>
                         ))}
                       </ul>
@@ -4621,7 +4586,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                     <p>{post.content.gettingStarted.text}</p>
                     {post.content.gettingStarted.items && (
                       <ol className="blog-list numbered">
-                        {post.content.gettingStarted.items.map((item, index) => (
+                        {post.content.gettingStarted.items.map((item: string, index: number) => (
                           <li key={index}>{item}</li>
                         ))}
                       </ol>
@@ -4639,7 +4604,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                   <p>{post.content.tippingPoint.text}</p>
                   {post.content.tippingPoint.items && (
                     <ol className="blog-list numbered">
-                      {post.content.tippingPoint.items.map((item, index) => (
+                      {post.content.tippingPoint.items.map((item: string, index: number) => (
                         <li key={index}>{item}</li>
                       ))}
                     </ol>
@@ -4709,7 +4674,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <p>{post.content.actionPlan.step1.text}</p>
                         {post.content.actionPlan.step1.items && (
                           <ul className="blog-list">
-                            {post.content.actionPlan.step1.items.map((item, index) => (
+                            {post.content.actionPlan.step1.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -4725,7 +4690,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.actionPlan.step2.title}</h3>
                         {post.content.actionPlan.step2.items && (
                           <ol className="blog-list numbered">
-                            {post.content.actionPlan.step2.items.map((item, index) => (
+                            {post.content.actionPlan.step2.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ol>
@@ -4741,7 +4706,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         )}
                         {post.content.actionPlan.step3.items && (
                           <ol className="blog-list numbered">
-                            {post.content.actionPlan.step3.items.map((item, index) => (
+                            {post.content.actionPlan.step3.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ol>
@@ -4757,7 +4722,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         )}
                         {post.content.actionPlan.step4.items && (
                           <ul className="blog-list">
-                            {post.content.actionPlan.step4.items.map((item, index) => (
+                            {post.content.actionPlan.step4.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -4867,7 +4832,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                     <p>{post.content.implementation.text}</p>
                     {post.content.implementation.items && (
                       <ol className="blog-list numbered">
-                        {post.content.implementation.items.map((item, index) => (
+                        {post.content.implementation.items.map((item: string, index: number) => (
                           <li key={index}>{item}</li>
                         ))}
                       </ol>
@@ -4936,7 +4901,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <p>{post.content.stickyVideo.storytelling.text}</p>
                         {post.content.stickyVideo.storytelling.items && (
                           <ul className="blog-list">
-                            {post.content.stickyVideo.storytelling.items.map((item, index) => (
+                            {post.content.stickyVideo.storytelling.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -4950,7 +4915,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <p>{post.content.stickyVideo.authenticity.text}</p>
                         {post.content.stickyVideo.authenticity.items && (
                           <ul className="blog-list">
-                            {post.content.stickyVideo.authenticity.items.map((item, index) => (
+                            {post.content.stickyVideo.authenticity.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -4982,7 +4947,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                     <p>{post.content.shareability.text}</p>
                     {post.content.shareability.items && (
                       <ul className="blog-list">
-                        {post.content.shareability.items.map((item, index) => (
+                        {post.content.shareability.items.map((item: string, index: number) => (
                           <li key={index}>{item}</li>
                         ))}
                       </ul>
@@ -5003,7 +4968,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                   <p>{post.content.step1.text}</p>
                   {post.content.step1.items && (
                     <ul className="blog-list">
-                      {post.content.step1.items.map((item, index) => (
+                      {post.content.step1.items.map((item: string, index: number) => (
                         <li key={index}>{item}</li>
                       ))}
                     </ul>
@@ -5023,7 +4988,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.step2.contentCreation.title}</h3>
                         {post.content.step2.contentCreation.items && (
                           <ul className="blog-list">
-                            {post.content.step2.contentCreation.items.map((item, index) => (
+                            {post.content.step2.contentCreation.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -5036,7 +5001,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.step2.aiPower.title}</h3>
                         {post.content.step2.aiPower.items && (
                           <ul className="blog-list">
-                            {post.content.step2.aiPower.items.map((item, index) => (
+                            {post.content.step2.aiPower.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -5049,7 +5014,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <h3>{post.content.step2.workflow.title}</h3>
                         {post.content.step2.workflow.items && (
                           <ul className="blog-list">
-                            {post.content.step2.workflow.items.map((item, index) => (
+                            {post.content.step2.workflow.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -5069,7 +5034,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                     <p>{post.content.step3.text}</p>
                     {post.content.step3.items && (
                       <ul className="blog-list">
-                        {post.content.step3.items.map((item, index) => (
+                        {post.content.step3.items.map((item: string, index: number) => (
                           <li key={index}>{item}</li>
                         ))}
                       </ul>
@@ -5086,7 +5051,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                     <p>{post.content.step4.text}</p>
                     {post.content.step4.items && (
                       <ul className="blog-list">
-                        {post.content.step4.items.map((item, index) => (
+                        {post.content.step4.items.map((item: string, index: number) => (
                           <li key={index}>{item}</li>
                         ))}
                       </ul>
@@ -5104,7 +5069,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                   <p>{post.content.professionalWorkflow.text}</p>
                   {post.content.professionalWorkflow.items && (
                     <ul className="blog-list">
-                      {post.content.professionalWorkflow.items.map((item, index) => (
+                      {post.content.professionalWorkflow.items.map((item: string, index: number) => (
                         <li key={index}>{item}</li>
                       ))}
                     </ul>
@@ -5122,7 +5087,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                     )}
                     {post.content.phase1.items && (
                       <ul className="blog-list">
-                        {post.content.phase1.items.map((item, index) => (
+                        {post.content.phase1.items.map((item: string, index: number) => (
                           <li key={index}>{item}</li>
                         ))}
                       </ul>
@@ -5138,7 +5103,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                     <p>{post.content.phase2.text}</p>
                     {post.content.phase2.items && (
                       <ul className="blog-list">
-                        {post.content.phase2.items.map((item, index) => (
+                        {post.content.phase2.items.map((item: string, index: number) => (
                           <li key={index}>{item}</li>
                         ))}
                       </ul>
@@ -5157,7 +5122,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                     )}
                     {post.content.phase3.items && (
                       <ul className="blog-list">
-                        {post.content.phase3.items.map((item, index) => (
+                        {post.content.phase3.items.map((item: string, index: number) => (
                           <li key={index}>{item}</li>
                         ))}
                       </ul>
@@ -5185,7 +5150,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                   <p>{post.content.whyConsistency.text}</p>
                   {post.content.whyConsistency.items && (
                     <ul className="blog-list">
-                      {post.content.whyConsistency.items.map((item, index) => (
+                      {post.content.whyConsistency.items.map((item: string, index: number) => (
                         <li key={index}>{item}</li>
                       ))}
                     </ul>
@@ -5201,7 +5166,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                     <p>{post.content.brandingToolkit.text}</p>
                     {post.content.brandingToolkit.items && (
                       <ul className="blog-list">
-                        {post.content.brandingToolkit.items.map((item, index) => (
+                        {post.content.brandingToolkit.items.map((item: string, index: number) => (
                           <li key={index}>{item}</li>
                         ))}
                       </ul>
@@ -5220,7 +5185,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <p>{post.content.stepByStepGuide.step1.text}</p>
                         {post.content.stepByStepGuide.step1.items && (
                           <ul className="blog-list">
-                            {post.content.stepByStepGuide.step1.items.map((item, index) => (
+                            {post.content.stepByStepGuide.step1.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -5234,7 +5199,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <p>{post.content.stepByStepGuide.step2.text}</p>
                         {post.content.stepByStepGuide.step2.items && (
                           <ul className="blog-list">
-                            {post.content.stepByStepGuide.step2.items.map((item, index) => (
+                            {post.content.stepByStepGuide.step2.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -5248,7 +5213,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                         <p>{post.content.stepByStepGuide.step3.text}</p>
                         {post.content.stepByStepGuide.step3.items && (
                           <ul className="blog-list">
-                            {post.content.stepByStepGuide.step3.items.map((item, index) => (
+                            {post.content.stepByStepGuide.step3.items.map((item: string, index: number) => (
                               <li key={index}>{item}</li>
                             ))}
                           </ul>
@@ -5286,7 +5251,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                   <section className="blog-section-content">
                     <h2>{post.content.applications.title}</h2>
                     <ul className="blog-list">
-                      {post.content.applications.items.map((item, index) => (
+                      {post.content.applications.items.map((item: string, index: number) => (
                         <li key={index}>{item}</li>
                       ))}
                     </ul>
@@ -5297,7 +5262,7 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
                   <section className="blog-section-content">
                     <h2>{post.content.tips.title}</h2>
                     <ol className="blog-list numbered">
-                      {post.content.tips.items.map((item, index) => (
+                      {post.content.tips.items.map((item: string, index: number) => (
                         <li key={index}>{item}</li>
                       ))}
                     </ol>
@@ -5329,87 +5294,12 @@ function BlogPostDetail({ post, onBack }: BlogPostDetailProps) {
           </div>
 
           <div className="blog-post-cta">
-            <h3 className="cta-title">
+            <button className="cta-button" onClick={onBack}>
               Explore More Articles
-              <svg className="cta-arrow" width="24" height="24" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M7.5 5L12.5 10L7.5 15" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </h3>
+            </button>
           </div>
-
-          {relatedPosts.length > 0 && (
-            <div className="related-posts">
-              <div className="related-grid">
-                {relatedPosts.map((item) => (
-                  <article
-                    key={item.id}
-                    className="related-card"
-                    onClick={() => router.push(`/blog/${item.id}`)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        router.push(`/blog/${item.id}`);
-                      }
-                    }}
-                  >
-                    <div className="related-card-image">
-                      <div className="related-card-placeholder" aria-hidden="true" />
-                      {item.image && (
-                        <img
-                          src={item.image}
-                          alt={item.title}
-                          loading="lazy"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.style.display = 'none';
-                            const placeholder = target.parentElement?.querySelector('.related-card-placeholder') as HTMLElement;
-                            if (placeholder) placeholder.style.display = 'flex';
-                          }}
-                        />
-                      )}
-                    </div>
-                    <div className="related-card-body">
-                      <span className={`category-tag category-${item.categoryColor}`}>{item.category}</span>
-                      <h4 className="related-card-title">{item.title}</h4>
-                      <p className="related-card-description">{item.description}</p>
-                      <div className="read-time">
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5" />
-                          <path d="M8 4V8L11 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                        </svg>
-                        <span>{item.readTime}</span>
-                      </div>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            </div>
-          )}
         </article>
-
-        {/* Breadcrumbs for SEO */}
-        <nav className="blog-breadcrumbs" aria-label="Breadcrumb">
-          <ol className="breadcrumb-list">
-            <li className="breadcrumb-item">
-              <Link href="/" className="breadcrumb-link">Home</Link>
-            </li>
-            <li className="breadcrumb-separator">/</li>
-            <li className="breadcrumb-item">
-              <Link href="/blog" className="breadcrumb-link">Blog</Link>
-            </li>
-            <li className="breadcrumb-separator">/</li>
-            <li className="breadcrumb-item breadcrumb-current" aria-current="page">
-              {post.title}
-            </li>
-          </ol>
-        </nav>
-
-        {/* Related Posts for Internal Linking & SEO */}
-        <RelatedPosts currentPostId={post.id} maxPosts={3} />
       </div>
-      <FooterNew />
     </div>
   )
 }

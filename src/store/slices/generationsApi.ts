@@ -1,5 +1,22 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import { getApiClient } from '@/lib/axiosInstance';
+import { extractFalErrorDetails } from '@/lib/falToast';
+import { extractReplicateErrorDetails } from '@/lib/replicateToast';
+
+function toApiRejectPayload(
+  error: any,
+  fallbackMessage: string,
+): { message: string; code?: string; status?: number } {
+  const code = error?.response?.data?.code;
+  return {
+    message:
+      error?.response?.data?.message || error?.message || fallbackMessage,
+    ...(typeof code === 'string' && code ? { code } : {}),
+    ...(typeof error?.response?.status === 'number'
+      ? { status: error.response.status }
+      : {}),
+  };
+}
 
 export const bflGenerate = createAsyncThunk(
   'generations/bflGenerate',
@@ -25,12 +42,12 @@ export const bflGenerate = createAsyncThunk(
           const mod = await import('@/lib/publicFlag');
           (payload as any).isPublic = await mod.getIsPublic();
         }
-      } catch {}
+      } catch { }
       const api = getApiClient();
       const res = await api.post('/api/bfl/generate', payload);
       return res.data?.data || res.data;
     } catch (e: any) {
-      return rejectWithValue(e?.response?.data?.message || e?.message || 'BFL generate failed');
+      return rejectWithValue(toApiRejectPayload(e, 'BFL generate failed'));
     }
   }
 );
@@ -47,12 +64,12 @@ export const runwayGenerate = createAsyncThunk(
           const mod = await import('@/lib/publicFlag');
           body.isPublic = await mod.getIsPublic();
         }
-      } catch {}
+      } catch { }
       const api = getApiClient();
       const res = await api.post('/api/runway/generate', body);
       return res.data?.data || res.data;
     } catch (e: any) {
-      return rejectWithValue(e?.response?.data?.message || e?.message || 'Runway generate failed');
+      return rejectWithValue(toApiRejectPayload(e, 'Runway generate failed'));
     }
   }
 );
@@ -65,7 +82,7 @@ export const runwayStatus = createAsyncThunk(
       const res = await api.get(`/api/runway/status/${encodeURIComponent(taskId)}`);
       return res.data?.data || res.data;
     } catch (e: any) {
-      return rejectWithValue(e?.response?.data?.message || e?.message || 'Runway status failed');
+      return rejectWithValue(toApiRejectPayload(e, 'Runway status failed'));
     }
   }
 );
@@ -78,7 +95,7 @@ export const runwayVideo = createAsyncThunk(
       const res = await api.post('/api/runway/video', body);
       return res.data?.data || res.data;
     } catch (e: any) {
-      return rejectWithValue(e?.response?.data?.message || e?.message || 'Runway video failed');
+      return rejectWithValue(toApiRejectPayload(e, 'Runway video failed'));
     }
   }
 );
@@ -92,12 +109,12 @@ export const minimaxGenerate = createAsyncThunk(
           const mod = await import('@/lib/publicFlag');
           payload.isPublic = await mod.getIsPublic();
         }
-      } catch {}
+      } catch { }
       const api = getApiClient();
       const res = await api.post('/api/minimax/generate', payload);
       return res.data?.data || res.data;
     } catch (e: any) {
-      return rejectWithValue(e?.response?.data?.message || e?.message || 'MiniMax generate failed');
+      return rejectWithValue(toApiRejectPayload(e, 'MiniMax generate failed'));
     }
   }
 );
@@ -110,7 +127,7 @@ export const minimaxMusic = createAsyncThunk(
       const res = await api.post('/api/minimax/music', payload);
       return res.data?.data || res.data;
     } catch (e: any) {
-      return rejectWithValue(e?.response?.data?.message || e?.message || 'MiniMax music failed');
+      return rejectWithValue(toApiRejectPayload(e, 'MiniMax music failed'));
     }
   }
 );
@@ -124,7 +141,7 @@ export const listGenerations = createAsyncThunk(
       const res = await api.get('/api/generations', { params: reqParams });
       return res.data?.data || res.data;
     } catch (e: any) {
-      return rejectWithValue(e?.response?.data?.message || e?.message || 'List generations failed');
+      return rejectWithValue(toApiRejectPayload(e, 'List generations failed'));
     }
   }
 );
@@ -138,7 +155,7 @@ export const falGenerate = createAsyncThunk(
           const mod = await import('@/lib/publicFlag');
           payload.isPublic = await mod.getIsPublic();
         }
-      } catch {}
+      } catch { }
       const api = getApiClient();
       // FAL generate can take up to 7+ minutes for some models, so use extended timeout
       const res = await api.post('/api/fal/generate', payload, {
@@ -147,9 +164,8 @@ export const falGenerate = createAsyncThunk(
       return res.data?.data || res.data;
     } catch (e: any) {
       // Extract structured error information
-      const { extractFalErrorDetails } = await import('@/lib/falToast');
       const errorDetails = extractFalErrorDetails(e);
-      
+
       // Return structured error with all details
       const errorPayload: any = {
         message: errorDetails?.message || e?.response?.data?.message || e?.message || 'FAL generate failed',
@@ -157,10 +173,11 @@ export const falGenerate = createAsyncThunk(
         detail: errorDetails?.detail,
         retryable: errorDetails?.retryable,
         status: errorDetails?.status || e?.response?.status,
+        code: e?.response?.data?.code,
         url: errorDetails?.detail?.[0]?.url,
         raw: e,
       };
-      
+
       return rejectWithValue(errorPayload);
     }
   }
@@ -190,7 +207,7 @@ export const falElevenTts = createAsyncThunk(
       const res = await api.post(endpoint, payload);
       return res.data?.data || res.data;
     } catch (e: any) {
-      return rejectWithValue(e?.response?.data?.message || e?.message || 'TTS generation failed');
+      return rejectWithValue(toApiRejectPayload(e, 'TTS generation failed'));
     }
   }
 );
@@ -199,29 +216,43 @@ export const replicateGenerate = createAsyncThunk(
   'generations/replicateGenerate',
   async (payload: any, { rejectWithValue }) => {
     try {
+      console.log('[replicateGenerate] START', payload);
       try {
         if (typeof payload?.isPublic !== 'boolean') {
           const mod = await import('@/lib/publicFlag');
           payload.isPublic = await mod.getIsPublic();
         }
-      } catch {}
+      } catch { }
       const api = getApiClient();
+      console.log('[replicateGenerate] POST /api/replicate/generate', payload);
       const res = await api.post('/api/replicate/generate', payload);
+      console.log('[replicateGenerate] RESPONSE', res.data);
       return res.data?.data || res.data;
     } catch (e: any) {
+      console.error('[replicateGenerate] ERROR', e);
       // Extract structured error information
-      const { extractReplicateErrorDetails } = await import('@/lib/replicateToast');
       const errorDetails = extractReplicateErrorDetails(e);
-      
+      const backendMessage =
+        e?.response?.data?.message ||
+        e?.response?.data?.detail ||
+        (typeof e?.response?.data === 'string' ? e.response.data : undefined);
+
       // Return structured error with all details
       const errorPayload: any = {
-        message: errorDetails?.message || e?.response?.data?.detail || e?.response?.data?.message || e?.message || 'Replicate generate failed',
+        // Prefer backend-provided message first (e.g. sensitive content E005),
+        // then structured extractor fallback.
+        message:
+          backendMessage ||
+          errorDetails?.message ||
+          e?.message ||
+          'Replicate generate failed',
         detail: errorDetails?.detail,
         status: errorDetails?.status || e?.response?.status,
+        code: e?.response?.data?.code,
         retryable: errorDetails?.retryable,
         raw: e,
       };
-      
+
       return rejectWithValue(errorPayload);
     }
   }

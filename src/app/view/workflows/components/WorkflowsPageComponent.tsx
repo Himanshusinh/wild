@@ -60,11 +60,11 @@ export function WorkflowsPageComponent({ initialCategory = 'All', basePath = '/v
   return (
     <div className="min-h-screen bg-[#07070B] text-white font-sans selection:bg-white/10 selection:text-white overflow-x-hidden relative">
       <div className="fixed inset-0 pointer-events-none z-0">
-        <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: "url('https://grainy-gradients.vercel.app/noise.svg')" }}></div>
+        <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: "url('/noise.svg')" }}></div>
         <div className="absolute top-[-20%] left-[-10%] w-[800px] h-[800px] bg-blue-600/[0.03] rounded-full blur-[120px]"></div>
       </div>
 
-      <main className="relative z-10 pt-1 pb-32 px-10 sm:px-6 md:px-24 min-h-screen">
+      <main className="relative z-10 pt-1 pb-32 px-2 sm:px-6 md:px-24 min-h-screen">
         <div className="w-full">
           <WorkflowsView openModal={openWorkflowModal} initialCategory={initialCategory} basePath={basePath} workflows={workflows as any} />
         </div>

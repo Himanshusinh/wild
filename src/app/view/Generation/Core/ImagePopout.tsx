@@ -1,0 +1,175 @@
+import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
+import Link from 'next/link';
+import {
+    ImagePlus,
+    Image as ImageIcon,
+    UserCircle,
+    Droplet,
+    Sparkles,
+    Shirt,
+    Eraser,
+    Palette,
+    Box,
+    Crop,
+    MessageSquare,
+    PenTool,
+    Zap,
+    Globe,
+    Cloud,
+    Rocket,
+    Bot
+} from 'lucide-react';
+import { IconBrandOpenai, IconBrandGoogle } from '@tabler/icons-react';
+
+const FeatureItem = ({ href, icon: Icon, title, desc, onClick, isSoon }: any) => {
+    const Element = isSoon ? 'div' : Link;
+    return (
+        <Element
+            href={isSoon ? undefined : href}
+            onClick={isSoon ? undefined : onClick}
+            className={`group/item relative flex w-full items-center gap-4 rounded-xl border border-transparent p-3 transition-all duration-300 overflow-hidden ${isSoon ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:bg-white/[0.03] hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05)]'}`}
+        >
+            {!isSoon && <div className="absolute inset-0 bg-gradient-to-r from-white/[0.02] to-transparent opacity-0 group-hover/item:opacity-100 transition-opacity duration-300 pointer-events-none" />}
+            
+            <div className={`relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-gradient-to-br from-white/[0.05] to-transparent text-white p-2 shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)] transition-all duration-300 ${!isSoon && 'group-hover/item:scale-105 group-hover/item:border-white/20 group-hover/item:from-white/[0.08] group-hover/item:to-white/[0.01]'}`}>
+                <Icon size={20} className={`opacity-70 transition-all duration-300 ${!isSoon && 'group-hover/item:opacity-100 group-hover/item:scale-110'}`} />
+            </div>
+            
+            <div className="relative flex min-w-0 flex-1 flex-col gap-1 z-10">
+                <div className="flex items-center gap-2">
+                    <div className="text-sm font-semibold text-white/90 group-hover/item:text-white transition-colors tracking-wide">{title}</div>
+                    {isSoon && (
+                        <div className="px-2 py-0.5 text-[9px] font-bold tracking-widest uppercase bg-gradient-to-r from-white/10 to-white/5 text-white/90 rounded-full leading-none border border-white/10 shadow-[0_2px_8px_rgba(0,0,0,0.2)] backdrop-blur-sm">
+                            SOON
+                        </div>
+                    )}
+                </div>
+                <div className="text-[11px] font-medium text-white/40 group-hover/item:text-white/60 transition-colors leading-snug">{desc}</div>
+            </div>
+        </Element>
+    );
+};
+
+const ModelItem = ({ href, tag, name, desc, onClick, icon: Icon }: any) => (
+    <Link
+        href={href}
+        onClick={onClick}
+        className="group/item relative flex w-full cursor-pointer items-center gap-4 rounded-xl border border-transparent p-3 transition-all duration-300 hover:bg-white/[0.03] hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05)] overflow-hidden"
+    >
+        <div className="absolute inset-0 bg-gradient-to-r from-white/[0.02] to-transparent opacity-0 group-hover/item:opacity-100 transition-opacity duration-300 pointer-events-none" />
+        
+        <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-gradient-to-br from-white/[0.05] to-transparent text-white p-2 shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)] transition-all duration-300 group-hover/item:scale-105 group-hover/item:border-white/20 group-hover/item:from-white/[0.08] group-hover/item:to-white/[0.01]">
+            <Icon size={20} className="opacity-70 group-hover/item:opacity-100 group-hover/item:scale-110 transition-all duration-300" />
+        </div>
+        
+        <div className="relative flex min-w-0 flex-1 flex-col gap-1 z-10">
+            <div className="flex items-center gap-2">
+                <div className="text-sm font-semibold text-white/90 group-hover/item:text-white transition-colors tracking-wide">{name}</div>
+                {tag && (
+                    <div className="px-2 py-0.5 text-[9px] font-bold tracking-widest uppercase bg-gradient-to-r from-white/10 to-white/5 text-white/90 rounded-full leading-none border border-white/10 shadow-[0_2px_8px_rgba(0,0,0,0.2)] backdrop-blur-sm">
+                        {tag}
+                    </div>
+                )}
+            </div>
+            <div className="text-[11px] font-medium text-white/40 group-hover/item:text-white/60 transition-colors leading-snug">{desc}</div>
+        </div>
+    </Link>
+);
+
+export const ImagePopout = ({
+    isVisible,
+    anchorTop = 0,
+    onMouseEnter,
+    onMouseLeave
+}: {
+    isVisible: boolean;
+    anchorTop?: number;
+    onMouseEnter: () => void;
+    onMouseLeave: () => void;
+}) => {
+    const [mounted, setMounted] = useState(false);
+    const popupRef = React.useRef<HTMLDivElement>(null);
+    const [posTop, setPosTop] = useState<number | string>('50%');
+
+    useEffect(() => setMounted(true), []);
+
+    useEffect(() => {
+        if (isVisible && anchorTop && popupRef.current) {
+            const half = popupRef.current.clientHeight / 2;
+            let t = anchorTop;
+            if (t - half < 16) t = half + 16;
+            else if (t + half > window.innerHeight - 16) t = window.innerHeight - half - 16;
+            setPosTop(t);
+        }
+    }, [isVisible, anchorTop]);
+
+    if (!mounted) return null;
+
+    return createPortal(
+        <div
+            ref={popupRef}
+            onMouseEnter={onMouseEnter}
+            onMouseLeave={onMouseLeave}
+            className={`fixed left-[80px] z-[99999] flex max-h-[92vh] max-w-[700px] w-full flex-col overflow-hidden rounded-[24px] border border-white/10 bg-[#0E0E12]/80 backdrop-blur-2xl shadow-[0_0_80px_rgba(0,0,0,0.6),inset_0_1px_1px_rgba(255,255,255,0.05)] origin-left transition-all duration-300 ease-out font-[family-name:var(--font-poppins)]
+            ${isVisible ? 'opacity-100 pointer-events-auto scale-100 translate-x-0' : 'opacity-0 pointer-events-none scale-95 -translate-x-2'}`}
+            style={{ top: typeof posTop === 'number' ? `${posTop}px` : posTop, transform: 'translateY(-50%)' }}
+        >
+            <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-white/[0.04] to-transparent pointer-events-none" />
+            
+            <div className="relative flex-1 flex flex-col h-full">
+                <div className="border-b border-white/5 p-6 shrink-0 relative">
+                    <div className="absolute bottom-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+                    <div className="flex items-center gap-3">
+                        <div className="h-2 w-2 rounded-full bg-white/80 shadow-[0_0_10px_rgba(255,255,255,0.5)]" />
+                        <div className="text-lg font-bold text-white tracking-wide">Image Tools</div>
+                    </div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-6 custom-scrollbar relative">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+
+                        {/* Features Column */}
+                        <div className="flex flex-col gap-4 relative">
+                            <div className="text-[10px] font-bold text-white/30 tracking-[0.2em] uppercase pl-3 flex items-center gap-2">
+                                <span className="h-[1px] w-4 bg-white/20"></span>
+                                Features
+                            </div>
+                            <div className="flex flex-col gap-1">
+                                <FeatureItem href="/text-to-image" icon={ImagePlus} title="Create Image" desc="Generate AI Images" onClick={onMouseLeave} />
+                                <FeatureItem href="/text-to-image/edit-image" icon={ImageIcon} title="Edit Image" desc="Edit using reference image" onClick={onMouseLeave} />
+                                <FeatureItem href="/text-to-image/edit-image?tool=expand&feature=upscale" icon={Box} title="Upscale" desc="Upscale your assets" onClick={onMouseLeave} />
+                                <FeatureItem href="/text-to-image/edit-image?tool=expand&feature=remove-bg" icon={Droplet} title="Remove BG" desc="Swap Photo Backgrounds Easily" onClick={onMouseLeave} />
+                                <FeatureItem href="/text-to-image/edit-image?tool=erase-replace&feature=fill" icon={Eraser} title="Erase / Replace" desc="Precise editing with selection" onClick={onMouseLeave} />
+                                <FeatureItem href="/text-to-image/edit-image?tool=erase-replace&feature=resize" icon={Crop} title="Expand" desc="Outpaint and expand canvas" onClick={onMouseLeave} />
+                                <FeatureItem href="/text-to-image/edit-image?tool=erase-replace&feature=vectorize" icon={PenTool} title="Vectorize" desc="Convert image to SVG" onClick={onMouseLeave} />
+                                <FeatureItem href="/text-to-image/edit-image?tool=erase-replace&feature=live-chat" icon={MessageSquare} title="Chat to Edit" desc="Edit using chat assistance" onClick={onMouseLeave} />
+                            </div>
+                        </div>
+
+                        {/* Models Column */}
+                        <div className="flex flex-col gap-4 relative">
+                            <div className="absolute -left-6 top-0 bottom-0 w-[1px] bg-gradient-to-b from-transparent via-white/5 to-transparent hidden md:block" />
+                            <div className="text-[10px] font-bold text-white/30 tracking-[0.2em] uppercase pl-3 flex items-center gap-2">
+                                <span className="h-[1px] w-4 bg-white/20"></span>
+                                Models
+                            </div>
+                            <div className="flex flex-col gap-1 max-h-[480px] overflow-y-auto custom-scrollbar pr-2">
+                                <ModelItem href="/text-to-image?model=flux-2-pro" icon={Zap} tag="TOP PICK" name="Flux.2 Pro" desc="Extreme detailing in ultra-detail" onClick={onMouseLeave} />
+                                <ModelItem href="/text-to-image?model=qwen/qwen-image-2-pro" icon={Sparkles} tag="NEW" name="Qwen Image 2 Pro" desc="Premium high-fidelity generations" onClick={onMouseLeave} />
+                                <ModelItem href="/text-to-image?model=qwen/qwen-image-2" icon={Sparkles} tag="NEW" name="Qwen Image 2" desc="State-of-the-art image creation" onClick={onMouseLeave} />
+                                <ModelItem href="/text-to-image?model=google/nano-banana-2" icon={IconBrandGoogle} tag="LATEST" name="Nano Banana 2" desc="Google's next-gen image model" onClick={onMouseLeave} />
+                                <ModelItem href="/text-to-image?model=seedream-5-lite" icon={Cloud} tag="LATEST" name="Seedream 5 Lite" desc="Top tier text to image model" onClick={onMouseLeave} />
+                                <ModelItem href="/text-to-image?model=google/nano-banana-pro" icon={IconBrandGoogle} tag="TRENDING" name="Nano Banana Pro" desc="Google's best image Gen model" onClick={onMouseLeave} />
+                                <ModelItem href="/text-to-image?model=new-turbo-model" icon={Rocket} tag="FAST" name="z-image-turbo" desc="Ultra-fast generation model" onClick={onMouseLeave} />
+                                <ModelItem href="/text-to-image?model=openai/gpt-image-1.5" icon={IconBrandOpenai} tag="SMART" name="GPT Image 1.5" desc="Advanced reasoning for images" onClick={onMouseLeave} />
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>,
+        document.body
+    );
+};

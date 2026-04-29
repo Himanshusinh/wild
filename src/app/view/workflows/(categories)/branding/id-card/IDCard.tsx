@@ -9,6 +9,7 @@ import UploadModal from '@/app/view/Generation/ImageGeneration/TextToImage/compo
 import { useCredits } from '@/hooks/useCredits';
 import { downloadFileWithNaming } from '@/utils/downloadUtils';
 import { WORKFLOWS_DATA } from '@/app/view/workflows/components/data';
+import { getSignInUrl } from '@/routes/routes';
 import ImageComparisonSlider from '@/app/view/workflows/components/ImageComparisonSlider';
 
 export default function IDCard() {
@@ -16,7 +17,8 @@ export default function IDCard() {
   const {
     creditBalance,
     deductCreditsOptimisticForGeneration,
-    rollbackOptimisticDeduction
+    rollbackOptimisticDeduction,
+    user
   } = useCredits();
 
   // State
@@ -79,6 +81,10 @@ export default function IDCard() {
   };
 
   const handleRun = async () => {
+    if (!user) {
+      router.push(getSignInUrl());
+      return;
+    }
     if (!personPhoto) {
       toast.error('Please upload a photo first');
       return;
@@ -356,6 +362,7 @@ export default function IDCard() {
 
       {isUploadModalOpen && (
         <UploadModal
+          persistLocalDeviceUploads={false}
           isOpen={isUploadModalOpen}
           onClose={() => setIsUploadModalOpen(false)}
           onAdd={(urls: string[]) => urls.length > 0 && handleImageSelect(urls[0])}
@@ -365,3 +372,4 @@ export default function IDCard() {
     </>
   );
 }
+

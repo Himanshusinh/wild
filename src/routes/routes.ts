@@ -1,7 +1,7 @@
 
 // Authentication Routes
 export const AUTH_ROUTES = {
-  SIGN_IN: '/view/signup',
+  SIGN_IN: '/view/signup?showLogin=true',
   SIGN_UP: '/view/signup',
   FORGOT_PASSWORD: '/view/forgot-password',
 } as const;
@@ -59,7 +59,7 @@ export const NAV_ROUTES = {
   PRICING: '/view/pricing',
   BLOG: '/blog',
   CONTACT: '/view/Landingpage?section=contact',
-  SUPPORT: '/view/Landingpage?section=support',
+  SUPPORT: '/company/support',
   ABOUT: '/view/Landingpage?section=about',
   BOOKMARK: '/bookmarks',
   LANDING: '/view/Landingpage',
@@ -89,7 +89,7 @@ export const LEGAL_ROUTES = {
 export const PRODUCT_ROUTES = {
   PRICING: '/view/pricing',
   FAQS: '/product/faqs',
-  DOCUMENTATION: '/view/Landingpage?section=support', // Using support section as documentation
+  DOCUMENTATION: '/company/support',
 } as const;
 
 // Company Routes
@@ -97,7 +97,7 @@ export const COMPANY_ROUTES = {
   ABOUT: '/company/about',
   BLOG: '/blog',
   CONTACT: '/company/contact-us',
-  SUPPORT: '/view/Landingpage?section=support',
+  SUPPORT: '/company/support',
   NEWSLETTER: '/company/newsletter',
   CAREERS: '/company/careers', // Careers page route
 } as const;
@@ -183,3 +183,22 @@ export const ROUTES = {
   ...VIDEOGENERATION,
   ...MUSICGENERATION,
 } as const;
+
+/**
+ * Generates the sign-in URL with an optional returnUrl parameter.
+ * If no returnUrl is provided and we're in the browser, it defaults to the current path.
+ */
+export const getSignInUrl = (returnUrl?: string): string => {
+  let targetReturnUrl = returnUrl;
+
+  if (!targetReturnUrl && typeof window !== 'undefined') {
+    targetReturnUrl = window.location.pathname + window.location.search;
+  }
+
+  if (targetReturnUrl) {
+    // AUTH_ROUTES.SIGN_IN already has ?showLogin=true, so append with &
+    return `${AUTH_ROUTES.SIGN_IN}&returnUrl=${encodeURIComponent(targetReturnUrl)}`;
+  }
+
+  return AUTH_ROUTES.SIGN_IN;
+};

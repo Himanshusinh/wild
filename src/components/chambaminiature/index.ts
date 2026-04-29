@@ -1,0 +1,2 @@
+export { ChambaMiniatureModal } from "./ChambaMiniatureModal";
+

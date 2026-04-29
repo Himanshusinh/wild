@@ -10,13 +10,16 @@ import ImageComparisonSlider from '@/app/view/workflows/components/ImageComparis
 import { useCredits } from '@/hooks/useCredits';
 import { downloadFileWithNaming } from '@/utils/downloadUtils';
 import { WORKFLOWS_DATA } from '@/app/view/workflows/components/data';
+import { getSignInUrl } from '@/routes/routes';
+import { saveAutoResumeIntent, getAutoResumeIntent, clearAutoResumeIntent } from '@/lib/autoResume';
 
 export default function BecomeCelebrity() {
     const router = useRouter();
     const {
         creditBalance,
         deductCreditsOptimisticForGeneration,
-        rollbackOptimisticDeduction
+        rollbackOptimisticDeduction,
+        user
     } = useCredits();
 
     // State
@@ -46,6 +49,27 @@ export default function BecomeCelebrity() {
         setTimeout(() => setIsOpen(true), 50);
     }, []);
 
+    // Check for auto-resume intent on mount
+    useEffect(() => {
+        if (!user) return;
+
+        const intent = getAutoResumeIntent();
+        if (intent && intent.type === 'workflow' && intent.data.workflowId === 'become-celebrity') {
+            const { data } = intent;
+            console.log('[AutoResume] Found celebrity intent, restoring state:', data);
+
+            if (data.originalImage) setOriginalImage(data.originalImage);
+            if (data.additionalDetails) setAdditionalDetails(data.additionalDetails);
+
+            clearAutoResumeIntent();
+
+            // Auto-trigger generation after a short delay
+            setTimeout(() => {
+                handleRun();
+            }, 1500);
+        }
+    }, [user]);
+
     const onClose = () => {
         setIsOpen(false);
         setTimeout(() => {
@@ -65,6 +89,15 @@ export default function BecomeCelebrity() {
     };
 
     const handleRun = async () => {
+        if (!user) {
+            saveAutoResumeIntent('workflow', {
+                workflowId: 'become-celebrity',
+                originalImage,
+                additionalDetails
+            });
+            router.push(getSignInUrl());
+            return;
+        }
         if (!originalImage) {
             toast.error('Please upload an image first');
             return;
@@ -225,7 +258,7 @@ export default function BecomeCelebrity() {
                                         afterImage={generatedImage}
                                         beforeLabel="Original"
                                         afterLabel="Celebrity Vibe"
-                                        imageFit="object-contain"
+                                        imageFit="object-cover"
                                         imagePosition="object-center"
                                     />
                                     <button
@@ -266,6 +299,7 @@ export default function BecomeCelebrity() {
 
             {isUploadModalOpen && (
                 <UploadModal
+                    persistLocalDeviceUploads={false}
                     isOpen={isUploadModalOpen}
                     onClose={() => setIsUploadModalOpen(false)}
                     onAdd={(urls: string[]) => {
@@ -279,3 +313,4 @@ export default function BecomeCelebrity() {
         </>
     );
 }
+
