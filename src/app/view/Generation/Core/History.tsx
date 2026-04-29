@@ -164,10 +164,38 @@ const History = () => {
     );
   };
 
+  const extractUserPromptFromBackend = (text: string): string | null => {
+    if (!text) return null;
+    const marker = "PROJECT INPUTS:";
+    const idx = text.indexOf(marker);
+    if (idx < 0) return null;
+
+    const rest = text.substring(idx + marker.length);
+    const endIdx = rest.indexOf("CONTENT CONSTRAINT");
+    const extracted = endIdx >= 0 ? rest.substring(0, endIdx) : rest;
+
+    const lines = extracted.split('\n')
+      .map(line => line.trim())
+      .filter(line => line.length > 0)
+      .map(line => {
+        let l = line.replace(/^- /, "").trim();
+        l = l.replace(/^Scene description:\s*/i, "");
+        l = l.replace(/^Additional instructions:\s*/i, "");
+        return l;
+      })
+      .filter(line => line.length > 0 && !line.includes("(none)"));
+      
+    return lines.join("\n").trim() || null;
+  };
+
   const getVisibleUserPrompt = (entry: HistoryEntry): string => {
     const p = ((entry as any)?.userPrompt || entry?.prompt || "").trim();
     if (!p) return "";
-    return isBackendStylePrompt(p) ? "" : getCleanPrompt(p);
+    if (isBackendStylePrompt(p)) {
+      const extracted = extractUserPromptFromBackend(p);
+      return extracted ? getCleanPrompt(extracted) : "";
+    }
+    return getCleanPrompt(p);
   };
 
   // Copy prompt to clipboard
