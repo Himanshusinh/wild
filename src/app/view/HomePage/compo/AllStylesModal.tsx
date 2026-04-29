@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { X } from "lucide-react";
 import { STYLES } from "./CreativeStyle";
@@ -28,17 +28,16 @@ const StyleCard = ({ style, onClick }: { style: typeof STYLES[0]; onClick: () =>
         style={{ filter: style.imageFilter as React.CSSProperties["filter"] }}
       />
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-80" />
-      
+
       <div className="absolute bottom-4 left-4 right-4">
-        <div className="text-[18px] font-bold uppercase tracking-wider text-white sm:text-[22px]" style={{ fontFamily: "var(--font-bebas-neue), 'Bebas Neue', sans-serif" }}>
+        <div
+          className="text-[18px] font-bold uppercase tracking-wider text-white sm:text-[22px]"
+          style={{ fontFamily: "var(--font-bebas-neue), 'Bebas Neue', sans-serif" }}
+        >
           {style.title}
         </div>
-        <div className="mt-1 text-[11px] font-semibold tracking-wide text-white/85">
-          {style.name}
-        </div>
-        <div className="mt-1 text-[10px] leading-snug text-white/55 line-clamp-2">
-          {style.desc}
-        </div>
+        <div className="mt-1 text-[11px] font-semibold tracking-wide text-white/85">{style.name}</div>
+        <div className="mt-1 line-clamp-2 text-[10px] leading-snug text-white/55">{style.desc}</div>
       </div>
 
       {style.tag && (
@@ -67,30 +66,24 @@ export default function AllStylesModal({ isOpen, onClose, onStyleSelect }: AllSt
   const dragStateRef = useRef<{ startY: number; startTop: number } | null>(null);
 
   useEffect(() => {
-    if (isOpen) {
-      const stored = localStorage.getItem("recent_styles");
-      if (stored) {
-        try {
-          setRecentIds(JSON.parse(stored));
-        } catch (e) {
-          console.error("Failed to parse recent styles", e);
-        }
-      }
-      // Reset scroll position on open
-      if (listRef.current) {
-        listRef.current.scrollTop = 0;
-        setScrollTop(0);
-        setTimeout(() => {
-          if (listRef.current) {
-            setScrollMetrics({
-              clientHeight: listRef.current.clientHeight || 1,
-              scrollHeight: listRef.current.scrollHeight || 1,
-            });
-          }
-        }, 100);
+    if (!isOpen) return;
+    const stored = localStorage.getItem("recent_styles");
+    if (stored) {
+      try {
+        setRecentIds(JSON.parse(stored));
+      } catch (e) {
+        console.error("Failed to parse recent styles", e);
       }
     }
-  }, [isOpen]);
+    if (listRef.current) {
+      listRef.current.scrollTop = 0;
+      setScrollTop(0);
+      setScrollMetrics({
+        clientHeight: listRef.current.clientHeight || 1,
+        scrollHeight: listRef.current.scrollHeight || 1,
+      });
+    }
+  }, [isOpen, selectedCategory]);
 
   const handleGridScroll = () => {
     const el = listRef.current;
@@ -136,9 +129,7 @@ export default function AllStylesModal({ isOpen, onClose, onStyleSelect }: AllSt
     const groups: Record<string, typeof STYLES> = {};
     STYLES.forEach((style) => {
       const stateName = style.name.split(" (")[0];
-      if (!groups[stateName]) {
-        groups[stateName] = [];
-      }
+      if (!groups[stateName]) groups[stateName] = [];
       groups[stateName].push(style);
     });
     const sortedStates = Object.keys(groups).sort();
@@ -155,7 +146,10 @@ export default function AllStylesModal({ isOpen, onClose, onStyleSelect }: AllSt
           {groupedStyles.map((group) => (
             <div key={group.state} className="flex flex-col gap-4">
               <div className="flex items-center gap-4">
-                <h3 className="text-2xl text-white tracking-wider uppercase" style={{ fontFamily: "var(--font-bebas-neue), 'Bebas Neue', sans-serif" }}>
+                <h3
+                  className="text-2xl uppercase tracking-wider text-white"
+                  style={{ fontFamily: "var(--font-bebas-neue), 'Bebas Neue', sans-serif" }}
+                >
                   {group.state}
                 </h3>
                 <div className="h-px flex-1 bg-white/5" />
@@ -170,13 +164,14 @@ export default function AllStylesModal({ isOpen, onClose, onStyleSelect }: AllSt
         </div>
       );
     }
+
     if (selectedCategory === "Recent") {
       const recentStyles = recentIds
         .map((id) => STYLES.find((s) => s.id === id))
         .filter(Boolean) as typeof STYLES;
       if (recentStyles.length === 0) {
         return (
-          <div className="flex flex-col items-center justify-center h-full text-white/40 pt-20">
+          <div className="flex h-full flex-col items-center justify-center pt-20 text-white/40">
             <p className="text-sm font-medium">No recent styles selected yet.</p>
           </div>
         );
@@ -189,6 +184,7 @@ export default function AllStylesModal({ isOpen, onClose, onStyleSelect }: AllSt
         </div>
       );
     }
+
     const stateStyles = STYLES.filter((s) => s.name.split(" (")[0] === selectedCategory);
     return (
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
@@ -206,29 +202,34 @@ export default function AllStylesModal({ isOpen, onClose, onStyleSelect }: AllSt
   const thumbTop = (scrollTop / maxScroll) * (100 - thumbHeight);
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-xl p-3 sm:p-6" onClick={onClose}>
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 p-3 backdrop-blur-xl sm:p-6" onClick={onClose}>
       <div
-        className="relative w-full max-w-8xl h-[90vh] flex flex-col overflow-hidden rounded-3xl border border-white/10 bg-[#0E0E12] shadow-[0_32px_120px_rgba(0,0,0,0.8)]"
+        className="relative flex h-[90vh] w-full max-w-8xl flex-col overflow-hidden rounded-3xl border border-white/10 bg-[#0E0E12] shadow-[0_32px_120px_rgba(0,0,0,0.8)]"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-white/5 px-5 py-4 sm:px-7 shrink-0">
-          <div>
-            <h2 className="text-2xl font-bold text-white tracking-tight sm:text-3xl" style={{ fontFamily: "var(--font-bebas-neue), 'Bebas Neue', sans-serif" }}>
-              Explore All Styles
-            </h2>
-            <p className="text-xs text-white/30 font-medium uppercase tracking-widest mt-1">Select a style to begin generating</p>
+        <div className="shrink-0 border-b border-white/5 px-5 py-4 sm:px-7">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2
+                className="text-2xl font-bold tracking-tight text-white sm:text-3xl"
+                style={{ fontFamily: "var(--font-bebas-neue), 'Bebas Neue', sans-serif" }}
+              >
+                Explore All Styles
+              </h2>
+              <p className="mt-1 text-xs font-medium uppercase tracking-widest text-white/30">
+                Select a style to begin generating
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-white/40 transition hover:border-white/20 hover:bg-white/5 hover:text-white"
+            >
+              <X size={20} />
+            </button>
           </div>
-          <button
-            onClick={onClose}
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-white/40 transition hover:border-white/20 hover:bg-white/5 hover:text-white"
-          >
-            <X size={20} />
-          </button>
         </div>
 
-        {/* Categories Tabs Filter */}
-        <div className="border-b border-white/5 bg-white/[0.02] px-5 py-4 sm:px-7 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden flex items-center gap-2 shrink-0">
+        <div className="shrink-0 flex items-center gap-2 overflow-x-auto border-b border-white/5 bg-white/[0.02] px-5 py-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:px-7">
           {categories.map((category) => (
             <button
               key={category}
@@ -244,17 +245,15 @@ export default function AllStylesModal({ isOpen, onClose, onStyleSelect }: AllSt
           ))}
         </div>
 
-        {/* Scrollable Content */}
         <div
           ref={listRef}
           onScroll={handleGridScroll}
-          className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="min-h-0 flex-1 overflow-y-scroll p-4 pr-4 [scrollbar-width:none] [&::-webkit-scrollbar]:w-0 sm:p-6 sm:pr-5"
         >
           {contentToRender}
         </div>
 
-        {/* Custom Scrollbar Thumb */}
-        <div className="absolute right-1.5 top-[148px] bottom-3 w-1.5 rounded-full bg-white/5">
+        <div className="absolute bottom-3 right-1.5 top-[76px] w-2 rounded-full bg-white/10">
           <div
             role="scrollbar"
             aria-valuemin={0}
