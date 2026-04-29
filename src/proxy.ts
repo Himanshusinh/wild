@@ -30,11 +30,13 @@ export function proxy(req: NextRequest) {
     pathname.startsWith('/styles/') ||
     pathname.match(/\.(png|jpg|jpeg|gif|svg|webp|avif|ico|woff|woff2|ttf|otf|mp4|webm|mp3|wav)$/i);
 
+  /*
   if (!isMaintenanceExcluded) {
     const comingSoonUrl = req.nextUrl.clone();
     comingSoonUrl.pathname = '/coming-soon';
     return NextResponse.redirect(comingSoonUrl);
   }
+  */
 
   const blockPrefixes = [
     "/view/home",

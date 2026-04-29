@@ -967,9 +967,6 @@ axiosInstance.interceptors.response.use(
         });
       }
 
-      // CIRCUIT BREAKER: Reset failure count on successful response
-      resetAuthFailures()
-
       // Check for session refresh header (automatic refresh when session expires within 3 days)
       // Axios normalizes headers to lowercase, but check both cases for safety
       const refreshHeader =
@@ -1139,49 +1136,7 @@ axiosInstance.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    // CIRCUIT BREAKER: Check if we've exceeded max retries
-    recordAuthFailure()
-    if (hasExceededMaxRetries()) {
-      console.error('[API][circuit-breaker] Max auth retries exceeded - logging out user', {
-        failureCount: authFailureCount,
-        maxRetries: MAX_AUTH_RETRIES,
-        url: original?.url
-      })
-
-      // Clear auth data and redirect to login
-      try {
-        // IMPORTANT: avoid importing auth utils (and thus the Redux store) at module init time,
-        // which can create circular dependencies during Next.js prerender/export.
-        if (typeof window !== 'undefined') {
-          try {
-            const mod = await import('./authUtils')
-            mod.clearAuthData()
-          } catch { }
-        }
-        if (typeof window !== 'undefined') {
-          const currentPath = window.location.pathname
-          // Don't redirect if already on public pages
-          const isPublic = currentPath === '/' ||
-            currentPath.startsWith('/view/Landingpage') ||
-            currentPath.startsWith('/view/signup') ||
-            currentPath.startsWith('/view/signin') ||
-            currentPath.startsWith('/blog') ||
-            currentPath.startsWith('/view/pricing') ||
-            currentPath.startsWith('/legal/')
-
-          if (!isPublic) {
-            console.warn('[API][circuit-breaker] Redirecting to signup after max retries')
-            window.location.href = `/view/signup?next=${encodeURIComponent(currentPath)}&toast=AUTH_LOOP_DETECTED`
-          }
-        }
-      } catch (cleanupErr) {
-        console.error('[API][circuit-breaker] Error during cleanup:', cleanupErr)
-      }
-
-      return Promise.reject(new Error('Maximum authentication retries exceeded. Please log in again.'))
-    }
-
-    // Avoid infinite loops - don't retry if already retried
+    // Avoid infinite loops
     if (original.__isRetry) {
       return Promise.reject(error);
     }

@@ -156,19 +156,6 @@ export const generateRoute = (route: string, params?: RouteParams): string => {
   return generatedRoute;
 };
 
-/**
- * Returns the sign-in URL with an optional returnUrl parameter.
- * Also adds showLogin=true to ensure the login form is shown instead of signup.
- */
-export const getSignInUrl = (returnUrl?: string): string => {
-  const params = new URLSearchParams();
-  if (returnUrl) {
-    params.set('returnUrl', returnUrl);
-  }
-  params.set('showLogin', 'true');
-  return `${AUTH_ROUTES.SIGN_IN}?${params.toString()}`;
-};
-
 // Export all routes as a single object for easy access
 export const ROUTES = {
   ...AUTH_ROUTES,
