@@ -243,14 +243,14 @@ export default function VideoGenerationPage() {
           {/* Sticky header + filters (pinned under navbar) */}
           <div className="sticky top-0 z-40 border-b border-white/5 bg-[#0E0E12]/80 backdrop-blur-xl shadow-xl">
             <div className="mb-0 pt-0 md:mb-1 md:pt-0">
-              <div className="mb-0 flex min-h-10 items-center justify-between px-1.5 py-1.5 md:mb-0 md:min-h-14 md:px-0 md:py-0">
-                <div className="flex min-w-0 items-center gap-1.5 md:gap-2 md:pt-2">
+              <div className="mb-0 flex min-h-10 items-center justify-between px-1.5 py-1 md:mb-0 md:min-h-14 md:px-0 md:py-0">
+                <div className="flex min-w-0 items-center gap-1.5 pl-10 md:gap-2 md:pl-0 md:pt-2">
                   <button
                     onClick={() => dispatch(setSidebarExpanded(true))}
-                    className="flex h-8 w-8 shrink-0 items-center justify-center text-white/70 transition-colors hover:text-white md:hidden"
+                    className="md:hidden fixed top-0 left-0 flex h-10 w-10 items-center justify-start pl-0 text-white/70 hover:text-white transition-colors cursor-pointer"
                     aria-label="Open menu"
                   >
-                    <Menu size={20} />
+                    <Menu size={24} />
                   </button>
                   <h2 className="min-w-0 flex-1 truncate whitespace-nowrap pr-1 text-base font-bold leading-tight tracking-tight text-white md:flex-none md:pr-0 md:text-2xl">
                     Video Generation

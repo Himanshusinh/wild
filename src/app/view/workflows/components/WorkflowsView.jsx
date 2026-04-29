@@ -122,21 +122,21 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
   return (
     <div className="animate-in">
       {/* Mobile Title (Static - Scrolls away) */}
-      <div className="md:hidden pt-6 pb-2 px-0 bg-[#07070B] flex items-start gap-2">
+      <div className="md:hidden pt-0 pb-0 px-0 bg-[#07070B]">
         <button
           onClick={() => dispatch(setSidebarExpanded(true))}
-          className="flex h-10 w-10 items-center justify-center shrink-0 text-white/70 hover:text-white transition-colors cursor-pointer"
+          className="md:hidden fixed -top-1.5 -left-2 z-[60] flex h-10 w-10 items-center justify-center text-white/70 hover:text-white transition-colors cursor-pointer"
           aria-label="Toggle Menu"
         >
           <Menu size={24} />
         </button>
-        <div className="mb-2">
-          <h3 className="text-white text-xl font-semibold mb-0">
+        <div className="mb-2 pl-11 md:pt-0 pt-1" >
+          <h3 className="text-white text-base font-bold leading-tight tracking-tight mb-0.5">
             Explore Apps
           </h3>
-          <p className="text-white/80 text-xs mt-0">
+          {/* <p className="text-white/75 text-[11px] leading-[1.25] mt-0 max-w-[260px]">
             Explore AI tools that make your creative process easier and better
-          </p>
+          </p> */}
         </div>
       </div>
 
