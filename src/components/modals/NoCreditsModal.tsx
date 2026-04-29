@@ -36,19 +36,12 @@ export default function NoCreditsModal() {
             <Zap className="h-8 w-8 text-yellow-500" />
           </div>
           
-<<<<<<< HEAD
-          <h2 className="mb-2 text-xl font-bold text-white">Credits Not Available</h2>
-          
-          <p className="mb-6 text-sm text-gray-400">
-            Credits are not available, please recharge.
-=======
           <h2 className="mb-2 text-xl font-bold text-white">
-            {creditsMessage ? "Limit Reached" : "Out of Credits"}
+            {creditsMessage ? "Limit Reached" : "Credits Not Available"}
           </h2>
           
           <p className="mb-6 text-sm text-gray-400">
-            {creditsMessage || "You don't have enough credits to perform this action. Upgrade your plan to get more credits and continue creating!"}
->>>>>>> d70b7fb3ab824d25f70dbc99be8ff4f32a20ac25
+            {creditsMessage || "Credits are not available, please recharge."}
           </p>
           
           <div className="flex flex-col gap-3">
