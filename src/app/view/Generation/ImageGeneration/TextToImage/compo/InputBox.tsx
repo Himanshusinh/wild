@@ -165,6 +165,7 @@ import InfiniteScrollDebugOverlay, {
 } from "@/components/debug/InfiniteScrollDebugOverlay";
 import HistoryControls from "@/app/view/Generation/VideoGeneration/TextToVideo/compo/HistoryControls";
 import AssistantPanel from "./AssistantPanel";
+import { STYLES as INDIAN_STYLES } from "@/app/view/HomePage/compo/CreativeStyle";
 
 const GifLoader: React.FC<{
   size?: number;
@@ -217,6 +218,62 @@ const getInputImageLimitForModel = (model?: string): number => {
 
 const normalizeIncomingImageModel = (model?: string | null): string =>
   normalizeImageModelValue(model);
+
+const INDIAN_STYLE_LOOKUP = new Set(
+  INDIAN_STYLES.map((item) => String(item.id || "").trim()),
+);
+
+const INDIAN_STYLE_CATALOG_ALIASES: Record<string, string> = {
+  uppadajamdani: "uppada",
+  "ganjifa-mysore": "ganjifa",
+  karuppurkalamkari: "kalamkari",
+};
+
+const normalizeIndianCatalogKey = (value: string): string =>
+  String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+
+const buildIndianStyleCatalogCandidates = (styleId: string): string[] => {
+  const styleItem = INDIAN_STYLES.find((item) => item.id === styleId);
+  const aliasKey = INDIAN_STYLE_CATALOG_ALIASES[styleId];
+  const rawCandidates = [styleId, styleItem?.title, styleItem?.name].filter(
+    Boolean,
+  ) as string[];
+  const normalized = rawCandidates
+    .map(normalizeIndianCatalogKey)
+    .filter((item) => item.length > 0);
+  if (aliasKey) {
+    normalized.unshift(normalizeIndianCatalogKey(aliasKey));
+  }
+  return Array.from(new Set(normalized));
+};
+
+const getIndianBasePrompt = async (
+  styleId: string,
+  version: "V1" | "V2" | "V3",
+): Promise<string | null> => {
+  const candidates = buildIndianStyleCatalogCandidates(styleId);
+  for (const key of candidates) {
+    try {
+      const moduleExports = await import(
+        `@/app/view/HomePage/compo/${key}PromptCatalog`
+      );
+      const familyExportKey = Object.keys(moduleExports).find((exportKey) =>
+        exportKey.endsWith("_PROMPT_FAMILIES"),
+      );
+      if (!familyExportKey) continue;
+      const familyRecord = (moduleExports as any)[familyExportKey];
+      const selectedFamily = familyRecord?.[version];
+      const basePrompt =
+        selectedFamily?.promptHard || selectedFamily?.promptVariable || "";
+      if (basePrompt) return String(basePrompt);
+    } catch {
+      // try next naming candidate
+    }
+  }
+  return null;
+};
 
 const InputBox = () => {
   const dispatch = useAppDispatch();
@@ -1854,6 +1911,9 @@ const InputBox = () => {
   );
   const style = useAppSelector(
     (state: any) => state.generation?.style || "realistic",
+  );
+  const indianStyleVersion = useAppSelector(
+    (state: any) => state.generation?.indianStyleVersion || "V1",
   );
   // Lucid Origin and Phoenix 1.0 options
   const lucidStyle = useAppSelector(
@@ -3959,6 +4019,34 @@ const InputBox = () => {
       }
     }
 
+    let promptForGeneration = finalPrompt;
+    if (INDIAN_STYLE_LOOKUP.has(style)) {
+      const selectedParamsSummary = [
+        `model=${selectedModel}`,
+        `style=${style}`,
+        `styleVersion=${indianStyleVersion}`,
+        `frameSize=${frameSize || "auto"}`,
+        `imageCount=${imageCount}`,
+      ].join(", ");
+      const indianBasePrompt = await getIndianBasePrompt(
+        style,
+        indianStyleVersion,
+      );
+      if (indianBasePrompt) {
+        promptForGeneration = [
+          indianBasePrompt,
+          `User prompt: ${finalPrompt}`,
+          `Selected parameters: ${selectedParamsSummary}`,
+        ].join("\n\n");
+      } else {
+        promptForGeneration = [
+          `User prompt: ${finalPrompt}`,
+          `Selected parameters: ${selectedParamsSummary}`,
+        ].join("\n\n");
+      }
+    }
+    finalPrompt = promptForGeneration;
+
     // Clear any previous credit errors
     clearCreditsError();
 
@@ -4235,6 +4323,7 @@ const InputBox = () => {
                   generationType: "text-to-image",
                   uploadedImages: combinedImages,
                   style,
+                  styleVersion: indianStyleVersion,
                   isPublic,
                   generationId,
                 }),
@@ -4687,6 +4776,7 @@ const InputBox = () => {
             generationType: "text-to-image",
             uploadedImages,
             style,
+            styleVersion: indianStyleVersion,
           }),
         ).unwrap();
 
@@ -7658,11 +7748,12 @@ const InputBox = () => {
               n: imageCount,
               frameSize,
               style,
+              styleVersion: indianStyleVersion,
               isPublic,
               uploadedImages: combinedImages.map((u: string) =>
                 toAbsoluteFromProxy(u),
               ),
-            }),
+            } as any),
           ).unwrap();
 
           // History is persisted by backend; no local completed entry needed
@@ -7732,6 +7823,7 @@ const InputBox = () => {
             imageCount,
             frameSize,
             style,
+            styleVersion: indianStyleVersion,
             generationType: "text-to-image",
             uploadedImages: combinedImages,
             generationId,

@@ -51,6 +51,7 @@ const StylePopup = ({ isOpen, onClose }: StylePopupProps) => {
   const [mounted, setMounted] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [activeCategory, setActiveCategory] = useState<'general' | 'indian'>('general');
+  const indianStyleValues = useRef(new Set(INDIAN_STYLES.map((s) => s.id)));
 
   useEffect(() => {
     setMounted(true);
@@ -123,6 +124,7 @@ const StylePopup = ({ isOpen, onClose }: StylePopupProps) => {
 
   useEffect(() => {
     const currentStyleValue = currentStyle;
+    if (indianStyleValues.current.has(currentStyleValue)) return;
     const isCurrentStyleSupported = styles.some(style => style.value === currentStyleValue);
     
     if (!isCurrentStyleSupported && styles.length > 0) {
@@ -130,6 +132,13 @@ const StylePopup = ({ isOpen, onClose }: StylePopupProps) => {
       dispatch(setStyle(styles[0].value));
     }
   }, [selectedModel, styles, currentStyle, dispatch]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setActiveCategory(
+      indianStyleValues.current.has(currentStyle) ? 'indian' : 'general',
+    );
+  }, [isOpen, currentStyle]);
 
   const allStyles = activeCategory === 'general' ? styles : INDIAN_STYLES.map(s => ({
     name: s.title,
