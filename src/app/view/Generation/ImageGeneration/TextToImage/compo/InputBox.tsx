@@ -8432,44 +8432,44 @@ const InputBox = () => {
         /* Simple fixed-size image containers */
         .image-item {
           width: 100%;
-          aspect-ratio: 1;
-          min-height: 165px;
           position: relative;
+          break-inside: avoid;
+          margin-bottom: 4px;
         }
 
         @media (min-width: 768px) {
           .image-item {
             width: 100%;
-            aspect-ratio: 1;
+            margin-bottom: 12px;
           }
         }
 
         /* Simple grid layout - stable to prevent reflow */
         .image-grid {
-          display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: 4px;
-          grid-auto-rows: auto;
+          column-count: 2;
+          column-gap: 4px;
         }
 
         @media (min-width: 768px) {
           .image-grid {
-            grid-template-columns: repeat(5, 1fr);
-            grid-auto-rows: auto;
-            gap: 12px;
+            column-count: 5;
+            column-gap: 12px;
           }
         }
 
         @media (min-width: 1024px) {
           .image-grid {
-            grid-template-columns: repeat(6, 1fr);
-            grid-auto-rows: auto;
-            gap: 4px;
+            column-count: 6;
+            column-gap: 4px;
             transition: all 0.5s ease-in-out;
           }
 
           .assistant-open .image-grid {
-            grid-template-columns: repeat(5, 1fr);
+            column-count: 5;
+          }
+          
+          .image-item {
+            margin-bottom: 4px;
           }
         }
 
@@ -9314,6 +9314,7 @@ const InputBox = () => {
                                       isNewEntry ? "animate-fade-in-up" : ""
                                     }`}
                                     style={{
+                                      aspectRatio: (entry.frameSize || '1:1').replace(':', ' / ').replace('x', ' / '),
                                       ...(isNewEntry
                                         ? {
                                             animation:
