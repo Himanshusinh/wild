@@ -66,6 +66,7 @@ import {
   Sparkles,
   Scan,
 } from "lucide-react";
+import { createPortal } from "react-dom";
 import { MINIMAX_MODELS, MiniMaxModelType } from "@/lib/minimaxTypes";
 import { getApiClient } from "@/lib/axiosInstance";
 import { extractFalErrorDetails, extractFalErrorMessage } from "@/lib/falToast";
@@ -404,6 +405,124 @@ const HAPPY_HORSE_VARIANT_OPTIONS = [
     info: "Edits uploaded source video",
   },
 ];
+
+type HappyHorseAudioSetting = "default" | "auto" | "origin";
+
+const HAPPY_HORSE_AUDIO_OPTIONS: HappyHorseAudioSetting[] = [
+  "default",
+  "auto",
+  "origin",
+];
+
+const HappyHorseAudioDropdown = ({
+  value,
+  onChange,
+  compact = false,
+}: {
+  value: HappyHorseAudioSetting;
+  onChange: (value: HappyHorseAudioSetting) => void;
+  compact?: boolean;
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [position, setPosition] = useState<{ top: number; left: number } | null>(
+    null,
+  );
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const updatePosition = () => {
+      if (!triggerRef.current) return;
+      const rect = triggerRef.current.getBoundingClientRect();
+      const menuWidth = compact ? 112 : 124;
+      let left = rect.left;
+      if (left + menuWidth > window.innerWidth - 8) {
+        left = window.innerWidth - menuWidth - 8;
+      }
+      if (left < 8) left = 8;
+      setPosition({ top: rect.top - 6, left });
+    };
+
+    const handleOutsideClick = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (triggerRef.current?.contains(target)) return;
+      if (dropdownRef.current?.contains(target)) return;
+      setIsOpen(false);
+    };
+
+    updatePosition();
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+      document.removeEventListener("mousedown", handleOutsideClick);
+    };
+  }, [compact, isOpen]);
+
+  return (
+    <>
+      <button
+        ref={triggerRef}
+        type="button"
+        onClick={() => setIsOpen((prev) => !prev)}
+        className={`flex items-center justify-between gap-2 rounded-lg border border-white/15 text-white/90 transition hover:bg-white/15 ${
+          compact
+            ? "h-[28px] min-w-[96px] px-2 text-[10px] font-medium"
+            : "h-[32px] min-w-[108px] px-2.5 text-[12px] font-medium"
+        }`}
+      >
+        <span className="truncate">{value}</span>
+        <ChevronUp className={`h-3 w-3 shrink-0 ${isOpen ? "" : "rotate-180"}`} />
+      </button>
+      {isOpen &&
+        position &&
+        typeof window !== "undefined" &&
+        createPortal(
+          <div
+            ref={dropdownRef}
+            className="fixed z-[9999] overflow-hidden rounded-lg border border-white/25 bg-[#04070d] shadow-2xl"
+            style={{
+              top: `${position.top}px`,
+              left: `${position.left}px`,
+              width: compact ? "112px" : "124px",
+              transform: "translateY(-100%)",
+            }}
+          >
+            {HAPPY_HORSE_AUDIO_OPTIONS.map((option) => {
+              const isSelected = option === value;
+              return (
+                <button
+                  key={option}
+                  type="button"
+                  onClick={() => {
+                    onChange(option);
+                    setIsOpen(false);
+                  }}
+                  className={`flex w-full items-center justify-between px-3 py-1.5 text-left text-[12px] ${
+                    isSelected
+                      ? "bg-[#DCDCDC] text-black"
+                      : "bg-transparent text-white hover:bg-white/10"
+                  }`}
+                >
+                  <span>{option}</span>
+                  {isSelected ? (
+                    <span className="h-2 w-2 rounded-full bg-black" />
+                  ) : (
+                    <span className="h-2 w-2 rounded-full bg-transparent" />
+                  )}
+                </button>
+              );
+            })}
+          </div>,
+          document.body,
+        )}
+    </>
+  );
+};
 
 const InputBox = (props: InputBoxProps = {}) => {
   const {
@@ -11272,25 +11391,10 @@ const InputBox = (props: InputBoxProps = {}) => {
                       )}
                       {/* Seed and safety checker commented out per request */}
                       {isHappyHorseEditMode && (
-                        <select
+                        <HappyHorseAudioDropdown
                           value={happyHorseAudioSetting}
-                          onChange={(e) =>
-                            setHappyHorseAudioSetting(
-                              e.target.value as "default" | "auto" | "origin",
-                            )
-                          }
-                          className="h-[32px] px-2 rounded-lg text-[12px] ring-1 ring-white/20 text-white/90 bg-transparent"
-                        >
-                          <option value="default" className="bg-black text-white">
-                            default
-                          </option>
-                          <option value="auto" className="bg-black text-white">
-                            auto
-                          </option>
-                          <option value="origin" className="bg-black text-white">
-                            origin
-                          </option>
-                        </select>
+                          onChange={setHappyHorseAudioSetting}
+                        />
                       )}
                     </div>
                   );
@@ -12438,25 +12542,11 @@ const InputBox = (props: InputBoxProps = {}) => {
                       )}
                       {/* Seed and safety checker commented out per request */}
                       {isHappyHorseEditMode && (
-                        <select
+                        <HappyHorseAudioDropdown
                           value={happyHorseAudioSetting}
-                          onChange={(e) =>
-                            setHappyHorseAudioSetting(
-                              e.target.value as "default" | "auto" | "origin",
-                            )
-                          }
-                          className="h-[28px] px-2 rounded-lg text-[10px] ring-1 ring-white/20 text-white/90 bg-transparent"
-                        >
-                          <option value="default" className="bg-black text-white">
-                            default
-                          </option>
-                          <option value="auto" className="bg-black text-white">
-                            auto
-                          </option>
-                          <option value="origin" className="bg-black text-white">
-                            origin
-                          </option>
-                        </select>
+                          onChange={setHappyHorseAudioSetting}
+                          compact
+                        />
                       )}
                     </div>
                   );
