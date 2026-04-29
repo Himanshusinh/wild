@@ -1,0 +1,1 @@
+export { PapiermachepuducherryModal } from "./PapiermachepuducherryModal";

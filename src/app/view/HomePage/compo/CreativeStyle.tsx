@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type MouseEvent } from "react";
+import { Fragment, useEffect, useRef, useState, type MouseEvent } from "react";
 import Link from "next/link";
 
 type StyleItem = {
@@ -2062,6 +2062,391 @@ export const STYLES: StyleItem[] = [
     href: "/text-to-image",
     imageFilter: "brightness(0.85) saturate(0.95)",
   },
+  {
+    id: "gabba",
+    name: "Kashmir",
+    title: "GABBA",
+    desc: "A traditional floor covering made from reconstructed blankets, enriched with stitched and appliqué designs.",
+    image: "/HomePage/creativeStyle/5th-images/gabba.avif",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "garadsaree",
+    name: "West Bengal",
+    title: "GARAD SAREE",
+    desc: "A ceremonial silk tradition defined by its pure off-white body, bold red border, and refined simplicity.",
+    image: "/HomePage/creativeStyle/5th-images/garad-saree.avif",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "himalayansacredimage",
+    name: "Ladakh",
+    title: "HIMALAYAN SACRED IMAGE",
+    desc: "A ritual visual system where sacred figures are constructed through iconography, symbolism, and meditative hierarchy.",
+    image: "/HomePage/creativeStyle/5th-images/himalayan-sacred-image.avif",
+    tag: "Ritual Art",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "khatamband",
+    name: "Kashmir",
+    title: "KHATAMBAND",
+    desc: "A traditional ceiling craft where interlocking wooden units form a continuous geometric architectural system.",
+    image: "/HomePage/creativeStyle/5th-images/khatamband.avif",
+    tag: "Architecture",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "kushmandimask",
+    name: "West Bengal",
+    title: "KUSHMANDI MASK",
+    desc: "A ritual wooden mask tradition where carved faces embody deities, demons, and mythic characters in performance.",
+    image: "/HomePage/creativeStyle/5th-images/kushmandi-mask.avif",
+    tag: "Ritual",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "likhaiwoodcarving",
+    name: "Uttarakhand",
+    title: "LIKHAI WOOD CARVING",
+    desc: "A traditional carving technique where forms are sculpted from solid wood through measured, hand-carved structure.",
+    image: "/HomePage/creativeStyle/5th-images/likhai-wood-carving.avif",
+    tag: "Woodwork",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "matweaving",
+    name: "Daman & Diu",
+    title: "MAT WEAVING",
+    desc: "A traditional craft where plant fibers are interlaced to create flat, structured mats with woven patterns.",
+    image: "/HomePage/creativeStyle/5th-images/mat-weaving.avif",
+    tag: "Craft",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "moradabadmetalcraft",
+    name: "Uttar Pradesh",
+    title: "MORADABAD METAL CRAFT",
+    desc: "A traditional brassware craft where cast metal forms are refined through intricate hand-worked detailing.",
+    image: "/HomePage/creativeStyle/5th-images/moradabad-metal-craft.avif",
+    tag: "Metalwork",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "namda",
+    name: "Kashmir",
+    title: "NAMDA",
+    desc: "A traditional felted wool craft where compressed fibers form a dense rug, enriched with surface embroidery.",
+    image: "/HomePage/creativeStyle/5th-images/namda.avif",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "needlework",
+    name: "Lakshadweep",
+    title: "NEEDLE WORK",
+    desc: "A practical textile tradition where cloth is constructed through seams, joins, and simple hand stitching.",
+    image: "/HomePage/creativeStyle/5th-images/needle-work.avif",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "palmmat",
+    name: "Andaman & Nicobar",
+    title: "PALM MAT",
+    desc: "A traditional craft where pandanus leaves and coconut strips are interwoven to form flat, functional mats.",
+    image: "/HomePage/creativeStyle/5th-images/palm-mat.avif",
+    tag: "Craft",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "papiermachekashmir",
+    name: "Kashmir",
+    title: "PAPIER-MÂCHÉ",
+    desc: "A refined paper craft where molded forms are polished and richly decorated with intricate floral designs.",
+    image: "/HomePage/creativeStyle/5th-images/papier-mch.avif",
+    tag: "Craft",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "puruliachhaumask",
+    name: "West Bengal",
+    title: "PURULIA CHHAU MASK",
+    desc: "A traditional performance mask where exaggerated faces and elaborate headdresses bring mythological characters to life.",
+    image: "/HomePage/creativeStyle/5th-images/purulia-chhau-mask.avif",
+    tag: "Ritual",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "papiermachepuducherry",
+    name: "Puducherry",
+    title: "PAPIER-MÂCHÉ",
+    desc: "A handcrafted tradition where lightweight paper pulp is shaped into simple, expressive objects.",
+    image: "/HomePage/creativeStyle/5th-images/papier-mchpuducherry.avif",
+    tag: "Craft",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "rammanmask",
+    name: "Uttarakhand",
+    title: "RAMMAN MASK",
+    desc: "A sacred wooden mask tradition where faces are carved from solid wood and used in ritual performances.",
+    image: "/HomePage/creativeStyle/5th-images/ramman-mask.avif",
+    tag: "Ritual",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "rockgardenassemblage",
+    name: "Chandigarh",
+    title: "ROCK GARDEN ASSEMBLAGE",
+    desc: "A unique environment where discarded materials are transformed into a continuous sculptural world.",
+    image: "/HomePage/creativeStyle/5th-images/rock-garden-assemblage.avif",
+    tag: "Sculpture",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "saharanpurwoodcraft",
+    name: "Uttar Pradesh",
+    title: "SAHARANPUR WOOD CRAFT",
+    desc: "A traditional wood carving craft where intricate floral and geometric designs are sculpted into solid wood.",
+    image: "/HomePage/creativeStyle/5th-images/saharanpur-wood-craft.avif",
+    tag: "Woodwork",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "shellcraft",
+    name: "Andaman & Nicobar",
+    title: "SHELL CRAFT",
+    desc: "A coastal craft where natural seashells are assembled into compact, handcrafted objects.",
+    image: "/HomePage/creativeStyle/5th-images/shell-craft.avif",
+    tag: "Craft",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "sozniembroidery",
+    name: "Kashmir",
+    title: "SOZNI EMBROIDERY",
+    desc: "A fine needle embroidery tradition where delicate stitches create intricate floral and paisley patterns.",
+    image: "/HomePage/creativeStyle/5th-images/sozni-embroidery.avif",
+    tag: "Embroidery",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "terracottacraft",
+    name: "Puducherry",
+    title: "TERRACOTTA CRAFT",
+    desc: "A traditional craft where clay is shaped and fired to create durable, earthy objects.",
+    image: "/HomePage/creativeStyle/5th-images/terracotta-craft.avif",
+    tag: "Pottery",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "walnutcarving",
+    name: "Kashmir",
+    title: "WALNUT CARVING",
+    desc: "A traditional woodcraft where solid walnut is intricately carved into deep relief patterns.",
+    image: "/HomePage/creativeStyle/5th-images/walnut-carving.avif",
+    tag: "Woodwork",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "woodcraft",
+    name: "Andaman & Nicobar",
+    title: "WOODCRAFT",
+    desc: "A handcrafted tradition where solid timber is shaped into simple, expressive objects.",
+    image: "/HomePage/creativeStyle/5th-images/woodcraft.avif",
+    tag: "Woodwork",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "ladakhtextilesystem",
+    name: "Ladakh",
+    title: "LADAKH TEXTILE SYSTEM",
+    desc: "A fiber-based tradition where wool, yak hair, and textiles form functional objects, shelter, and ritual systems.",
+    image: "/HomePage/creativeStyle/5th-images/ladakh-textile-system.avif",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "indoportugueseenvironment",
+    name: "Daman & Diu",
+    title: "INDO-PORTUGUESE ENVIRONMENT",
+    desc: "A fortified coastal settlement where churches, gateways, and walls form a unified architectural system.",
+    image: "/HomePage/creativeStyle/5th-images/indo-portuguese-environment.avif",
+    tag: "Architecture",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "agramarbleinlay",
+    name: "Uttar Pradesh",
+    title: "AGRA MARBLE INLAY",
+    desc: "A Mughal-rooted stone inlay tradition where semi-precious stones are fitted into engraved marble bases.",
+    image: "/HomePage/creativeStyle/5th-images/agra-marble-inlay.avif",
+    tag: "Stone Craft",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "balucharisaree",
+    name: "West Bengal",
+    title: "BALUCHARI SAREE",
+    desc: "A narrative silk-weaving tradition from West Bengal featuring mythological and social-historical motifs on the pallu.",
+    image: "/HomePage/creativeStyle/5th-images/baluchari-saree.avif",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "bankuraterracotta",
+    name: "West Bengal",
+    title: "BANKURA TERRACOTTA",
+    desc: "A fired-clay sculptural tradition from West Bengal, famous for its stylized horses and ritual objects.",
+    image: "/HomePage/creativeStyle/5th-images/bankura-terracotta.avif",
+    tag: "Terracotta",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "basohlipainting",
+    name: "Jammu",
+    title: "BASOHLI PAINTING",
+    desc: "A bold Pahari miniature tradition from Jammu, characterized by primary colors, large eyes, and expressive intensity.",
+    image: "/HomePage/creativeStyle/5th-images/basohli-painting.avif",
+    tag: "Painting",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "canebamboocraftandaman",
+    name: "Andaman & Nicobar",
+    title: "CANE & BAMBOO CRAFT",
+    desc: "A construction-based island tradition where split strips and bent members form functional and decorative objects.",
+    image: "/HomePage/creativeStyle/5th-images/cane-bamboo-craft.avif",
+    tag: "Bamboo & Cane",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "chandigarhmodernist",
+    name: "Chandigarh",
+    title: "CHANDIGARH MODERNIST",
+    desc: "A planned civic-modernist architectural style defined by exposed concrete, formal geometry, and green-city openness.",
+    image: "/HomePage/creativeStyle/5th-images/chandigarh-modernist.avif",
+    tag: "Architecture",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "coastalfibercraft",
+    name: "Lakshadweep",
+    title: "COASTAL FIBER CRAFT",
+    desc: "An island fiber-craft system from Lakshadweep using coconut coir and leaf-weaving for functional objects.",
+    image: "/HomePage/creativeStyle/5th-images/coastal-fiber-craft.avif",
+    tag: "Fiber Craft",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "coconutshellcraft",
+    name: "Andaman & Nicobar",
+    title: "COCONUT SHELL CRAFT",
+    desc: "A compact handcrafted tradition where coconut shells are shaped and polished into utility and decorative articles.",
+    image: "/HomePage/creativeStyle/5th-images/coconut-shell-craft.avif",
+    tag: "Handicraft",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "coircraftlakshadweep",
+    name: "Lakshadweep",
+    title: "COIR CRAFT",
+    desc: "A rugged fiber-craft tradition using coconut husk coir for rope-making, matting, and utility basketry.",
+    image: "/HomePage/creativeStyle/5th-images/coir-craft.avif",
+    tag: "Fiber Craft",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "dhaniakhalisaree",
+    name: "West Bengal",
+    title: "DHANIAKHALI SAREE",
+    desc: "A distinctive cotton-weaving tradition from West Bengal known for its dense texture and contrast borders.",
+    image: "/HomePage/creativeStyle/5th-images/dhaniakhali-saree.avif",
+    tag: "Textile",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
+  {
+    id: "francotamilenvironment",
+    name: "Puducherry",
+    title: "FRANCO-TAMIL ENVIRONMENT",
+    desc: "A hybrid architectural system from Puducherry merging French colonial facades with Tamil house morphologies.",
+    image: "/HomePage/creativeStyle/5th-images/franco-tamil-environment.avif",
+    tag: "Architecture",
+    titleColor: "#ffffff",
+    href: "/text-to-image",
+    imageFilter: "brightness(0.85) saturate(0.95)",
+  },
 ];
 
 
@@ -2254,6 +2639,43 @@ type CreativeStyleProps = {
   onTodaEmbroideryOpen?: () => void;
   onZardoziOpen?: () => void;
   onAllStylesOpen?: () => void;
+
+  // 5th Batch Styles
+  onGabbaOpen?: () => void;
+  onGaradSareeOpen?: () => void;
+  onHimalayanSacredImageOpen?: () => void;
+  onKhatambandOpen?: () => void;
+  onKushmandiMaskOpen?: () => void;
+  onLikhaiWoodCarvingOpen?: () => void;
+  onMatWeavingOpen?: () => void;
+  onMoradabadMetalCraftOpen?: () => void;
+  onNamdaOpen?: () => void;
+  onNeedleWorkOpen?: () => void;
+  onPalmMatOpen?: () => void;
+  onPapierMacheKashmirOpen?: () => void;
+  onPuruliaChhauMaskOpen?: () => void;
+  onPapierMachePuducherryOpen?: () => void;
+  onRammanMaskOpen?: () => void;
+  onRockGardenAssemblageOpen?: () => void;
+  onSaharanpurWoodCraftOpen?: () => void;
+  onShellCraftOpen?: () => void;
+  onSozniEmbroideryOpen?: () => void;
+  onTerracottaCraftOpen?: () => void;
+  onWalnutCarvingOpen?: () => void;
+  onWoodcraftOpen?: () => void;
+  onLadakhTextileSystemOpen?: () => void;
+  onIndoPortugueseEnvironmentOpen?: () => void;
+  onAgraMarbleInlayOpen?: () => void;
+  onBaluchariSareeOpen?: () => void;
+  onBankuraTerracottaOpen?: () => void;
+  onBasohliPaintingOpen?: () => void;
+  onCaneBambooCraftAndamanOpen?: () => void;
+  onChandigarhModernistOpen?: () => void;
+  onCoastalFiberCraftOpen?: () => void;
+  onCoconutShellCraftOpen?: () => void;
+  onCoirCraftLakshadweepOpen?: () => void;
+  onDhaniakhaliSareeOpen?: () => void;
+  onFrancoTamilEnvironmentOpen?: () => void;
 };
 
 export default function CreativeStyle({
@@ -2444,6 +2866,43 @@ export default function CreativeStyle({
   onTodaEmbroideryOpen,
   onZardoziOpen,
   onAllStylesOpen,
+
+  // 5th Batch
+  onGabbaOpen,
+  onGaradSareeOpen,
+  onHimalayanSacredImageOpen,
+  onKhatambandOpen,
+  onKushmandiMaskOpen,
+  onLikhaiWoodCarvingOpen,
+  onMatWeavingOpen,
+  onMoradabadMetalCraftOpen,
+  onNamdaOpen,
+  onNeedleWorkOpen,
+  onPalmMatOpen,
+  onPapierMacheKashmirOpen,
+  onPuruliaChhauMaskOpen,
+  onPapierMachePuducherryOpen,
+  onRammanMaskOpen,
+  onRockGardenAssemblageOpen,
+  onSaharanpurWoodCraftOpen,
+  onShellCraftOpen,
+  onSozniEmbroideryOpen,
+  onTerracottaCraftOpen,
+  onWalnutCarvingOpen,
+  onWoodcraftOpen,
+  onLadakhTextileSystemOpen,
+  onIndoPortugueseEnvironmentOpen,
+  onAgraMarbleInlayOpen,
+  onBaluchariSareeOpen,
+  onBankuraTerracottaOpen,
+  onBasohliPaintingOpen,
+  onCaneBambooCraftAndamanOpen,
+  onChandigarhModernistOpen,
+  onCoastalFiberCraftOpen,
+  onCoconutShellCraftOpen,
+  onCoirCraftLakshadweepOpen,
+  onDhaniakhaliSareeOpen,
+  onFrancoTamilEnvironmentOpen,
 }: CreativeStyleProps) {
   const railRef = useRef<HTMLDivElement | null>(null);
   const [showLeftArrow, setShowLeftArrow] = useState(false);
@@ -3327,52 +3786,300 @@ export default function CreativeStyle({
 
     switch (style.id) {
       case "jhabuadolls":
-        onJhabuaDollsOpen?.();
+        if (onJhabuaDollsOpen) {
+          event.preventDefault();
+          onJhabuaDollsOpen();
+        }
         break;
       case "maheshwari":
-        onMaheshwariOpen?.();
+        if (onMaheshwariOpen) {
+          event.preventDefault();
+          onMaheshwariOpen();
+        }
         break;
       case "mashruweaving":
-        onMashruWeavingOpen?.();
+        if (onMashruWeavingOpen) {
+          event.preventDefault();
+          onMashruWeavingOpen();
+        }
         break;
       case "moirangphee":
-        onMoirangPheeOpen?.();
+        if (onMoirangPheeOpen) {
+          event.preventDefault();
+          onMoirangPheeOpen();
+        }
         break;
       case "motibharat":
-        onMotiBharatOpen?.();
+        if (onMotiBharatOpen) {
+          event.preventDefault();
+          onMotiBharatOpen();
+        }
         break;
       case "mysorepainting":
-        onMysorePaintingOpen?.();
+        if (onMysorePaintingOpen) {
+          event.preventDefault();
+          onMysorePaintingOpen();
+        }
         break;
       case "rosewoodinlay":
-        onRosewoodInlayOpen?.();
+        if (onRosewoodInlayOpen) {
+          event.preventDefault();
+          onRosewoodInlayOpen();
+        }
         break;
       case "nagashawlordinary":
-        onNagaShawlOrdinaryOpen?.();
+        if (onNagaShawlOrdinaryOpen) {
+          event.preventDefault();
+          onNagaShawlOrdinaryOpen();
+        }
         break;
       case "ngotekherh":
-        onNgotekherhOpen?.();
+        if (onNgotekherhOpen) {
+          event.preventDefault();
+          onNgotekherhOpen();
+        }
         break;
       case "nironalacquer":
-        onNironaLacquerOpen?.();
+        if (onNironaLacquerOpen) {
+          event.preventDefault();
+          onNironaLacquerOpen();
+        }
         break;
       case "opaquewrap":
-        onOpaqueWrapOpen?.();
-        break;
-      case "tawlhlohpuan":
-        onTawlhlophuanMizoramOpen?.();
-        break;
-      case "tawlhlohpuan-ceremonial":
-        onTawlhlohpuanCeremonialOpen?.();
+        if (onOpaqueWrapOpen) {
+          event.preventDefault();
+          onOpaqueWrapOpen();
+        }
         break;
       case "woodcarving":
-        onWoodCarvingOpen?.();
+        if (onWoodCarvingOpen) {
+          event.preventDefault();
+          onWoodCarvingOpen();
+        }
         break;
       case "wroughtiron":
-        onWroughtIronOpen?.();
+        if (onWroughtIronOpen) {
+          event.preventDefault();
+          onWroughtIronOpen();
+        }
         break;
       case "yakshagana":
-        onYakshaganaOpen?.();
+        if (onYakshaganaOpen) {
+          event.preventDefault();
+          onYakshaganaOpen();
+        }
+        break;
+      case "gabba":
+        if (onGabbaOpen) {
+          event.preventDefault();
+          onGabbaOpen();
+        }
+        break;
+      case "garadsaree":
+        if (onGaradSareeOpen) {
+          event.preventDefault();
+          onGaradSareeOpen();
+        }
+        break;
+      case "himalayansacredimage":
+        if (onHimalayanSacredImageOpen) {
+          event.preventDefault();
+          onHimalayanSacredImageOpen();
+        }
+        break;
+      case "khatamband":
+        if (onKhatambandOpen) {
+          event.preventDefault();
+          onKhatambandOpen();
+        }
+        break;
+      case "kushmandimask":
+        if (onKushmandiMaskOpen) {
+          event.preventDefault();
+          onKushmandiMaskOpen();
+        }
+        break;
+      case "likhaiwoodcarving":
+        if (onLikhaiWoodCarvingOpen) {
+          event.preventDefault();
+          onLikhaiWoodCarvingOpen();
+        }
+        break;
+      case "matweaving":
+        if (onMatWeavingOpen) {
+          event.preventDefault();
+          onMatWeavingOpen();
+        }
+        break;
+      case "moradabadmetalcraft":
+        if (onMoradabadMetalCraftOpen) {
+          event.preventDefault();
+          onMoradabadMetalCraftOpen();
+        }
+        break;
+      case "namda":
+        if (onNamdaOpen) {
+          event.preventDefault();
+          onNamdaOpen();
+        }
+        break;
+      case "needlework":
+        if (onNeedleWorkOpen) {
+          event.preventDefault();
+          onNeedleWorkOpen();
+        }
+        break;
+      case "palmmat":
+        if (onPalmMatOpen) {
+          event.preventDefault();
+          onPalmMatOpen();
+        }
+        break;
+      case "papiermachekashmir":
+        if (onPapierMacheKashmirOpen) {
+          event.preventDefault();
+          onPapierMacheKashmirOpen();
+        }
+        break;
+      case "puruliachhaumask":
+        if (onPuruliaChhauMaskOpen) {
+          event.preventDefault();
+          onPuruliaChhauMaskOpen();
+        }
+        break;
+      case "papiermachepuducherry":
+        if (onPapierMachePuducherryOpen) {
+          event.preventDefault();
+          onPapierMachePuducherryOpen();
+        }
+        break;
+      case "rammanmask":
+        if (onRammanMaskOpen) {
+          event.preventDefault();
+          onRammanMaskOpen();
+        }
+        break;
+      case "rockgardenassemblage":
+        if (onRockGardenAssemblageOpen) {
+          event.preventDefault();
+          onRockGardenAssemblageOpen();
+        }
+        break;
+      case "saharanpurwoodcraft":
+        if (onSaharanpurWoodCraftOpen) {
+          event.preventDefault();
+          onSaharanpurWoodCraftOpen();
+        }
+        break;
+      case "shellcraft":
+        if (onShellCraftOpen) {
+          event.preventDefault();
+          onShellCraftOpen();
+        }
+        break;
+      case "sozniembroidery":
+        if (onSozniEmbroideryOpen) {
+          event.preventDefault();
+          onSozniEmbroideryOpen();
+        }
+        break;
+      case "terracottacraft":
+        if (onTerracottaCraftOpen) {
+          event.preventDefault();
+          onTerracottaCraftOpen();
+        }
+        break;
+      case "walnutcarving":
+        if (onWalnutCarvingOpen) {
+          event.preventDefault();
+          onWalnutCarvingOpen();
+        }
+        break;
+      case "woodcraft":
+        if (onWoodcraftOpen) {
+          event.preventDefault();
+          onWoodcraftOpen();
+        }
+        break;
+      case "ladakhtextilesystem":
+        if (onLadakhTextileSystemOpen) {
+          event.preventDefault();
+          onLadakhTextileSystemOpen();
+        }
+        break;
+      case "indoportugueseenvironment":
+        if (onIndoPortugueseEnvironmentOpen) {
+          event.preventDefault();
+          onIndoPortugueseEnvironmentOpen();
+        }
+        break;
+      case "agramarbleinlay":
+        if (onAgraMarbleInlayOpen) {
+          event.preventDefault();
+          onAgraMarbleInlayOpen();
+        }
+        break;
+      case "balucharisaree":
+        if (onBaluchariSareeOpen) {
+          event.preventDefault();
+          onBaluchariSareeOpen();
+        }
+        break;
+      case "bankuraterracotta":
+        if (onBankuraTerracottaOpen) {
+          event.preventDefault();
+          onBankuraTerracottaOpen();
+        }
+        break;
+      case "basohlipainting":
+        if (onBasohliPaintingOpen) {
+          event.preventDefault();
+          onBasohliPaintingOpen();
+        }
+        break;
+      case "canebamboocraftandaman":
+        if (onCaneBambooCraftAndamanOpen) {
+          event.preventDefault();
+          onCaneBambooCraftAndamanOpen();
+        }
+        break;
+      case "chandigarhmodernist":
+        if (onChandigarhModernistOpen) {
+          event.preventDefault();
+          onChandigarhModernistOpen();
+        }
+        break;
+      case "coastalfibercraft":
+        if (onCoastalFiberCraftOpen) {
+          event.preventDefault();
+          onCoastalFiberCraftOpen();
+        }
+        break;
+      case "coconutshellcraft":
+        if (onCoconutShellCraftOpen) {
+          event.preventDefault();
+          onCoconutShellCraftOpen();
+        }
+        break;
+      case "coircraftlakshadweep":
+        if (onCoirCraftLakshadweepOpen) {
+          event.preventDefault();
+          onCoirCraftLakshadweepOpen();
+        }
+        break;
+      case "dhaniakhalisaree":
+        if (onDhaniakhaliSareeOpen) {
+          event.preventDefault();
+          onDhaniakhaliSareeOpen();
+        }
+        break;
+      case "francotamilenvironment":
+        if (onFrancoTamilEnvironmentOpen) {
+          event.preventDefault();
+          onFrancoTamilEnvironmentOpen();
+        }
+        break;
+      default:
         break;
     }
   };
@@ -3442,54 +4149,56 @@ export default function CreativeStyle({
           ref={railRef}
           className="scrollbar-hide flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 sm:gap-4 sm:px-6 lg:px-16 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
-          {STYLES.slice(0, 14).map((style, index) => (
-            <Link
-              key={`${style.id}-${index}`}
-              href={style.href}
-              onClick={(event) => handleStyleClick(event, style)}
-              className="w-full md:w-[340px] shrink-0 snap-start"
-            >
-              <div className="mb-2 overflow-hidden rounded-xl border border-white/10 bg-[#18181f] sm:mb-3">
-                <div className="group relative h-[190px] sm:h-[220px]">
-                  <img
-                    src={style.image}
-                    alt={style.name}
-                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
-                    style={{ filter: style.imageFilter }}
-                  />
-                  <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,transparent_40%,rgba(0,0,0,0.72)_100%)]" />
-                  <div className="absolute left-3 top-3 rounded-full border border-white/15 bg-black/45 px-2.5 py-1 text-[8px] font-bold uppercase tracking-[0.08em] text-white/80 backdrop-blur-[6px] sm:left-4 sm:top-4 sm:px-3 sm:text-[9px]">
-                    {style.tag}
-                  </div>
-                  <div className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4">
-                    <div
-                      className="text-[30px] uppercase leading-none tracking-[0.06em] sm:text-[34px]"
-                      style={{
-                        color: style.titleColor,
-                        fontFamily: "var(--font-bebas-neue), 'Bebas Neue', sans-serif",
-                        textShadow: "0 2px 12px rgba(0,0,0,0.5)",
-                      }}
-                    >
-                      {style.title}
+          {STYLES.slice(0, 12).map((style, index) => (
+            <Fragment key={`${style.id}-${index}`}>
+              <Link
+                href={style.href}
+                onClick={(event) => handleStyleClick(event, style)}
+                className="w-full md:w-[340px] shrink-0 snap-start"
+              >
+                <div className="mb-2 overflow-hidden rounded-xl border border-white/10 bg-[#18181f] sm:mb-3">
+                  <div className="group relative h-[190px] sm:h-[220px]">
+                    <img
+                      src={style.image}
+                      alt={style.name}
+                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+                      style={{ filter: style.imageFilter }}
+                    />
+                    <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,transparent_40%,rgba(0,0,0,0.72)_100%)]" />
+                    <div className="absolute left-3 top-3 rounded-full border border-white/15 bg-black/45 px-2.5 py-1 text-[8px] font-bold uppercase tracking-[0.08em] text-white/80 backdrop-blur-[6px] sm:left-4 sm:top-4 sm:px-3 sm:text-[9px]">
+                      {style.tag}
                     </div>
-                    <div className="mt-1 text-[11px] font-semibold tracking-wide text-white/85 sm:text-[12px]">
-                      {style.name}
-                    </div>
-                    <div className="mt-1 max-w-[280px] text-[10px] leading-snug text-white/60 line-clamp-2 sm:max-w-[300px]">
-                      {style.desc}
+                    <div className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4">
+                      <div
+                        className="text-[30px] uppercase leading-none tracking-[0.06em] sm:text-[34px]"
+                        style={{
+                          color: style.titleColor,
+                          fontFamily: "var(--font-bebas-neue), 'Bebas Neue', sans-serif",
+                          textShadow: "0 2px 12px rgba(0,0,0,0.5)",
+                        }}
+                      >
+                        {style.title}
+                      </div>
+                      <div className="mt-1 text-[11px] font-semibold tracking-wide text-white/85 sm:text-[12px]">
+                        {style.name}
+                      </div>
+                      <div className="mt-1 max-w-[280px] text-[10px] leading-snug text-white/60 line-clamp-2 sm:max-w-[300px]">
+                        {style.desc}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-              <div className="sr-only">
-                <div>{style.name}</div>
-                <p>{style.desc}</p>
-              </div>
-            </Link>
+                <div className="sr-only">
+                  <div>{style.name}</div>
+                  <p>{style.desc}</p>
+                </div>
+              </Link>
+
+            </Fragment>
           ))}
 
-          {/* "See More" Card */}
           <button
+            key="explore-more-inline"
             onClick={onAllStylesOpen}
             className="w-full md:w-[340px] shrink-0 snap-start"
           >
@@ -3501,7 +4210,7 @@ export default function CreativeStyle({
               </div>
               <div className="text-center">
                 <div className="text-[18px] uppercase tracking-wider text-white/80 font-bold" style={{ fontFamily: "var(--font-bebas-neue), 'Bebas Neue', sans-serif" }}>
-                  Discover More
+                  Explore More
                 </div>
                 <div className="text-[10px] text-white/40 font-medium uppercase tracking-[0.1em] mt-1">
                   Explore {STYLES.length}+ Regional Styles
@@ -3509,6 +4218,7 @@ export default function CreativeStyle({
               </div>
             </div>
           </button>
+
         </div>
 
         <button

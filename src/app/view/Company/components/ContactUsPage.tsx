@@ -1,10 +1,21 @@
-import React from 'react';
+"use client";
+
+import React, { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { getImageUrl } from '@/routes/imageroute';
 import ContactForm from './ContactForm';
+import SupportFaqModal from './SupportFaqModal';
 
-const ContactUsPage: React.FC = () => {
+interface ContactUsPageProps {
+  initialSupportOpen?: boolean;
+}
+
+const ContactUsPage: React.FC<ContactUsPageProps> = ({ initialSupportOpen = false }) => {
+  const router = useRouter();
+  const [isSupportOpen, setIsSupportOpen] = useState(initialSupportOpen);
+
   // Business contact information - Must be visible as text for Razorpay validation
   const businessInfo = {
     companyName: 'WildMind AI Technologies Pvt. Ltd.',
@@ -122,6 +133,17 @@ const ContactUsPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      <SupportFaqModal
+        isOpen={isSupportOpen}
+        onClose={() => {
+          if (initialSupportOpen) {
+            router.push('/');
+          } else {
+            setIsSupportOpen(false);
+          }
+        }}
+      />
     </main>
   );
 };
