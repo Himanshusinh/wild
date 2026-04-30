@@ -15,6 +15,7 @@ interface GenerationState {
   imageCount: number;
   frameSize: string;
   style: string;
+  indianStyleVersion: "V1" | "V2" | "V3";
   isGenerating: boolean; // Computed from activeGenerations.length > 0 for backward compatibility
   error: string | null;
   lastGeneratedImages: GeneratedImage[];
@@ -124,12 +125,14 @@ const getMaxOutputImageCountForModel = (model?: string): number => {
   return 4;
 };
 
+
 const initialState: GenerationState = {
   prompt: '',
   selectedModel: 'new-turbo-model', // Default free-tier image model (lifetime cap enforced by backend)
   imageCount: 1,
   frameSize: '1:1',
   style: 'none',
+  indianStyleVersion: 'V1',
   isGenerating: false,
   error: null,
   lastGeneratedImages: [],
@@ -165,12 +168,13 @@ type GenerationTypeLocal = SharedGenerationType;
 export const generateImages = createAsyncThunk(
   'generation/generateImages',
   async (
-    { prompt, model, imageCount, frameSize, style, generationType, uploadedImages, width, height, isPublic, quality, output_format, size, aspect_ratio, image_input }: {
+    { prompt, model, imageCount, frameSize, style, styleVersion, generationType, uploadedImages, width, height, isPublic, quality, output_format, size, aspect_ratio, image_input }: {
       prompt: string;
       model: string;
       imageCount: number;
       frameSize?: string;
       style?: string;
+      styleVersion?: "V1" | "V2" | "V3";
       generationType: GenerationTypeLocal;
       uploadedImages?: string[];
       width?: number;
@@ -267,6 +271,7 @@ export const generateImages = createAsyncThunk(
         ...(typeof model === 'string' && /qwen-image/i.test(model) ? { num_images: requestedCount } : {}),
         frameSize,
         style,
+        ...(styleVersion ? { styleVersion } : {}),
         generationType,
         ...(shouldOmitUploadedImages ? {} : { uploadedImages }),
         clientRequestId,
@@ -279,14 +284,14 @@ export const generateImages = createAsyncThunk(
         ...(image_input ? { image_input } : {}), // Add specific image array if provided by model specific logics
         ...(model === "google/nano-banana-2"
           ? {
-              resolution: (getState() as any).generation.nanoBananaResolution,
-              enable_web_search: (getState() as any).generation
-                .nanoBananaGoogleSearch,
-              thinking_level: (getState() as any).generation
-                .nanoBananaThinkingLevel,
-              limit_generations: (getState() as any).generation
-                .nanoBananaLimitGenerations,
-            }
+            resolution: (getState() as any).generation.nanoBananaResolution,
+            enable_web_search: (getState() as any).generation
+              .nanoBananaGoogleSearch,
+            thinking_level: (getState() as any).generation
+              .nanoBananaThinkingLevel,
+            limit_generations: (getState() as any).generation
+              .nanoBananaLimitGenerations,
+          }
           : {}),
       };
       // For FAL image models, prefer aspect_ratio over frameSize naming
@@ -418,13 +423,14 @@ export const generateLiveChatImage = createAsyncThunk(
 export const generateRunwayImages = createAsyncThunk(
   'generation/generateRunwayImages',
   async (
-    { prompt, model, ratio, generationType, uploadedImages, style, isPublic }: {
+    { prompt, model, ratio, generationType, uploadedImages, style, styleVersion, isPublic }: {
       prompt: string;
       model: string;
       ratio: string;
       generationType: GenerationTypeLocal;
       uploadedImages?: string[];
       style?: string;
+      styleVersion?: "V1" | "V2" | "V3";
       isPublic?: boolean;
     },
     { rejectWithValue }
@@ -451,6 +457,7 @@ export const generateRunwayImages = createAsyncThunk(
         uploadedImages,
         generationType,
         style,
+        ...(styleVersion ? { styleVersion } : {}),
         ...(typeof resolvedIsPublic === 'boolean' ? { isPublic: resolvedIsPublic } : {})
       };
       console.log('[generateRunwayImages] POST /api/runway/generate', { payload });
@@ -475,7 +482,7 @@ export const generateRunwayImages = createAsyncThunk(
 export const generateMiniMaxImages = createAsyncThunk(
   'generation/generateMiniMaxImages',
   async (
-    { prompt, model, aspect_ratio, width, height, imageCount, generationType, uploadedImages, style, isPublic }: {
+    { prompt, model, aspect_ratio, width, height, imageCount, generationType, uploadedImages, style, styleVersion, isPublic }: {
       prompt: string;
       model: string;
       aspect_ratio?: string;
@@ -485,6 +492,7 @@ export const generateMiniMaxImages = createAsyncThunk(
       generationType: GenerationTypeLocal;
       uploadedImages?: string[];
       style?: string;
+      styleVersion?: "V1" | "V2" | "V3";
       isPublic?: boolean;
     },
     { rejectWithValue }
@@ -514,6 +522,7 @@ export const generateMiniMaxImages = createAsyncThunk(
         prompt_optimizer: true,
         generationType,
         style,
+        ...(styleVersion ? { styleVersion } : {}),
         ...(typeof resolvedIsPublic === 'boolean' ? { isPublic: resolvedIsPublic } : {})
       };
 
@@ -580,6 +589,12 @@ const generationSlice = createSlice({
     },
     setStyle: (state, action: PayloadAction<string>) => {
       state.style = action.payload;
+    },
+    setIndianStyleVersion: (
+      state,
+      action: PayloadAction<"V1" | "V2" | "V3">,
+    ) => {
+      state.indianStyleVersion = action.payload;
     },
     setIsGenerating: (state, action: PayloadAction<boolean>) => {
       state.isGenerating = action.payload;
@@ -1267,6 +1282,7 @@ export const {
   setImageCount,
   setFrameSize,
   setStyle,
+  setIndianStyleVersion,
   setIsGenerating,
   setError,
   setLastGeneratedImages,

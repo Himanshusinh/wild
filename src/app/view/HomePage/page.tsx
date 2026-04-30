@@ -563,10 +563,6 @@ const OpaquewrapFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () =
     () => import('./compo/OpaquewrapFullscreenWalkthrough'),
     { ssr: false }
 )
-const TawlhlohpuanFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/TawlhlohpuanFullscreenWalkthrough'),
-    { ssr: false }
-)
 const WoodcarvingFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
     () => import('./compo/WoodcarvingFullscreenWalkthrough'),
     { ssr: false }
@@ -1002,7 +998,6 @@ const HomePage: React.FC = () => {
     const [showNgotekherhWalkthrough, setShowNgotekherhWalkthrough] = useState(false);
     const [showNironalacquerWalkthrough, setShowNironalacquerWalkthrough] = useState(false);
     const [showOpaquewrapWalkthrough, setShowOpaquewrapWalkthrough] = useState(false);
-    const [showTawlhlohpuanWalkthrough, setShowTawlhlohpuanWalkthrough] = useState(false);
     const [showWoodcarvingWalkthrough, setShowWoodcarvingWalkthrough] = useState(false);
     const [showWroughtironWalkthrough, setShowWroughtironWalkthrough] = useState(false);
     const [showYakshaganaWalkthrough, setShowYakshaganaWalkthrough] = useState(false);
@@ -1238,7 +1233,6 @@ const HomePage: React.FC = () => {
             case "ngotekherh": setShowNgotekherhWalkthrough(true); break;
             case "nironalacquer": setShowNironalacquerWalkthrough(true); break;
             case "opaquewrap": setShowOpaquewrapWalkthrough(true); break;
-            case "tawlhlohpuan-ceremonial": setShowTawlhlohpuanWalkthrough(true); break;
             case "woodcarving": setShowWoodcarvingWalkthrough(true); break;
             case "wroughtiron": setShowWroughtironWalkthrough(true); break;
             case "yakshagana": setShowYakshaganaWalkthrough(true); break;
@@ -2115,11 +2109,6 @@ const HomePage: React.FC = () => {
                             setOpenedFromAllStyles(false);
                             setShowWelcomeModal(false);
                             setShowOpaquewrapWalkthrough(true);
-                        }}
-                        onTawlhlohpuanCeremonialOpen={() => {
-                            setOpenedFromAllStyles(false);
-                            setShowWelcomeModal(false);
-                            setShowTawlhlohpuanWalkthrough(true);
                         }}
                         onWoodCarvingOpen={() => {
                             setOpenedFromAllStyles(false);
@@ -3386,10 +3375,6 @@ const HomePage: React.FC = () => {
                 onClose={() => handleCloseWalkthrough(setShowOpaquewrapWalkthrough)}
             />
 
-            <TawlhlohpuanFullscreenWalkthrough
-                isOpen={showTawlhlohpuanWalkthrough}
-                onClose={() => handleCloseWalkthrough(setShowTawlhlohpuanWalkthrough)}
-            />
 
             <WoodcarvingFullscreenWalkthrough
                 isOpen={showWoodcarvingWalkthrough}

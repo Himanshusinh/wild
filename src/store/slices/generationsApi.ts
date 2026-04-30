@@ -27,6 +27,7 @@ export const bflGenerate = createAsyncThunk(
       n?: number;
       frameSize?: string;
       style?: string;
+      styleVersion?: "V1" | "V2" | "V3";
       uploadedImages?: string[];
       width?: number;
       height?: number;
