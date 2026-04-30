@@ -46,49 +46,40 @@ const HardOrnamentModal: React.FC<HardOrnamentModalProps> = ({ isOpen, onClose, 
       <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={onClose} />
       
       <div className="relative w-full max-w-4xl bg-[#0A0A0B] border border-white/10 rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
-        {/* Header Section */}
-        <div className="p-6 border-b border-white/10 bg-gradient-to-r from-white/[0.02] to-transparent">
-          <button 
-            onClick={onClose}
-            className="absolute top-6 right-6 p-2 rounded-full hover:bg-white/10 transition-colors text-white/40 hover:text-white"
-          >
-            <X size={20} />
-          </button>
-          
-          <HardOrnamentHeader 
-            currentVersion={state.version}
-            onVersionChange={(v) => setState(prev => ({ ...prev, version: v }))}
-          />
+        <HardOrnamentHeader 
+          currentVersion={state.version}
+          onVersionChange={(v) => setState(prev => ({ ...prev, version: v }))}
+          onClose={onClose}
+        />
 
+        {/* Content Section */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-8">
           {/* Mode Selector */}
-          <div className="flex gap-2">
+          <div className="flex gap-2 bg-white/[0.03] p-1 rounded-xl w-fit border border-white/5">
             <button
               onClick={() => setState(prev => ({ ...prev, inputMode: 'text' }))}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-all ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[11px] font-medium transition-all ${
                 state.inputMode === 'text' 
-                  ? 'bg-white/10 text-white border border-white/20' 
+                  ? 'bg-white/10 text-white shadow-sm border border-white/10' 
                   : 'text-white/40 hover:text-white/60'
               }`}
             >
-              <Type size={16} />
+              <Type size={14} />
               Text to Image
             </button>
             <button
               onClick={() => setState(prev => ({ ...prev, inputMode: 'image' }))}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-all ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[11px] font-medium transition-all ${
                 state.inputMode === 'image' 
-                  ? 'bg-white/10 text-white border border-white/20' 
+                  ? 'bg-white/10 text-white shadow-sm border border-white/10' 
                   : 'text-white/40 hover:text-white/60'
               }`}
             >
-              <ImageIcon size={16} />
+              <ImageIcon size={14} />
               Image to Image
             </button>
           </div>
-        </div>
 
-        {/* Content Section */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-8">
           {/* Input Area */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">

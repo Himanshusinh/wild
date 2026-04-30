@@ -3,6 +3,7 @@
 import React from "react";
 import { X, Sparkles, Wand2, Boxes, Palette } from "lucide-react";
 import type { StyleVersion } from "./types";
+import { STYLE_LABELS } from "./types";
 
 interface TraditionalHeaderProps {
   style: StyleVersion;
@@ -25,41 +26,50 @@ export function TraditionalHeader({
 
   return (
     <header className="flex h-16 shrink-0 items-center justify-between border-b border-white/[0.06] bg-[#0E0E12] px-5">
-      <div className="flex items-center gap-6">
-        <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600/10 text-blue-500 ring-1 ring-blue-600/20">
-            <Wand2 size={18} />
-          </div>
-          <h1 className="text-sm font-bold uppercase tracking-wider text-white/90">
-            {styleTitle} <span className="text-white/20 ml-2">Generator</span>
-          </h1>
+      <div className="flex items-center gap-3">
+        {/* Style Title Pill */}
+        <div className="flex items-center gap-1.5 rounded-full border border-[#2F6BFF]/25 bg-[#2F6BFF]/[0.08] px-2.5 py-[5px]">
+          <span className="h-1.5 w-1.5 rounded-full bg-[#2F6BFF] shadow-[0_0_5px_rgba(47,107,255,0.8)]" />
+          <span className="text-[11px] font-medium uppercase tracking-[0.06em] text-[#60a5fa] whitespace-nowrap">
+            {styleTitle}
+          </span>
         </div>
 
-        <div className="hidden h-4 w-[1px] bg-white/10 sm:block" />
-
-        <div className="hidden items-center gap-1 rounded-xl bg-black/40 p-1 ring-1 ring-white/[0.05] sm:flex">
+        {/* Version Selector */}
+        <div className="ml-1 flex gap-0.5 rounded-xl border border-white/10 bg-[#13131a] p-[3px]">
           {versions.map((v) => (
             <button
               key={v.id}
+              type="button"
               onClick={() => onStyleChange(v.id)}
-              className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-[11px] font-bold transition-all ${
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-[5px] text-[11px] font-medium transition-all duration-150 ${
                 style === v.id
-                  ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20"
-                  : "text-white/40 hover:bg-white/5 hover:text-white/60"
+                  ? "bg-[#1e1e28] text-white/85 shadow-[0_1px_4px_rgba(0,0,0,0.5)]"
+                  : "text-white/30 hover:text-white/55"
               }`}
             >
-              {v.icon}
-              {v.label}
+              <span>{v.id}</span>
+              <span
+                className={`rounded-[4px] px-[5px] py-px text-[9px] font-semibold tracking-[0.04em] ${
+                  style === v.id
+                    ? "bg-[#2F6BFF]/[0.12] text-[#60a5fa]"
+                    : "bg-white/[0.04] text-white/20"
+                }`}
+              >
+                {STYLE_LABELS[v.id].badge}
+              </span>
             </button>
           ))}
         </div>
       </div>
 
       <button
+        type="button"
+        aria-label="Close"
         onClick={onClose}
-        className="group flex h-9 w-9 items-center justify-center rounded-xl bg-white/[0.03] text-white/40 ring-1 ring-white/[0.08] transition-all hover:bg-white/[0.08] hover:text-white hover:ring-white/20 active:scale-90"
+        className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-white/30 transition hover:bg-white/[0.08] hover:text-white/70"
       >
-        <X size={18} className="transition-transform group-hover:rotate-90" />
+        <X className="h-4 w-4" />
       </button>
     </header>
   );

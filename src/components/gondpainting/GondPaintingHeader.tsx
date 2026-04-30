@@ -1,41 +1,74 @@
 import React from 'react';
+import { X } from 'lucide-react';
 import { GondPaintingVersion } from './types';
 
 interface GondPaintingHeaderProps {
   currentVersion: GondPaintingVersion;
   onVersionChange: (version: GondPaintingVersion) => void;
+  onClose: () => void;
 }
+
+const STYLE_LABELS: Record<string, { badge: string }> = {
+  v1: { badge: "AUTHENTIC" },
+  v2: { badge: "ARTISAN" },
+  v3: { badge: "CINEMATIC" },
+};
 
 const GondPaintingHeader: React.FC<GondPaintingHeaderProps> = ({
   currentVersion,
   onVersionChange,
+  onClose,
 }) => {
+  const versions: GondPaintingVersion[] = ['v1', 'v2', 'v3'];
+
   return (
-    <div className="flex flex-col gap-4 mb-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-white">Gond Painting Generator</h2>
-        <div className="flex bg-white/5 rounded-full p-1 border border-white/10">
-          {(['v1', 'v2', 'v3'] as GondPaintingVersion[]).map((v) => (
+    <header className="flex h-16 shrink-0 items-center justify-between border-b border-white/[0.06] bg-[#0E0E12] px-5">
+      <div className="flex items-center gap-3">
+        {/* Style Title Pill */}
+        <div className="flex items-center gap-1.5 rounded-full border border-[#2F6BFF]/25 bg-[#2F6BFF]/[0.08] px-2.5 py-[5px]">
+          <span className="h-1.5 w-1.5 rounded-full bg-[#2F6BFF] shadow-[0_0_5px_rgba(47,107,255,0.8)]" />
+          <span className="text-[11px] font-medium uppercase tracking-[0.06em] text-[#60a5fa] whitespace-nowrap">
+            Gond Painting
+          </span>
+        </div>
+
+        {/* Version Selector */}
+        <div className="ml-1 flex gap-0.5 rounded-xl border border-white/10 bg-[#13131a] p-[3px]">
+          {versions.map((v) => (
             <button
               key={v}
+              type="button"
               onClick={() => onVersionChange(v)}
-              className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all ${
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-[5px] text-[11px] font-medium transition-all duration-150 ${
                 currentVersion === v
-                  ? 'bg-white text-black shadow-lg'
-                  : 'text-white/60 hover:text-white'
+                  ? "bg-[#1e1e28] text-white/85 shadow-[0_1px_4px_rgba(0,0,0,0.5)]"
+                  : "text-white/30 hover:text-white/55"
               }`}
             >
-              {v.toUpperCase()}
+              <span>{v.toUpperCase()}</span>
+              <span
+                className={`rounded-[4px] px-[5px] py-px text-[9px] font-semibold tracking-[0.04em] ${
+                  currentVersion === v
+                    ? "bg-[#2F6BFF]/[0.12] text-[#60a5fa]"
+                    : "bg-white/[0.04] text-white/20"
+                }`}
+              >
+                {STYLE_LABELS[v].badge}
+              </span>
             </button>
           ))}
         </div>
       </div>
-      <p className="text-sm text-white/40 leading-relaxed">
-        {currentVersion === 'v1' && 'AUTHENTIC: Source-faithful Gond painting logic.'}
-        {currentVersion === 'v2' && 'ARTISAN: Handcrafted dimensional Gond translation.'}
-        {currentVersion === 'v3' && 'CINEMATIC: Fully volumetric cinematic Gond world.'}
-      </p>
-    </div>
+
+      <button
+        type="button"
+        aria-label="Close"
+        onClick={onClose}
+        className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-white/30 transition hover:bg-white/[0.08] hover:text-white/70"
+      >
+        <X className="h-4 w-4" />
+      </button>
+    </header>
   );
 };
 
