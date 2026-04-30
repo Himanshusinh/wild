@@ -1,5 +1,6 @@
 "use client";
 import React, { useCallback, useEffect, useMemo, useReducer } from "react";
+import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { saveUpload } from "@/lib/libraryApi";
 import { tawlhlohpuanPromptCatalog } from "@/app/view/HomePage/compo/tawlhlohpuanPromptCatalog";
@@ -280,7 +281,7 @@ export function TawlhlohpuanModal({ isOpen, onClose }: { isOpen: boolean; onClos
 
   const styleTitle = `${state.style} - ${STYLE_LABELS[state.style].badge}`;
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/45 p-3 sm:p-6 backdrop-blur-2xl">
       <div className="absolute inset-0" onClick={onClose} aria-hidden />
       <div
@@ -449,5 +450,6 @@ export function TawlhlohpuanModal({ isOpen, onClose }: { isOpen: boolean; onClos
         onClose={() => setFullscreenUrl(null)}
       />
     </div>
+  , document.body
   );
 }

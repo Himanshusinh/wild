@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useReducer } from "react";
+import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { saveUpload } from "@/lib/libraryApi";
 import { BASTARWOODCRAFT_PROMPT_FAMILIES } from "@/app/view/HomePage/compo/bastarwoodcraftPromptCatalog";
@@ -303,7 +304,7 @@ export function BastarWoodcraftModal({ isOpen, onClose }: { isOpen: boolean; onC
   const familyMeta = BASTARWOODCRAFT_PROMPT_FAMILIES[state.style];
   const styleTitle = `${state.style} · ${familyMeta.chip}`;
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/45 p-3 sm:p-6 backdrop-blur-2xl">
       <div className="absolute inset-0" onClick={onClose} aria-hidden />
       <div
@@ -458,6 +459,7 @@ export function BastarWoodcraftModal({ isOpen, onClose }: { isOpen: boolean; onC
 
       <FullscreenImageViewer isOpen={Boolean(fullscreenUrl)} src={fullscreenUrl || ""} onClose={() => setFullscreenUrl(null)} />
     </div>
+  , document.body
   );
 }
 

@@ -151,7 +151,7 @@ const StylePopup = ({ isOpen, onClose }: StylePopupProps) => {
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-xl p-3 sm:p-6"
+        className="fixed inset-0 z-[150] flex items-center justify-center bg-black/60 backdrop-blur-xl p-3 sm:p-6"
         onClick={onClose}
         style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
       >

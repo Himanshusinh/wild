@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { createPortal } from "react-dom";
 import { X, Play, Info, Sparkles, Wand2, Boxes, Palette } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { nagashawlPromptCatalog } from "./nagashawlPromptCatalog";
@@ -57,8 +58,8 @@ const NagashawlFullscreenWalkthrough: React.FC<FullscreenWalkthroughProps> = ({
     },
   ];
 
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#0E0E12] lg:bg-black/90 backdrop-blur-xl">
+  return createPortal(
+    <div className="fixed inset-0 z-[999] flex items-center justify-center bg-[#0E0E12] lg:bg-black/90 backdrop-blur-xl">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] bg-blue-500/10 blur-[120px] rounded-full" />
         <div className="absolute -bottom-[10%] -right-[10%] w-[40%] h-[40%] bg-purple-500/10 blur-[120px] rounded-full" />
@@ -197,6 +198,7 @@ const NagashawlFullscreenWalkthrough: React.FC<FullscreenWalkthroughProps> = ({
         </div>
       </div>
     </div>
+  , document.body
   );
 };
 

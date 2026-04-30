@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useReducer } from "react";
+import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { saveUpload } from "@/lib/libraryApi";
 import { THOLU_PROMPT_FAMILIES } from "@/app/view/HomePage/compo/tholuPromptCatalog";
@@ -333,7 +334,7 @@ export function TholuModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =
   const familyMeta = THOLU_PROMPT_FAMILIES[state.style];
   const styleTitle = `${state.style} · ${familyMeta.chip}`;
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/45 p-3 sm:p-6 backdrop-blur-2xl">
       <div className="absolute inset-0" onClick={onClose} aria-hidden />
 
@@ -501,6 +502,7 @@ export function TholuModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =
         onClose={() => setFullscreenUrl(null)}
       />
     </div>
+  , document.body
   );
 }
 

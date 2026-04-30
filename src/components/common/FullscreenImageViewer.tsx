@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { createPortal } from "react-dom";
 
 export function FullscreenImageViewer({
   isOpen,
@@ -222,7 +223,7 @@ export function FullscreenImageViewer({
 
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-[999] bg-black/95 backdrop-blur-sm"
       onClick={(e) => {
@@ -286,6 +287,7 @@ export function FullscreenImageViewer({
         Scroll to zoom • Drag to pan • Click to zoom/reset • ESC to exit
       </div>
     </div>
+  , document.body
   );
 }
 

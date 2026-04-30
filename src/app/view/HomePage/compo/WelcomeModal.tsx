@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
 interface WelcomeModalProps {
@@ -23,8 +24,8 @@ const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onClose }) => {
 
     if (!isOpen) return null;
 
-    return (
-        <div className="fixed inset-0 bg-black/70  z-[100] flex items-center justify-center p-4">
+    return createPortal(
+        <div className="fixed inset-0 bg-black/70  z-[999] flex items-center justify-center p-4">
             <div
                 className={`relative w-full max-w-5xl lg:h-auto max-h-[80vh] md:h-[90vh] overflow-y-auto pb-6 bg-[#1c303d]/30 backdrop-blur-3xl border border-white/20 rounded-2xl shadow-2xl overflow-hidden transition-all duration-300 ${isVisible ? 'scale-100 opacity-100' : 'scale-95 opacity-0'
                     }`}
@@ -117,7 +118,8 @@ const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onClose }) => {
                     </div>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 
