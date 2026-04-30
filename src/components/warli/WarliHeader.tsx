@@ -11,7 +11,7 @@ interface WarliHeaderProps {
 }
 
 export function WarliHeader({ style, onStyleChange, onClose }: WarliHeaderProps) {
-  const families: StyleFamily[] = ["A", "B", "C"];
+  const families: StyleFamily[] = ["V1", "V2", "V3"];
 
   return (
     <header className="flex shrink-0 items-center justify-between border-b border-white/10 bg-[#0a0a0f] px-5 py-3">

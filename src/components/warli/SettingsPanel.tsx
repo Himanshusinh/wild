@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
-import { ChevronDown, Check } from "lucide-react";
+import React from "react";
 import { ImageCount, AspectRatio, IMAGE_COUNTS, ModelId } from "./types";
 import { getAspectRatioMenuForModel, getResolutionMenuForModel } from "./warliNanoAspect";
 
@@ -21,78 +20,17 @@ interface SettingsPanelProps {
   onIncludeRestyleChange: (v: boolean) => void;
 }
 
-function DropdownSelector<T extends string | number>({
-  items,
-  value,
-  onChange,
-  renderLabel,
-}: {
-  items: readonly T[];
-  value: T;
-  onChange: (v: T) => void;
-  renderLabel: (v: T) => string;
-}) {
-  const [open, setOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
+const RATIO_CATEGORIES = [
+  { id: "portrait", label: "Portrait" },
+  { id: "square", label: "Square" },
+  { id: "landscape", label: "Landscape" },
+];
 
-  useEffect(() => {
-    if (!open) return;
-    const handle = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handle);
-    return () => document.removeEventListener("mousedown", handle);
-  }, [open]);
-
-  return (
-    <div ref={containerRef} className="relative w-full">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className={`flex w-full items-center justify-between rounded-xl border px-3.5 py-2.5 text-sm transition-all duration-150 ${
-          open
-            ? "border-white/20 bg-transparent"
-            : "border-white/10 bg-transparent hover:border-white/15"
-        }`}
-      >
-        <span className="font-medium text-white/80">{renderLabel(value)}</span>
-        <ChevronDown
-          className={`h-3.5 w-3.5 text-white/30 transition-transform duration-200 ${
-            open ? "rotate-180" : ""
-          }`}
-        />
-      </button>
-
-      {open && (
-        <div className="absolute left-0 right-0 top-full z-50 mt-1.5 max-h-48 overflow-y-auto rounded-xl border border-white/10 bg-[#0a0a0f]/95 backdrop-blur-md shadow-[0_8px_32px_rgba(0,0,0,0.6)] [scrollbar-width:thin]">
-          {items.map((item) => {
-            const isActive = item === value;
-            return (
-              <button
-                key={item}
-                type="button"
-                onClick={() => {
-                  onChange(item);
-                  setOpen(false);
-                }}
-                className={`flex w-full items-center justify-between px-3.5 py-2.5 text-sm transition-colors duration-100 ${
-                  isActive
-                    ? "bg-[#2F6BFF]/10 text-white"
-                    : "text-white/60 hover:bg-white/[0.04] hover:text-white/85"
-                }`}
-              >
-                <span className="font-medium">{renderLabel(item)}</span>
-                {isActive && <Check className="h-3 w-3 text-[#2F6BFF]" />}
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
+const RATIO_GROUPS: Record<string, string[]> = {
+  portrait: ["1:8", "1:4", "9:21", "9:16", "10:16", "2:3", "3:4", "4:5", "10:14", "6:10", "1:3", "1:2"],
+  square: ["1:1", "auto", "default", "square_hd"],
+  landscape: ["5:4", "4:3", "14:10", "3:2", "16:9", "16:10", "21:9", "2:1", "3:1", "4:1", "8:1"],
+};
 
 function Chip<T extends string | number>({
   value,
@@ -109,11 +47,10 @@ function Chip<T extends string | number>({
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-lg border px-2.5 py-1.5 text-[10px] font-medium transition-all duration-150 ${
-        active
-          ? "border-[#2F6BFF]/30 bg-[#2F6BFF]/[0.1] text-[#60a5fa]"
-          : "border-white/10 bg-transparent text-white/30 hover:border-white/20 hover:text-white/60"
-      }`}
+      className={`rounded-full border px-4 py-1.5 text-[11px] font-medium transition-all duration-200 ${active
+          ? "border-[#2F6BFF] bg-[#2F6BFF]/10 text-white shadow-[0_0_15px_-3px_rgba(47,107,255,0.4)]"
+          : "border-white/5 bg-white/[0.02] text-white/40 hover:border-white/10 hover:bg-white/[0.04] hover:text-white/60"
+        }`}
     >
       {label ?? value}
     </button>
@@ -158,54 +95,153 @@ export function SettingsPanel({
 
       <div className="flex flex-col gap-1.5">
         <span className="text-[10px] font-semibold uppercase tracking-[0.07em] text-white/25">Count</span>
-        <DropdownSelector
-          items={IMAGE_COUNTS as unknown as number[]}
-          value={imageCount}
-          onChange={(v) => onCountChange(v as ImageCount)}
-          renderLabel={(v) => v.toString()}
-        />
+        <div className="flex flex-wrap gap-1">
+          {(IMAGE_COUNTS as unknown as number[]).map((c) => (
+            <Chip
+              key={c}
+              value={c}
+              active={imageCount === c}
+              onClick={() => onCountChange(c as ImageCount)}
+            />
+          ))}
+        </div>
       </div>
 
-      <div className="flex flex-col gap-1.5">
-        <span className="text-[10px] font-semibold uppercase tracking-[0.07em] text-white/25">
+      <div className="flex flex-col gap-3">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-white/25">
           Ratio ({model === "google/nano-banana-pro" ? "Pro" : "Nano 2"})
         </span>
-        <DropdownSelector
-          items={ratioOptions}
-          value={ratio}
-          onChange={(v) => onRatioChange(v as AspectRatio)}
-          renderLabel={(v) => (v === "auto" ? "Auto" : String(v))}
+
+        <VisualRatioSelector
+          ratio={ratio}
+          options={ratioOptions}
+          onRatioChange={onRatioChange}
         />
       </div>
 
-      <details className="rounded-xl border border-white/[0.06] bg-transparent px-3 py-2">
-        <summary className="cursor-pointer select-none text-[10px] font-semibold uppercase tracking-[0.07em] text-white/25">
-          Advanced prompt
-        </summary>
-        <div className="mt-2 flex flex-wrap gap-1">
-          <Chip
-            value="benchmark"
-            label="Benchmark"
-            active={includeBenchmark}
-            onClick={() => onIncludeBenchmarkChange(!includeBenchmark)}
-          />
-          <Chip
-            value="variable"
-            label="Variable"
-            active={includeVariable}
-            onClick={() => onIncludeVariableChange(!includeVariable)}
-          />
-          <Chip
-            value="restyle"
-            label="Restyle"
-            active={includeRestyle}
-            onClick={() => onIncludeRestyleChange(!includeRestyle)}
-          />
+    </div>
+  );
+}
+
+function VisualRatioSelector({
+  ratio,
+  options,
+  onRatioChange,
+}: {
+  ratio: string;
+  options: readonly string[];
+  onRatioChange: (r: any) => void;
+}) {
+  const [category, setCategory] = React.useState(() => {
+    if (RATIO_GROUPS.portrait.includes(ratio)) return "portrait";
+    if (RATIO_GROUPS.landscape.includes(ratio)) return "landscape";
+    return "square";
+  });
+
+  const filteredRatios = options.filter((opt) => {
+    if (category === "square") return RATIO_GROUPS.square.includes(opt);
+    if (category === "portrait") return RATIO_GROUPS.portrait.includes(opt);
+    if (category === "landscape") return RATIO_GROUPS.landscape.includes(opt);
+    return false;
+  });
+
+  const currentIndex = filteredRatios.indexOf(ratio);
+
+  // Preview Box dimensions logic
+  const getPreviewDims = () => {
+    const [w, h] = ratio === "auto" ? [1, 1] : ratio.split(":").map(Number);
+    const max = 40;
+    const scale = max / Math.max(w, h);
+    return { width: w * scale, height: h * scale };
+  };
+
+  const dims = getPreviewDims();
+
+  return (
+    <div className="flex items-center gap-5 py-2">
+      {/* Left: Preview Area with stacked effect */}
+      <div className="relative flex h-20 w-20 shrink-0 items-center justify-center rounded-xl bg-transparent">
+        {/* Ghost background rectangles for 'stacked' look */}
+        <div className="absolute h-10 w-10 rounded-md border border-white/5 bg-white/[0.02] opacity-20" style={{ transform: 'rotate(-8deg) translate(-2px, -2px)' }} />
+        <div className="absolute h-10 w-10 rounded-md border border-white/5 bg-white/[0.02] opacity-20" style={{ transform: 'rotate(8deg) translate(2px, 2px)' }} />
+
+        {/* Actual Preview Box */}
+        <div
+          className="relative flex items-center justify-center rounded-md border border-white/20 bg-white/5 shadow-2xl transition-all duration-300"
+          style={{
+            width: `${dims.width}px`,
+            height: `${dims.height}px`,
+          }}
+        >
+          <span className="text-[10px] font-bold text-white/90">
+            {ratio === "auto" ? "1:1" : ratio}
+          </span>
         </div>
-        <p className="mt-2 text-[10px] leading-snug text-white/15">
-          Off by default to reduce added details.
-        </p>
-      </details>
+      </div>
+
+      {/* Right: Controls Area */}
+      <div className="flex flex-1 flex-col gap-4">
+        {/* Category Toggles */}
+        <div className="flex rounded-lg bg-white/[0.03] p-1 shadow-inner">
+          {RATIO_CATEGORIES.map((cat) => (
+            <button
+              key={cat.id}
+              type="button"
+              onClick={() => {
+                setCategory(cat.id);
+                const newFiltered = options.filter((opt) => RATIO_GROUPS[cat.id].includes(opt));
+                if (newFiltered.length > 0) {
+                  onRatioChange(newFiltered[0]);
+                }
+              }}
+              className={`flex-1 rounded-md py-1.5 text-[10px] font-bold transition-all duration-200 ${category === cat.id
+                  ? "bg-[#1e1e28] text-white shadow-[0_1px_4px_rgba(0,0,0,0.5)]"
+                  : "text-white/30 hover:text-white/60"
+                }`}
+            >
+              {cat.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Slider Area */}
+        <div className="flex flex-col gap-1.5 px-0.5">
+          <input
+            type="range"
+            min={0}
+            max={Math.max(0, filteredRatios.length - 1)}
+            value={currentIndex === -1 ? 0 : currentIndex}
+            onChange={(e) => {
+              const idx = parseInt(e.target.value);
+              if (filteredRatios[idx]) {
+                onRatioChange(filteredRatios[idx]);
+              }
+            }}
+            className="slider-white-thumb h-1 w-full cursor-pointer appearance-none rounded-full bg-white/10 transition-all"
+          />
+          <style jsx>{`
+            .slider-white-thumb::-webkit-slider-thumb {
+              -webkit-appearance: none;
+              appearance: none;
+              width: 12px;
+              height: 12px;
+              background: #ffffff;
+              border-radius: 50%;
+              cursor: pointer;
+              box-shadow: 0 0 5px rgba(0,0,0,0.3);
+            }
+            .slider-white-thumb::-moz-range-thumb {
+              width: 12px;
+              height: 12px;
+              background: #ffffff;
+              border-radius: 50%;
+              cursor: pointer;
+              border: none;
+              box-shadow: 0 0 5px rgba(0,0,0,0.3);
+            }
+          `}</style>
+        </div>
+      </div>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import type { WarliAspectRatioChoice } from "./warliNanoAspect";
 
-export type StyleFamily = "A" | "B" | "C";
+export type StyleFamily = "V1" | "V2" | "V3";
 export type InputMode = "text" | "image";
 export type ModelId = "google/nano-banana-2" | "google/nano-banana-pro";
 export type ImageCount = 1 | 2 | 4;
@@ -40,13 +40,13 @@ export const MODELS: ModelOption[] = [
 export const IMAGE_COUNTS: ImageCount[] = [1, 2, 4];
 
 export const STYLE_LABELS: Record<StyleFamily, { badge: string; title: string }> = {
-  A: { badge: "2D MURAL", title: "Traditional 2D Mural" },
-  B: { badge: "BAS-RELIEF", title: "Terracotta Bas-Relief" },
-  C: { badge: "3D WORLD", title: "Full Cinematic 3D" },
+  V1: { badge: "2D MURAL", title: "Traditional 2D Mural" },
+  V2: { badge: "BAS-RELIEF", title: "Terracotta Bas-Relief" },
+  V3: { badge: "3D WORLD", title: "Full Cinematic 3D" },
 };
 
 export const INITIAL_STATE: WarliState = {
-  style: "A",
+  style: "V1",
   inputMode: "text",
   sceneText: "",
   uploadedImage: null,
