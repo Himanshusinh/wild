@@ -1,4 +1,4 @@
-import type { KarepaVersion } from "@/app/view/HomePage/compo/karepaPromptCatalog";
+import type { KarepaVersion } from "@/app/view/HomePage/compo/styles/karepa/karepaPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = KarepaVersion;

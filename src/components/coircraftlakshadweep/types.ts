@@ -1,4 +1,4 @@
-import type { CoircraftlakshadweepVersion } from "@/app/view/HomePage/compo/coircraftlakshadweepPromptCatalog";
+import type { CoircraftlakshadweepVersion } from "@/app/view/HomePage/compo/styles/coircraftlakshadweep/coircraftlakshadweepPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = CoircraftlakshadweepVersion;

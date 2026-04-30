@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { X, Wand2, RefreshCw, Layers, Sparkles, Image as ImageIcon, Type, ArrowRight, ShieldCheck, Zap } from 'lucide-react';
 import { HmaramVersion, HmaramState, INITIAL_HMARAM_STATE } from './types';
 import HmaramHeader from './HmaramHeader';
-import { hmaramPromptCatalog } from '../../app/view/HomePage/compo/hmaramPromptCatalog';
+import { hmaramPromptCatalog } from '@/app/view/HomePage/compo/styles/hmaram/hmaramPromptCatalog';
 
 interface HmaramModalProps {
   isOpen: boolean;

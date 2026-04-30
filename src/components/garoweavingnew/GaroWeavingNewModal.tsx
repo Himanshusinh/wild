@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useMemo, useReducer } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { saveUpload } from "@/lib/libraryApi";
-import { garoweavingnewPromptCatalog } from "@/app/view/HomePage/compo/garoweavingnewPromptCatalog";
+import { garoweavingnewPromptCatalog } from "@/app/view/HomePage/compo/styles/garoweavingnew/garoweavingnewPromptCatalog";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import type { RootState } from "@/store";
 import { falGenerate } from "@/store/slices/generationsApi";

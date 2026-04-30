@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useMemo, useReducer } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { saveUpload } from "@/lib/libraryApi";
-import { WOODTEMPLECARVING_PROMPT_FAMILIES } from "@/app/view/HomePage/compo/woodtemplecarvingPromptCatalog";
+import { WOODTEMPLECARVING_PROMPT_FAMILIES } from "@/app/view/HomePage/compo/styles/woodtemplecarving/woodtemplecarvingPromptCatalog";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import type { RootState } from "@/store";
 import { falGenerate } from "@/store/slices/generationsApi";

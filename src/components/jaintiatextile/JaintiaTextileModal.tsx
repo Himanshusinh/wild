@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { X, Wand2, RefreshCw, Layers, Sparkles, Image as ImageIcon, Type, ArrowRight, ShieldCheck, Zap } from 'lucide-react';
 import { JaintiaTextileVersion, JaintiaTextileState, INITIAL_JAINTIA_TEXTILE_STATE } from './types';
 import JaintiaTextileHeader from './JaintiaTextileHeader';
-import { jaintiatextilePromptCatalog } from '../../app/view/HomePage/compo/jaintiatextilePromptCatalog';
+import { jaintiatextilePromptCatalog } from '@/app/view/HomePage/compo/styles/jaintiatextile/jaintiatextilePromptCatalog';
 
 interface JaintiaTextileModalProps {
   isOpen: boolean;

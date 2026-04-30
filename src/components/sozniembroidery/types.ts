@@ -1,4 +1,4 @@
-import type { SozniembroideryVersion } from "@/app/view/HomePage/compo/sozniembroideryPromptCatalog";
+import type { SozniembroideryVersion } from "@/app/view/HomePage/compo/styles/sozniembroidery/sozniembroideryPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = SozniembroideryVersion;

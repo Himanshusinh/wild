@@ -1,4 +1,4 @@
-import type { KutchVersion } from "@/app/view/HomePage/compo/kutchPromptCatalog";
+import type { KutchVersion } from "@/app/view/HomePage/compo/styles/kutch/kutchPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = KutchVersion;

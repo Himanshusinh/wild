@@ -1,4 +1,4 @@
-import type { MoradabadmetalcraftVersion } from "@/app/view/HomePage/compo/moradabadmetalcraftPromptCatalog";
+import type { MoradabadmetalcraftVersion } from "@/app/view/HomePage/compo/styles/moradabadmetalcraft/moradabadmetalcraftPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = MoradabadmetalcraftVersion;

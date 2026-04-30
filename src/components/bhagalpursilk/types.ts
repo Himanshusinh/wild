@@ -1,4 +1,4 @@
-import type { BhagalpurSilkVersion } from "@/app/view/HomePage/compo/bhagalpursilkPromptCatalog";
+import type { BhagalpurSilkVersion } from "@/app/view/HomePage/compo/styles/bhagalpursilk/bhagalpursilkPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = BhagalpurSilkVersion;

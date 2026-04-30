@@ -1,4 +1,4 @@
-import type { SarkandaArchitectureVersion } from "@/app/view/HomePage/compo/sarkandaarchitecturePromptCatalog";
+import type { SarkandaArchitectureVersion } from "@/app/view/HomePage/compo/styles/sarkandaarchitecture/sarkandaarchitecturePromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = SarkandaArchitectureVersion;

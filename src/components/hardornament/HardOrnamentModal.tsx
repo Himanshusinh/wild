@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { X, Wand2, RefreshCw, Layers, Sparkles, Image as ImageIcon, Type, ArrowRight, ShieldCheck, Zap } from 'lucide-react';
 import { HardOrnamentVersion, HardOrnamentState, INITIAL_HARD_ORNAMENT_STATE } from './types';
 import HardOrnamentHeader from './HardOrnamentHeader';
-import { hardornamentPromptCatalog } from '../../app/view/HomePage/compo/hardornamentPromptCatalog';
+import { hardornamentPromptCatalog } from '@/app/view/HomePage/compo/styles/hardornament/hardornamentPromptCatalog';
 
 interface HardOrnamentModalProps {
   isOpen: boolean;

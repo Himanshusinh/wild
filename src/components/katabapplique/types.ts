@@ -1,4 +1,4 @@
-import type { KatabAppliqueVersion } from "@/app/view/HomePage/compo/katabappliquePromptCatalog";
+import type { KatabAppliqueVersion } from "@/app/view/HomePage/compo/styles/katabapplique/katabappliquePromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = KatabAppliqueVersion;

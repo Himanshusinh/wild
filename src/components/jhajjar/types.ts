@@ -1,4 +1,4 @@
-import type { JhajjarVersion } from "@/app/view/HomePage/compo/jhajjarPromptCatalog";
+import type { JhajjarVersion } from "@/app/view/HomePage/compo/styles/jhajjar/jhajjarPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = JhajjarVersion;

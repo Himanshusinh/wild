@@ -1,4 +1,4 @@
-import type { TikuliArtVersion } from "@/app/view/HomePage/compo/tikuliartPromptCatalog";
+import type { TikuliArtVersion } from "@/app/view/HomePage/compo/styles/tikuliart/tikuliartPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = TikuliArtVersion;

@@ -1,4 +1,4 @@
-import type { KhaddarVersion } from "@/app/view/HomePage/compo/khaddarPromptCatalog";
+import type { KhaddarVersion } from "@/app/view/HomePage/compo/styles/khaddar/khaddarPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = KhaddarVersion;

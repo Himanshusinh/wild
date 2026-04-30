@@ -1,4 +1,4 @@
-import type { BuddhistMaskVersion } from "@/app/view/HomePage/compo/buddhistmaskPromptCatalog";
+import type { BuddhistMaskVersion } from "@/app/view/HomePage/compo/styles/buddhistmask/buddhistmaskPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = BuddhistMaskVersion;

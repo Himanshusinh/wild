@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { X, Wand2, RefreshCw, Layers, Sparkles, Image as ImageIcon, Type, ArrowRight, ShieldCheck, Zap } from 'lucide-react';
 import { NagaBodyClothVersion, NagaBodyClothState, INITIAL_NAGA_BODY_CLOTH_STATE } from './types';
 import NagaBodyClothHeader from './NagaBodyClothHeader';
-import { nagabodyclothPromptCatalog } from '../../app/view/HomePage/compo/nagabodyclothPromptCatalog';
+import { nagabodyclothPromptCatalog } from '@/app/view/HomePage/compo/styles/nagabodycloth/nagabodyclothPromptCatalog';
 
 interface NagaBodyClothModalProps {
   isOpen: boolean;

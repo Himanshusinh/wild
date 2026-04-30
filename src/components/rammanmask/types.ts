@@ -1,4 +1,4 @@
-import type { RammanmaskVersion } from "@/app/view/HomePage/compo/rammanmaskPromptCatalog";
+import type { RammanmaskVersion } from "@/app/view/HomePage/compo/styles/rammanmask/rammanmaskPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = RammanmaskVersion;

@@ -1,4 +1,4 @@
-import type { IduMishmiVersion } from "@/app/view/HomePage/compo/iduMishmiPromptCatalog";
+import type { IduMishmiVersion } from "@/app/view/HomePage/compo/styles/idumishmi/iduMishmiPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = IduMishmiVersion;

@@ -1,4 +1,4 @@
-import type { LambaniEmbroideryVersion } from "@/app/view/HomePage/compo/lambaniembroideryPromptCatalog";
+import type { LambaniEmbroideryVersion } from "@/app/view/HomePage/compo/styles/lambaniembroidery/lambaniembroideryPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = LambaniEmbroideryVersion;

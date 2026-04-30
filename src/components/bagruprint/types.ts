@@ -1,4 +1,4 @@
-import type { BagruPrintVersion } from "@/app/view/HomePage/compo/bagruprintPromptCatalog";
+import type { BagruPrintVersion } from "@/app/view/HomePage/compo/styles/bagruprint/bagruprintPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = BagruPrintVersion;

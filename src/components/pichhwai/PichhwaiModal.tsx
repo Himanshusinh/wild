@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useMemo, useReducer } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { saveUpload } from "@/lib/libraryApi";
-import { PICHHWAI_PROMPT_FAMILIES } from "@/app/view/HomePage/compo/pichhwaiPromptCatalog";
+import { PICHHWAI_PROMPT_FAMILIES } from "@/app/view/HomePage/compo/styles/pichhwai/pichhwaiPromptCatalog";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import type { RootState } from "@/store";
 import { falGenerate } from "@/store/slices/generationsApi";

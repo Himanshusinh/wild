@@ -1,4 +1,4 @@
-import type { RuralFiberCraftVersion } from "@/app/view/HomePage/compo/ruralfibercraftPromptCatalog";
+import type { RuralFiberCraftVersion } from "@/app/view/HomePage/compo/styles/ruralfibercraft/ruralfibercraftPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = RuralFiberCraftVersion;

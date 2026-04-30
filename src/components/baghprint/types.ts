@@ -1,4 +1,4 @@
-import type { BaghPrintVersion } from "@/app/view/HomePage/compo/baghprintPromptCatalog";
+import type { BaghPrintVersion } from "@/app/view/HomePage/compo/styles/baghprint/baghprintPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = BaghPrintVersion;

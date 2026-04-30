@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { X, Wand2, RefreshCw, Layers, Sparkles, Image as ImageIcon, Type, ArrowRight, ShieldCheck, Zap } from 'lucide-react';
 import { HoysalaReliefVersion, HoysalaReliefState, INITIAL_HOYSALA_RELIEF_STATE } from './types';
 import HoysalaReliefHeader from './HoysalaReliefHeader';
-import { hoysalareliefPromptCatalog } from '../../app/view/HomePage/compo/hoysalareliefPromptCatalog';
+import { hoysalareliefPromptCatalog } from '@/app/view/HomePage/compo/styles/hoysalarelief/hoysalareliefPromptCatalog';
 
 interface HoysalaReliefModalProps {
   isOpen: boolean;

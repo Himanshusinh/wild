@@ -166,7 +166,8 @@ import InfiniteScrollDebugOverlay, {
 } from "@/components/debug/InfiniteScrollDebugOverlay";
 import HistoryControls from "@/app/view/Generation/VideoGeneration/TextToVideo/compo/HistoryControls";
 import AssistantPanel from "./AssistantPanel";
-import { ALL_INDIAN_STYLES } from "./indianStyleExtensions";
+import { ALL_INDIAN_STYLES } from "@/styles/indianStyles";
+import { HOMEPAGE_PROMPT_CATALOG_LOADERS } from "@/styles/homepagePromptCatalogLoaders";
 
 const GifLoader: React.FC<{
   size?: number;
@@ -269,9 +270,9 @@ const getIndianBasePrompt = async (
   const candidates = buildIndianStyleCatalogCandidates(styleId);
   for (const key of candidates) {
     try {
-      const moduleExports = await import(
-        `@/app/view/HomePage/compo/${key}PromptCatalog`
-      );
+      const loadCatalog = HOMEPAGE_PROMPT_CATALOG_LOADERS[key];
+      if (!loadCatalog) continue;
+      const moduleExports = await loadCatalog();
       const familyExportKey = Object.keys(moduleExports).find((exportKey) =>
         exportKey.endsWith("_PROMPT_FAMILIES"),
       );

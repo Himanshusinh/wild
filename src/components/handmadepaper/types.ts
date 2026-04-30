@@ -1,4 +1,4 @@
-import type { HandmadePaperVersion } from "@/app/view/HomePage/compo/handmadePaperPromptCatalog";
+import type { HandmadePaperVersion } from "@/app/view/HomePage/compo/styles/handmadepaper/handmadePaperPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = HandmadePaperVersion;

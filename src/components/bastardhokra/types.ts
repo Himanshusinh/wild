@@ -1,4 +1,4 @@
-import type { BastarDhokraVersion } from "@/app/view/HomePage/compo/bastardhokraPromptCatalog";
+import type { BastarDhokraVersion } from "@/app/view/HomePage/compo/styles/bastardhokra/bastardhokraPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = BastarDhokraVersion;

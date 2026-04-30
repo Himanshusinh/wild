@@ -1,4 +1,4 @@
-import type { PapiermachepuducherryVersion } from "@/app/view/HomePage/compo/papiermachepuducherryPromptCatalog";
+import type { PapiermachepuducherryVersion } from "@/app/view/HomePage/compo/styles/papiermachepuducherry/papiermachepuducherryPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = PapiermachepuducherryVersion;

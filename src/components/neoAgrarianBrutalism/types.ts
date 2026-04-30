@@ -1,4 +1,4 @@
-import type { NeoAgrarianBrutalismVersion } from "@/app/view/HomePage/compo/neoAgrarianBrutalismPromptCatalog";
+import type { NeoAgrarianBrutalismVersion } from "@/app/view/HomePage/compo/styles/neoagrarianbrutalism/neoAgrarianBrutalismPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = NeoAgrarianBrutalismVersion;

@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { X, Wand2, RefreshCw, Layers, Sparkles, Image as ImageIcon, Type, ArrowRight, ShieldCheck, Zap } from 'lucide-react';
 import { GondPaintingVersion, GondPaintingState, INITIAL_GOND_PAINTING_STATE } from './types';
 import GondPaintingHeader from './GondPaintingHeader';
-import { gondpaintingPromptCatalog } from '../../app/view/HomePage/compo/gondpaintingPromptCatalog';
+import { gondpaintingPromptCatalog } from '@/app/view/HomePage/compo/styles/gondpainting/gondpaintingPromptCatalog';
 
 interface GondPaintingModalProps {
   isOpen: boolean;

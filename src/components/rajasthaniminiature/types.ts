@@ -1,4 +1,4 @@
-import type { RajasthaniMiniatureVersion } from "@/app/view/HomePage/compo/rajasthaniminiaturePromptCatalog";
+import type { RajasthaniMiniatureVersion } from "@/app/view/HomePage/compo/styles/rajasthaniminiature/rajasthaniminiaturePromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = RajasthaniMiniatureVersion;

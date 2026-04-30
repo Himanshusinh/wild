@@ -1,4 +1,4 @@
-import type { KinnauriVersion } from "@/app/view/HomePage/compo/kinnauriPromptCatalog";
+import type { KinnauriVersion } from "@/app/view/HomePage/compo/styles/kinnauri/kinnauriPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = KinnauriVersion;

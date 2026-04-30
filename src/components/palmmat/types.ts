@@ -1,4 +1,4 @@
-import type { PalmmatVersion } from "@/app/view/HomePage/compo/palmmatPromptCatalog";
+import type { PalmmatVersion } from "@/app/view/HomePage/compo/styles/palmmat/palmmatPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = PalmmatVersion;

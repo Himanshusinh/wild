@@ -1,4 +1,4 @@
-import type { SaharanpurwoodcraftVersion } from "@/app/view/HomePage/compo/saharanpurwoodcraftPromptCatalog";
+import type { SaharanpurwoodcraftVersion } from "@/app/view/HomePage/compo/styles/saharanpurwoodcraft/saharanpurwoodcraftPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = SaharanpurwoodcraftVersion;

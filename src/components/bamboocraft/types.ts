@@ -1,4 +1,4 @@
-import type { BambooCraftVersion } from "@/app/view/HomePage/compo/bamboocraftPromptCatalog";
+import type { BambooCraftVersion } from "@/app/view/HomePage/compo/styles/bamboocraft/bamboocraftPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = BambooCraftVersion;

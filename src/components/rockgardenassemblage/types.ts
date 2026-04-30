@@ -1,4 +1,4 @@
-import type { RockgardenassemblageVersion } from "@/app/view/HomePage/compo/rockgardenassemblagePromptCatalog";
+import type { RockgardenassemblageVersion } from "@/app/view/HomePage/compo/styles/rockgardenassemblage/rockgardenassemblagePromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = RockgardenassemblageVersion;
