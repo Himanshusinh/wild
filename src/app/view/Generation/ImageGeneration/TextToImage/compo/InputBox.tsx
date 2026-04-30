@@ -9,6 +9,7 @@ import React, {
 } from "react";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import {
+  Plus,
   ChevronUp,
   Trash2,
   Edit3,
@@ -218,6 +219,9 @@ const getInputImageLimitForModel = (model?: string): number => {
 const normalizeIncomingImageModel = (model?: string | null): string =>
   normalizeImageModelValue(model);
 
+const PROMPT_EDITOR_MIN_HEIGHT_PX = 68; // ~4 lines default
+const PROMPT_EDITOR_MAX_HEIGHT_PX = 68; // ~4 lines max
+
 const InputBox = () => {
   const dispatch = useAppDispatch();
   const router = useRouter();
@@ -252,6 +256,8 @@ const InputBox = () => {
   const [isCharacterModalOpen, setIsCharacterModalOpen] = useState(false);
   const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
+  const [isPluginsMenuOpen, setIsPluginsMenuOpen] = useState(false);
+  const pluginsMenuRef = useRef<HTMLDivElement>(null);
   const inputEl = useRef<HTMLTextAreaElement>(null);
   // Local, ephemeral entry to mimic history-style preview while generating
   const [localGeneratingEntries, setLocalGeneratingEntries] = useState<
@@ -330,6 +336,20 @@ const InputBox = () => {
   // Track if we've already shown a Runway base_resp toast to avoid duplicates
   const runwayBaseRespToastShownRef = useRef(false);
   const loadLockRef = useRef(false);
+
+  useEffect(() => {
+    if (!isPluginsMenuOpen) return;
+    const onPointerDown = (event: MouseEvent) => {
+      if (
+        pluginsMenuRef.current &&
+        !pluginsMenuRef.current.contains(event.target as Node)
+      ) {
+        setIsPluginsMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    return () => document.removeEventListener("mousedown", onPointerDown);
+  }, [isPluginsMenuOpen]);
 
   // Sync ref for handleGenerate to avoid stale closure issues in timeouts/effects
   const handleGenerateRef = useRef<any>(null);
@@ -673,7 +693,8 @@ const InputBox = () => {
           if (el) {
             el.textContent = promptToApply;
             el.style.height = "auto";
-            el.style.height = Math.min(el.scrollHeight, 96) + "px";
+            el.style.height =
+              Math.min(el.scrollHeight, PROMPT_EDITOR_MAX_HEIGHT_PX) + "px";
           }
         } catch {}
       }
@@ -3036,7 +3057,8 @@ const InputBox = () => {
 
     // Adjust height
     div.style.height = "auto";
-    div.style.height = Math.min(div.scrollHeight, 96) + "px";
+    div.style.height =
+      Math.min(div.scrollHeight, PROMPT_EDITOR_MAX_HEIGHT_PX) + "px";
 
     setTimeout(() => {
       isUpdatingRef.current = false;
@@ -9694,8 +9716,8 @@ const InputBox = () => {
             <div
               className={`w-full ${
                 [...selectedCharacters, ...uploadedImages].length > 14
-                  ? "grid [grid-template-columns:repeat(7,3.5rem)] gap-1 justify-end"
-                  : "flex flex-row gap-1 overflow-x-auto no-scrollbar justify-end"
+                  ? "grid [grid-template-columns:repeat(7,3.5rem)] gap-1 justify-start"
+                  : "flex flex-row gap-1 overflow-x-auto no-scrollbar justify-start"
               } py-1`}
             >
               {[
@@ -9799,11 +9821,7 @@ const InputBox = () => {
       {!isInlineEditImagePage && (
         <div className="fixed md:bottom-6 bottom-2 left-1/2 -translate-x-1/2 md:w-[90%] w-[92%] md:max-w-[900px] max-w-[92%] z-[50] h-auto">
           <div
-            className={`relative rounded-lg md:rounded-b-lg backdrop-blur-3xl ring-1 shadow-2xl md:p-3 md:pb-3 p-0.5 pt-2  space-y-0 md:space-y-4 transition-all duration-300 ${
-              isInputBoxHovered
-                ? "bg-black/40 ring-white/30 shadow-2xl scale-[1.01]"
-                : "bg-black/20 ring-white/20 hover:ring-white/30 hover:shadow-2xl"
-            }`}
+            className="relative rounded-lg md:rounded-b-lg backdrop-blur-3xl ring-1 shadow-2xl md:p-2 p-0.5 pt-0.5 space-y-0 md:space-y-0 bg-black/20 ring-white/20 hover:ring-white/30 hover:shadow-2xl transition-all duration-300"
             onMouseEnter={() => setIsInputBoxHovered(true)}
             onMouseLeave={() => setIsInputBoxHovered(false)}
             onDragOver={(e) => {
@@ -9904,8 +9922,64 @@ const InputBox = () => {
             ></div>
             {/* Top row: prompt + actions */}
             <div className="flex items-stretch md:gap-0 gap-0 relative z-10">
-              <div className="flex-1 flex items-start md:gap-3 gap-0 bg-transparent rounded-lg  w-full relative md:min-h-[90px]">
+              <div className="flex-1 flex items-start md:gap-3 gap-0 bg-transparent rounded-lg w-full relative min-h-[38px] md:min-h-[42px]">
                 {/* ContentEditable with inline character tags - allows typing anywhere */}
+                <div className="relative pt-1" ref={pluginsMenuRef}>
+                  <button
+                    className="flex h-6 w-6 items-center justify-center rounded-md text-white/90 transition hover:text-white"
+                    onClick={() => setIsPluginsMenuOpen((prev) => !prev)}
+                    type="button"
+                    aria-label="Toggle plugins"
+                    aria-pressed={isPluginsMenuOpen}
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                  </button>
+                  {isPluginsMenuOpen && (
+                    <div className="absolute left-0 bottom-7 z-40 min-w-[180px] rounded-lg border border-white/15 bg-[#0f1117]/95 p-1.5 shadow-2xl backdrop-blur-xl">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsCharacterModalOpen(true);
+                          setIsPluginsMenuOpen(false);
+                        }}
+                        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12px] text-white/90 transition hover:bg-white/10"
+                      >
+                        <Image
+                          src="/icons/character.svg"
+                          alt="Character"
+                          width={14}
+                          height={14}
+                          className="h-3.5 w-3.5"
+                        />
+                        Upload Character
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsAssistantOpen((prev) => !prev);
+                          setIsPluginsMenuOpen(false);
+                        }}
+                        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12px] text-white/90 transition hover:bg-white/10"
+                      >
+                        <Sparkles
+                          className={`h-3.5 w-3.5 ${isAssistantOpen ? "text-blue-400" : "text-white/90"}`}
+                        />
+                        {isAssistantOpen ? "Close Assistant" : "AI Assistant"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsUploadOpen(true);
+                          setIsPluginsMenuOpen(false);
+                        }}
+                        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12px] text-white/90 transition hover:bg-white/10"
+                      >
+                        <FilePlus2 className="h-3.5 w-3.5 text-white/90" />
+                        Upload Image
+                      </button>
+                    </div>
+                  )}
+                </div>
                 <div
                   ref={contentEditableRef}
                   contentEditable
@@ -9952,7 +10026,9 @@ const InputBox = () => {
 
                     // Adjust height
                     div.style.height = "auto";
-                    div.style.height = Math.min(div.scrollHeight, 96) + "px";
+                    div.style.height =
+                      Math.min(div.scrollHeight, PROMPT_EDITOR_MAX_HEIGHT_PX) +
+                      "px";
 
                     if (promptInputIdleTimeoutRef.current) {
                       clearTimeout(promptInputIdleTimeoutRef.current);
@@ -10095,10 +10171,10 @@ const InputBox = () => {
                     const inputEvent = new Event("input", { bubbles: true });
                     e.currentTarget.dispatchEvent(inputEvent);
                   }}
-                  className={`flex-1 -mb-4 pr-1 pt-0 pl-1 md:pl-0 md:pt-0 md:min-w-[200px] min-w-[150px] bg-transparent text-white placeholder-white/50 outline-none md:text-[13px] font-thin text-[12px] leading-relaxed overflow-y-auto transition-all duration-200 ${!prompt && selectedCharacters.length === 0 ? "text-white/70" : "text-white"} ${isEnhancing ? "animate-text-shine" : ""}`}
+                  className={`flex-1 pr-1 pt-0 pl-1 md:pl-0 md:pt-0 md:min-w-[200px] min-w-[150px] bg-transparent text-white placeholder-white/50 outline-none md:text-[13px] font-thin text-[12px] leading-relaxed overflow-y-auto transition-all duration-200 ${!prompt && selectedCharacters.length === 0 ? "text-white/70" : "text-white"} ${isEnhancing ? "animate-text-shine" : ""}`}
                   style={{
-                    minHeight: "80px",
-                    maxHeight: "100px",
+                    minHeight: `${PROMPT_EDITOR_MIN_HEIGHT_PX}px`,
+                    maxHeight: `${PROMPT_EDITOR_MAX_HEIGHT_PX}px`,
                     lineHeight: "1.2",
                     scrollbarWidth: "thin",
                     scrollbarColor: "rgba(255, 255, 255, 0.2) transparent",
@@ -10161,46 +10237,8 @@ const InputBox = () => {
                     </button>
                   </div>
 
-                  <button
-                    className="flex h-5 w-5 items-center justify-center rounded-md bg-white/5 ring-1 ring-white/10 text-white/90 transition hover:bg-white/10"
-                    onClick={() => setIsCharacterModalOpen(true)}
-                    type="button"
-                    aria-label="Upload character"
-                  >
-                    <Image
-                      src="/icons/character.svg"
-                      alt="Attach"
-                      width={14}
-                      height={14}
-                      className="w-3.5 h-3.5"
-                    />
-                  </button>
-
-                  <button
-                    className="flex h-5 w-5 items-center justify-center rounded-md bg-white/5 ring-1 ring-white/10 transition hover:bg-white/10"
-                    onClick={() => setIsAssistantOpen((prev) => !prev)}
-                    type="button"
-                    aria-label="Toggle Assistant"
-                    aria-pressed={isAssistantOpen}
-                  >
-                    <Sparkles
-                      className={`w-3 h-3 transition-colors ${isAssistantOpen ? "text-blue-400" : "text-white/90"}`}
-                    />
-                  </button>
-
-                  <button
-                    className="flex h-5 w-5 items-center justify-center rounded-md bg-white/5 ring-1 ring-white/10 text-white/90 transition hover:bg-white/10"
-                    onClick={() => setIsUploadOpen(true)}
-                    type="button"
-                    aria-label="Upload image"
-                  >
-                    <FilePlus2
-                      className="w-3.5 h-3.5 text-white"
-                      aria-hidden="true"
-                    />
-                  </button>
                 </div>
-                <div className="hidden md:flex md:flex-row items-end md:items-center gap-1.5 flex-shrink-0 z-20 pl-1 md:-mb-6">
+                <div className="hidden md:flex md:flex-row items-start md:items-start gap-1.5 flex-shrink-0 z-20 pl-1 pt-1">
                   <div className="relative flex md:flex-row items-end md:items-center gap-1.5 md:gap-2 md:self-start self-auto pt-0 pb-0 pr-0">
                     {/* Clear prompt button - only show when there's text */}
                     {prompt.trim() && (
@@ -10272,68 +10310,12 @@ const InputBox = () => {
                       </div>
                     </div>
 
-                    <div className="relative">
-                      <button
-                        className="p-1 rounded-lg bg-transparent hover:bg-white/10 transition cursor-pointer flex items-center justify-center peer"
-                        onClick={() => setIsCharacterModalOpen(true)}
-                        type="button"
-                        aria-label="Upload character"
-                      >
-                        <Image
-                          src="/icons/character.svg"
-                          alt="Attach"
-                          width={16}
-                          height={16}
-                          className="opacity-100 w-4 h-4"
-                        />
-                        <span className="text-white text-sm"> </span>
-                      </button>
-                      <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/5 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">
-                        Upload Character
-                      </div>
-                    </div>
-
-                    <div className="relative">
-                      <button
-                        className="p-1 rounded-lg bg-transparent hover:bg-white/10 transition cursor-pointer flex items-center justify-center peer"
-                        onClick={() => setIsAssistantOpen((prev) => !prev)}
-                        type="button"
-                        aria-label="Toggle Assistant"
-                        aria-pressed={isAssistantOpen}
-                      >
-                        <Sparkles
-                          className={`w-4 h-4 transition-colors ${isAssistantOpen ? "text-blue-400" : "text-white/90"}`}
-                        />
-                      </button>
-                      <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/5 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">
-                        {isAssistantOpen ? "Close Assistant" : "AI Assistant"}
-                      </div>
-                    </div>
-
-                    <div className="relative">
-                      <button
-                        className="p-1 rounded-lg bg-transparent hover:bg-white/10 transition cursor-pointer flex items-center justify-center peer"
-                        onClick={() => setIsUploadOpen(true)}
-                        type="button"
-                        aria-label="Upload image"
-                      >
-                        <FilePlus2
-                          size={16}
-                          className="text-white"
-                          aria-hidden="true"
-                        />
-                        <span className="text-white text-sm"> </span>
-                      </button>
-                      <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/5 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">
-                        Upload Image
-                      </div>
-                    </div>
                   </div>
                 </div>
               </div>
 
               {/* Fixed position Generate button - Desktop only */}
-              <div className="absolute bottom-[-50px] right-0 hidden md:flex flex-col items-end gap-2 z-20">
+              <div className="hidden">
                 {expectedCredits > 0 && (
                   <div className="text-white/60 text-[11px] pr-1">
                     Total credits:{" "}
@@ -10434,7 +10416,7 @@ const InputBox = () => {
 
             {/* Bottom row: pill options */}
 
-            <div className="flex flex-col md:flex-row md:flex-wrap items-stretch md:items-center gap-0 md:gap-1 pt-0 md:pt-0">
+            <div className="flex flex-col md:flex-row md:flex-wrap items-stretch md:items-center gap-0 md:gap-1 pt-1 md:pt-1.5">
 
 
               {/* Mobile/Tablet: First row - Model dropdown and Generate button */}
@@ -10823,7 +10805,7 @@ const InputBox = () => {
                 <div className="shrink-0">
                   <ModelsDropdown />
                 </div>
-                <div className="flex min-w-0 flex-1 items-center overflow-x-auto overflow-y-visible no-scrollbar pr-[290px]">
+                <div className="flex min-w-0 flex-1 items-center overflow-x-auto overflow-y-visible no-scrollbar pr-0">
                   <div className="flex min-w-max items-center gap-2">
                   <ImageCountDropdown />
                   <FrameSizeDropdown />
@@ -11082,6 +11064,94 @@ const InputBox = () => {
                     </>
                   )}
                   {/* Qwen Image Edit: no extra advanced controls */}
+                  </div>
+                </div>
+                <div className="ml-auto flex shrink-0 items-end gap-2">
+                  <div className="flex flex-col items-end gap-1">
+                    {expectedCredits > 0 && (
+                      <div className="text-white/60 text-[11px] pr-1">
+                        Total credits:{" "}
+                        <span className="font-medium text-white/80">
+                          {Math.round(expectedCredits).toLocaleString()}
+                        </span>
+                      </div>
+                    )}
+                    {(selectedModel === "z-image-turbo" ||
+                      selectedModel === "new-turbo-model") &&
+                      (planCode?.toLowerCase() || "free") === "free" && (
+                        <div className="text-white/60 text-[11px] pr-1">
+                          Generations:{" "}
+                          <span className="font-medium text-white/80">
+                            {credits?.freeTurboUsed || 0}/
+                            {credits?.freeTurboLimit || 10}
+                          </span>
+                        </div>
+                      )}
+                    <button
+                      onClick={async () => {
+                        if (!userData) {
+                          saveAutoResumeIntent("image", {
+                            prompt,
+                            model: selectedModel,
+                            imageCount,
+                            frameSize,
+                            style,
+                            uploadedImages: getCombinedUploadedImages(),
+                            selectedCharacters: selectedCharacters,
+                          });
+                          router.push(getSignInUrl());
+                          return;
+                        }
+                        try {
+                          if (runningGenerationsCount >= 4) {
+                            toast.error(
+                              "Queue full (4/4 active). Please wait for a generation to complete.",
+                            );
+                            return;
+                          }
+
+                          const generationId = `gen-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+                          const desktopQueueStart = Date.now();
+                          dispatch(
+                            addActiveGeneration({
+                              id: generationId,
+                              prompt: prompt,
+                              model: selectedModel,
+                              status: "pending",
+                              createdAt: desktopQueueStart,
+                              startedAt: desktopQueueStart,
+                              updatedAt: desktopQueueStart,
+                              generationType: "text-to-image",
+                              params: {
+                                imageCount,
+                                frameSize,
+                                style,
+                                uploadedImages: getCombinedUploadedImages(),
+                              },
+                            }),
+                          );
+                          handleGenerate(generationId);
+                        } catch (e) {
+                          console.error(
+                            "Failed to start generation (Desktop):",
+                            e,
+                          );
+                        }
+                      }}
+                      disabled={
+                        !prompt.trim() ||
+                        runningGenerationsCount >= 4 ||
+                        isEnhancing
+                      }
+                      className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-70 disabled:hover:bg-[#2F6BFF] text-white px-4 py-2 rounded-lg text-[15px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)]"
+                      aria-busy={isEnhancing}
+                    >
+                      {isEnhancing
+                        ? "Enhancing..."
+                        : runningGenerationsCount >= 4
+                          ? "Queue Full"
+                          : "Generate"}
+                    </button>
                   </div>
                 </div>
               </div>
