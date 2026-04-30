@@ -21,6 +21,8 @@ interface InputActionsProps {
   selectedResolution?: string;
   canSwapFrames?: boolean;
   onSwapFrames?: () => void;
+  onRemoveFirstFrame?: () => void;
+  onRemoveLastFrame?: () => void;
 }
 
 const InputActions: React.FC<InputActionsProps> = ({
@@ -41,6 +43,8 @@ const InputActions: React.FC<InputActionsProps> = ({
   selectedResolution,
   canSwapFrames = false,
   onSwapFrames,
+  onRemoveFirstFrame,
+  onRemoveLastFrame,
 }) => {
   const hasImageToVideoSupport =
     currentModelCapabilities?.supportsImageToVideo ||
@@ -213,10 +217,31 @@ const InputActions: React.FC<InputActionsProps> = ({
                   setIsUploadModalOpen(true);
                 }}
               >
-                <FilePlus2
-                  size={16}
-                  className={`text-white transition-all duration-200 ${uploadedImages.length > 0 ? "text-blue-300" : ""}`}
-                />
+                {uploadedImages[0] ? (
+                  <div className="relative group/frame">
+                    <img
+                      src={uploadedImages[0]}
+                      alt="First frame"
+                      className="h-7 w-7 rounded-md object-cover ring-1 ring-white/35"
+                    />
+                    <button
+                      type="button"
+                      aria-label="Remove first frame"
+                      className="absolute -top-1 -right-1 hidden h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow group-hover/frame:flex"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onRemoveFirstFrame?.();
+                      }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ) : (
+                  <FilePlus2
+                    size={16}
+                    className="text-white transition-all duration-200"
+                  />
+                )}
               </button>
               <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/5 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">
                 {selectedModel === "seedance-2.0-t2v" ||
@@ -242,10 +267,31 @@ const InputActions: React.FC<InputActionsProps> = ({
                   setIsUploadModalOpen(true);
                 }}
               >
-                <FilePlus2
-                  size={16}
-                  className={`text-white transition-all duration-200 ${uploadedImages.length > 0 ? "text-blue-300" : ""}`}
-                />
+                {uploadedImages[0] ? (
+                  <div className="relative group/frame">
+                    <img
+                      src={uploadedImages[0]}
+                      alt="First frame"
+                      className="h-7 w-7 rounded-md object-cover ring-1 ring-white/35"
+                    />
+                    <button
+                      type="button"
+                      aria-label="Remove first frame"
+                      className="absolute -top-1 -right-1 hidden h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow group-hover/frame:flex"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onRemoveFirstFrame?.();
+                      }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ) : (
+                  <FilePlus2
+                    size={16}
+                    className="text-white transition-all duration-200"
+                  />
+                )}
               </button>
               <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/5 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">
                 First Frame
@@ -296,10 +342,31 @@ const InputActions: React.FC<InputActionsProps> = ({
                 setIsUploadModalOpen(true);
               }}
             >
-              <FilePlus2
-                size={16}
-                className={`text-white transition-all duration-200 ${lastFrameImage ? "text-blue-300" : ""}`}
-              />
+              {lastFrameImage ? (
+                <div className="relative group/frame">
+                  <img
+                    src={lastFrameImage}
+                    alt="Last frame"
+                    className="h-7 w-7 rounded-md object-cover ring-1 ring-white/35"
+                  />
+                  <button
+                    type="button"
+                    aria-label="Remove last frame"
+                    className="absolute -top-1 -right-1 hidden h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow group-hover/frame:flex"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onRemoveLastFrame?.();
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
+              ) : (
+                <FilePlus2
+                  size={16}
+                  className="text-white transition-all duration-200"
+                />
+              )}
             </button>
             <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/5 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">
               Last Frame (optional)

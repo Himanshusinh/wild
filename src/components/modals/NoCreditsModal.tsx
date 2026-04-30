@@ -37,7 +37,7 @@ export default function NoCreditsModal() {
           </div>
           
           <h2 className="mb-2 text-xl font-bold text-white">
-            {creditsMessage ? "Limit Reached" : "Out of Credits"}
+            {creditsMessage ? "Limit Reached" : "Credits Not Available"}
           </h2>
           
           <p className="mb-6 text-sm text-gray-400">

@@ -4752,6 +4752,8 @@ const InputBox = (props: InputBoxProps = {}) => {
       let requestBody;
       let generationType: string;
       let apiEndpoint: string;
+      let fallbackApiEndpoint: string | null = null;
+      let fallbackRequestBody: any = null;
 
       // Auto-determine mode based on model capabilities and user input
       // Priority: If image is uploaded and model supports I2V, use I2V
@@ -6079,6 +6081,24 @@ const InputBox = (props: InputBoxProps = {}) => {
           apiEndpoint = isSeedance2FastModel(selectedModel)
             ? "/api/fal/seedance-2.0/fast/image-to-video/submit"
             : "/api/fal/seedance-2.0/image-to-video/submit";
+          // Fallback path: if FAL blocks/denies this request (e.g. stricter safety filtering),
+          // retry on existing Replicate Seedance I2V endpoints.
+          fallbackApiEndpoint = isSeedance2FastModel(selectedModel)
+            ? "/api/replicate/seedance-pro-fast-i2v/submit"
+            : "/api/replicate/seedance-i2v/submit";
+          fallbackRequestBody = {
+            prompt: apiPrompt,
+            originalPrompt: prompt,
+            image: seedanceInputImageUrl,
+            duration: duration === "auto" ? 5 : Number(duration) || 5,
+            resolution: seedanceResolution,
+            aspect_ratio: frameSize || "auto",
+            generationType: "image-to-video",
+            isPublic,
+            ...(seedanceEndImageUrl
+              ? { last_frame_image: seedanceEndImageUrl }
+              : {}),
+          };
         } else if (selectedModel.includes("seedance")) {
           // Seedance I2V - Image-to-video mode
           if (uploadedImages.length === 0) {
@@ -6737,6 +6757,35 @@ const InputBox = (props: InputBoxProps = {}) => {
         failedHistoryIdForRefresh =
           result?.historyId || failedHistoryIdForRefresh;
       } catch (e: any) {
+        const canTrySeedanceReplicateFallback =
+          !!fallbackApiEndpoint &&
+          !!fallbackRequestBody &&
+          apiEndpoint.includes("/api/fal/seedance-2.0") &&
+          actualGenerationMode === "image_to_video";
+        if (canTrySeedanceReplicateFallback) {
+          try {
+            console.warn(
+              "[Seedance2 I2V] FAL request failed, retrying via Replicate endpoint",
+              {
+                failedEndpoint: apiEndpoint,
+                fallbackEndpoint: fallbackApiEndpoint,
+              },
+            );
+            const { data: fallbackData } = await api.post(
+              fallbackApiEndpoint as string,
+              fallbackRequestBody,
+            );
+            result = fallbackData?.data || fallbackData;
+            apiEndpoint = fallbackApiEndpoint as string;
+            failedHistoryIdForRefresh =
+              result?.historyId || failedHistoryIdForRefresh;
+          } catch (fallbackError: any) {
+            e = fallbackError;
+          }
+        }
+        if (result) {
+          // fallback succeeded
+        } else {
         // Check if this is a network error (no response from server)
         const isNetworkError =
           !e?.response &&
@@ -6824,6 +6873,7 @@ const InputBox = (props: InputBoxProps = {}) => {
           }
 
           throw new Error(userFriendlyMsg);
+        }
         }
       }
       console.log("📥 API response:", result);
@@ -10446,12 +10496,16 @@ const InputBox = (props: InputBoxProps = {}) => {
                 selectedResolution={selectedResolution}
                 canSwapFrames={canSwapFirstAndLastFrame}
                 onSwapFrames={handleSwapFirstAndLastFrame}
+                onRemoveFirstFrame={() =>
+                  setUploadedImages((prev) => prev.filter((_, i) => i !== 0))
+                }
+                onRemoveLastFrame={() => setLastFrameImage("")}
               />
             }
           />
 
           {/* Uploaded Content Display */}
-          <div className="">
+          <div className="relative">
             {/* Uploaded Images */}
             {(() => {
               const displayImages =
@@ -10475,16 +10529,17 @@ const InputBox = (props: InputBoxProps = {}) => {
                     !selectedModel.includes("i2v")) ||
                   (selectedModel === "MiniMax-Hailuo-02" &&
                     ["768P", "1080P"].includes(selectedResolution) &&
-                    currentModelCapabilities.supportsImageToVideo));
+                    currentModelCapabilities.supportsImageToVideo)) &&
+                !displayImages.includes(lastFrameImage);
               return displayImages.length > 0 || extraLastFrame ? (
                 <div className="md:mb-0 mb-0">
                   {/* Desktop: existing preview UI (unchanged). */}
-                  <div className="hidden md:block">
-                    <div className="text-xs text-white/60 mb-1">
+                  <div className="hidden">
+                    <div className="text-xs text-white/60 mb-1 text-right">
                       Uploaded Images (
                       {displayImages.length + (extraLastFrame ? 1 : 0)})
                     </div>
-                    <div className="flex gap-2 flex-wrap">
+                    <div className="flex gap-2 flex-wrap justify-end">
                       {displayImages.map((image, index) => (
                         <div key={index} className="relative group">
                           <div
