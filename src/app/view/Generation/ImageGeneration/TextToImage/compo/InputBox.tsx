@@ -220,6 +220,9 @@ const getInputImageLimitForModel = (model?: string): number => {
 const normalizeIncomingImageModel = (model?: string | null): string =>
   normalizeImageModelValue(model);
 
+const PROMPT_EDITOR_MIN_HEIGHT_PX = 68; // ~4 lines default
+const PROMPT_EDITOR_MAX_HEIGHT_PX = 68; // ~4 lines max
+
 const INDIAN_STYLE_LOOKUP = new Set(
   ALL_INDIAN_STYLES.map((item) => String(item.id || "").trim()),
 );
