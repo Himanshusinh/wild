@@ -10451,7 +10451,7 @@ const InputBox = (props: InputBoxProps = {}) => {
           />
 
           {/* Uploaded Content Display */}
-          <div className="">
+          <div className="relative">
             {/* Uploaded Images */}
             {(() => {
               const displayImages =
@@ -10475,16 +10475,17 @@ const InputBox = (props: InputBoxProps = {}) => {
                     !selectedModel.includes("i2v")) ||
                   (selectedModel === "MiniMax-Hailuo-02" &&
                     ["768P", "1080P"].includes(selectedResolution) &&
-                    currentModelCapabilities.supportsImageToVideo));
+                    currentModelCapabilities.supportsImageToVideo)) &&
+                !displayImages.includes(lastFrameImage);
               return displayImages.length > 0 || extraLastFrame ? (
                 <div className="md:mb-0 mb-0">
                   {/* Desktop: existing preview UI (unchanged). */}
-                  <div className="hidden md:block">
-                    <div className="text-xs text-white/60 mb-1">
+                  <div className="hidden">
+                    <div className="text-xs text-white/60 mb-1 text-right">
                       Uploaded Images (
                       {displayImages.length + (extraLastFrame ? 1 : 0)})
                     </div>
-                    <div className="flex gap-2 flex-wrap">
+                    <div className="flex gap-2 flex-wrap justify-end">
                       {displayImages.map((image, index) => (
                         <div key={index} className="relative group">
                           <div

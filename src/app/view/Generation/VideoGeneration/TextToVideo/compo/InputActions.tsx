@@ -213,10 +213,18 @@ const InputActions: React.FC<InputActionsProps> = ({
                   setIsUploadModalOpen(true);
                 }}
               >
-                <FilePlus2
-                  size={16}
-                  className={`text-white transition-all duration-200 ${uploadedImages.length > 0 ? "text-blue-300" : ""}`}
-                />
+                {uploadedImages[0] ? (
+                  <img
+                    src={uploadedImages[0]}
+                    alt="First frame"
+                    className="h-4 w-4 rounded-sm object-cover ring-1 ring-white/30"
+                  />
+                ) : (
+                  <FilePlus2
+                    size={16}
+                    className="text-white transition-all duration-200"
+                  />
+                )}
               </button>
               <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/5 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">
                 {selectedModel === "seedance-2.0-t2v" ||
@@ -242,10 +250,18 @@ const InputActions: React.FC<InputActionsProps> = ({
                   setIsUploadModalOpen(true);
                 }}
               >
-                <FilePlus2
-                  size={16}
-                  className={`text-white transition-all duration-200 ${uploadedImages.length > 0 ? "text-blue-300" : ""}`}
-                />
+                {uploadedImages[0] ? (
+                  <img
+                    src={uploadedImages[0]}
+                    alt="First frame"
+                    className="h-4 w-4 rounded-sm object-cover ring-1 ring-white/30"
+                  />
+                ) : (
+                  <FilePlus2
+                    size={16}
+                    className="text-white transition-all duration-200"
+                  />
+                )}
               </button>
               <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/5 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">
                 First Frame
@@ -296,10 +312,18 @@ const InputActions: React.FC<InputActionsProps> = ({
                 setIsUploadModalOpen(true);
               }}
             >
-              <FilePlus2
-                size={16}
-                className={`text-white transition-all duration-200 ${lastFrameImage ? "text-blue-300" : ""}`}
-              />
+              {lastFrameImage ? (
+                <img
+                  src={lastFrameImage}
+                  alt="Last frame"
+                  className="h-4 w-4 rounded-sm object-cover ring-1 ring-white/30"
+                />
+              ) : (
+                <FilePlus2
+                  size={16}
+                  className="text-white transition-all duration-200"
+                />
+              )}
             </button>
             <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/5 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">
               Last Frame (optional)
