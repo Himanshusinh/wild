@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { setStyle } from '@/store/slices/generationSlice';
 import { STYLE_CATALOG } from '@/styles/stylesCatalog';
-import { STYLES as INDIAN_STYLES } from '@/app/view/HomePage/compo/CreativeStyle';
+import { ALL_INDIAN_STYLES } from './indianStyleExtensions';
 import { X } from 'lucide-react';
 
 // Wrapper component for style preview images with error handling
@@ -51,7 +51,7 @@ const StylePopup = ({ isOpen, onClose }: StylePopupProps) => {
   const [mounted, setMounted] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [activeCategory, setActiveCategory] = useState<'general' | 'indian'>('general');
-  const indianStyleValues = useRef(new Set(INDIAN_STYLES.map((s) => s.id)));
+  const indianStyleValues = useRef(new Set(ALL_INDIAN_STYLES.map((s) => s.id)));
 
   useEffect(() => {
     setMounted(true);
@@ -140,14 +140,20 @@ const StylePopup = ({ isOpen, onClose }: StylePopupProps) => {
     );
   }, [isOpen, currentStyle]);
 
-  const allStyles = activeCategory === 'general' ? styles : INDIAN_STYLES.map(s => ({
-    name: s.title,
-    value: s.id,
-    image: s.image,
-    description: s.desc,
-    state: s.name,
-    isIndian: true
-  }));
+  const allStyles = activeCategory === 'general'
+    ? styles
+    : ALL_INDIAN_STYLES
+        .map((s) => ({
+          name: s.title,
+          value: s.id,
+          image: s.image,
+          description: s.desc,
+          state: s.name,
+          isIndian: true,
+        }))
+        .sort((a, b) =>
+          a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }),
+        );
 
   const handleStyleSelect = (styleValue: string) => {
     dispatch(setStyle(styleValue));

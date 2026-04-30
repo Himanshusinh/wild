@@ -165,7 +165,7 @@ import InfiniteScrollDebugOverlay, {
 } from "@/components/debug/InfiniteScrollDebugOverlay";
 import HistoryControls from "@/app/view/Generation/VideoGeneration/TextToVideo/compo/HistoryControls";
 import AssistantPanel from "./AssistantPanel";
-import { STYLES as INDIAN_STYLES } from "@/app/view/HomePage/compo/CreativeStyle";
+import { ALL_INDIAN_STYLES } from "./indianStyleExtensions";
 
 const GifLoader: React.FC<{
   size?: number;
@@ -220,13 +220,21 @@ const normalizeIncomingImageModel = (model?: string | null): string =>
   normalizeImageModelValue(model);
 
 const INDIAN_STYLE_LOOKUP = new Set(
-  INDIAN_STYLES.map((item) => String(item.id || "").trim()),
+  ALL_INDIAN_STYLES.map((item) => String(item.id || "").trim()),
 );
 
 const INDIAN_STYLE_CATALOG_ALIASES: Record<string, string> = {
   uppadajamdani: "uppada",
   "ganjifa-mysore": "ganjifa",
+  "ganjifa-sawantwadi": "sawantwadiwoodcraft",
+  "thangka-folk": "thangka",
+  "tawlhlohpuan-ceremonial": "tawlhlophuan",
   karuppurkalamkari: "kalamkari",
+  patachitra: "pattachitra",
+  bamboocanecraft: "bamboocraft",
+  machilipatnam: "kalamkari",
+  banjaraembroidery: "lambaniembroidery",
+  maharashtra: "warli",
 };
 
 const normalizeIndianCatalogKey = (value: string): string =>
@@ -235,7 +243,7 @@ const normalizeIndianCatalogKey = (value: string): string =>
     .replace(/[^a-z0-9]/g, "");
 
 const buildIndianStyleCatalogCandidates = (styleId: string): string[] => {
-  const styleItem = INDIAN_STYLES.find((item) => item.id === styleId);
+  const styleItem = ALL_INDIAN_STYLES.find((item) => item.id === styleId);
   const aliasKey = INDIAN_STYLE_CATALOG_ALIASES[styleId];
   const rawCandidates = [styleId, styleItem?.title, styleItem?.name].filter(
     Boolean,
@@ -253,6 +261,7 @@ const getIndianBasePrompt = async (
   styleId: string,
   version: "V1" | "V2" | "V3",
 ): Promise<string | null> => {
+  const selectedStyle = ALL_INDIAN_STYLES.find((item) => item.id === styleId);
   const candidates = buildIndianStyleCatalogCandidates(styleId);
   for (const key of candidates) {
     try {
@@ -271,6 +280,21 @@ const getIndianBasePrompt = async (
     } catch {
       // try next naming candidate
     }
+  }
+  if (selectedStyle) {
+    const versionLine =
+      version === "V1"
+        ? "authentic documentary rendering"
+        : version === "V2"
+          ? "traditional craft-preserving rendering"
+          : "modern reinterpretation while preserving cultural identity";
+    return [
+      `${selectedStyle.title} visual language, ${selectedStyle.name} regional craft aesthetics.`,
+      selectedStyle.desc,
+      `Render in ${versionLine} with high detail, culturally respectful motifs, and handcrafted material character.`,
+    ]
+      .filter(Boolean)
+      .join(" ");
   }
   return null;
 };

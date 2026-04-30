@@ -6,7 +6,7 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { setIndianStyleVersion } from "@/store/slices/generationSlice";
 import StylePopup from "@/app/view/Generation/ImageGeneration/TextToImage/compo/StylePopup";
 import { ChevronUp } from "lucide-react";
-import { STYLES as INDIAN_STYLES } from "@/app/view/HomePage/compo/CreativeStyle";
+import { ALL_INDIAN_STYLES } from "./indianStyleExtensions";
 
 const INDIAN_STYLE_VERSION_OPTIONS: Array<{
   value: "V1" | "V2" | "V3";
@@ -39,7 +39,7 @@ const StyleSelector = () => {
     top: 0,
     left: 0,
   });
-  const isIndianStyleSelected = INDIAN_STYLES.some((s) => s.id === style);
+  const isIndianStyleSelected = ALL_INDIAN_STYLES.some((s) => s.id === style);
 
   // Icons removed: display only text
 

@@ -1326,17 +1326,6 @@ export const STYLES: StyleItem[] = [
     imageFilter: "brightness(0.85) saturate(0.95)",
   },
   {
-    id: "tawlhlohpuan-ceremonial",
-    name: "Mizoram",
-    title: "TAWLHLOHPUAN",
-    desc: "A ceremonial handwoven textile known for its bold extra-weft motifs and high-prestige status in Mizo tradition.",
-    image: "/HomePage/creativeStyle/next-styles-images/tawlhlohpuan.avif",
-    tag: "Textile",
-    titleColor: "#ffffff",
-    href: "/text-to-image",
-    imageFilter: "brightness(0.85) saturate(0.95)",
-  },
-  {
     id: "woodcarving",
     name: "Uttar Pradesh",
     title: "WOOD CARVING",
@@ -2571,7 +2560,6 @@ type CreativeStyleProps = {
   onNgotekherhOpen?: () => void;
   onNironaLacquerOpen?: () => void;
   onOpaqueWrapOpen?: () => void;
-  onTawlhlohpuanCeremonialOpen?: () => void;
   onWoodCarvingOpen?: () => void;
   onWroughtIronOpen?: () => void;
   onYakshaganaOpen?: () => void;
@@ -2798,7 +2786,6 @@ export default function CreativeStyle({
   onNgotekherhOpen,
   onNironaLacquerOpen,
   onOpaqueWrapOpen,
-  onTawlhlohpuanCeremonialOpen,
   onWoodCarvingOpen,
   onWroughtIronOpen,
   onYakshaganaOpen,
@@ -3690,14 +3677,9 @@ export default function CreativeStyle({
       onBodyAugmentationOpen();
       return;
     }
-    if (style.id === "tawlhlohpuan" && onTawlhlophuanMizoramOpen) {
+    if (style.id === "tawlhlophuan" && onTawlhlophuanMizoramOpen) {
       event.preventDefault();
       onTawlhlophuanMizoramOpen();
-      return;
-    }
-    if (style.id === "tawlhlohpuan-ceremonial" && onTawlhlohpuanCeremonialOpen) {
-      event.preventDefault();
-      onTawlhlohpuanCeremonialOpen();
       return;
     }
     if (style.id === "templemural" && onTempleMuralOpen) {
@@ -3778,8 +3760,8 @@ export default function CreativeStyle({
     if (style.id === "jhabuadolls" || style.id === "maheshwari" || style.id === "mashruweaving" || 
         style.id === "moirangphee" || style.id === "motibharat" || style.id === "mysorepainting" || 
         style.id === "rosewoodinlay" || style.id === "nagashawlordinary" || style.id === "ngotekherh" || 
-        style.id === "nironalacquer" || style.id === "opaquewrap" || style.id === "tawlhlohpuan" || 
-        style.id === "tawlhlohpuan-ceremonial" || style.id === "woodcarving" || style.id === "wroughtiron" || 
+        style.id === "nironalacquer" || style.id === "opaquewrap" || style.id === "tawlhlophuan" || 
+        style.id === "woodcarving" || style.id === "wroughtiron" || 
         style.id === "yakshagana") {
       event.preventDefault();
     }

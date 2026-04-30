@@ -2,7 +2,7 @@
 import React, { useCallback, useEffect, useMemo, useReducer } from "react";
 import { toast } from "sonner";
 import { saveUpload } from "@/lib/libraryApi";
-import { tawlhlohpuanPromptCatalog } from "@/app/view/HomePage/compo/tawlhlohpuanPromptCatalog";
+import { TAWLHLOPHUAN_PROMPT_FAMILIES } from "@/app/view/HomePage/compo/tawlhlophuanPromptCatalog";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import type { RootState } from "@/store";
 import { falGenerate } from "@/store/slices/generationsApi";
@@ -21,6 +21,14 @@ import { FullscreenImageViewer } from "@/components/common/FullscreenImageViewer
 import { INITIAL_STATE, TawlhlohpuanState, StyleFamily, InputMode, ModelId, ImageCount, AspectRatio, MODELS, STYLE_LABELS, RightPanelState } from "./types";
 
 const STYLE_TAG = "TAWLHLOHPUAN";
+const tawlhlohpuanPromptCatalog = {
+  prompts: {
+    v1: TAWLHLOPHUAN_PROMPT_FAMILIES.V1.promptHard,
+    v2: TAWLHLOPHUAN_PROMPT_FAMILIES.V2.promptHard,
+    v3: TAWLHLOPHUAN_PROMPT_FAMILIES.V3.promptHard,
+  },
+  promptI2I: TAWLHLOPHUAN_PROMPT_FAMILIES.V1.promptI2I,
+};
 
 function toAbsoluteFromProxy(url: string): string {
   try {
