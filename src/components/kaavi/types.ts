@@ -1,4 +1,4 @@
-import type { KaaviVersion } from "@/app/view/HomePage/compo/kaaviPromptCatalog";
+import type { KaaviVersion } from "@/app/view/HomePage/compo/styles/kaavi/kaaviPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = KaaviVersion;

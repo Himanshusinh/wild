@@ -1,4 +1,4 @@
-import type { GaradsareeVersion } from "@/app/view/HomePage/compo/garadsareePromptCatalog";
+import type { GaradsareeVersion } from "@/app/view/HomePage/compo/styles/garadsaree/garadsareePromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = GaradsareeVersion;

@@ -1,4 +1,4 @@
-import type { PuanlaisenVersion } from "@/app/view/HomePage/compo/puanlaisenPromptCatalog";
+import type { PuanlaisenVersion } from "@/app/view/HomePage/compo/styles/puanlaisen/puanlaisenPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = PuanlaisenVersion;

@@ -1,4 +1,4 @@
-import type { MatweavingVersion } from "@/app/view/HomePage/compo/matweavingPromptCatalog";
+import type { MatweavingVersion } from "@/app/view/HomePage/compo/styles/matweaving/matweavingPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = MatweavingVersion;

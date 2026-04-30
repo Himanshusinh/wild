@@ -1,4 +1,4 @@
-import type { SrikalahastiVersion } from "@/app/view/HomePage/compo/srikalahastiPromptCatalog";
+import type { SrikalahastiVersion } from "@/app/view/HomePage/compo/styles/srikalahasti/srikalahastiPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = SrikalahastiVersion;

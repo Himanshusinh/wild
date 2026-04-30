@@ -1,4 +1,4 @@
-import type { HimalayansacredimageVersion } from "@/app/view/HomePage/compo/himalayansacredimagePromptCatalog";
+import type { HimalayansacredimageVersion } from "@/app/view/HomePage/compo/styles/himalayansacredimage/himalayansacredimagePromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = HimalayansacredimageVersion;

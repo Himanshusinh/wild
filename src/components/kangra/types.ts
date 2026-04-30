@@ -1,4 +1,4 @@
-import type { KangraVersion } from "@/app/view/HomePage/compo/kangraPromptCatalog";
+import type { KangraVersion } from "@/app/view/HomePage/compo/styles/kangra/kangraPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = KangraVersion;

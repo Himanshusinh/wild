@@ -1,4 +1,4 @@
-import type { LadakhtextilesystemVersion } from "@/app/view/HomePage/compo/ladakhtextilesystemPromptCatalog";
+import type { LadakhtextilesystemVersion } from "@/app/view/HomePage/compo/styles/ladakhtextilesystem/ladakhtextilesystemPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = LadakhtextilesystemVersion;

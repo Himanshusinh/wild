@@ -1,4 +1,4 @@
-import type { WoodTempleCarvingVersion } from "@/app/view/HomePage/compo/woodtemplecarvingPromptCatalog";
+import type { WoodTempleCarvingVersion } from "@/app/view/HomePage/compo/styles/woodtemplecarving/woodtemplecarvingPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = WoodTempleCarvingVersion;

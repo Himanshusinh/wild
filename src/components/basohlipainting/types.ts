@@ -1,4 +1,4 @@
-import type { BasohlipaintingVersion } from "@/app/view/HomePage/compo/basohlipaintingPromptCatalog";
+import type { BasohlipaintingVersion } from "@/app/view/HomePage/compo/styles/basohlipainting/basohlipaintingPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = BasohlipaintingVersion;

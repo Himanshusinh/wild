@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Wand2, RefreshCw, Layers, Sparkles, Image as ImageIcon, Type, ArrowRight, ShieldCheck, Zap } from 'lucide-react';
 import { GaroWeavingVersion, GaroWeavingState, INITIAL_GARO_WEAVING_STATE } from './types';
 import GaroWeavingHeader from './GaroWeavingHeader';
-import { garoweavingPromptCatalog } from '../../app/view/HomePage/compo/garoweavingPromptCatalog';
+import { garoweavingPromptCatalog } from '@/app/view/HomePage/compo/styles/garoweaving/garoweavingPromptCatalog';
 
 interface GaroWeavingModalProps {
   isOpen: boolean;

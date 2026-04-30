@@ -1,4 +1,4 @@
-import type { LikhaiwoodcarvingVersion } from "@/app/view/HomePage/compo/likhaiwoodcarvingPromptCatalog";
+import type { LikhaiwoodcarvingVersion } from "@/app/view/HomePage/compo/styles/likhaiwoodcarving/likhaiwoodcarvingPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = LikhaiwoodcarvingVersion;

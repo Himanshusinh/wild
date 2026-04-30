@@ -1,4 +1,4 @@
-import type { GodnaArtVersion } from "@/app/view/HomePage/compo/godnaartPromptCatalog";
+import type { GodnaArtVersion } from "@/app/view/HomePage/compo/styles/godnaart/godnaartPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = GodnaArtVersion;

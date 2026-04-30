@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Wand2, RefreshCw, Layers, Sparkles, Image as ImageIcon, Type, ArrowRight, ShieldCheck, Zap } from 'lucide-react';
 import { HimrooVersion, HimrooState, INITIAL_HIMROO_STATE } from './types';
 import HimrooHeader from './HimrooHeader';
-import { himrooPromptCatalog } from '../../app/view/HomePage/compo/himrooPromptCatalog';
+import { himrooPromptCatalog } from '@/app/view/HomePage/compo/styles/himroo/himrooPromptCatalog';
 
 interface HimrooModalProps {
   isOpen: boolean;

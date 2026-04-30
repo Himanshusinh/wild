@@ -1,4 +1,4 @@
-import type { KolhapurJewelleryVersion } from "@/app/view/HomePage/compo/kolhapurjewelleryPromptCatalog";
+import type { KolhapurJewelleryVersion } from "@/app/view/HomePage/compo/styles/kolhapurjewellery/kolhapurjewelleryPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = KolhapurJewelleryVersion;

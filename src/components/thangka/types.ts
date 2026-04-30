@@ -1,4 +1,4 @@
-import type { ThangkaVersion } from "@/app/view/HomePage/compo/thangkaPromptCatalog";
+import type { ThangkaVersion } from "@/app/view/HomePage/compo/styles/thangka/thangkaPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = ThangkaVersion;

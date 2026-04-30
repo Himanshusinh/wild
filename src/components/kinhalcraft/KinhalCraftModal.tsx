@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useReducer } from "react";
 import { toast } from "sonner";
 import { saveUpload } from "@/lib/libraryApi";
-import { KINHALCRAFT_PROMPT_FAMILIES } from "@/app/view/HomePage/compo/kinhalcraftPromptCatalog";
+import { KINHALCRAFT_PROMPT_FAMILIES } from "@/app/view/HomePage/compo/styles/kinhalcraft/kinhalcraftPromptCatalog";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import type { RootState } from "@/store";
 import { falGenerate } from "@/store/slices/generationsApi";

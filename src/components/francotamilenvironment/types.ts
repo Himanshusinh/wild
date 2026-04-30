@@ -1,4 +1,4 @@
-import type { FrancotamilenvironmentVersion } from "@/app/view/HomePage/compo/francotamilenvironmentPromptCatalog";
+import type { FrancotamilenvironmentVersion } from "@/app/view/HomePage/compo/styles/francotamilenvironment/francotamilenvironmentPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = FrancotamilenvironmentVersion;

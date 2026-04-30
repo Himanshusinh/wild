@@ -2,7 +2,7 @@
 import React, { useCallback, useEffect, useMemo, useReducer } from "react";
 import { toast } from "sonner";
 import { saveUpload } from "@/lib/libraryApi";
-import { maheshwariPromptCatalog } from "@/app/view/HomePage/compo/maheshwariPromptCatalog";
+import { maheshwariPromptCatalog } from "@/app/view/HomePage/compo/styles/maheshwari/maheshwariPromptCatalog";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import type { RootState } from "@/store";
 import { falGenerate } from "@/store/slices/generationsApi";

@@ -1,4 +1,4 @@
-import type { CoconutshellcraftVersion } from "@/app/view/HomePage/compo/coconutshellcraftPromptCatalog";
+import type { CoconutshellcraftVersion } from "@/app/view/HomePage/compo/styles/coconutshellcraft/coconutshellcraftPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = CoconutshellcraftVersion;

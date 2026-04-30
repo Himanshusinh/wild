@@ -1,4 +1,4 @@
-import type { PuancheiVersion } from "@/app/view/HomePage/compo/puancheiPromptCatalog";
+import type { PuancheiVersion } from "@/app/view/HomePage/compo/styles/puanchei/puancheiPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = PuancheiVersion;

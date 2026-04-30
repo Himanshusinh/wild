@@ -2,7 +2,7 @@
 import React, { useCallback, useEffect, useMemo, useReducer } from "react";
 import { toast } from "sonner";
 import { saveUpload } from "@/lib/libraryApi";
-import { SITALPATI_PROMPT_FAMILIES } from "@/app/view/HomePage/compo/sitalpatiPromptCatalog";
+import { SITALPATI_PROMPT_FAMILIES } from "@/app/view/HomePage/compo/styles/sitalpati/sitalpatiPromptCatalog";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import type { RootState } from "@/store";
 import { falGenerate } from "@/store/slices/generationsApi";

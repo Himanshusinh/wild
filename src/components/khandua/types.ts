@@ -1,4 +1,4 @@
-import type { KhanduaVersion } from "@/app/view/HomePage/compo/khanduaPromptCatalog";
+import type { KhanduaVersion } from "@/app/view/HomePage/compo/styles/khandua/khanduaPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = KhanduaVersion;

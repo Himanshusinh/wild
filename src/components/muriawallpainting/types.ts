@@ -1,4 +1,4 @@
-import type { MuriaWallPaintingVersion } from "@/app/view/HomePage/compo/muriawallpaintingPromptCatalog";
+import type { MuriaWallPaintingVersion } from "@/app/view/HomePage/compo/styles/muriawallpainting/muriawallpaintingPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = MuriaWallPaintingVersion;

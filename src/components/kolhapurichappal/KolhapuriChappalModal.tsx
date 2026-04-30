@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useReducer } from "react";
 import { toast } from "sonner";
 import { saveUpload } from "@/lib/libraryApi";
-import { KOLHAPURICHAPPAL_PROMPT_FAMILIES } from "@/app/view/HomePage/compo/kolhapurichappalPromptCatalog";
+import { KOLHAPURICHAPPAL_PROMPT_FAMILIES } from "@/app/view/HomePage/compo/styles/kolhapurichappal/kolhapurichappalPromptCatalog";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import type { RootState } from "@/store";
 import { falGenerate } from "@/store/slices/generationsApi";

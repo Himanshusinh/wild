@@ -6,7 +6,7 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { setIndianStyleVersion } from "@/store/slices/generationSlice";
 import StylePopup from "@/app/view/Generation/ImageGeneration/TextToImage/compo/StylePopup";
 import { ChevronUp } from "lucide-react";
-import { ALL_INDIAN_STYLES } from "./indianStyleExtensions";
+import { ALL_INDIAN_STYLES } from "@/styles/indianStyles";
 
 const INDIAN_STYLE_VERSION_OPTIONS: Array<{
   value: "V1" | "V2" | "V3";

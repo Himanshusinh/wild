@@ -1,4 +1,4 @@
-import type { PithoraVersion } from "@/app/view/HomePage/compo/pithoraPromptCatalog";
+import type { PithoraVersion } from "@/app/view/HomePage/compo/styles/pithora/pithoraPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = PithoraVersion;

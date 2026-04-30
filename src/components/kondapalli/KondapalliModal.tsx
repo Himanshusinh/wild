@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useReducer } from "react";
 import { toast } from "sonner";
 import { saveUpload } from "@/lib/libraryApi";
-import { KONDAPALLI_PROMPT_FAMILIES } from "@/app/view/HomePage/compo/kondapalliPromptCatalog";
+import { KONDAPALLI_PROMPT_FAMILIES } from "@/app/view/HomePage/compo/styles/kondapalli/kondapalliPromptCatalog";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import type { RootState } from "@/store";
 import { falGenerate } from "@/store/slices/generationsApi";

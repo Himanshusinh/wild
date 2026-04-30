@@ -1,4 +1,4 @@
-import type { NagaShawlVersion } from "@/app/view/HomePage/compo/nagashawlPromptCatalog";
+import type { NagaShawlVersion } from "@/app/view/HomePage/compo/styles/nagashawl/nagashawlPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = NagaShawlVersion;

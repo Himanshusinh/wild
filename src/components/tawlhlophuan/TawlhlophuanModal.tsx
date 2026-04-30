@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useReducer } from "react";
 import { toast } from "sonner";
 import { saveUpload } from "@/lib/libraryApi";
-import { TAWLHLOPHUAN_PROMPT_FAMILIES } from "@/app/view/HomePage/compo/tawlhlophuanPromptCatalog";
+import { TAWLHLOPHUAN_PROMPT_FAMILIES } from "@/app/view/HomePage/compo/styles/tawlhlophuan/tawlhlophuanPromptCatalog";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import type { RootState } from "@/store";
 import { falGenerate } from "@/store/slices/generationsApi";

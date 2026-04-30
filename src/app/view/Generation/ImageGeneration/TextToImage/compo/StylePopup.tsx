@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { setStyle } from '@/store/slices/generationSlice';
 import { STYLE_CATALOG } from '@/styles/stylesCatalog';
-import { ALL_INDIAN_STYLES } from './indianStyleExtensions';
+import { ALL_INDIAN_STYLES } from '@/styles/indianStyles';
 import { X } from 'lucide-react';
 
 // Wrapper component for style preview images with error handling

@@ -1,4 +1,4 @@
-import type { BastarWoodcraftVersion } from "@/app/view/HomePage/compo/bastarwoodcraftPromptCatalog";
+import type { BastarWoodcraftVersion } from "@/app/view/HomePage/compo/styles/bastarwoodcraft/bastarwoodcraftPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = BastarWoodcraftVersion;

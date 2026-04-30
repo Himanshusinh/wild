@@ -1,4 +1,4 @@
-import type { KhatambandVersion } from "@/app/view/HomePage/compo/khatambandPromptCatalog";
+import type { KhatambandVersion } from "@/app/view/HomePage/compo/styles/khatamband/khatambandPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = KhatambandVersion;

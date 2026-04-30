@@ -1,4 +1,4 @@
-import type { PunjabJuttiVersion } from "@/app/view/HomePage/compo/punjabjuttiPromptCatalog";
+import type { PunjabJuttiVersion } from "@/app/view/HomePage/compo/styles/punjabjutti/punjabjuttiPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = PunjabJuttiVersion;

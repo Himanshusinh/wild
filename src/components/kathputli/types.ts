@@ -1,4 +1,4 @@
-import type { KathputliVersion } from "@/app/view/HomePage/compo/kathputliPromptCatalog";
+import type { KathputliVersion } from "@/app/view/HomePage/compo/styles/kathputli/kathputliPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = KathputliVersion;

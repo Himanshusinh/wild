@@ -1,4 +1,4 @@
-import type { PrestigePendantsVersion } from "@/app/view/HomePage/compo/prestigependantsPromptCatalog";
+import type { PrestigePendantsVersion } from "@/app/view/HomePage/compo/styles/prestigependants/prestigependantsPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = PrestigePendantsVersion;

@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useReducer } from "react";
 import { toast } from "sonner";
 import { saveUpload } from "@/lib/libraryApi";
-import { SHEERFIELDCLOTH_PROMPT_FAMILIES } from "@/app/view/HomePage/compo/sheerfieldclothPromptCatalog";
+import { SHEERFIELDCLOTH_PROMPT_FAMILIES } from "@/app/view/HomePage/compo/styles/sheerfieldcloth/sheerfieldclothPromptCatalog";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import type { RootState } from "@/store";
 import { falGenerate } from "@/store/slices/generationsApi";

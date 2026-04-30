@@ -2,7 +2,7 @@
 import React, { useCallback, useEffect, useMemo, useReducer } from "react";
 import { toast } from "sonner";
 import { saveUpload } from "@/lib/libraryApi";
-import { RAJASTHANIMINIATURE_PROMPT_FAMILIES } from "@/app/view/HomePage/compo/rajasthaniminiaturePromptCatalog";
+import { RAJASTHANIMINIATURE_PROMPT_FAMILIES } from "@/app/view/HomePage/compo/styles/rajasthaniminiature/rajasthaniminiaturePromptCatalog";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import type { RootState } from "@/store";
 import { falGenerate } from "@/store/slices/generationsApi";

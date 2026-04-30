@@ -1,4 +1,4 @@
-import type { PattachitraVersion } from "@/app/view/HomePage/compo/pattachitraPromptCatalog";
+import type { PattachitraVersion } from "@/app/view/HomePage/compo/styles/pattachitra/pattachitraPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = PattachitraVersion;

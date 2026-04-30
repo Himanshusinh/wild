@@ -1,0 +1,28 @@
+"use client";
+
+import React from "react";
+import TraditionalStyleWalkthrough from "../../TraditionalStyleWalkthrough";
+import { STYLES } from "@/styles/creativeStyleCatalog";
+
+interface ChikankariFullscreenWalkthroughProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+const ChikankariFullscreenWalkthrough: React.FC<ChikankariFullscreenWalkthroughProps> = ({ isOpen, onClose }) => {
+  const style = STYLES.find((s) => s.id === "chikankari");
+  return (
+    <TraditionalStyleWalkthrough
+      isOpen={isOpen}
+      onClose={onClose}
+      styleId={style?.id || "chikankari"}
+      styleTitle={style?.title || "Chikankari"}
+      styleName={style?.name || "India"}
+      styleDesc={style?.desc || "Traditional Indian visual language."}
+      styleImage={style?.image || "/styles/Logo.gif"}
+      styleTag={style?.tag || "Art"}
+    />
+  );
+};
+
+export default ChikankariFullscreenWalkthrough;

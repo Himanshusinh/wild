@@ -1,4 +1,4 @@
-import type { PhulkariVersion } from "@/app/view/HomePage/compo/phulkariPromptCatalog";
+import type { PhulkariVersion } from "@/app/view/HomePage/compo/styles/phulkari/phulkariPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = PhulkariVersion;

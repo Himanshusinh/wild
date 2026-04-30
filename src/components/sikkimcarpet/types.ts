@@ -1,4 +1,4 @@
-import type { SikkimCarpetVersion } from "@/app/view/HomePage/compo/sikkimcarpetPromptCatalog";
+import type { SikkimCarpetVersion } from "@/app/view/HomePage/compo/styles/sikkimcarpet/sikkimcarpetPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = SikkimCarpetVersion;

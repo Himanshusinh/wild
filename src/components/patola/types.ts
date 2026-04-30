@@ -1,4 +1,4 @@
-import type { PatolaVersion } from "@/app/view/HomePage/compo/patolaPromptCatalog";
+import type { PatolaVersion } from "@/app/view/HomePage/compo/styles/patola/patolaPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = PatolaVersion;

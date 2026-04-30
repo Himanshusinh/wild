@@ -1,4 +1,4 @@
-import type { NeedleworkVersion } from "@/app/view/HomePage/compo/needleworkPromptCatalog";
+import type { NeedleworkVersion } from "@/app/view/HomePage/compo/styles/needlework/needleworkPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = NeedleworkVersion;

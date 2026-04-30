@@ -1,4 +1,4 @@
-import type { IndoportugueseenvironmentVersion } from "@/app/view/HomePage/compo/indoportugueseenvironmentPromptCatalog";
+import type { IndoportugueseenvironmentVersion } from "@/app/view/HomePage/compo/styles/indoportugueseenvironment/indoportugueseenvironmentPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = IndoportugueseenvironmentVersion;

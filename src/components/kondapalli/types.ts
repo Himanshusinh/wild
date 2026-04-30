@@ -1,4 +1,4 @@
-import type { KondapalliVersion } from "@/app/view/HomePage/compo/kondapalliPromptCatalog";
+import type { KondapalliVersion } from "@/app/view/HomePage/compo/styles/kondapalli/kondapalliPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = KondapalliVersion;

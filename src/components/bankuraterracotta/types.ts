@@ -1,4 +1,4 @@
-import type { BankuraterracottaVersion } from "@/app/view/HomePage/compo/bankuraterracottaPromptCatalog";
+import type { BankuraterracottaVersion } from "@/app/view/HomePage/compo/styles/bankuraterracotta/bankuraterracottaPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = BankuraterracottaVersion;

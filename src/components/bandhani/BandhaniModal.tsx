@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useReducer } from "react";
 import { toast } from "sonner";
 import { saveUpload } from "@/lib/libraryApi";
-import { BANDHANI_PROMPT_FAMILIES } from "@/app/view/HomePage/compo/bandhaniPromptCatalog";
+import { BANDHANI_PROMPT_FAMILIES } from "@/app/view/HomePage/compo/styles/bandhani/bandhaniPromptCatalog";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import type { RootState } from "@/store";
 import { falGenerate } from "@/store/slices/generationsApi";

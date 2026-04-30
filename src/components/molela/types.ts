@@ -1,4 +1,4 @@
-import type { MolelaVersion } from "@/app/view/HomePage/compo/molelaPromptCatalog";
+import type { MolelaVersion } from "@/app/view/HomePage/compo/styles/molela/molelaPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = MolelaVersion;

@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useReducer } from "react";
 import { toast } from "sonner";
 import { saveUpload } from "@/lib/libraryApi";
-import { MONPA_MASK_PROMPT_FAMILIES } from "@/app/view/HomePage/compo/monpaMaskPromptCatalog";
+import { MONPA_MASK_PROMPT_FAMILIES } from "@/app/view/HomePage/compo/styles/monpamask/monpaMaskPromptCatalog";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import type { RootState } from "@/store";
 import { falGenerate } from "@/store/slices/generationsApi";

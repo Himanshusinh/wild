@@ -1,4 +1,4 @@
-import type { UstaArtVersion } from "@/app/view/HomePage/compo/ustaartPromptCatalog";
+import type { UstaArtVersion } from "@/app/view/HomePage/compo/styles/ustaart/ustaartPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = UstaArtVersion;

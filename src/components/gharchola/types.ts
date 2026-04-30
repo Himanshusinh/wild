@@ -1,4 +1,4 @@
-import type { GharcholaVersion } from "@/app/view/HomePage/compo/gharcholaPromptCatalog";
+import type { GharcholaVersion } from "@/app/view/HomePage/compo/styles/gharchola/gharcholaPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = GharcholaVersion;

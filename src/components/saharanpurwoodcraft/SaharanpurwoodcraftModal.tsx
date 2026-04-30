@@ -2,7 +2,7 @@
 import React, { useCallback, useEffect, useMemo, useReducer } from "react";
 import { toast } from "sonner";
 import { saveUpload } from "@/lib/libraryApi";
-import { SAHARANPURWOODCRAFT_PROMPT_FAMILIES } from "@/app/view/HomePage/compo/saharanpurwoodcraftPromptCatalog";
+import { SAHARANPURWOODCRAFT_PROMPT_FAMILIES } from "@/app/view/HomePage/compo/styles/saharanpurwoodcraft/saharanpurwoodcraftPromptCatalog";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import type { RootState } from "@/store";
 import { falGenerate } from "@/store/slices/generationsApi";

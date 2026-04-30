@@ -1,4 +1,4 @@
-import type { KolhapuriChappalVersion } from "@/app/view/HomePage/compo/kolhapurichappalPromptCatalog";
+import type { KolhapuriChappalVersion } from "@/app/view/HomePage/compo/styles/kolhapurichappal/kolhapurichappalPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = KolhapuriChappalVersion;

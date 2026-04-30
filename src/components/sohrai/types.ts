@@ -1,4 +1,4 @@
-import type { SohraiVersion } from "@/app/view/HomePage/compo/sohraiPromptCatalog";
+import type { SohraiVersion } from "@/app/view/HomePage/compo/styles/sohrai/sohraiPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = SohraiVersion;

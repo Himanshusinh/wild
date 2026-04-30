@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useReducer } from "react";
 import { toast } from "sonner";
 import { saveUpload } from "@/lib/libraryApi";
-import { PAWNDUM_PROMPT_FAMILIES } from "@/app/view/HomePage/compo/pawndumPromptCatalog";
+import { PAWNDUM_PROMPT_FAMILIES } from "@/app/view/HomePage/compo/styles/pawndum/pawndumPromptCatalog";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import type { RootState } from "@/store";
 import { falGenerate } from "@/store/slices/generationsApi";

@@ -1,4 +1,4 @@
-import type { KhatwaVersion } from "@/app/view/HomePage/compo/khatwaPromptCatalog";
+import type { KhatwaVersion } from "@/app/view/HomePage/compo/styles/khatwa/khatwaPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = KhatwaVersion;

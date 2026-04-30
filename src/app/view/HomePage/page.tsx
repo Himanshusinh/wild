@@ -25,570 +25,570 @@ const Recentcreation = dynamic(() => import('./compo/Recentcreation'), {
 const WelcomeModal = dynamic(() => import('./compo/WelcomeModal'), {
     ssr: false
 })
-const WarliFullscreenWalkthrough = dynamic(() => import('./compo/WarliFullscreenWalkthrough'), {
+const WarliFullscreenWalkthrough = dynamic(() => import('./compo/styles/warli/WarliFullscreenWalkthrough'), {
     ssr: false
 })
 const AjrakhFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/AjrakhFullscreenWalkthrough'),
+    () => import('./compo/styles/ajrakh/AjrakhFullscreenWalkthrough'),
     {
         ssr: false
     }
 )
 const JhajjarFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/JhajjarFullscreenWalkthrough'),
+    () => import('./compo/styles/jhajjar/JhajjarFullscreenWalkthrough'),
     {
         ssr: false
     }
 )
 const KaaviFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/KaaviFullscreenWalkthrough'),
+    () => import('./compo/styles/kaavi/KaaviFullscreenWalkthrough'),
     {
         ssr: false
     }
 )
 const KangraFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/KangraFullscreenWalkthrough'),
+    () => import('./compo/styles/kangra/KangraFullscreenWalkthrough'),
     {
         ssr: false
     }
 )
 const KarepaFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/KarepaFullscreenWalkthrough'),
+    () => import('./compo/styles/karepa/KarepaFullscreenWalkthrough'),
     {
         ssr: false
     }
 )
 const KhatwaFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/KhatwaFullscreenWalkthrough'),
+    () => import('./compo/styles/khatwa/KhatwaFullscreenWalkthrough'),
     {
         ssr: false
     }
 )
 const KhovarFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/KhovarFullscreenWalkthrough'),
+    () => import('./compo/styles/khovar/KhovarFullscreenWalkthrough'),
     {
         ssr: false
     }
 )
 const KinnauriFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/KinnauriFullscreenWalkthrough'),
+    () => import('./compo/styles/kinnauri/KinnauriFullscreenWalkthrough'),
     {
         ssr: false
     }
 )
 const KosaFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/KosaFullscreenWalkthrough'),
+    () => import('./compo/styles/kosa/KosaFullscreenWalkthrough'),
     {
         ssr: false
     }
 )
 const KutchFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/KutchFullscreenWalkthrough'),
+    () => import('./compo/styles/kutch/KutchFullscreenWalkthrough'),
     {
         ssr: false
     }
 )
 const LippanFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/LippanFullscreenWalkthrough'),
+    () => import('./compo/styles/lippan/LippanFullscreenWalkthrough'),
     {
         ssr: false
     }
 )
 const MajuliFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/MajuliFullscreenWalkthrough'),
+    () => import('./compo/styles/majuli/MajuliFullscreenWalkthrough'),
     {
         ssr: false
     }
 )
 const ManjushaFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/ManjushaFullscreenWalkthrough'),
+    () => import('./compo/styles/manjusha/ManjushaFullscreenWalkthrough'),
     {
         ssr: false
     }
 )
 const MataNiPachediFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/MataNiPachediFullscreenWalkthrough'),
+    () => import('./compo/styles/matanipachedi/MataNiPachediFullscreenWalkthrough'),
     {
         ssr: false
     }
 )
 const KalamkariFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/KalamkariFullscreenWalkthrough'),
+    () => import('./compo/styles/kalamkari/KalamkariFullscreenWalkthrough'),
     {
         ssr: false
     }
 )
 const SrikalahastiFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/SrikalahastiFullscreenWalkthrough'),
+    () => import('./compo/styles/srikalahasti/SrikalahastiFullscreenWalkthrough'),
     {
         ssr: false
     }
 )
 const UppadaFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/UppadaFullscreenWalkthrough'),
+    () => import('./compo/styles/uppada/UppadaFullscreenWalkthrough'),
     {
         ssr: false
     }
 )
 const TholuFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/TholuFullscreenWalkthrough'),
+    () => import('./compo/styles/tholu/TholuFullscreenWalkthrough'),
     {
         ssr: false
     }
 )
 const ThangkaFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/ThangkaFullscreenWalkthrough'),
+    () => import('./compo/styles/thangka/ThangkaFullscreenWalkthrough'),
     {
         ssr: false
     }
 )
 const ThangkaNewFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/ThangkaNewFullscreenWalkthrough'),
+    () => import('./compo/styles/thangkanew/ThangkaNewFullscreenWalkthrough'),
     {
         ssr: false
     }
 )
 const WanchoFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/WanchoFullscreenWalkthrough'),
+    () => import('./compo/styles/wancho/WanchoFullscreenWalkthrough'),
     {
         ssr: false
     }
 )
 const MonpaFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/MonpaFullscreenWalkthrough'),
+    () => import('./compo/styles/monpa/MonpaFullscreenWalkthrough'),
     {
         ssr: false
     }
 )
 const HandmadePaperFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/HandmadePaperFullscreenWalkthrough'),
+    () => import('./compo/styles/handmadepaper/HandmadePaperFullscreenWalkthrough'),
     {
         ssr: false
     }
 )
 const MonpaMaskFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/MonpaMaskFullscreenWalkthrough'),
+    () => import('./compo/styles/monpamask/MonpaMaskFullscreenWalkthrough'),
     {
         ssr: false
     }
 )
 const KondapalliFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/KondapalliFullscreenWalkthrough'),
+    () => import('./compo/styles/kondapalli/KondapalliFullscreenWalkthrough'),
     {
         ssr: false
     }
 )
 const EtikoppakaFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/EtikoppakaFullscreenWalkthrough'),
+    () => import('./compo/styles/etikoppaka/EtikoppakaFullscreenWalkthrough'),
     {
         ssr: false
     }
 )
 const MadhubaniFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/MadhubaniFullscreenWalkthrough'),
+    () => import('./compo/styles/madhubani/MadhubaniFullscreenWalkthrough'),
     {
         ssr: false
     }
 )
 const KyilKhorFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/KyilKhorFullscreenWalkthrough'),
+    () => import('./compo/styles/kyilkhor/KyilKhorFullscreenWalkthrough'),
     {
         ssr: false
     }
 )
 const SherdukpenFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/SherdukpenFullscreenWalkthrough'),
+    () => import('./compo/styles/sherdukpen/SherdukpenFullscreenWalkthrough'),
     {
         ssr: false
     }
 )
 const IduMishmiFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/IduMishmiFullscreenWalkthrough'),
+    () => import('./compo/styles/idumishmi/IduMishmiFullscreenWalkthrough'),
     {
         ssr: false
     }
 )
 const AsharikandiFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/AsharikandiFullscreenWalkthrough'),
+    () => import('./compo/styles/asharikandi/AsharikandiFullscreenWalkthrough'),
     {
         ssr: false
     }
 )
 const AzulejosFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/AzulejosFullscreenWalkthrough'),
+    () => import('./compo/styles/azulejos/AzulejosFullscreenWalkthrough'),
     { ssr: false }
 )
 const BandhaniFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/BandhaniFullscreenWalkthrough'),
+    () => import('./compo/styles/bandhani/BandhaniFullscreenWalkthrough'),
     { ssr: false }
 )
 const BastarDhokraFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/BastarDhokraFullscreenWalkthrough'),
+    () => import('./compo/styles/bastardhokra/BastarDhokraFullscreenWalkthrough'),
     { ssr: false }
 )
 const MuriaWallPaintingFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/MuriaWallPaintingFullscreenWalkthrough'),
+    () => import('./compo/styles/muriawallpainting/MuriaWallPaintingFullscreenWalkthrough'),
     { ssr: false }
 )
 const BastarWoodcraftFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/BastarWoodcraftFullscreenWalkthrough'),
+    () => import('./compo/styles/bastarwoodcraft/BastarWoodcraftFullscreenWalkthrough'),
     { ssr: false }
 )
 const BhagalpurSilkFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/BhagalpurSilkFullscreenWalkthrough'),
+    () => import('./compo/styles/bhagalpursilk/BhagalpurSilkFullscreenWalkthrough'),
     { ssr: false }
 )
 const ChambaMiniatureFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/ChambaMiniatureFullscreenWalkthrough'),
+    () => import('./compo/styles/chambaminiature/ChambaMiniatureFullscreenWalkthrough'),
     { ssr: false }
 )
 const ExposedLateriteFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/ExposedLateriteFullscreenWalkthrough'),
+    () => import('./compo/styles/exposedlaterite/ExposedLateriteFullscreenWalkthrough'),
     { ssr: false }
 )
 const GharcholaFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/GharcholaFullscreenWalkthrough'),
+    () => import('./compo/styles/gharchola/GharcholaFullscreenWalkthrough'),
     { ssr: false }
 )
 const GodnaArtFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/GodnaArtFullscreenWalkthrough'),
+    () => import('./compo/styles/godnaart/GodnaArtFullscreenWalkthrough'),
     { ssr: false }
 )
 const TaiAhomManuscriptFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/TaiAhomManuscriptFullscreenWalkthrough'),
+    () => import('./compo/styles/taiahommanuscript/TaiAhomManuscriptFullscreenWalkthrough'),
     { ssr: false }
 )
 const TangaliyaFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/TangaliyaFullscreenWalkthrough'),
+    () => import('./compo/styles/tangaliya/TangaliyaFullscreenWalkthrough'),
     { ssr: false }
 )
 const AgrarianIndustrialFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/AgrarianIndustrialFullscreenWalkthrough'),
+    () => import('./compo/styles/agrarianindustrial/AgrarianIndustrialFullscreenWalkthrough'),
     { ssr: false }
 )
 const IndoPortugueseFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/IndoPortugueseFullscreenWalkthrough'),
+    () => import('./compo/styles/indoportuguese/IndoPortugueseFullscreenWalkthrough'),
     { ssr: false }
 )
 const TikuliArtFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/TikuliArtFullscreenWalkthrough'),
+    () => import('./compo/styles/tikuliart/TikuliArtFullscreenWalkthrough'),
     { ssr: false }
 )
 const SohraiKhovarFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/SohraiKhovarFullscreenWalkthrough'),
+    () => import('./compo/styles/sohraikhovar/SohraiKhovarFullscreenWalkthrough'),
     { ssr: false }
 )
 const WoodTempleCarvingFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/WoodTempleCarvingFullscreenWalkthrough'),
+    () => import('./compo/styles/woodtemplecarving/WoodTempleCarvingFullscreenWalkthrough'),
     { ssr: false }
 )
 const NeoAgrarianBrutalismFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/NeoAgrarianBrutalismFullscreenWalkthrough'),
+    () => import('./compo/styles/neoagrarianbrutalism/NeoAgrarianBrutalismFullscreenWalkthrough'),
     { ssr: false }
 )
 const PatolaFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/PatolaFullscreenWalkthrough'),
+    () => import('./compo/styles/patola/PatolaFullscreenWalkthrough'),
     { ssr: false }
 )
 const PhulkariFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/PhulkariFullscreenWalkthrough'),
+    () => import('./compo/styles/phulkari/PhulkariFullscreenWalkthrough'),
     { ssr: false }
 )
 const PithoraFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/PithoraFullscreenWalkthrough'),
+    () => import('./compo/styles/pithora/PithoraFullscreenWalkthrough'),
     { ssr: false }
 )
 const RoganArtFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/RoganArtFullscreenWalkthrough'),
+    () => import('./compo/styles/roganart/RoganArtFullscreenWalkthrough'),
     { ssr: false }
 )
 const RuralFiberCraftFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/RuralFiberCraftFullscreenWalkthrough'),
+    () => import('./compo/styles/ruralfibercraft/RuralFiberCraftFullscreenWalkthrough'),
     { ssr: false }
 )
 const SarkandaArchitectureFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/SarkandaArchitectureFullscreenWalkthrough'),
+    () => import('./compo/styles/sarkandaarchitecture/SarkandaArchitectureFullscreenWalkthrough'),
     { ssr: false }
 )
 const ShimplaHastkalaFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/ShimplaHastkalaFullscreenWalkthrough'),
+    () => import('./compo/styles/shimplahastkala/ShimplaHastkalaFullscreenWalkthrough'),
     { ssr: false }
 )
 const SitalpatiFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/SitalpatiFullscreenWalkthrough'),
+    () => import('./compo/styles/sitalpati/SitalpatiFullscreenWalkthrough'),
     { ssr: false }
 )
 const SohraiFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/SohraiFullscreenWalkthrough'),
+    () => import('./compo/styles/sohrai/SohraiFullscreenWalkthrough'),
     { ssr: false }
 )
 const SonowalTextileFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/SonowalTextileFullscreenWalkthrough'),
+    () => import('./compo/styles/sonowaltextile/SonowalTextileFullscreenWalkthrough'),
     { ssr: false }
 )
 const SufEmbroideryFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/SufEmbroideryFullscreenWalkthrough'),
+    () => import('./compo/styles/sufembroidery/SufEmbroideryFullscreenWalkthrough'),
     { ssr: false }
 )
 const KatabAppliqueFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/KatabAppliqueFullscreenWalkthrough'),
+    () => import('./compo/styles/katabapplique/KatabAppliqueFullscreenWalkthrough'),
     { ssr: false }
 )
 const BaghPrintFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/BaghPrintFullscreenWalkthrough'),
+    () => import('./compo/styles/baghprint/BaghPrintFullscreenWalkthrough'),
     { ssr: false }
 )
 const BambooCraftFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/BambooCraftFullscreenWalkthrough'),
+    () => import('./compo/styles/bamboocraft/BambooCraftFullscreenWalkthrough'),
     { ssr: false }
 )
 const NagaBeadClusterFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/NagaBeadClusterFullscreenWalkthrough'),
+    () => import('./compo/styles/nagabeadcluster/NagaBeadClusterFullscreenWalkthrough'),
     { ssr: false }
 )
 const BidriwareFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/BidriwareFullscreenWalkthrough'),
+    () => import('./compo/styles/bidriware/BidriwareFullscreenWalkthrough'),
     { ssr: false }
 )
 const BorderSignTextileFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/BorderSignTextileFullscreenWalkthrough'),
+    () => import('./compo/styles/bordersigntextile/BorderSignTextileFullscreenWalkthrough'),
     { ssr: false }
 )
 const BundeliPaintingFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/BundeliPaintingFullscreenWalkthrough'),
+    () => import('./compo/styles/bundelipainting/BundeliPaintingFullscreenWalkthrough'),
     { ssr: false }
 )
 const CeremonialEmblemFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/CeremonialEmblemFullscreenWalkthrough'),
+    () => import('./compo/styles/ceremonialemblem/CeremonialEmblemFullscreenWalkthrough'),
     { ssr: false }
 )
 const ChannapatnaToysFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/ChannapatnaToysFullscreenWalkthrough'),
+    () => import('./compo/styles/channapatnatoys/ChannapatnaToysFullscreenWalkthrough'),
     { ssr: false }
 )
 const CoirCraftFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/CoirCraftFullscreenWalkthrough'),
+    () => import('./compo/styles/coircraft/CoirCraftFullscreenWalkthrough'),
     { ssr: false }
 )
 const BellMetalRitualsFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/BellMetalRitualsFullscreenWalkthrough'),
+    () => import('./compo/styles/bellmetalrituals/BellMetalRitualsFullscreenWalkthrough'),
     { ssr: false }
 )
 const KasutiEmbroideryFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/KasutiEmbroideryFullscreenWalkthrough'),
+    () => import('./compo/styles/kasutiembroidery/KasutiEmbroideryFullscreenWalkthrough'),
     { ssr: false }
 )
 const KeralaMuralFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/KeralaMuralFullscreenWalkthrough'),
+    () => import('./compo/styles/keralamural/KeralaMuralFullscreenWalkthrough'),
     { ssr: false }
 )
 const KhambhatAgateFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/KhambhatAgateFullscreenWalkthrough'),
+    () => import('./compo/styles/khambhatagate/KhambhatAgateFullscreenWalkthrough'),
     { ssr: false }
 )
 const KinhalCraftFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/KinhalCraftFullscreenWalkthrough'),
+    () => import('./compo/styles/kinhalcraft/KinhalCraftFullscreenWalkthrough'),
     { ssr: false }
 )
 const KolhapurJewelleryFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/KolhapurJewelleryFullscreenWalkthrough'),
+    () => import('./compo/styles/kolhapurjewellery/KolhapurJewelleryFullscreenWalkthrough'),
     { ssr: false }
 )
 const KolhapuriChappalFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/KolhapuriChappalFullscreenWalkthrough'),
+    () => import('./compo/styles/kolhapurichappal/KolhapuriChappalFullscreenWalkthrough'),
     { ssr: false }
 )
 const KolhapuriSaajFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/KolhapuriSaajFullscreenWalkthrough'),
+    () => import('./compo/styles/kolhapurisaaj/KolhapuriSaajFullscreenWalkthrough'),
     { ssr: false }
 )
 const LambaniEmbroideryFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/LambaniEmbroideryFullscreenWalkthrough'),
+    () => import('./compo/styles/lambaniembroidery/LambaniEmbroideryFullscreenWalkthrough'),
     { ssr: false }
 )
 const LeatherToysFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/LeatherToysFullscreenWalkthrough'),
+    () => import('./compo/styles/leathertoys/LeatherToysFullscreenWalkthrough'),
     { ssr: false }
 )
 const PaithaniFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/PaithaniFullscreenWalkthrough'),
+    () => import('./compo/styles/paithani/PaithaniFullscreenWalkthrough'),
     { ssr: false }
 )
 const PawndumFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/PawndumFullscreenWalkthrough'),
+    () => import('./compo/styles/pawndum/PawndumFullscreenWalkthrough'),
     { ssr: false }
 )
 const PoshinaTerracottaFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/PoshinaTerracottaFullscreenWalkthrough'),
+    () => import('./compo/styles/poshinaterracotta/PoshinaTerracottaFullscreenWalkthrough'),
     { ssr: false }
 )
 const PrestigePendantsFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/PrestigePendantsFullscreenWalkthrough'),
+    () => import('./compo/styles/prestigependants/PrestigePendantsFullscreenWalkthrough'),
     { ssr: false }
 )
 const PuancheiFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/PuancheiFullscreenWalkthrough'),
+    () => import('./compo/styles/puanchei/PuancheiFullscreenWalkthrough'),
     { ssr: false }
 )
 const PuanlaisenFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/PuanlaisenFullscreenWalkthrough'),
+    () => import('./compo/styles/puanlaisen/PuanlaisenFullscreenWalkthrough'),
     { ssr: false }
 )
 const SandalwoodCarvingFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/SandalwoodCarvingFullscreenWalkthrough'),
+    () => import('./compo/styles/sandalwoodcarving/SandalwoodCarvingFullscreenWalkthrough'),
     { ssr: false }
 )
 const SankhedaWoodworkFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/SankhedaWoodworkFullscreenWalkthrough'),
+    () => import('./compo/styles/sankhedawoodwork/SankhedaWoodworkFullscreenWalkthrough'),
     { ssr: false }
 )
 const GanjifaFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/GanjifaFullscreenWalkthrough'),
+    () => import('./compo/styles/ganjifa/GanjifaFullscreenWalkthrough'),
     { ssr: false }
 )
 const SawantwadiWoodcraftFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/SawantwadiWoodcraftFullscreenWalkthrough'),
+    () => import('./compo/styles/sawantwadiwoodcraft/SawantwadiWoodcraftFullscreenWalkthrough'),
     { ssr: false }
 )
 const ShapheeLanpheeFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/ShapheeLanpheeFullscreenWalkthrough'),
+    () => import('./compo/styles/shapheelanphee/ShapheeLanpheeFullscreenWalkthrough'),
     { ssr: false }
 )
 const SheerFieldClothFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/SheerFieldClothFullscreenWalkthrough'),
+    () => import('./compo/styles/sheerfieldcloth/SheerFieldClothFullscreenWalkthrough'),
     { ssr: false }
 )
 const BodyAugmentationFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/BodyAugmentationFullscreenWalkthrough'),
+    () => import('./compo/styles/bodyaugmentation/BodyAugmentationFullscreenWalkthrough'),
     { ssr: false }
 )
 const TawlhlophuanFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/TawlhlophuanFullscreenWalkthrough'),
+    () => import('./compo/styles/tawlhlophuan/TawlhlophuanFullscreenWalkthrough'),
     { ssr: false }
 )
 const TempleMuralFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/TempleMuralFullscreenWalkthrough'),
+    () => import('./compo/styles/templemural/TempleMuralFullscreenWalkthrough'),
     { ssr: false }
 )
 const TogaluGombeyaataFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/TogaluGombeyaataFullscreenWalkthrough'),
+    () => import('./compo/styles/togalugombeyaata/TogaluGombeyaataFullscreenWalkthrough'),
     { ssr: false }
 )
 const NagaShawlFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/NagaShawlFullscreenWalkthrough'),
+    () => import('./compo/styles/nagashawl/NagaShawlFullscreenWalkthrough'),
     { ssr: false }
 )
 const WangkheiPheeFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/WangkheiPheeFullscreenWalkthrough'),
+    () => import('./compo/styles/wangkheiphee/WangkheiPheeFullscreenWalkthrough'),
     { ssr: false }
 )
 const MeritShawlFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/MeritShawlFullscreenWalkthrough'),
+    () => import('./compo/styles/meritshawl/MeritShawlFullscreenWalkthrough'),
     { ssr: false }
 )
 
 const GaroWeavingFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/GaroWeavingFullscreenWalkthrough'),
+    () => import('./compo/styles/garoweaving/GaroWeavingFullscreenWalkthrough'),
     { ssr: false }
 )
 const NagaBodyClothFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/NagaBodyClothFullscreenWalkthrough'),
+    () => import('./compo/styles/nagabodycloth/NagaBodyClothFullscreenWalkthrough'),
     { ssr: false }
 )
 const GondPaintingFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/GondPaintingFullscreenWalkthrough'),
+    () => import('./compo/styles/gondpainting/GondPaintingFullscreenWalkthrough'),
     { ssr: false }
 )
 const HardOrnamentFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/HardOrnamentFullscreenWalkthrough'),
+    () => import('./compo/styles/hardornament/HardOrnamentFullscreenWalkthrough'),
     { ssr: false }
 )
 const HimrooFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/HimrooFullscreenWalkthrough'),
+    () => import('./compo/styles/himroo/HimrooFullscreenWalkthrough'),
     { ssr: false }
 )
 const HmaramFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/HmaramFullscreenWalkthrough'),
+    () => import('./compo/styles/hmaram/HmaramFullscreenWalkthrough'),
     { ssr: false }
 )
 const HoysalaReliefFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/HoysalaReliefFullscreenWalkthrough'),
+    () => import('./compo/styles/hoysalarelief/HoysalaReliefFullscreenWalkthrough'),
     { ssr: false }
 )
 const JaintiaTextileFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/JaintiaTextileFullscreenWalkthrough'),
+    () => import('./compo/styles/jaintiatextile/JaintiaTextileFullscreenWalkthrough'),
     { ssr: false }
 )
 const JhabuaDollsFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/JhabuaDollsFullscreenWalkthrough'),
+    () => import('./compo/styles/jhabuadolls/JhabuaDollsFullscreenWalkthrough'),
     { ssr: false }
 )
 const MaheshwariFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/MaheshwariFullscreenWalkthrough'),
+    () => import('./compo/styles/maheshwari/MaheshwariFullscreenWalkthrough'),
     { ssr: false }
 )
 const MashruweavingFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/MashruweavingFullscreenWalkthrough'),
+    () => import('./compo/styles/mashruweaving/MashruweavingFullscreenWalkthrough'),
     { ssr: false }
 )
 const MoirangpheeFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/MoirangpheeFullscreenWalkthrough'),
+    () => import('./compo/styles/moirangphee/MoirangpheeFullscreenWalkthrough'),
     { ssr: false }
 )
 const MotibharatFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/MotibharatFullscreenWalkthrough'),
+    () => import('./compo/styles/motibharat/MotibharatFullscreenWalkthrough'),
     { ssr: false }
 )
 const MysorepaintingFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/MysorepaintingFullscreenWalkthrough'),
+    () => import('./compo/styles/mysorepainting/MysorepaintingFullscreenWalkthrough'),
     { ssr: false }
 )
 const RosewoodinlayFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/RosewoodinlayFullscreenWalkthrough'),
+    () => import('./compo/styles/rosewoodinlay/RosewoodinlayFullscreenWalkthrough'),
     { ssr: false }
 )
 const NagashawlordinaryFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/NagashawlordinaryFullscreenWalkthrough'),
+    () => import('./compo/styles/nagashawlordinary/NagashawlordinaryFullscreenWalkthrough'),
     { ssr: false }
 )
 const NgotekherhFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/NgotekherhFullscreenWalkthrough'),
+    () => import('./compo/styles/ngotekherh/NgotekherhFullscreenWalkthrough'),
     { ssr: false }
 )
 const NironalacquerFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/NironalacquerFullscreenWalkthrough'),
+    () => import('./compo/styles/nironalacquer/NironalacquerFullscreenWalkthrough'),
     { ssr: false }
 )
 const OpaquewrapFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/OpaquewrapFullscreenWalkthrough'),
+    () => import('./compo/styles/opaquewrap/OpaquewrapFullscreenWalkthrough'),
     { ssr: false }
 )
 const WoodcarvingFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/WoodcarvingFullscreenWalkthrough'),
+    () => import('./compo/styles/woodcarving/WoodcarvingFullscreenWalkthrough'),
     { ssr: false }
 )
 const WroughtironFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/WroughtironFullscreenWalkthrough'),
+    () => import('./compo/styles/wroughtiron/WroughtironFullscreenWalkthrough'),
     { ssr: false }
 )
 const YakshaganaFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/YakshaganaFullscreenWalkthrough'),
+    () => import('./compo/styles/yakshagana/YakshaganaFullscreenWalkthrough'),
     { ssr: false }
 )
 const BaghEmbroideryFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/BaghEmbroideryFullscreenWalkthrough'),
+    () => import('./compo/styles/baghembroidery/BaghEmbroideryFullscreenWalkthrough'),
     { ssr: false }
 )
 const BagruPrintFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/BagruPrintFullscreenWalkthrough'),
+    () => import('./compo/styles/bagruprint/BagruPrintFullscreenWalkthrough'),
     { ssr: false }
 )
 const BandhejFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/BandhejFullscreenWalkthrough'),
+    () => import('./compo/styles/bandhej/BandhejFullscreenWalkthrough'),
     { ssr: false }
 )
 const BerhampurPattaFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/BerhampurPattaFullscreenWalkthrough'),
+    () => import('./compo/styles/berhampurpatta/BerhampurPattaFullscreenWalkthrough'),
     { ssr: false }
 )
 const TraditionalStyleWalkthrough = dynamic<{ 
@@ -618,223 +618,223 @@ const TraditionalStyleFullscreenWalkthrough = dynamic<{
     { ssr: false }
 )
 const BomkaiFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/BomkaiFullscreenWalkthrough'),
+    () => import('./compo/styles/bomkai/BomkaiFullscreenWalkthrough'),
     { ssr: false }
 )
 const BuddhistMaskFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/BuddhistMaskFullscreenWalkthrough'),
+    () => import('./compo/styles/buddhistmask/BuddhistMaskFullscreenWalkthrough'),
     { ssr: false }
 )
 const SikkimCarpetFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/SikkimCarpetFullscreenWalkthrough'),
+    () => import('./compo/styles/sikkimcarpet/SikkimCarpetFullscreenWalkthrough'),
     { ssr: false }
 )
 const DurrieFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/DurrieFullscreenWalkthrough'),
+    () => import('./compo/styles/durrie/DurrieFullscreenWalkthrough'),
     { ssr: false }
 )
 const PunjabJuttiFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/PunjabJuttiFullscreenWalkthrough'),
+    () => import('./compo/styles/punjabjutti/PunjabJuttiFullscreenWalkthrough'),
     { ssr: false }
 )
 const KathputliFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/KathputliFullscreenWalkthrough'),
+    () => import('./compo/styles/kathputli/KathputliFullscreenWalkthrough'),
     { ssr: false }
 )
 const KhaddarFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/KhaddarFullscreenWalkthrough'),
+    () => import('./compo/styles/khaddar/KhaddarFullscreenWalkthrough'),
     { ssr: false }
 )
 const KhanduaFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/KhanduaFullscreenWalkthrough'),
+    () => import('./compo/styles/khandua/KhanduaFullscreenWalkthrough'),
     { ssr: false }
 )
 const KhesFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/KhesFullscreenWalkthrough'),
+    () => import('./compo/styles/khes/KhesFullscreenWalkthrough'),
     { ssr: false }
 )
 const MalerkotlaZariFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/MalerkotlaZariFullscreenWalkthrough'),
+    () => import('./compo/styles/malerkotlazari/MalerkotlaZariFullscreenWalkthrough'),
     { ssr: false }
 )
 const MolelaFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/MolelaFullscreenWalkthrough'),
+    () => import('./compo/styles/molela/MolelaFullscreenWalkthrough'),
     { ssr: false }
 )
 const PichhwaiFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/PichhwaiFullscreenWalkthrough'),
+    () => import('./compo/styles/pichhwai/PichhwaiFullscreenWalkthrough'),
     { ssr: false }
 )
 const PattachitraFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/PattachitraFullscreenWalkthrough'),
+    () => import('./compo/styles/pattachitra/PattachitraFullscreenWalkthrough'),
     { ssr: false }
 )
 const PipiliFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/PipiliFullscreenWalkthrough'),
+    () => import('./compo/styles/pipili/PipiliFullscreenWalkthrough'),
     { ssr: false }
 )
 const RajasthaniMiniatureFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/RajasthaniMiniatureFullscreenWalkthrough'),
+    () => import('./compo/styles/rajasthaniminiature/RajasthaniMiniatureFullscreenWalkthrough'),
     { ssr: false }
 )
 const SambalpuriBandhaFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/SambalpuriBandhaFullscreenWalkthrough'),
+    () => import('./compo/styles/sambalpuribandha/SambalpuriBandhaFullscreenWalkthrough'),
     { ssr: false }
 )
 const SanganerFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/SanganerFullscreenWalkthrough'),
+    () => import('./compo/styles/sanganer/SanganerFullscreenWalkthrough'),
     { ssr: false }
 )
 const UstaArtFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/UstaArtFullscreenWalkthrough'),
+    () => import('./compo/styles/ustaart/UstaArtFullscreenWalkthrough'),
     { ssr: false }
 )
 const PipiliAppliqueFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/PipiliAppliqueFullscreenWalkthrough'),
+    () => import('./compo/styles/pipiliapplique/PipiliAppliqueFullscreenWalkthrough'),
     { ssr: false }
 )
 const SauraFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/SauraFullscreenWalkthrough'),
+    () => import('./compo/styles/saura/SauraFullscreenWalkthrough'),
     { ssr: false }
 )
 const GabbaFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/GabbaFullscreenWalkthrough'),
+    () => import('./compo/styles/gabba/GabbaFullscreenWalkthrough'),
     { ssr: false }
 )
 const GaradsareeFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/GaradsareeFullscreenWalkthrough'),
+    () => import('./compo/styles/garadsaree/GaradsareeFullscreenWalkthrough'),
     { ssr: false }
 )
 const HimalayansacredimageFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/HimalayansacredimageFullscreenWalkthrough'),
+    () => import('./compo/styles/himalayansacredimage/HimalayansacredimageFullscreenWalkthrough'),
     { ssr: false }
 )
 const KhatambandFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/KhatambandFullscreenWalkthrough'),
+    () => import('./compo/styles/khatamband/KhatambandFullscreenWalkthrough'),
     { ssr: false }
 )
 const KushmandimaskFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/KushmandimaskFullscreenWalkthrough'),
+    () => import('./compo/styles/kushmandimask/KushmandimaskFullscreenWalkthrough'),
     { ssr: false }
 )
 const AgramarbleinlayFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/AgramarbleinlayFullscreenWalkthrough'),
+    () => import('./compo/styles/agramarbleinlay/AgramarbleinlayFullscreenWalkthrough'),
     { ssr: false }
 )
 const BalucharisareeFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/BalucharisareeFullscreenWalkthrough'),
+    () => import('./compo/styles/balucharisaree/BalucharisareeFullscreenWalkthrough'),
     { ssr: false }
 )
 const BankuraterracottaFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/BankuraterracottaFullscreenWalkthrough'),
+    () => import('./compo/styles/bankuraterracotta/BankuraterracottaFullscreenWalkthrough'),
     { ssr: false }
 )
 const BasohlipaintingFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/BasohlipaintingFullscreenWalkthrough'),
+    () => import('./compo/styles/basohlipainting/BasohlipaintingFullscreenWalkthrough'),
     { ssr: false }
 )
 const CanebamboocraftandamanFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/CanebamboocraftandamanFullscreenWalkthrough'),
+    () => import('./compo/styles/canebamboocraftandaman/CanebamboocraftandamanFullscreenWalkthrough'),
     { ssr: false }
 )
 const ChandigarhmodernistFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/ChandigarhmodernistFullscreenWalkthrough'),
+    () => import('./compo/styles/chandigarhmodernist/ChandigarhmodernistFullscreenWalkthrough'),
     { ssr: false }
 )
 const CoastalfibercraftFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/CoastalfibercraftFullscreenWalkthrough'),
+    () => import('./compo/styles/coastalfibercraft/CoastalfibercraftFullscreenWalkthrough'),
     { ssr: false }
 )
 const CoconutshellcraftFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/CoconutshellcraftFullscreenWalkthrough'),
+    () => import('./compo/styles/coconutshellcraft/CoconutshellcraftFullscreenWalkthrough'),
     { ssr: false }
 )
 const CoircraftlakshadweepFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/CoircraftlakshadweepFullscreenWalkthrough'),
+    () => import('./compo/styles/coircraftlakshadweep/CoircraftlakshadweepFullscreenWalkthrough'),
     { ssr: false }
 )
 const DhaniakhalisareeFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/DhaniakhalisareeFullscreenWalkthrough'),
+    () => import('./compo/styles/dhaniakhalisaree/DhaniakhalisareeFullscreenWalkthrough'),
     { ssr: false }
 )
 const FrancotamilenvironmentFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/FrancotamilenvironmentFullscreenWalkthrough'),
+    () => import('./compo/styles/francotamilenvironment/FrancotamilenvironmentFullscreenWalkthrough'),
     { ssr: false }
 )
 const LikhaiwoodcarvingFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/LikhaiwoodcarvingFullscreenWalkthrough'),
+    () => import('./compo/styles/likhaiwoodcarving/LikhaiwoodcarvingFullscreenWalkthrough'),
     { ssr: false }
 )
 const MatweavingFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/MatweavingFullscreenWalkthrough'),
+    () => import('./compo/styles/matweaving/MatweavingFullscreenWalkthrough'),
     { ssr: false }
 )
 const MoradabadmetalcraftFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/MoradabadmetalcraftFullscreenWalkthrough'),
+    () => import('./compo/styles/moradabadmetalcraft/MoradabadmetalcraftFullscreenWalkthrough'),
     { ssr: false }
 )
 const NamdaFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/NamdaFullscreenWalkthrough'),
+    () => import('./compo/styles/namda/NamdaFullscreenWalkthrough'),
     { ssr: false }
 )
 const NeedleworkFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/NeedleworkFullscreenWalkthrough'),
+    () => import('./compo/styles/needlework/NeedleworkFullscreenWalkthrough'),
     { ssr: false }
 )
 const PalmmatFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/PalmmatFullscreenWalkthrough'),
+    () => import('./compo/styles/palmmat/PalmmatFullscreenWalkthrough'),
     { ssr: false }
 )
 const PapiermachekashmirFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/PapiermachekashmirFullscreenWalkthrough'),
+    () => import('./compo/styles/papiermachekashmir/PapiermachekashmirFullscreenWalkthrough'),
     { ssr: false }
 )
 const PuruliachhaumaskFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/PuruliachhaumaskFullscreenWalkthrough'),
+    () => import('./compo/styles/puruliachhaumask/PuruliachhaumaskFullscreenWalkthrough'),
     { ssr: false }
 )
 const PapiermachepuducherryFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/PapiermachepuducherryFullscreenWalkthrough'),
+    () => import('./compo/styles/papiermachepuducherry/PapiermachepuducherryFullscreenWalkthrough'),
     { ssr: false }
 )
 const RammanmaskFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/RammanmaskFullscreenWalkthrough'),
+    () => import('./compo/styles/rammanmask/RammanmaskFullscreenWalkthrough'),
     { ssr: false }
 )
 const RockgardenassemblageFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/RockgardenassemblageFullscreenWalkthrough'),
+    () => import('./compo/styles/rockgardenassemblage/RockgardenassemblageFullscreenWalkthrough'),
     { ssr: false }
 )
 const SaharanpurwoodcraftFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/SaharanpurwoodcraftFullscreenWalkthrough'),
+    () => import('./compo/styles/saharanpurwoodcraft/SaharanpurwoodcraftFullscreenWalkthrough'),
     { ssr: false }
 )
 const ShellcraftFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/ShellcraftFullscreenWalkthrough'),
+    () => import('./compo/styles/shellcraft/ShellcraftFullscreenWalkthrough'),
     { ssr: false }
 )
 const SozniembroideryFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/SozniembroideryFullscreenWalkthrough'),
+    () => import('./compo/styles/sozniembroidery/SozniembroideryFullscreenWalkthrough'),
     { ssr: false }
 )
 const TerracottacraftFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/TerracottacraftFullscreenWalkthrough'),
+    () => import('./compo/styles/terracottacraft/TerracottacraftFullscreenWalkthrough'),
     { ssr: false }
 )
 const WalnutcarvingFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/WalnutcarvingFullscreenWalkthrough'),
+    () => import('./compo/styles/walnutcarving/WalnutcarvingFullscreenWalkthrough'),
     { ssr: false }
 )
 const WoodcraftFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/WoodcraftFullscreenWalkthrough'),
+    () => import('./compo/styles/woodcraft/WoodcraftFullscreenWalkthrough'),
     { ssr: false }
 )
 const LadakhtextilesystemFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/LadakhtextilesystemFullscreenWalkthrough'),
+    () => import('./compo/styles/ladakhtextilesystem/LadakhtextilesystemFullscreenWalkthrough'),
     { ssr: false }
 )
 const IndoportugueseenvironmentFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/IndoportugueseenvironmentFullscreenWalkthrough'),
+    () => import('./compo/styles/indoportugueseenvironment/IndoportugueseenvironmentFullscreenWalkthrough'),
     { ssr: false }
 )
 const WorkflowCarousel = dynamic(() => import('./compo/WorkflowCarousel').then(mod => ({ default: mod.default })), {

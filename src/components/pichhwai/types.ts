@@ -1,4 +1,4 @@
-import type { PichhwaiVersion } from "@/app/view/HomePage/compo/pichhwaiPromptCatalog";
+import type { PichhwaiVersion } from "@/app/view/HomePage/compo/styles/pichhwai/pichhwaiPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = PichhwaiVersion;

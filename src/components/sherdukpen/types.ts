@@ -1,4 +1,4 @@
-import type { SherdukpenVersion } from "@/app/view/HomePage/compo/sherdukpenPromptCatalog";
+import type { SherdukpenVersion } from "@/app/view/HomePage/compo/styles/sherdukpen/sherdukpenPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = SherdukpenVersion;

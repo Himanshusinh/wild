@@ -1,4 +1,4 @@
-import type { CanebamboocraftandamanVersion } from "@/app/view/HomePage/compo/canebamboocraftandamanPromptCatalog";
+import type { CanebamboocraftandamanVersion } from "@/app/view/HomePage/compo/styles/canebamboocraftandaman/canebamboocraftandamanPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = CanebamboocraftandamanVersion;

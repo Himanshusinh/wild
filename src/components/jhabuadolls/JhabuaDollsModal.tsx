@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Wand2, RefreshCw, Layers, Sparkles, Image as ImageIcon, Type, ArrowRight, ShieldCheck, Zap } from 'lucide-react';
 import { JhabuaDollsVersion, JhabuaDollsState, INITIAL_JHABUA_DOLLS_STATE } from './types';
 import JhabuaDollsHeader from './JhabuaDollsHeader';
-import { jhabuadollsPromptCatalog } from '../../app/view/HomePage/compo/jhabuadollsPromptCatalog';
+import { jhabuadollsPromptCatalog } from '@/app/view/HomePage/compo/styles/jhabuadolls/jhabuadollsPromptCatalog';
 
 interface JhabuaDollsModalProps {
   isOpen: boolean;

@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useReducer } from "react";
 import { toast } from "sonner";
 import { saveUpload } from "@/lib/libraryApi";
-import { NEO_AGRARIAN_BRUTALISM_PROMPT_FAMILIES } from "@/app/view/HomePage/compo/neoAgrarianBrutalismPromptCatalog";
+import { NEO_AGRARIAN_BRUTALISM_PROMPT_FAMILIES } from "@/app/view/HomePage/compo/styles/neoagrarianbrutalism/neoAgrarianBrutalismPromptCatalog";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import type { RootState } from "@/store";
 import { falGenerate } from "@/store/slices/generationsApi";

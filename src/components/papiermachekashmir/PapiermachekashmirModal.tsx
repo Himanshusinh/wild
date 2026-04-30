@@ -2,7 +2,7 @@
 import React, { useCallback, useEffect, useMemo, useReducer } from "react";
 import { toast } from "sonner";
 import { saveUpload } from "@/lib/libraryApi";
-import { PAPIERMACHEKASHMIR_PROMPT_FAMILIES } from "@/app/view/HomePage/compo/papiermachekashmirPromptCatalog";
+import { PAPIERMACHEKASHMIR_PROMPT_FAMILIES } from "@/app/view/HomePage/compo/styles/papiermachekashmir/papiermachekashmirPromptCatalog";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import type { RootState } from "@/store";
 import { falGenerate } from "@/store/slices/generationsApi";

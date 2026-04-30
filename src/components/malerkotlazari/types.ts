@@ -1,4 +1,4 @@
-import type { MalerkotlaZariVersion } from "@/app/view/HomePage/compo/malerkotlazariPromptCatalog";
+import type { MalerkotlaZariVersion } from "@/app/view/HomePage/compo/styles/malerkotlazari/malerkotlazariPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = MalerkotlaZariVersion;

@@ -2,7 +2,7 @@
 import React, { useCallback, useEffect, useMemo, useReducer } from "react";
 import { toast } from "sonner";
 import { saveUpload } from "@/lib/libraryApi";
-import { nironalacquerPromptCatalog } from "@/app/view/HomePage/compo/nironalacquerPromptCatalog";
+import { nironalacquerPromptCatalog } from "@/app/view/HomePage/compo/styles/nironalacquer/nironalacquerPromptCatalog";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import type { RootState } from "@/store";
 import { falGenerate } from "@/store/slices/generationsApi";

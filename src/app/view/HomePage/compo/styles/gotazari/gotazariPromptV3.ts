@@ -1,0 +1,5 @@
+export const gotazariPromptV3 = {
+  promptHard: "Cinematic gotazari style preserving core craft semantics while enabling contemporary depth and lighting.",
+  promptVariable: "Modern gotazari visual system with dimensional realism, careful ornament rhythm, and culturally grounded aesthetics.",
+  promptI2I: "Reinterpret the source image in cinematic gotazari style with realistic depth and preserved subject intent."
+};

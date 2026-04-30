@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useReducer } from "react";
 import { toast } from "sonner";
 import { saveUpload } from "@/lib/libraryApi";
-import { AJRAKH_PROMPT_FAMILIES } from "@/app/view/HomePage/compo/ajrakhPromptCatalog";
+import { AJRAKH_PROMPT_FAMILIES } from "@/app/view/HomePage/compo/styles/ajrakh/ajrakhPromptCatalog";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import type { RootState } from "@/store";
 import { falGenerate } from "@/store/slices/generationsApi";

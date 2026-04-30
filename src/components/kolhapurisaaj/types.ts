@@ -1,4 +1,4 @@
-import type { KolhapuriSaajVersion } from "@/app/view/HomePage/compo/kolhapurisaajPromptCatalog";
+import type { KolhapuriSaajVersion } from "@/app/view/HomePage/compo/styles/kolhapurisaaj/kolhapurisaajPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = KolhapuriSaajVersion;

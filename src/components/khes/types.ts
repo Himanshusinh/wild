@@ -1,4 +1,4 @@
-import type { KhesVersion } from "@/app/view/HomePage/compo/khesPromptCatalog";
+import type { KhesVersion } from "@/app/view/HomePage/compo/styles/khes/khesPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = KhesVersion;

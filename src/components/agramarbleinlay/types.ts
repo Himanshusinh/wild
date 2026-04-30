@@ -1,4 +1,4 @@
-import type { AgramarbleinlayVersion } from "@/app/view/HomePage/compo/agramarbleinlayPromptCatalog";
+import type { AgramarbleinlayVersion } from "@/app/view/HomePage/compo/styles/agramarbleinlay/agramarbleinlayPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = AgramarbleinlayVersion;
