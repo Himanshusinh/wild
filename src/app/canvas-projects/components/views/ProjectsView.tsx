@@ -61,7 +61,7 @@ export function ProjectsView() {
     const [projects, setProjects] = useState<CanvasProject[]>([]);
     const [currentUser, setCurrentUser] = useState<{ uid?: string; email?: string } | null>(null);
     const [invitations, setInvitations] = useState<CanvasInvitation[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [activeCategory, setActiveCategory] = useState<'owned' | 'shared'>('owned');
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -118,12 +118,6 @@ export function ProjectsView() {
     const canvasUrl = getCanvasUrl();
 
     const loadProjects = async () => {
-        // Prevent multiple simultaneous load attempts
-        if (loading) {
-            console.log('[ProjectsView] Already loading, skipping duplicate request')
-            return
-        }
-
         setLoading(true);
         setError(null);
         try {
