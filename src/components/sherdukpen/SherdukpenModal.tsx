@@ -434,18 +434,21 @@ export function SherdukpenModal({ isOpen, onClose }: { isOpen: boolean; onClose:
               ) : null}
             </div>
 
-            <div className="flex flex-1 flex-col overflow-y-auto p-5 [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-white/[0.06] [&::-webkit-scrollbar]:w-1">
+            <div className="flex flex-1 flex-col overflow-y-auto [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-white/[0.06] [&::-webkit-scrollbar]:w-1">
               {state.panelState === "empty" ? (
-                <div className="flex flex-1 flex-col items-center justify-center gap-2 p-10 text-center">
+                <div className="p-5">
+                  <div className="flex flex-1 flex-col items-center justify-center gap-2 p-10 text-center">
                   <p className="text-sm font-medium text-white/20">No output yet</p>
                   <p className="max-w-[320px] text-xs leading-relaxed text-white/10">
                     Describe a Sherdukpen carrying-cloth scene (or upload an image), then Generate.
                   </p>
                 </div>
+                </div>
               ) : null}
 
               {state.panelState === "loading" ? (
-                <div className="flex flex-1 flex-col items-center justify-center gap-6 p-6">
+                <div className="p-5">
+                  <div className="flex flex-1 flex-col items-center justify-center gap-6 p-6">
                   <div
                     className={`grid w-full gap-3 ${
                       state.imageCount === 1 ? "grid-cols-1 max-w-lg" : "grid-cols-2"
@@ -454,7 +457,7 @@ export function SherdukpenModal({ isOpen, onClose }: { isOpen: boolean; onClose:
                     {Array.from({ length: state.imageCount }).map((_, i) => (
                       <div
                         key={i}
-                        className="relative flex aspect-square items-center justify-center overflow-hidden rounded-xl border border-white/[0.06] bg-[#111117]"
+                        className="relative flex aspect-square items-center justify-center overflow-hidden rounded-xl bg-transparent"
                       >
                         <img
                           src="/styles/Logo.gif"
@@ -465,15 +468,15 @@ export function SherdukpenModal({ isOpen, onClose }: { isOpen: boolean; onClose:
                       </div>
                     ))}
                   </div>
-                  <p className="text-[11px] text-white/20">Generating…</p>
                 </div>
-              ) : null}
+              </div>
+            ) : null}
 
               {state.panelState === "results" ? (
-                <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-0">
                   <OutputGrid
                     images={state.generatedImages}
-                    count={state.imageCount}
+                    count={state.imageCount} ratio={state.ratio}
                     onSaveImage={(i) => void handleSaveImage(i)}
                     onExpandImage={(i) => {
                       const url = state.generatedImages[i];
@@ -481,7 +484,9 @@ export function SherdukpenModal({ isOpen, onClose }: { isOpen: boolean; onClose:
                       setFullscreenUrl(url);
                     }}
                   />
-                  <PromptPreview prompt={assembledPrompt} />
+                  <div className="px-5 py-5">
+                    <PromptPreview prompt={assembledPrompt} />
+                  </div>
                 </div>
               ) : null}
             </div>

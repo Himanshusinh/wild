@@ -13,6 +13,7 @@ interface WarliRightPanelProps {
   assembledPrompt: string;
   style: StyleFamily;
   model: ModelId;
+  ratio: string;
   onRegenerate: () => void;
   onSaveAll: () => void;
   onSaveImage: (index: number) => void;
@@ -36,14 +37,13 @@ function LoadingState({ imageCount }: { imageCount: ImageCount }) {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-6 p-6">
       <div
-        className={`grid w-full gap-3 ${
-          imageCount === 1 ? "grid-cols-1 max-w-lg" : "grid-cols-2"
-        }`}
+        className={`grid w-full gap-3 ${imageCount === 1 ? "grid-cols-1 max-w-lg" : "grid-cols-2"
+          }`}
       >
         {slots.map((_, i) => (
           <div
             key={i}
-            className="relative flex aspect-square items-center justify-center overflow-hidden rounded-xl border border-white/[0.06] bg-[#111117]"
+            className="relative flex aspect-square items-center justify-center overflow-hidden rounded-xl bg-transparent"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -56,7 +56,6 @@ function LoadingState({ imageCount }: { imageCount: ImageCount }) {
         ))}
       </div>
 
-      <p className="text-[11px] text-white/20">Generating Warli art...</p>
     </div>
   );
 }
@@ -65,24 +64,29 @@ function ResultsState({
   images,
   imageCount,
   assembledPrompt,
+  ratio,
   onSaveImage,
   onExpandImage,
 }: {
   images: string[];
   imageCount: ImageCount;
   assembledPrompt: string;
+  ratio: string;
   onSaveImage: (index: number) => void;
   onExpandImage: (index: number) => void;
 }) {
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-0">
       <OutputGrid
         images={images}
         count={imageCount}
+        ratio={ratio}
         onSaveImage={onSaveImage}
         onExpandImage={onExpandImage}
       />
-      <PromptPreview prompt={assembledPrompt} />
+      <div className="px-5 py-5">
+        <PromptPreview prompt={assembledPrompt} />
+      </div>
     </div>
   );
 }
@@ -98,6 +102,7 @@ export function WarliRightPanel({
   assembledPrompt,
   style,
   model,
+  ratio,
   onRegenerate,
   onSaveAll,
   onSaveImage,
@@ -141,13 +146,14 @@ export function WarliRightPanel({
         )}
       </div>
 
-      <div className="flex flex-1 flex-col overflow-y-auto p-5 [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-white/[0.06] [&::-webkit-scrollbar]:w-1">
-        {panelState === "empty" && <EmptyState />}
-        {panelState === "loading" && <LoadingState imageCount={imageCount} />}
+      <div className="flex flex-1 flex-col overflow-y-auto [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-white/[0.06] [&::-webkit-scrollbar]:w-1">
+        {panelState === "empty" && <div className="p-5"><EmptyState /></div>}
+        {panelState === "loading" && <div className="p-5"><LoadingState imageCount={imageCount} /></div>}
         {panelState === "results" && (
           <ResultsState
             images={generatedImages}
             imageCount={imageCount}
+            ratio={ratio}
             assembledPrompt={assembledPrompt}
             onSaveImage={onSaveImage}
             onExpandImage={onExpandImage}

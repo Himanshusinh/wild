@@ -1,64 +1,126 @@
-"use client";
-
-import React from "react";
-import { Download, Expand } from "lucide-react";
+import React, { useState } from "react";
+import { Download, Expand, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface OutputGridProps {
   images: string[];
   count: number;
+  ratio?: string;
   onSaveImage?: (index: number) => void;
   onExpandImage?: (index: number) => void;
 }
 
 function Placeholder() {
-  return <div className="flex h-full w-full items-center justify-center bg-transparent" />;
+  return (
+    <div className="flex h-full w-full items-center justify-center bg-white/[0.02] rounded-xl border border-white/5 animate-pulse">
+      <div className="h-12 w-12 rounded-full border-2 border-t-transparent border-white/10 animate-spin" />
+    </div>
+  );
 }
 
-export function OutputGrid({ images, count, onSaveImage, onExpandImage }: OutputGridProps) {
+export function OutputGrid({ images, count, ratio, onSaveImage, onExpandImage }: OutputGridProps) {
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  // Map string ratios to Tailwind aspect ratio classes
+  const aspectClass = React.useMemo(() => {
+    switch (ratio) {
+      case "1:1":
+        return "aspect-square";
+      case "4:5":
+        return "aspect-[4/5]";
+      case "16:9":
+        return "aspect-video";
+      default:
+        return "aspect-square";
+    }
+  }, [ratio]);
+
+  // Ensure we only deal with actual generated images
+  const validImages = images.filter((img) => Boolean(img) && typeof img === "string");
+  const displayImages = validImages.length > 0 ? validImages : Array(count).fill(null);
+
+  const handleNext = () => {
+    setCurrentIndex((prev) => (prev + 1) % displayImages.length);
+  };
+
+  const handlePrev = () => {
+    setCurrentIndex((prev) => (prev - 1 + displayImages.length) % displayImages.length);
+  };
+
+  const hasMultiple = displayImages.length > 1;
+  const currentImage = displayImages[currentIndex];
+
   return (
-    <div className={`grid gap-3 ${count === 1 ? "grid-cols-1 max-w-lg" : "grid-cols-2"}`}>
-      {Array.from({ length: count }).map((_, i) => (
-        <div
-          key={i}
-          className="group relative aspect-square overflow-hidden rounded-xl border border-white/10 bg-transparent transition-all hover:border-white/20"
-        >
-          {images[i] ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={images[i]} alt={`Generated ${i + 1}`} className="h-full w-full object-cover" />
-          ) : (
-            <Placeholder />
-          )}
-          {images[i] ? (
-            <div
-              className="absolute inset-0 flex items-end p-3 opacity-0 transition-opacity group-hover:opacity-100"
-              style={{ background: "linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 55%)" }}
-            >
-              <div className="flex gap-1.5">
-                <button
-                  type="button"
-                  className="flex items-center gap-1 rounded-lg border border-white/15 bg-black/50 px-2.5 py-1.5 text-[11px] font-medium text-white/75 backdrop-blur-sm transition hover:text-white"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onSaveImage?.(i);
-                  }}
-                >
-                  <Download className="h-3 w-3" /> Save
-                </button>
-                <button
-                  type="button"
-                  className="flex items-center gap-1 rounded-lg border border-white/15 bg-black/50 px-2.5 py-1.5 text-[11px] font-medium text-white/75 backdrop-blur-sm transition hover:text-white"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onExpandImage?.(i);
-                  }}
-                >
-                  <Expand className="h-3 w-3" /> Expand
-                </button>
-              </div>
+    <div className="relative w-full max-w-4xl mx-auto group">
+      {/* Main Image Container */}
+      <div
+        className={`relative ${aspectClass} w-full overflow-hidden rounded-2xl border border-white/10 bg-[#0a0a0f] shadow-2xl transition-all duration-500`}
+      >
+        {currentImage ? (
+          <img
+            src={currentImage}
+            alt={`Generated result ${currentIndex + 1}`}
+            className="h-full w-full object-cover transition-transform duration-700 hover:scale-[1.02]"
+          />
+        ) : (
+          <Placeholder />
+        )}
+
+        {/* Action Overlay (Always visible on hover) */}
+        {currentImage && (
+          <div className="absolute inset-0 flex items-end p-6 opacity-0 transition-opacity duration-300 group-hover:opacity-100 bg-gradient-to-t from-black/80 via-transparent to-transparent">
+            <div className="flex gap-2">
+              <button
+                type="button"
+                className="flex items-center gap-2 rounded-xl border border-white/10 bg-black/40 px-4 py-2 text-[12px] font-semibold text-white backdrop-blur-md transition-all hover:bg-black/60 hover:scale-105"
+                onClick={() => onSaveImage?.(currentIndex)}
+              >
+                <Download className="h-4 w-4" /> Save
+              </button>
+              <button
+                type="button"
+                className="flex items-center gap-2 rounded-xl border border-white/10 bg-black/40 px-4 py-2 text-[12px] font-semibold text-white backdrop-blur-md transition-all hover:bg-black/60 hover:scale-105"
+                onClick={() => onExpandImage?.(currentIndex)}
+              >
+                <Expand className="h-4 w-4" /> Full View
+              </button>
             </div>
-          ) : null}
+          </div>
+        )}
+      </div>
+
+      {/* Navigation Buttons */}
+      {hasMultiple && (
+        <>
+          <button
+            onClick={handlePrev}
+            className="absolute left-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-black/40 border border-white/10 text-white backdrop-blur-md opacity-0 group-hover:opacity-100 transition-all hover:bg-black/60 hover:scale-110 active:scale-95 z-20"
+            title="Previous image"
+          >
+            <ChevronLeft className="h-6 w-6" />
+          </button>
+          <button
+            onClick={handleNext}
+            className="absolute right-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-black/40 border border-white/10 text-white backdrop-blur-md opacity-0 group-hover:opacity-100 transition-all hover:bg-black/60 hover:scale-110 active:scale-95 z-20"
+            title="Next image"
+          >
+            <ChevronRight className="h-6 w-6" />
+          </button>
+        </>
+      )}
+
+      {/* Indicators / Pagination Dots */}
+      {hasMultiple && (
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 px-3 py-1.5 rounded-full bg-black/30 backdrop-blur-md border border-white/5">
+          {displayImages.map((_, idx) => (
+            <button
+              key={idx}
+              onClick={() => setCurrentIndex(idx)}
+              className={`h-1.5 transition-all duration-300 rounded-full ${idx === currentIndex ? "w-4 bg-white" : "w-1.5 bg-white/30 hover:bg-white/50"
+                }`}
+            />
+          ))}
         </div>
-      ))}
+      )}
     </div>
   );
 }

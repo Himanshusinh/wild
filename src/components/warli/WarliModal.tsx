@@ -470,7 +470,8 @@ export function WarliModal({ isOpen, onClose }: WarliModalProps) {
             assembledPrompt={assembledPrompt}
             style={state.style}
             model={state.model}
-            onRegenerate={() => void handleRegenerate()}
+            ratio={state.ratio}
+            onRegenerate={() => void handleGenerate()}
             onSaveAll={() => void handleSaveAll()}
             onSaveImage={(i) => void handleSaveImage(i)}
             onExpandImage={handleExpandImage}
