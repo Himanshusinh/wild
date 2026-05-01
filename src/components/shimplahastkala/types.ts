@@ -1,4 +1,4 @@
-import type { ShimplaHastkalaVersion } from "@/app/view/HomePage/compo/shimplahastkalaPromptCatalog";
+import type { ShimplaHastkalaVersion } from "@/app/view/HomePage/compo/styles/shimplahastkala/shimplahastkalaPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = ShimplaHastkalaVersion;

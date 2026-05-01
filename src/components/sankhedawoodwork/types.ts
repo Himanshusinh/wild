@@ -1,4 +1,4 @@
-import type { SankhedaWoodworkVersion } from "@/app/view/HomePage/compo/sankhedawoodworkPromptCatalog";
+import type { SankhedaWoodworkVersion } from "@/app/view/HomePage/compo/styles/sankhedawoodwork/sankhedawoodworkPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = SankhedaWoodworkVersion;

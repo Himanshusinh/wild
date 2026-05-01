@@ -21,6 +21,8 @@ interface InputActionsProps {
   selectedResolution?: string;
   canSwapFrames?: boolean;
   onSwapFrames?: () => void;
+  onRemoveFirstFrame?: () => void;
+  onRemoveLastFrame?: () => void;
 }
 
 const InputActions: React.FC<InputActionsProps> = ({
@@ -41,6 +43,8 @@ const InputActions: React.FC<InputActionsProps> = ({
   selectedResolution,
   canSwapFrames = false,
   onSwapFrames,
+  onRemoveFirstFrame,
+  onRemoveLastFrame,
 }) => {
   const hasImageToVideoSupport =
     currentModelCapabilities?.supportsImageToVideo ||
@@ -214,11 +218,24 @@ const InputActions: React.FC<InputActionsProps> = ({
                 }}
               >
                 {uploadedImages[0] ? (
-                  <img
-                    src={uploadedImages[0]}
-                    alt="First frame"
-                    className="h-4 w-4 rounded-sm object-cover ring-1 ring-white/30"
-                  />
+                  <div className="relative group/frame">
+                    <img
+                      src={uploadedImages[0]}
+                      alt="First frame"
+                      className="h-7 w-7 rounded-md object-cover ring-1 ring-white/35"
+                    />
+                    <button
+                      type="button"
+                      aria-label="Remove first frame"
+                      className="absolute -top-1 -right-1 hidden h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow group-hover/frame:flex"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onRemoveFirstFrame?.();
+                      }}
+                    >
+                      ×
+                    </button>
+                  </div>
                 ) : (
                   <FilePlus2
                     size={16}
@@ -251,11 +268,24 @@ const InputActions: React.FC<InputActionsProps> = ({
                 }}
               >
                 {uploadedImages[0] ? (
-                  <img
-                    src={uploadedImages[0]}
-                    alt="First frame"
-                    className="h-4 w-4 rounded-sm object-cover ring-1 ring-white/30"
-                  />
+                  <div className="relative group/frame">
+                    <img
+                      src={uploadedImages[0]}
+                      alt="First frame"
+                      className="h-7 w-7 rounded-md object-cover ring-1 ring-white/35"
+                    />
+                    <button
+                      type="button"
+                      aria-label="Remove first frame"
+                      className="absolute -top-1 -right-1 hidden h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow group-hover/frame:flex"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onRemoveFirstFrame?.();
+                      }}
+                    >
+                      ×
+                    </button>
+                  </div>
                 ) : (
                   <FilePlus2
                     size={16}
@@ -313,11 +343,24 @@ const InputActions: React.FC<InputActionsProps> = ({
               }}
             >
               {lastFrameImage ? (
-                <img
-                  src={lastFrameImage}
-                  alt="Last frame"
-                  className="h-4 w-4 rounded-sm object-cover ring-1 ring-white/30"
-                />
+                <div className="relative group/frame">
+                  <img
+                    src={lastFrameImage}
+                    alt="Last frame"
+                    className="h-7 w-7 rounded-md object-cover ring-1 ring-white/35"
+                  />
+                  <button
+                    type="button"
+                    aria-label="Remove last frame"
+                    className="absolute -top-1 -right-1 hidden h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow group-hover/frame:flex"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onRemoveLastFrame?.();
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
               ) : (
                 <FilePlus2
                   size={16}

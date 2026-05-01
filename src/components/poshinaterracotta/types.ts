@@ -1,4 +1,4 @@
-import type { PoshinaTerracottaVersion } from "@/app/view/HomePage/compo/poshinaterracottaPromptCatalog";
+import type { PoshinaTerracottaVersion } from "@/app/view/HomePage/compo/styles/poshinaterracotta/poshinaterracottaPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = PoshinaTerracottaVersion;

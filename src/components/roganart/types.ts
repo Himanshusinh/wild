@@ -1,4 +1,4 @@
-import type { RoganArtVersion } from "@/app/view/HomePage/compo/roganartPromptCatalog";
+import type { RoganArtVersion } from "@/app/view/HomePage/compo/styles/roganart/roganartPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = RoganArtVersion;

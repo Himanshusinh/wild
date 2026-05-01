@@ -1,4 +1,4 @@
-import type { SonowalTextileVersion } from "@/app/view/HomePage/compo/sonowaltextilePromptCatalog";
+import type { SonowalTextileVersion } from "@/app/view/HomePage/compo/styles/sonowaltextile/sonowaltextilePromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = SonowalTextileVersion;

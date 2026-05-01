@@ -1,4 +1,4 @@
-import type { WalnutcarvingVersion } from "@/app/view/HomePage/compo/walnutcarvingPromptCatalog";
+import type { WalnutcarvingVersion } from "@/app/view/HomePage/compo/styles/walnutcarving/walnutcarvingPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = WalnutcarvingVersion;

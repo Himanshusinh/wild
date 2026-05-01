@@ -1,4 +1,4 @@
-import type { KinhalCraftVersion } from "@/app/view/HomePage/compo/kinhalcraftPromptCatalog";
+import type { KinhalCraftVersion } from "@/app/view/HomePage/compo/styles/kinhalcraft/kinhalcraftPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = KinhalCraftVersion;

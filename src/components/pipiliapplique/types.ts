@@ -1,4 +1,4 @@
-import type { PipiliAppliqueVersion } from "@/app/view/HomePage/compo/pipiliappliquePromptCatalog";
+import type { PipiliAppliqueVersion } from "@/app/view/HomePage/compo/styles/pipiliapplique/pipiliappliquePromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = PipiliAppliqueVersion;

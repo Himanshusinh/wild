@@ -1,4 +1,4 @@
-import type { CoastalfibercraftVersion } from "@/app/view/HomePage/compo/coastalfibercraftPromptCatalog";
+import type { CoastalfibercraftVersion } from "@/app/view/HomePage/compo/styles/coastalfibercraft/coastalfibercraftPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = CoastalfibercraftVersion;

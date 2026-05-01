@@ -1,4 +1,4 @@
-import type { ShapheeLanpheeVersion } from "@/app/view/HomePage/compo/shapheelanpheePromptCatalog";
+import type { ShapheeLanpheeVersion } from "@/app/view/HomePage/compo/styles/shapheelanphee/shapheelanpheePromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = ShapheeLanpheeVersion;

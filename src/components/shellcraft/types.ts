@@ -1,4 +1,4 @@
-import type { ShellcraftVersion } from "@/app/view/HomePage/compo/shellcraftPromptCatalog";
+import type { ShellcraftVersion } from "@/app/view/HomePage/compo/styles/shellcraft/shellcraftPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = ShellcraftVersion;

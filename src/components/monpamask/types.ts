@@ -1,4 +1,4 @@
-import type { MonpaMaskVersion } from "@/app/view/HomePage/compo/monpaMaskPromptCatalog";
+import type { MonpaMaskVersion } from "@/app/view/HomePage/compo/styles/monpamask/monpaMaskPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = MonpaMaskVersion;

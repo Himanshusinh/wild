@@ -1,4 +1,4 @@
-import type { KushmandimaskVersion } from "@/app/view/HomePage/compo/kushmandimaskPromptCatalog";
+import type { KushmandimaskVersion } from "@/app/view/HomePage/compo/styles/kushmandimask/kushmandimaskPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = KushmandimaskVersion;

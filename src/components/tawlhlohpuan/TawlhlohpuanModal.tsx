@@ -1,8 +1,9 @@
 "use client";
 import React, { useCallback, useEffect, useMemo, useReducer } from "react";
+import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { saveUpload } from "@/lib/libraryApi";
-import { tawlhlohpuanPromptCatalog } from "@/app/view/HomePage/compo/tawlhlohpuanPromptCatalog";
+import { TAWLHLOPHUAN_PROMPT_FAMILIES } from "@/app/view/HomePage/compo/styles/tawlhlophuan/tawlhlophuanPromptCatalog";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import type { RootState } from "@/store";
 import { falGenerate } from "@/store/slices/generationsApi";
@@ -21,6 +22,14 @@ import { FullscreenImageViewer } from "@/components/common/FullscreenImageViewer
 import { INITIAL_STATE, TawlhlohpuanState, StyleFamily, InputMode, ModelId, ImageCount, AspectRatio, MODELS, STYLE_LABELS, RightPanelState } from "./types";
 
 const STYLE_TAG = "TAWLHLOHPUAN";
+const tawlhlohpuanPromptCatalog = {
+  prompts: {
+    v1: TAWLHLOPHUAN_PROMPT_FAMILIES.V1.promptHard,
+    v2: TAWLHLOPHUAN_PROMPT_FAMILIES.V2.promptHard,
+    v3: TAWLHLOPHUAN_PROMPT_FAMILIES.V3.promptHard,
+  },
+  promptI2I: TAWLHLOPHUAN_PROMPT_FAMILIES.V1.promptI2I,
+};
 
 function toAbsoluteFromProxy(url: string): string {
   try {
@@ -280,7 +289,7 @@ export function TawlhlohpuanModal({ isOpen, onClose }: { isOpen: boolean; onClos
 
   const styleTitle = `${state.style} - ${STYLE_LABELS[state.style].badge}`;
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/45 p-3 sm:p-6 backdrop-blur-2xl">
       <div className="absolute inset-0" onClick={onClose} aria-hidden />
       <div
@@ -449,5 +458,6 @@ export function TawlhlohpuanModal({ isOpen, onClose }: { isOpen: boolean; onClos
         onClose={() => setFullscreenUrl(null)}
       />
     </div>
+  , document.body
   );
 }

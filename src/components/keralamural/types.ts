@@ -1,4 +1,4 @@
-import type { KeralaMuralVersion } from "@/app/view/HomePage/compo/keralamuralPromptCatalog";
+import type { KeralaMuralVersion } from "@/app/view/HomePage/compo/styles/keralamural/keralamuralPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = KeralaMuralVersion;

@@ -1,4 +1,4 @@
-import type { ManjushaVersion } from "@/app/view/HomePage/compo/manjushaPromptCatalog";
+import type { ManjushaVersion } from "@/app/view/HomePage/compo/styles/manjusha/manjushaPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = ManjushaVersion;

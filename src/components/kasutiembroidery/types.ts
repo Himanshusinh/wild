@@ -1,4 +1,4 @@
-import type { KasutiEmbroideryVersion } from "@/app/view/HomePage/compo/kasutiembroideryPromptCatalog";
+import type { KasutiEmbroideryVersion } from "@/app/view/HomePage/compo/styles/kasutiembroidery/kasutiembroideryPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = KasutiEmbroideryVersion;

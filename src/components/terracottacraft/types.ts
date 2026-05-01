@@ -1,4 +1,4 @@
-import type { TerracottacraftVersion } from "@/app/view/HomePage/compo/terracottacraftPromptCatalog";
+import type { TerracottacraftVersion } from "@/app/view/HomePage/compo/styles/terracottacraft/terracottacraftPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = TerracottacraftVersion;

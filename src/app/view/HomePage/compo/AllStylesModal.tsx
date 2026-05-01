@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import { X } from "lucide-react";
 import { STYLES } from "./CreativeStyle";
@@ -201,8 +202,8 @@ export default function AllStylesModal({ isOpen, onClose, onStyleSelect }: AllSt
   const thumbHeight = Math.max(36, (scrollMetrics.clientHeight / scrollMetrics.scrollHeight) * 100);
   const thumbTop = (scrollTop / maxScroll) * (100 - thumbHeight);
 
-  return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 p-3 backdrop-blur-xl sm:p-6" onClick={onClose}>
+  return createPortal(
+    <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/60 p-3 backdrop-blur-xl sm:p-6" onClick={onClose}>
       <div
         className="relative flex h-[90vh] w-full max-w-8xl flex-col overflow-hidden rounded-3xl border border-white/10 bg-[#0E0E12] shadow-[0_32px_120px_rgba(0,0,0,0.8)]"
         onClick={(e) => e.stopPropagation()}
@@ -270,6 +271,7 @@ export default function AllStylesModal({ isOpen, onClose, onStyleSelect }: AllSt
           />
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

@@ -1,4 +1,4 @@
-import type { AzulejosVersion } from "@/app/view/HomePage/compo/azulejosPromptCatalog";
+import type { AzulejosVersion } from "@/app/view/HomePage/compo/styles/azulejos/azulejosPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = AzulejosVersion;

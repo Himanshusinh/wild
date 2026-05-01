@@ -1,4 +1,4 @@
-import type { GabbaVersion } from "@/app/view/HomePage/compo/gabbaPromptCatalog";
+import type { GabbaVersion } from "@/app/view/HomePage/compo/styles/gabba/gabbaPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = GabbaVersion;

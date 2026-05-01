@@ -1,4 +1,4 @@
-import type { TogaluGombeyaataVersion } from "@/app/view/HomePage/compo/togalugombeyaataPromptCatalog";
+import type { TogaluGombeyaataVersion } from "@/app/view/HomePage/compo/styles/togalugombeyaata/togalugombeyaataPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = TogaluGombeyaataVersion;

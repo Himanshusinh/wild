@@ -1,4 +1,4 @@
-import type { AjrakhVersion } from "@/app/view/HomePage/compo/ajrakhPromptCatalog";
+import type { AjrakhVersion } from "@/app/view/HomePage/compo/styles/ajrakh/ajrakhPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = AjrakhVersion;

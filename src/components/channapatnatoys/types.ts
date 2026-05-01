@@ -1,4 +1,4 @@
-import type { ChannapatnaToysVersion } from "@/app/view/HomePage/compo/channapatnatoysPromptCatalog";
+import type { ChannapatnaToysVersion } from "@/app/view/HomePage/compo/styles/channapatnatoys/channapatnatoysPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = ChannapatnaToysVersion;

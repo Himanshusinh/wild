@@ -1,4 +1,4 @@
-import type { CeremonialEmblemVersion } from "@/app/view/HomePage/compo/ceremonialemblemPromptCatalog";
+import type { CeremonialEmblemVersion } from "@/app/view/HomePage/compo/styles/ceremonialemblem/ceremonialemblemPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = CeremonialEmblemVersion;

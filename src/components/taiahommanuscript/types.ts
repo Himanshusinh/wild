@@ -1,4 +1,4 @@
-import type { TaiAhomManuscriptVersion } from "@/app/view/HomePage/compo/taiahommanuscriptPromptCatalog";
+import type { TaiAhomManuscriptVersion } from "@/app/view/HomePage/compo/styles/taiahommanuscript/taiahommanuscriptPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = TaiAhomManuscriptVersion;

@@ -1,4 +1,4 @@
-import type { AsharikandiVersion } from "@/app/view/HomePage/compo/asharikandiPromptCatalog";
+import type { AsharikandiVersion } from "@/app/view/HomePage/compo/styles/asharikandi/asharikandiPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = AsharikandiVersion;

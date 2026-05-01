@@ -1,4 +1,4 @@
-import type { PawndumVersion } from "@/app/view/HomePage/compo/pawndumPromptCatalog";
+import type { PawndumVersion } from "@/app/view/HomePage/compo/styles/pawndum/pawndumPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = PawndumVersion;

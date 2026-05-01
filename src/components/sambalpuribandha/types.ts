@@ -1,4 +1,4 @@
-import type { SambalpuriBandhaVersion } from "@/app/view/HomePage/compo/sambalpuribandhaPromptCatalog";
+import type { SambalpuriBandhaVersion } from "@/app/view/HomePage/compo/styles/sambalpuribandha/sambalpuribandhaPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = SambalpuriBandhaVersion;

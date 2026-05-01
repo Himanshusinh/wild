@@ -1,4 +1,4 @@
-import type { DhaniakhalisareeVersion } from "@/app/view/HomePage/compo/dhaniakhalisareePromptCatalog";
+import type { DhaniakhalisareeVersion } from "@/app/view/HomePage/compo/styles/dhaniakhalisaree/dhaniakhalisareePromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = DhaniakhalisareeVersion;

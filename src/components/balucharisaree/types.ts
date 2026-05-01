@@ -1,4 +1,4 @@
-import type { BalucharisareeVersion } from "@/app/view/HomePage/compo/balucharisareePromptCatalog";
+import type { BalucharisareeVersion } from "@/app/view/HomePage/compo/styles/balucharisaree/balucharisareePromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = BalucharisareeVersion;

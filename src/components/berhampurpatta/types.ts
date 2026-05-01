@@ -1,4 +1,4 @@
-import type { BerhampurPattaVersion } from "@/app/view/HomePage/compo/berhampurpattaPromptCatalog";
+import type { BerhampurPattaVersion } from "@/app/view/HomePage/compo/styles/berhampurpatta/berhampurpattaPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = BerhampurPattaVersion;

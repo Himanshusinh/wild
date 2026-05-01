@@ -1,4 +1,4 @@
-import type { SanganerVersion } from "@/app/view/HomePage/compo/sanganerPromptCatalog";
+import type { SanganerVersion } from "@/app/view/HomePage/compo/styles/sanganer/sanganerPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = SanganerVersion;

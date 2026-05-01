@@ -1,4 +1,4 @@
-import type { WangkheiPheeVersion } from "@/app/view/HomePage/compo/wangkheipheePromptCatalog";
+import type { WangkheiPheeVersion } from "@/app/view/HomePage/compo/styles/wangkheiphee/wangkheipheePromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = WangkheiPheeVersion;

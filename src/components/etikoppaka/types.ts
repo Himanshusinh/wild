@@ -1,4 +1,4 @@
-import type { EtikoppakaVersion } from "@/app/view/HomePage/compo/etikoppakaPromptCatalog";
+import type { EtikoppakaVersion } from "@/app/view/HomePage/compo/styles/etikoppaka/etikoppakaPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = EtikoppakaVersion;

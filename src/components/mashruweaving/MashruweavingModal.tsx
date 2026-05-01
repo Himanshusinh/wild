@@ -1,8 +1,9 @@
 "use client";
 import React, { useCallback, useEffect, useMemo, useReducer } from "react";
+import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { saveUpload } from "@/lib/libraryApi";
-import { mashruweavingPromptCatalog } from "@/app/view/HomePage/compo/mashruweavingPromptCatalog";
+import { mashruweavingPromptCatalog } from "@/app/view/HomePage/compo/styles/mashruweaving/mashruweavingPromptCatalog";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import type { RootState } from "@/store";
 import { falGenerate } from "@/store/slices/generationsApi";
@@ -280,7 +281,7 @@ export function MashruweavingModal({ isOpen, onClose }: { isOpen: boolean; onClo
 
   const styleTitle = `${state.style} - ${STYLE_LABELS[state.style].badge}`;
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/45 p-3 sm:p-6 backdrop-blur-2xl">
       <div className="absolute inset-0" onClick={onClose} aria-hidden />
       <div
@@ -449,5 +450,6 @@ export function MashruweavingModal({ isOpen, onClose }: { isOpen: boolean; onClo
         onClose={() => setFullscreenUrl(null)}
       />
     </div>
+  , document.body
   );
 }

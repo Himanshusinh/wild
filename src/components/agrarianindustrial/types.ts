@@ -1,4 +1,4 @@
-import type { AgrarianIndustrialVersion } from "@/app/view/HomePage/compo/agrarianindustrialPromptCatalog";
+import type { AgrarianIndustrialVersion } from "@/app/view/HomePage/compo/styles/agrarianindustrial/agrarianindustrialPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = AgrarianIndustrialVersion;

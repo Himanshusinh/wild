@@ -1,4 +1,4 @@
-import type { ChandigarhmodernistVersion } from "@/app/view/HomePage/compo/chandigarhmodernistPromptCatalog";
+import type { ChandigarhmodernistVersion } from "@/app/view/HomePage/compo/styles/chandigarhmodernist/chandigarhmodernistPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = ChandigarhmodernistVersion;

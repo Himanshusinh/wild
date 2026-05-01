@@ -1,4 +1,4 @@
-import type { WoodcraftVersion } from "@/app/view/HomePage/compo/woodcraftPromptCatalog";
+import type { WoodcraftVersion } from "@/app/view/HomePage/compo/styles/woodcraft/woodcraftPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = WoodcraftVersion;

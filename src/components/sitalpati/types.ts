@@ -1,4 +1,4 @@
-import type { SitalpatiVersion } from "@/app/view/HomePage/compo/sitalpatiPromptCatalog";
+import type { SitalpatiVersion } from "@/app/view/HomePage/compo/styles/sitalpati/sitalpatiPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = SitalpatiVersion;

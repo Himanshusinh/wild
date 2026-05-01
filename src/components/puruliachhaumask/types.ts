@@ -1,4 +1,4 @@
-import type { PuruliachhaumaskVersion } from "@/app/view/HomePage/compo/puruliachhaumaskPromptCatalog";
+import type { PuruliachhaumaskVersion } from "@/app/view/HomePage/compo/styles/puruliachhaumask/puruliachhaumaskPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = PuruliachhaumaskVersion;

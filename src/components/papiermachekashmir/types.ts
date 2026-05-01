@@ -1,4 +1,4 @@
-import type { PapiermachekashmirVersion } from "@/app/view/HomePage/compo/papiermachekashmirPromptCatalog";
+import type { PapiermachekashmirVersion } from "@/app/view/HomePage/compo/styles/papiermachekashmir/papiermachekashmirPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = PapiermachekashmirVersion;

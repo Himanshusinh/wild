@@ -1,4 +1,4 @@
-import type { KhambhatAgateVersion } from "@/app/view/HomePage/compo/khambhatagatePromptCatalog";
+import type { KhambhatAgateVersion } from "@/app/view/HomePage/compo/styles/khambhatagate/khambhatagatePromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = KhambhatAgateVersion;

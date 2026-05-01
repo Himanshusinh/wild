@@ -1,4 +1,4 @@
-import type { SufEmbroideryVersion } from "@/app/view/HomePage/compo/sufembroideryPromptCatalog";
+import type { SufEmbroideryVersion } from "@/app/view/HomePage/compo/styles/sufembroidery/sufembroideryPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = SufEmbroideryVersion;

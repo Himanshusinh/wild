@@ -1,4 +1,4 @@
-import type { UppadaVersion } from "@/app/view/HomePage/compo/uppadaPromptCatalog";
+import type { UppadaVersion } from "@/app/view/HomePage/compo/styles/uppada/uppadaPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = UppadaVersion;
