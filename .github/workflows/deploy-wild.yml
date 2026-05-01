@@ -82,5 +82,10 @@ jobs:
           script: |
             export AWS_DEFAULT_REGION=ap-south-1
             cd ${{ steps.vars.outputs.deploy_dir }}
-            chmod +x deploy.sh
-            ./deploy.sh wild
+            if [ "${GITHUB_REF_NAME}" = "main" ]; then
+              docker compose -f docker-compose.prod.yml pull wild
+              docker compose -f docker-compose.prod.yml up -d --no-deps --force-recreate wild
+            else
+              chmod +x deploy.sh
+              ./deploy.sh wild
+            fi
