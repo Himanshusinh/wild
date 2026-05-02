@@ -7,13 +7,19 @@ export type RazorpayBillingPrefill = {
   contact?: string;
 };
 
+export type RazorpaySubscriptionHandlerPayload = {
+  razorpay_payment_id?: string;
+  razorpay_subscription_id?: string;
+  razorpay_signature?: string;
+};
+
 export type OpenSubscriptionCheckoutParams = {
   keyId: string;
   subscriptionId: string;
   planName: string;
   prefill?: RazorpayBillingPrefill;
   disableUpi?: boolean;
-  onSuccess: () => void;
+  onSuccess: (payload: RazorpaySubscriptionHandlerPayload) => void | Promise<void>;
   onFailure: (message: string) => void;
   onDismiss?: () => void;
 };
@@ -61,7 +67,15 @@ export function openRazorpaySubscriptionCheckout(
     name: "WildMind AI",
     description: `${planName} Plan`,
     image: "/icons/icon-512x512.png",
-    handler: () => onSuccess(),
+    handler: (response: RazorpaySubscriptionHandlerPayload) => {
+      void Promise.resolve(
+        onSuccess({
+          razorpay_payment_id: response?.razorpay_payment_id,
+          razorpay_subscription_id: response?.razorpay_subscription_id,
+          razorpay_signature: response?.razorpay_signature,
+        }),
+      ).catch(() => {});
+    },
     modal: {
       ondismiss: () => onDismiss?.(),
     },

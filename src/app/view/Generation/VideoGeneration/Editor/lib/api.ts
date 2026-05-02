@@ -1,6 +1,16 @@
 import { getCachedRequest, setCachedRequest } from './apiCache';
 
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+const resolveApiBaseUrl = (): string => {
+    const raw = (process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || '').trim();
+    if (!raw) return '';
+    if (!/^https?:\/\//i.test(raw)) {
+        console.error('[editor api] NEXT_PUBLIC_API_BASE_URL must include protocol:', raw);
+        return '';
+    }
+    return raw.replace(/\/$/, '');
+};
+
+export const API_BASE_URL = resolveApiBaseUrl();
 const API_GATEWAY_URL = `${API_BASE_URL}/api`;
 
 /**

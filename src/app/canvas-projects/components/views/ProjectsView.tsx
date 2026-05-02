@@ -108,12 +108,7 @@ export function ProjectsView() {
     };
 
     const getCanvasUrl = () => {
-        if (process.env.NEXT_PUBLIC_CANVAS_URL) return process.env.NEXT_PUBLIC_CANVAS_URL;
-        if (typeof window === 'undefined') return '';
-        const hostname = window.location.hostname;
-        if (hostname === 'wildmindai.com' || hostname === 'www.wildmindai.com') return 'https://studio.wildmindai.com';
-        if (hostname === 'onstaging-wildmindai.com' || hostname === 'onstaging.wildmindai.com') return 'https://onstaging-studios.wildmindai.com';
-        return 'http://localhost:3002';
+        return (process.env.NEXT_PUBLIC_CANVAS_URL || '').trim().replace(/\/$/, '');
     };
     const canvasUrl = getCanvasUrl();
 
@@ -169,10 +164,18 @@ export function ProjectsView() {
     }, [currentUser?.uid]);
 
     const handleCreateNewProject = () => {
+        if (!canvasUrl) {
+            dispatch(addNotification({ type: 'error', message: 'NEXT_PUBLIC_CANVAS_URL is not configured.' }));
+            return;
+        }
         window.open(`${canvasUrl}?projectId=new`, '_blank', 'noopener,noreferrer');
     };
 
     const handleOpenProject = async (projectId: string) => {
+        if (!canvasUrl) {
+            dispatch(addNotification({ type: 'error', message: 'NEXT_PUBLIC_CANVAS_URL is not configured.' }));
+            return;
+        }
         let authHint = '';
         try {
             const token = localStorage.getItem('authToken') || localStorage.getItem('idToken');

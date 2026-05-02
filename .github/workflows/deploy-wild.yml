@@ -32,14 +32,42 @@ jobs:
 
       - name: Write .env.production
         env:
-          WILD_ENV_PRODUCTION: ${{ secrets.WILD_ENV_PRODUCTION }}
+          WILD_ENV_STAGING: ${{ secrets.WILD_ENV_STAGING }}
         run: |
-          if [ -z "$WILD_ENV_PRODUCTION" ]; then
-            echo "❌ ERROR: WILD_ENV_PRODUCTION secret is empty or not set!"
+          if [ -z "$WILD_ENV_STAGING" ]; then
+            echo "❌ ERROR: WILD_ENV_STAGING secret is empty or not set!"
             exit 1
           fi
-          printf '%s' "$WILD_ENV_PRODUCTION" > .env.production
+          printf '%s' "$WILD_ENV_STAGING" > .env.production
           echo "✅ .env.production written ($(wc -l < .env.production) lines)"
+
+      - name: Validate NEXT_PUBLIC_API_BASE_URL format
+        shell: bash
+        run: |
+          API_BASE="$(awk -F= '/^NEXT_PUBLIC_API_BASE_URL=/{print substr($0, index($0,$2)); exit}' .env.production | tr -d '\r' | xargs)"
+          if [ -z "$API_BASE" ]; then
+            echo "❌ ERROR: NEXT_PUBLIC_API_BASE_URL missing in .env.production"
+            exit 1
+          fi
+          if [[ ! "$API_BASE" =~ ^https?:// ]]; then
+            echo "❌ ERROR: NEXT_PUBLIC_API_BASE_URL must include protocol (http:// or https://). Current: $API_BASE"
+            exit 1
+          fi
+          echo "✅ NEXT_PUBLIC_API_BASE_URL format looks valid: $API_BASE"
+
+      - name: Validate NEXT_PUBLIC_CANVAS_URL format
+        shell: bash
+        run: |
+          CANVAS_URL="$(awk -F= '/^NEXT_PUBLIC_CANVAS_URL=/{print substr($0, index($0,$2)); exit}' .env.production | tr -d '\r' | xargs)"
+          if [ -z "$CANVAS_URL" ]; then
+            echo "❌ ERROR: NEXT_PUBLIC_CANVAS_URL missing in .env.production"
+            exit 1
+          fi
+          if [[ ! "$CANVAS_URL" =~ ^https?:// ]]; then
+            echo "❌ ERROR: NEXT_PUBLIC_CANVAS_URL must include protocol (http:// or https://). Current: $CANVAS_URL"
+            exit 1
+          fi
+          echo "✅ NEXT_PUBLIC_CANVAS_URL format looks valid: $CANVAS_URL"
 
       - name: Build & Push to ECR
         run: |

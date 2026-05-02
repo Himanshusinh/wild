@@ -12,6 +12,22 @@ export type UsernameCheckResult = {
 
 export const DEFAULT_API_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/api` : (process.env.NEXT_PUBLIC_API_BASE ? `${process.env.NEXT_PUBLIC_API_BASE}/api` : ''))
 
+const normalizeApiBase = (rawBase: string): string => {
+  const trimmed = (rawBase || '').trim().replace(/\/$/, '')
+  if (!trimmed) return '/api'
+  if (!/^https?:\/\//i.test(trimmed)) {
+    console.error('[useUsernameAvailability] Invalid API base (missing protocol):', trimmed)
+    return '/api'
+  }
+  try {
+    const parsed = new URL(trimmed)
+    return `${parsed.protocol}//${parsed.host}${parsed.pathname === '/' ? '' : parsed.pathname}`.replace(/\/$/, '')
+  } catch {
+    console.error('[useUsernameAvailability] Invalid API base URL:', trimmed)
+    return '/api'
+  }
+}
+
 export function useUsernameAvailability(apiBase = '') {
   const [username, setUsername] = useState<string>('')
   const [status, setStatus] = useState<'idle'|'checking'|'available'|'taken'|'invalid'|'error'>('idle')
@@ -44,7 +60,7 @@ export function useUsernameAvailability(apiBase = '') {
 
     setStatus('checking')
     lastRequestedRef.current = value
-    const base = (apiBase || DEFAULT_API_BASE).replace(/\/$/, '')
+    const base = normalizeApiBase(apiBase || DEFAULT_API_BASE)
     const url = `${base}/auth/username/check?username=${encodeURIComponent(value)}`
 
     fetch(url, { 

@@ -23,6 +23,10 @@ import {
   ensureRazorpayScriptLoaded,
   openRazorpaySubscriptionCheckout,
 } from "@/lib/razorpaySubscriptionCheckout";
+import {
+  confirmSubscriptionAfterCheckout,
+  type RazorpaySubscriptionSuccessPayload,
+} from "@/lib/billingSubscriptionConfirm";
 import { openRazorpayOrderCheckout } from "@/lib/razorpayOrderCheckout";
 import {
   fetchSubscriptionCatalog,
@@ -91,6 +95,161 @@ export default function BillingPage() {
   const [creditPacksLoading, setCreditPacksLoading] = useState(false);
   const [selectedPackCode, setSelectedPackCode] = useState<string>("");
   const [isBuyingCredits, setIsBuyingCredits] = useState(false);
+  const [confirmingPaymentBanner, setConfirmingPaymentBanner] = useState<
+    string | null
+  >(null);
+  const [resumeSubscriptionBusy, setResumeSubscriptionBusy] = useState(false);
+
+  const confirmAfterSubscriptionCheckout = async (
+    rzp: RazorpaySubscriptionSuccessPayload,
+  ) => {
+    const out = await confirmSubscriptionAfterCheckout(dispatch, rzp, {
+      setStatusText: setConfirmingPaymentBanner,
+    });
+    if (out.lastVerifyError?.kind === "signature_invalid") {
+      setBillingMessage({
+        title: "Payment could not be verified",
+        body:
+          "We could not confirm the payment signature with our servers. If you were charged, contact support with your Razorpay payment ID.",
+        variant: "error",
+      });
+      return out;
+    }
+    if (out.lastVerifyError?.kind === "rail_blocked" && out.lastVerifyError.code) {
+      setBillingMessage({
+        title: "Checkout follow-up blocked",
+        body: mapSubscriptionErrorMessage({
+          response: { data: { code: out.lastVerifyError.code } },
+        } as unknown),
+        variant: "error",
+      });
+      return out;
+    }
+    if (out.timedOut) {
+      setBillingMessage({
+        title: "Payment received, syncing…",
+        body:
+          "We’re still confirming your subscription. Tap Retry sync to call our server again, or wait a few seconds for webhooks to finish.",
+        variant: "info",
+        primaryLabel: "Retry sync",
+        onContinue: () => {
+          void (async () => {
+            const r2 = await out.retryVerify();
+            if (r2.lastVerifyError?.kind === "signature_invalid") {
+              setBillingMessage({
+                title: "Payment could not be verified",
+                body:
+                  "We could not confirm the payment signature. If you were charged, contact support with your Razorpay payment ID.",
+                variant: "error",
+              });
+              return;
+            }
+            if (r2.becameActive) {
+              setShowCelebration(true);
+              window.history.replaceState(
+                {},
+                document.title,
+                window.location.pathname,
+              );
+            } else if (r2.timedOut) {
+              setBillingMessage({
+                title: "Still syncing",
+                body:
+                  "Your plan may update shortly. Refresh the page or contact support if billing does not match after several minutes.",
+                variant: "info",
+              });
+            }
+          })();
+        },
+      });
+    }
+    return out;
+  };
+
+  const handleResumeSubscription = async () => {
+    if (resumeSubscriptionBusy) return;
+    setResumeSubscriptionBusy(true);
+    try {
+      const api = getApiClient();
+      const res = await api.post("/api/subscriptions/recover", {});
+      const data = res.data?.data ?? res.data;
+      if (data?.code === "RECOVERY_NOT_REQUIRED") {
+        setFlashNotice({
+          kind: "success",
+          title: "Subscription active",
+          detail: data?.message || "Your subscription is already active.",
+        });
+        setTimeout(() => setFlashNotice(null), 6000);
+        await dispatch(fetchCurrentSubscription());
+        await dispatch(fetchUserCredits());
+        return;
+      }
+      if (
+        data?.requiresCheckout &&
+        data?.razorpaySubscriptionId &&
+        data?.keyId
+      ) {
+        await ensureRazorpayScriptLoaded();
+        const planLabel =
+          typeof data.targetPlanCode === "string"
+            ? data.targetPlanCode.replace(/_/g, " ")
+            : "Subscription";
+        openRazorpaySubscriptionCheckout({
+          keyId: data.keyId,
+          subscriptionId: data.razorpaySubscriptionId,
+          planName: planLabel,
+          prefill: {
+            name: userName,
+            email: userEmail,
+          },
+          disableUpi: data.upiNotSupportedForPlan === true,
+          onSuccess: async (payload) => {
+            try {
+              await api.post("/api/subscriptions/recover", {
+                razorpayPaymentId: payload.razorpay_payment_id,
+                razorpaySubscriptionId: payload.razorpay_subscription_id,
+                razorpaySignature: payload.razorpay_signature,
+              });
+            } catch (e) {
+              setBillingMessage({
+                title: "Could not confirm recovery payment",
+                body: mapSubscriptionErrorMessage(e),
+                variant: "error",
+              });
+              return;
+            }
+            await confirmAfterSubscriptionCheckout(payload);
+            await dispatch(fetchCurrentSubscription());
+            await dispatch(fetchUserCredits());
+          },
+          onFailure: (message) => {
+            setBillingMessage({
+              title: "Payment failed",
+              body: message || "Payment failed. Please try again.",
+              variant: "error",
+            });
+          },
+        });
+        return;
+      }
+      await dispatch(fetchCurrentSubscription());
+      await dispatch(fetchUserCredits());
+      setFlashNotice({
+        kind: "success",
+        title: "Subscription updated",
+        detail: data?.message || "Recovery completed.",
+      });
+      setTimeout(() => setFlashNotice(null), 6000);
+    } catch (error: unknown) {
+      setBillingMessage({
+        title: "Could not resume subscription",
+        body: mapSubscriptionErrorMessage(error),
+        variant: "error",
+      });
+    } finally {
+      setResumeSubscriptionBusy(false);
+    }
+  };
 
   const mapSubscriptionErrorMessage = (error: unknown): string => {
     const code = getErrorCode(error);
@@ -102,6 +261,18 @@ export default function BillingPage() {
     }
     if (code === "PLAN_CHANGE_MANDATE_REAUTH_REQUIRED") {
       return "Your payment method needs re-authorization for this amount change. Please complete checkout again to authorize the new mandate.";
+    }
+    if (code === "PLAN_CHANGE_CONFLICT") {
+      return "Another plan change is already in progress. Please wait a few seconds and try again.";
+    }
+    if (code === "RECOVERY_REQUIRES_HALTED") {
+      return "Recovery with payment verification is only available when your subscription is halted. Try again after checkout or contact support.";
+    }
+    if (code === "RECOVERY_SUBSCRIPTION_NOT_FOUND") {
+      return "No halted subscription was found to recover. Refresh the page or contact support if billing still looks wrong.";
+    }
+    if (code === "PAYMENT_VERIFY_SIGNATURE_INVALID") {
+      return "We could not verify the payment signature. If you were charged, contact support with your payment ID.";
     }
     return getErrorMessage(
       error,
@@ -401,16 +572,17 @@ export default function BillingPage() {
                       email: billingDetails?.email || userEmail,
                       contact: billingDetails?.phone,
                     },
-                    onSuccess: () => {
+                    onSuccess: async (rzp) => {
                       setShowCheckout(false);
-                      setShowCelebration(true);
-                      dispatch(fetchCurrentSubscription());
-                      dispatch(fetchUserCredits());
-                      window.history.replaceState(
-                        {},
-                        document.title,
-                        window.location.pathname,
-                      );
+                      const co = await confirmAfterSubscriptionCheckout(rzp);
+                      if (co.becameActive) {
+                        setShowCelebration(true);
+                        window.history.replaceState(
+                          {},
+                          document.title,
+                          window.location.pathname,
+                        );
+                      }
                     },
                     onFailure: (msg) => {
                       setBillingMessage({
@@ -436,16 +608,17 @@ export default function BillingPage() {
                 email: billingDetails?.email || userEmail,
                 contact: billingDetails?.phone,
               },
-              onSuccess: () => {
+              onSuccess: async (rzp) => {
                 setShowCheckout(false);
-                setShowCelebration(true);
-                dispatch(fetchCurrentSubscription());
-                dispatch(fetchUserCredits());
-                window.history.replaceState(
-                  {},
-                  document.title,
-                  window.location.pathname,
-                );
+                const co = await confirmAfterSubscriptionCheckout(rzp);
+                if (co.becameActive) {
+                  setShowCelebration(true);
+                  window.history.replaceState(
+                    {},
+                    document.title,
+                    window.location.pathname,
+                  );
+                }
               },
               onFailure: (msg) => {
                 setBillingMessage({
@@ -564,16 +737,17 @@ export default function BillingPage() {
             email: billingDetails?.email || userEmail,
             contact: billingDetails?.phone,
           },
-          onSuccess: () => {
+          onSuccess: async (rzp) => {
             setShowCheckout(false);
-            setShowCelebration(true);
-            dispatch(fetchCurrentSubscription());
-            dispatch(fetchUserCredits());
-            window.history.replaceState(
-              {},
-              document.title,
-              window.location.pathname,
-            );
+            const co = await confirmAfterSubscriptionCheckout(rzp);
+            if (co.becameActive) {
+              setShowCelebration(true);
+              window.history.replaceState(
+                {},
+                document.title,
+                window.location.pathname,
+              );
+            }
           },
           onFailure: (msg) => {
             setBillingMessage({
@@ -631,7 +805,9 @@ export default function BillingPage() {
     } catch (error: unknown) {
       setBillingMessage({
         title: "Couldn’t cancel subscription",
-        body: getErrorMessage(error, "Failed to cancel subscription."),
+        body:
+          mapSubscriptionErrorMessage(error) ||
+          getErrorMessage(error, "Failed to cancel subscription."),
         variant: "error",
       });
     }
@@ -825,6 +1001,14 @@ export default function BillingPage() {
             <div className="mt-1 text-xs text-red-200/80">
               Credits will not refresh until payment succeeds.
             </div>
+            <button
+              type="button"
+              disabled={resumeSubscriptionBusy}
+              onClick={() => void handleResumeSubscription()}
+              className="mt-4 rounded-lg bg-red-500/20 px-4 py-2 text-sm font-semibold text-red-100 ring-1 ring-red-500/40 transition hover:bg-red-500/30 disabled:opacity-50"
+            >
+              {resumeSubscriptionBusy ? "Opening…" : "Resume subscription"}
+            </button>
           </div>
         ) : null}
         {freeWithBalance ? (
@@ -844,6 +1028,11 @@ export default function BillingPage() {
                 {flashNotice.detail}
               </div>
             ) : null}
+          </div>
+        ) : null}
+        {confirmingPaymentBanner ? (
+          <div className="mb-8 rounded-2xl border border-amber-500/25 bg-amber-500/10 p-4 text-sm text-amber-100">
+            {confirmingPaymentBanner}
           </div>
         ) : null}
         {/* Header */}
