@@ -1,0 +1,1 @@
+export { PuruliachhaumaskModal } from "./PuruliachhaumaskModal";

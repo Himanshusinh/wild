@@ -1,4 +1,4 @@
-import type { BomkaiVersion } from "@/app/view/HomePage/compo/bomkaiPromptCatalog";
+import type { BomkaiVersion } from "@/app/view/HomePage/compo/styles/bomkai/bomkaiPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = BomkaiVersion;

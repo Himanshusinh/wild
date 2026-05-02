@@ -157,7 +157,7 @@ export default function MusicGenerationPage() {
                             <div className="flex items-center gap-2 md:gap-3">
                                 <button
                                     onClick={() => dispatch(setSidebarExpanded(true))}
-                                    className="md:hidden flex h-10 w-10 items-center justify-center shrink-0 text-white/70 hover:text-white transition-colors cursor-pointer"
+                                    className="md:hidden fixed top-0 left-0 z-[60] flex h-10 w-10 items-center justify-center text-white/70 hover:text-white transition-colors cursor-pointer"
                                     aria-label="Toggle Menu"
                                 >
                                     <Menu size={24} />
@@ -210,7 +210,7 @@ export default function MusicGenerationPage() {
                     <div className="flex flex-col lg:flex-row gap-6 items-start flex-1 min-h-0 overflow-hidden">
                         {/* Left Column: Input Box (scrollable) */}
                         <div className="w-full lg:w-[350px] xl:w-[400px] flex-shrink-0 h-full flex flex-col">
-                            <div className="flex-1 overflow-y-auto input-scrollbar pr-2 py-4">
+                            <div className="flex-1 overflow-y-auto input-scrollbar px-2 pt-7">
                                 <div className="space-y-6 pb-32">
                                     {activeFeature === 'Music' && <MusicGenerationInputBox selectedModel={modelParam} />}
                                     {activeFeature === 'Voice (TTS)' && <TextToSpeechInputBox selectedModel={modelParam} />}

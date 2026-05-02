@@ -1,4 +1,4 @@
-import type { MataNiPachediVersion } from "@/app/view/HomePage/compo/mataNiPachediPromptCatalog";
+import type { MataNiPachediVersion } from "@/app/view/HomePage/compo/styles/matanipachedi/mataNiPachediPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = MataNiPachediVersion;

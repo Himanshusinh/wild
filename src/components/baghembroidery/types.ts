@@ -1,4 +1,4 @@
-import type { BaghEmbroideryVersion } from "@/app/view/HomePage/compo/baghembroideryPromptCatalog";
+import type { BaghEmbroideryVersion } from "@/app/view/HomePage/compo/styles/baghembroidery/baghembroideryPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = BaghEmbroideryVersion;

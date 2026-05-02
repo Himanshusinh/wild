@@ -1,4 +1,4 @@
-import type { CoirCraftVersion } from "@/app/view/HomePage/compo/coircraftPromptCatalog";
+import type { CoirCraftVersion } from "@/app/view/HomePage/compo/styles/coircraft/coircraftPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = CoirCraftVersion;

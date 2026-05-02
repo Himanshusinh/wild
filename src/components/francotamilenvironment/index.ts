@@ -1,0 +1,1 @@
+export { FrancotamilenvironmentModal } from "./FrancotamilenvironmentModal";

@@ -9,6 +9,7 @@ import React, {
 } from "react";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import {
+  Plus,
   ChevronUp,
   Trash2,
   Edit3,
@@ -165,6 +166,8 @@ import InfiniteScrollDebugOverlay, {
 } from "@/components/debug/InfiniteScrollDebugOverlay";
 import HistoryControls from "@/app/view/Generation/VideoGeneration/TextToVideo/compo/HistoryControls";
 import AssistantPanel from "./AssistantPanel";
+import { ALL_INDIAN_STYLES } from "@/styles/indianStyles";
+import { HOMEPAGE_PROMPT_CATALOG_LOADERS } from "@/styles/homepagePromptCatalogLoaders";
 
 const GifLoader: React.FC<{
   size?: number;
@@ -218,6 +221,89 @@ const getInputImageLimitForModel = (model?: string): number => {
 const normalizeIncomingImageModel = (model?: string | null): string =>
   normalizeImageModelValue(model);
 
+const PROMPT_EDITOR_MIN_HEIGHT_PX = 68; // ~4 lines default
+const PROMPT_EDITOR_MAX_HEIGHT_PX = 68; // ~4 lines max
+
+const INDIAN_STYLE_LOOKUP = new Set(
+  ALL_INDIAN_STYLES.map((item) => String(item.id || "").trim()),
+);
+
+const INDIAN_STYLE_CATALOG_ALIASES: Record<string, string> = {
+  uppadajamdani: "uppada",
+  "ganjifa-mysore": "ganjifa",
+  "ganjifa-sawantwadi": "sawantwadiwoodcraft",
+  "thangka-folk": "thangka",
+  "tawlhlohpuan-ceremonial": "tawlhlophuan",
+  karuppurkalamkari: "kalamkari",
+  patachitra: "pattachitra",
+  bamboocanecraft: "bamboocraft",
+  machilipatnam: "kalamkari",
+  banjaraembroidery: "lambaniembroidery",
+  maharashtra: "warli",
+};
+
+const normalizeIndianCatalogKey = (value: string): string =>
+  String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+
+const buildIndianStyleCatalogCandidates = (styleId: string): string[] => {
+  const styleItem = ALL_INDIAN_STYLES.find((item) => item.id === styleId);
+  const aliasKey = INDIAN_STYLE_CATALOG_ALIASES[styleId];
+  const rawCandidates = [styleId, styleItem?.title, styleItem?.name].filter(
+    Boolean,
+  ) as string[];
+  const normalized = rawCandidates
+    .map(normalizeIndianCatalogKey)
+    .filter((item) => item.length > 0);
+  if (aliasKey) {
+    normalized.unshift(normalizeIndianCatalogKey(aliasKey));
+  }
+  return Array.from(new Set(normalized));
+};
+
+const getIndianBasePrompt = async (
+  styleId: string,
+  version: "V1" | "V2" | "V3",
+): Promise<string | null> => {
+  const selectedStyle = ALL_INDIAN_STYLES.find((item) => item.id === styleId);
+  const candidates = buildIndianStyleCatalogCandidates(styleId);
+  for (const key of candidates) {
+    try {
+      const loadCatalog = HOMEPAGE_PROMPT_CATALOG_LOADERS[key];
+      if (!loadCatalog) continue;
+      const moduleExports = await loadCatalog();
+      const familyExportKey = Object.keys(moduleExports).find((exportKey) =>
+        exportKey.endsWith("_PROMPT_FAMILIES"),
+      );
+      if (!familyExportKey) continue;
+      const familyRecord = (moduleExports as any)[familyExportKey];
+      const selectedFamily = familyRecord?.[version];
+      const basePrompt =
+        selectedFamily?.promptHard || selectedFamily?.promptVariable || "";
+      if (basePrompt) return String(basePrompt);
+    } catch {
+      // try next naming candidate
+    }
+  }
+  if (selectedStyle) {
+    const versionLine =
+      version === "V1"
+        ? "authentic documentary rendering"
+        : version === "V2"
+          ? "traditional craft-preserving rendering"
+          : "modern reinterpretation while preserving cultural identity";
+    return [
+      `${selectedStyle.title} visual language, ${selectedStyle.name} regional craft aesthetics.`,
+      selectedStyle.desc,
+      `Render in ${versionLine} with high detail, culturally respectful motifs, and handcrafted material character.`,
+    ]
+      .filter(Boolean)
+      .join(" ");
+  }
+  return null;
+};
+
 const InputBox = () => {
   const dispatch = useAppDispatch();
   const router = useRouter();
@@ -252,6 +338,8 @@ const InputBox = () => {
   const [isCharacterModalOpen, setIsCharacterModalOpen] = useState(false);
   const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
+  const [isPluginsMenuOpen, setIsPluginsMenuOpen] = useState(false);
+  const pluginsMenuRef = useRef<HTMLDivElement>(null);
   const inputEl = useRef<HTMLTextAreaElement>(null);
   // Local, ephemeral entry to mimic history-style preview while generating
   const [localGeneratingEntries, setLocalGeneratingEntries] = useState<
@@ -330,6 +418,20 @@ const InputBox = () => {
   // Track if we've already shown a Runway base_resp toast to avoid duplicates
   const runwayBaseRespToastShownRef = useRef(false);
   const loadLockRef = useRef(false);
+
+  useEffect(() => {
+    if (!isPluginsMenuOpen) return;
+    const onPointerDown = (event: MouseEvent) => {
+      if (
+        pluginsMenuRef.current &&
+        !pluginsMenuRef.current.contains(event.target as Node)
+      ) {
+        setIsPluginsMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    return () => document.removeEventListener("mousedown", onPointerDown);
+  }, [isPluginsMenuOpen]);
 
   // Sync ref for handleGenerate to avoid stale closure issues in timeouts/effects
   const handleGenerateRef = useRef<any>(null);
@@ -673,7 +775,8 @@ const InputBox = () => {
           if (el) {
             el.textContent = promptToApply;
             el.style.height = "auto";
-            el.style.height = Math.min(el.scrollHeight, 96) + "px";
+            el.style.height =
+              Math.min(el.scrollHeight, PROMPT_EDITOR_MAX_HEIGHT_PX) + "px";
           }
         } catch {}
       }
@@ -1854,6 +1957,9 @@ const InputBox = () => {
   );
   const style = useAppSelector(
     (state: any) => state.generation?.style || "realistic",
+  );
+  const indianStyleVersion = useAppSelector(
+    (state: any) => state.generation?.indianStyleVersion || "V1",
   );
   // Lucid Origin and Phoenix 1.0 options
   const lucidStyle = useAppSelector(
@@ -3036,7 +3142,8 @@ const InputBox = () => {
 
     // Adjust height
     div.style.height = "auto";
-    div.style.height = Math.min(div.scrollHeight, 96) + "px";
+    div.style.height =
+      Math.min(div.scrollHeight, PROMPT_EDITOR_MAX_HEIGHT_PX) + "px";
 
     setTimeout(() => {
       isUpdatingRef.current = false;
@@ -3959,6 +4066,34 @@ const InputBox = () => {
       }
     }
 
+    let promptForGeneration = finalPrompt;
+    if (INDIAN_STYLE_LOOKUP.has(style)) {
+      const selectedParamsSummary = [
+        `model=${selectedModel}`,
+        `style=${style}`,
+        `styleVersion=${indianStyleVersion}`,
+        `frameSize=${frameSize || "auto"}`,
+        `imageCount=${imageCount}`,
+      ].join(", ");
+      const indianBasePrompt = await getIndianBasePrompt(
+        style,
+        indianStyleVersion,
+      );
+      if (indianBasePrompt) {
+        promptForGeneration = [
+          indianBasePrompt,
+          `User prompt: ${finalPrompt}`,
+          `Selected parameters: ${selectedParamsSummary}`,
+        ].join("\n\n");
+      } else {
+        promptForGeneration = [
+          `User prompt: ${finalPrompt}`,
+          `Selected parameters: ${selectedParamsSummary}`,
+        ].join("\n\n");
+      }
+    }
+    finalPrompt = promptForGeneration;
+
     // Clear any previous credit errors
     clearCreditsError();
 
@@ -4063,6 +4198,7 @@ const InputBox = () => {
       });
     });
     // No local writes to global history; backend tracks persistent history
+
 
     let firebaseHistoryId: string | undefined;
     // Read isPublic from backend policy (fallbacks handled internally)
@@ -4234,6 +4370,7 @@ const InputBox = () => {
                   generationType: "text-to-image",
                   uploadedImages: combinedImages,
                   style,
+                  styleVersion: indianStyleVersion,
                   isPublic,
                   generationId,
                 }),
@@ -4686,6 +4823,7 @@ const InputBox = () => {
             generationType: "text-to-image",
             uploadedImages,
             style,
+            styleVersion: indianStyleVersion,
           }),
         ).unwrap();
 
@@ -7657,11 +7795,12 @@ const InputBox = () => {
               n: imageCount,
               frameSize,
               style,
+              styleVersion: indianStyleVersion,
               isPublic,
               uploadedImages: combinedImages.map((u: string) =>
                 toAbsoluteFromProxy(u),
               ),
-            }),
+            } as any),
           ).unwrap();
 
           // History is persisted by backend; no local completed entry needed
@@ -7731,6 +7870,7 @@ const InputBox = () => {
             imageCount,
             frameSize,
             style,
+            styleVersion: indianStyleVersion,
             generationType: "text-to-image",
             uploadedImages: combinedImages,
             generationId,
@@ -8270,6 +8410,95 @@ const InputBox = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userData, dispatch, runningGenerationsCount]);
 
+
+  // Check for auto-resume intent on mount
+  useEffect(() => {
+    console.log('[AutoResume] ========================================');
+    console.log('[AutoResume] Effect running, userData:', !!userData, 'runningGenerationsCount:', runningGenerationsCount);
+    console.log('[AutoResume] localStorage keys:', Object.keys(localStorage));
+    console.log('[AutoResume] localStorage.wildmind_auto_resume_intent:', localStorage.getItem('wildmind_auto_resume_intent'));
+
+    // CRITICAL: Check for intent FIRST, before checking userData
+    const intent = getAutoResumeIntent();
+    console.log('[AutoResume] Checking for intent:', intent);
+    console.log('[AutoResume] Intent type:', intent?.type);
+    console.log('[AutoResume] Intent data:', intent?.data);
+
+    if (!intent || intent.type !== 'image') {
+      console.log('[AutoResume] No image intent found or wrong type');
+      return;
+    }
+
+    // Intent exists! Now check if we have userData
+    if (!userData) {
+      console.log('[AutoResume] ⏳ Intent found but waiting for userData...');
+      return; // Effect will re-run when userData becomes available
+    }
+
+    // We have both intent AND userData - proceed!
+    const { data } = intent;
+    console.log('[AutoResume] ✅ Found image intent AND userData, restoring state:', data);
+
+    if (data.prompt) {
+      console.log('[AutoResume] Restoring prompt:', data.prompt);
+      dispatch(setPrompt(data.prompt));
+    }
+    if (data.model) {
+      console.log('[AutoResume] Restoring model:', data.model);
+      dispatch(setSelectedModel(data.model));
+    }
+    if (data.imageCount) dispatch(setImageCount(data.imageCount));
+    if (data.frameSize) dispatch(setFrameSize(data.frameSize));
+    if (data.style) dispatch(setStyle(data.style));
+    if (data.uploadedImages) {
+      dispatch(setUploadedImages(data.uploadedImages));
+    }
+
+    if (data.selectedCharacters && Array.isArray(data.selectedCharacters)) {
+      data.selectedCharacters.forEach((char: any) => {
+        dispatch(addSelectedCharacter(char));
+      });
+    }
+
+    clearAutoResumeIntent();
+    console.log('[AutoResume] Intent cleared, scheduling auto-trigger in 1.5s');
+
+    // Auto-trigger generation after a short delay to ensure Redux state is updated
+    setTimeout(() => {
+      console.log('[AutoResume] Timeout fired! Checking conditions...');
+      console.log('[AutoResume] - Has prompt:', !!data.prompt);
+      console.log('[AutoResume] - Running count:', runningGenerationsCount);
+      console.log('[AutoResume] - Can trigger:', data.prompt && runningGenerationsCount < 4);
+
+      if (data.prompt && runningGenerationsCount < 4) {
+        console.log('[AutoResume] 🚀 AUTO-TRIGGERING GENERATION!');
+        const generationId = `gen-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        dispatch(addActiveGeneration({
+          id: generationId,
+          prompt: data.prompt,
+          model: data.model || selectedModel,
+          status: 'pending',
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          params: {
+            imageCount: data.imageCount || imageCount,
+            frameSize: data.frameSize || frameSize,
+            style: data.style || style,
+            uploadedImages: data.uploadedImages || []
+          }
+        }));
+        // Trigger generation directly without relying on handleGenerate in dependencies
+        console.log('[AutoResume] Calling handleGenerate with ID:', generationId);
+        handleGenerate(generationId);
+      } else {
+        console.log('[AutoResume] ❌ Conditions not met for auto-trigger');
+        if (!data.prompt) console.log('[AutoResume] - Missing prompt');
+        if (runningGenerationsCount >= 4) console.log('[AutoResume] - Queue full');
+      }
+    }, 1500);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userData, dispatch, runningGenerationsCount]);
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -8342,44 +8571,44 @@ const InputBox = () => {
         /* Simple fixed-size image containers */
         .image-item {
           width: 100%;
-          aspect-ratio: 1;
-          min-height: 165px;
           position: relative;
+          break-inside: avoid;
+          margin-bottom: 4px;
         }
 
         @media (min-width: 768px) {
           .image-item {
             width: 100%;
-            aspect-ratio: 1;
+            margin-bottom: 12px;
           }
         }
 
         /* Simple grid layout - stable to prevent reflow */
         .image-grid {
-          display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: 4px;
-          grid-auto-rows: auto;
+          column-count: 2;
+          column-gap: 4px;
         }
 
         @media (min-width: 768px) {
           .image-grid {
-            grid-template-columns: repeat(5, 1fr);
-            grid-auto-rows: auto;
-            gap: 12px;
+            column-count: 5;
+            column-gap: 12px;
           }
         }
 
         @media (min-width: 1024px) {
           .image-grid {
-            grid-template-columns: repeat(6, 1fr);
-            grid-auto-rows: auto;
-            gap: 4px;
+            column-count: 6;
+            column-gap: 4px;
             transition: all 0.5s ease-in-out;
           }
 
           .assistant-open .image-grid {
-            grid-template-columns: repeat(5, 1fr);
+            column-count: 5;
+          }
+          
+          .image-item {
+            margin-bottom: 4px;
           }
         }
 
@@ -8405,13 +8634,13 @@ const InputBox = () => {
           {/* History Header - Fixed during scroll */}
           <div className="fixed top-0 left-0 right-0 z-50 bg-[#0E0E12]/80 backdrop-blur-xl border-b border-white/5 shadow-xl transition-all duration-300 md:py-0 md:pl-20">
             <div className="mb-0 flex min-h-10 md:min-h-12 items-center justify-between pl-2 pr-2 md:h-auto md:pl-0">
-              <div className="flex w-full min-w-0 items-center gap-1.5 md:mt-3 md:w-auto md:gap-2">
+              <div className="flex w-full min-w-0 items-center gap-1.5 pl-11 md:mt-3 md:w-auto md:gap-2 md:pl-0">
                 <button
                   onClick={() => dispatch(setSidebarExpanded(true))}
-                  className="flex h-8 w-8 shrink-0 items-center justify-center text-white/70 transition-colors hover:text-white md:hidden"
+                  className="md:hidden fixed top-0 left-0 z-[60] flex h-10 w-10 items-center justify-center text-white/70 hover:text-white transition-colors cursor-pointer"
                   aria-label="Open menu"
                 >
-                  <Menu size={20} />
+                  <Menu size={24} />
                 </button>
                 <h2 className="min-w-0 flex-1 truncate whitespace-nowrap pr-1 pb-[1px] text-base font-bold leading-tight tracking-tight text-white md:flex-none md:pr-0 md:text-2xl">
                   Image Generation
@@ -9224,6 +9453,7 @@ const InputBox = () => {
                                       isNewEntry ? "animate-fade-in-up" : ""
                                     }`}
                                     style={{
+                                      aspectRatio: (entry.frameSize || '1:1').replace(':', ' / ').replace('x', ' / '),
                                       ...(isNewEntry
                                         ? {
                                             animation:
@@ -9603,8 +9833,8 @@ const InputBox = () => {
             <div
               className={`w-full ${
                 [...selectedCharacters, ...uploadedImages].length > 14
-                  ? "grid [grid-template-columns:repeat(7,3.5rem)] gap-1 justify-end"
-                  : "flex flex-row gap-1 overflow-x-auto no-scrollbar justify-end"
+                  ? "grid [grid-template-columns:repeat(7,3.5rem)] gap-1 justify-start"
+                  : "flex flex-row gap-1 overflow-x-auto no-scrollbar justify-start"
               } py-1`}
             >
               {[
@@ -9708,11 +9938,7 @@ const InputBox = () => {
       {!isInlineEditImagePage && (
         <div className="fixed md:bottom-6 bottom-2 left-1/2 -translate-x-1/2 md:w-[90%] w-[92%] md:max-w-[900px] max-w-[92%] z-[50] h-auto">
           <div
-            className={`relative rounded-lg md:rounded-b-lg backdrop-blur-3xl ring-1 shadow-2xl md:p-3 md:pb-3 p-0.5 pt-2  space-y-0 md:space-y-4 transition-all duration-300 ${
-              isInputBoxHovered
-                ? "bg-black/40 ring-white/30 shadow-2xl scale-[1.01]"
-                : "bg-black/20 ring-white/20 hover:ring-white/30 hover:shadow-2xl"
-            }`}
+            className="relative rounded-lg md:rounded-b-lg backdrop-blur-3xl ring-1 shadow-2xl md:p-2 p-0.5 pt-0.5 space-y-0 md:space-y-0 bg-black/20 ring-white/20 hover:ring-white/30 hover:shadow-2xl transition-all duration-300"
             onMouseEnter={() => setIsInputBoxHovered(true)}
             onMouseLeave={() => setIsInputBoxHovered(false)}
             onDragOver={(e) => {
@@ -9813,8 +10039,64 @@ const InputBox = () => {
             ></div>
             {/* Top row: prompt + actions */}
             <div className="flex items-stretch md:gap-0 gap-0 relative z-10">
-              <div className="flex-1 flex items-start md:gap-3 gap-0 bg-transparent rounded-lg  w-full relative md:min-h-[90px]">
+              <div className="flex-1 flex items-start md:gap-3 gap-0 bg-transparent rounded-lg w-full relative min-h-[38px] md:min-h-[42px]">
                 {/* ContentEditable with inline character tags - allows typing anywhere */}
+                <div className="relative pt-1" ref={pluginsMenuRef}>
+                  <button
+                    className="flex h-6 w-6 items-center justify-center rounded-md text-white/90 transition hover:text-white"
+                    onClick={() => setIsPluginsMenuOpen((prev) => !prev)}
+                    type="button"
+                    aria-label="Toggle plugins"
+                    aria-pressed={isPluginsMenuOpen}
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                  </button>
+                  {isPluginsMenuOpen && (
+                    <div className="absolute left-0 bottom-7 z-40 min-w-[180px] rounded-lg border border-white/15 bg-[#0f1117]/95 p-1.5 shadow-2xl backdrop-blur-xl">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsCharacterModalOpen(true);
+                          setIsPluginsMenuOpen(false);
+                        }}
+                        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12px] text-white/90 transition hover:bg-white/10"
+                      >
+                        <Image
+                          src="/icons/character.svg"
+                          alt="Character"
+                          width={14}
+                          height={14}
+                          className="h-3.5 w-3.5"
+                        />
+                        Upload Character
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsAssistantOpen((prev) => !prev);
+                          setIsPluginsMenuOpen(false);
+                        }}
+                        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12px] text-white/90 transition hover:bg-white/10"
+                      >
+                        <Sparkles
+                          className={`h-3.5 w-3.5 ${isAssistantOpen ? "text-blue-400" : "text-white/90"}`}
+                        />
+                        {isAssistantOpen ? "Close Assistant" : "AI Assistant"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsUploadOpen(true);
+                          setIsPluginsMenuOpen(false);
+                        }}
+                        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12px] text-white/90 transition hover:bg-white/10"
+                      >
+                        <FilePlus2 className="h-3.5 w-3.5 text-white/90" />
+                        Upload Image
+                      </button>
+                    </div>
+                  )}
+                </div>
                 <div
                   ref={contentEditableRef}
                   contentEditable
@@ -9861,7 +10143,9 @@ const InputBox = () => {
 
                     // Adjust height
                     div.style.height = "auto";
-                    div.style.height = Math.min(div.scrollHeight, 96) + "px";
+                    div.style.height =
+                      Math.min(div.scrollHeight, PROMPT_EDITOR_MAX_HEIGHT_PX) +
+                      "px";
 
                     if (promptInputIdleTimeoutRef.current) {
                       clearTimeout(promptInputIdleTimeoutRef.current);
@@ -10004,10 +10288,10 @@ const InputBox = () => {
                     const inputEvent = new Event("input", { bubbles: true });
                     e.currentTarget.dispatchEvent(inputEvent);
                   }}
-                  className={`flex-1 -mb-4 pr-1 pt-0 pl-1 md:pl-0 md:pt-0 md:min-w-[200px] min-w-[150px] bg-transparent text-white placeholder-white/50 outline-none md:text-[13px] font-thin text-[12px] leading-relaxed overflow-y-auto transition-all duration-200 ${!prompt && selectedCharacters.length === 0 ? "text-white/70" : "text-white"} ${isEnhancing ? "animate-text-shine" : ""}`}
+                  className={`flex-1 pr-1 pt-0 pl-1 md:pl-0 md:pt-0 md:min-w-[200px] min-w-[150px] bg-transparent text-white placeholder-white/50 outline-none md:text-[13px] font-thin text-[12px] leading-relaxed overflow-y-auto transition-all duration-200 ${!prompt && selectedCharacters.length === 0 ? "text-white/70" : "text-white"} ${isEnhancing ? "animate-text-shine" : ""}`}
                   style={{
-                    minHeight: "80px",
-                    maxHeight: "100px",
+                    minHeight: `${PROMPT_EDITOR_MIN_HEIGHT_PX}px`,
+                    maxHeight: `${PROMPT_EDITOR_MAX_HEIGHT_PX}px`,
                     lineHeight: "1.2",
                     scrollbarWidth: "thin",
                     scrollbarColor: "rgba(255, 255, 255, 0.2) transparent",
@@ -10070,46 +10354,8 @@ const InputBox = () => {
                     </button>
                   </div>
 
-                  <button
-                    className="flex h-5 w-5 items-center justify-center rounded-md bg-white/5 ring-1 ring-white/10 text-white/90 transition hover:bg-white/10"
-                    onClick={() => setIsCharacterModalOpen(true)}
-                    type="button"
-                    aria-label="Upload character"
-                  >
-                    <Image
-                      src="/icons/character.svg"
-                      alt="Attach"
-                      width={14}
-                      height={14}
-                      className="w-3.5 h-3.5"
-                    />
-                  </button>
-
-                  <button
-                    className="flex h-5 w-5 items-center justify-center rounded-md bg-white/5 ring-1 ring-white/10 transition hover:bg-white/10"
-                    onClick={() => setIsAssistantOpen((prev) => !prev)}
-                    type="button"
-                    aria-label="Toggle Assistant"
-                    aria-pressed={isAssistantOpen}
-                  >
-                    <Sparkles
-                      className={`w-3 h-3 transition-colors ${isAssistantOpen ? "text-blue-400" : "text-white/90"}`}
-                    />
-                  </button>
-
-                  <button
-                    className="flex h-5 w-5 items-center justify-center rounded-md bg-white/5 ring-1 ring-white/10 text-white/90 transition hover:bg-white/10"
-                    onClick={() => setIsUploadOpen(true)}
-                    type="button"
-                    aria-label="Upload image"
-                  >
-                    <FilePlus2
-                      className="w-3.5 h-3.5 text-white"
-                      aria-hidden="true"
-                    />
-                  </button>
                 </div>
-                <div className="hidden md:flex md:flex-row items-end md:items-center gap-1.5 flex-shrink-0 z-20 pl-1 md:-mb-6">
+                <div className="hidden md:flex md:flex-row items-start md:items-start gap-1.5 flex-shrink-0 z-20 pl-1 pt-1">
                   <div className="relative flex md:flex-row items-end md:items-center gap-1.5 md:gap-2 md:self-start self-auto pt-0 pb-0 pr-0">
                     {/* Clear prompt button - only show when there's text */}
                     {prompt.trim() && (
@@ -10181,68 +10427,12 @@ const InputBox = () => {
                       </div>
                     </div>
 
-                    <div className="relative">
-                      <button
-                        className="p-1 rounded-lg bg-transparent hover:bg-white/10 transition cursor-pointer flex items-center justify-center peer"
-                        onClick={() => setIsCharacterModalOpen(true)}
-                        type="button"
-                        aria-label="Upload character"
-                      >
-                        <Image
-                          src="/icons/character.svg"
-                          alt="Attach"
-                          width={16}
-                          height={16}
-                          className="opacity-100 w-4 h-4"
-                        />
-                        <span className="text-white text-sm"> </span>
-                      </button>
-                      <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/5 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">
-                        Upload Character
-                      </div>
-                    </div>
-
-                    <div className="relative">
-                      <button
-                        className="p-1 rounded-lg bg-transparent hover:bg-white/10 transition cursor-pointer flex items-center justify-center peer"
-                        onClick={() => setIsAssistantOpen((prev) => !prev)}
-                        type="button"
-                        aria-label="Toggle Assistant"
-                        aria-pressed={isAssistantOpen}
-                      >
-                        <Sparkles
-                          className={`w-4 h-4 transition-colors ${isAssistantOpen ? "text-blue-400" : "text-white/90"}`}
-                        />
-                      </button>
-                      <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/5 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">
-                        {isAssistantOpen ? "Close Assistant" : "AI Assistant"}
-                      </div>
-                    </div>
-
-                    <div className="relative">
-                      <button
-                        className="p-1 rounded-lg bg-transparent hover:bg-white/10 transition cursor-pointer flex items-center justify-center peer"
-                        onClick={() => setIsUploadOpen(true)}
-                        type="button"
-                        aria-label="Upload image"
-                      >
-                        <FilePlus2
-                          size={16}
-                          className="text-white"
-                          aria-hidden="true"
-                        />
-                        <span className="text-white text-sm"> </span>
-                      </button>
-                      <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/5 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">
-                        Upload Image
-                      </div>
-                    </div>
                   </div>
                 </div>
               </div>
 
               {/* Fixed position Generate button - Desktop only */}
-              <div className="absolute bottom-[-50px] right-0 hidden md:flex flex-col items-end gap-2 z-20">
+              <div className="hidden">
                 {expectedCredits > 0 && (
                   <div className="text-white/60 text-[11px] pr-1">
                     Total credits:{" "}
@@ -10343,7 +10533,7 @@ const InputBox = () => {
 
             {/* Bottom row: pill options */}
 
-            <div className="flex flex-col md:flex-row md:flex-wrap items-stretch md:items-center gap-0 md:gap-1 pt-0 md:pt-0">
+            <div className="flex flex-col md:flex-row md:flex-wrap items-stretch md:items-center gap-0 md:gap-1 pt-1 md:pt-1.5">
 
 
               {/* Mobile/Tablet: First row - Model dropdown and Generate button */}
@@ -10732,7 +10922,7 @@ const InputBox = () => {
                 <div className="shrink-0">
                   <ModelsDropdown />
                 </div>
-                <div className="flex min-w-0 flex-1 items-center overflow-x-auto overflow-y-visible no-scrollbar pr-[290px]">
+                <div className="flex min-w-0 flex-1 items-center overflow-x-auto overflow-y-visible no-scrollbar pr-0">
                   <div className="flex min-w-max items-center gap-2">
                   <ImageCountDropdown />
                   <FrameSizeDropdown />
@@ -10991,6 +11181,94 @@ const InputBox = () => {
                     </>
                   )}
                   {/* Qwen Image Edit: no extra advanced controls */}
+                  </div>
+                </div>
+                <div className="ml-auto flex shrink-0 items-end gap-2">
+                  <div className="flex flex-col items-end gap-1">
+                    {expectedCredits > 0 && (
+                      <div className="text-white/60 text-[11px] pr-1">
+                        Total credits:{" "}
+                        <span className="font-medium text-white/80">
+                          {Math.round(expectedCredits).toLocaleString()}
+                        </span>
+                      </div>
+                    )}
+                    {(selectedModel === "z-image-turbo" ||
+                      selectedModel === "new-turbo-model") &&
+                      (planCode?.toLowerCase() || "free") === "free" && (
+                        <div className="text-white/60 text-[11px] pr-1">
+                          Generations:{" "}
+                          <span className="font-medium text-white/80">
+                            {credits?.freeTurboUsed || 0}/
+                            {credits?.freeTurboLimit || 10}
+                          </span>
+                        </div>
+                      )}
+                    <button
+                      onClick={async () => {
+                        if (!userData) {
+                          saveAutoResumeIntent("image", {
+                            prompt,
+                            model: selectedModel,
+                            imageCount,
+                            frameSize,
+                            style,
+                            uploadedImages: getCombinedUploadedImages(),
+                            selectedCharacters: selectedCharacters,
+                          });
+                          router.push(getSignInUrl());
+                          return;
+                        }
+                        try {
+                          if (runningGenerationsCount >= 4) {
+                            toast.error(
+                              "Queue full (4/4 active). Please wait for a generation to complete.",
+                            );
+                            return;
+                          }
+
+                          const generationId = `gen-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+                          const desktopQueueStart = Date.now();
+                          dispatch(
+                            addActiveGeneration({
+                              id: generationId,
+                              prompt: prompt,
+                              model: selectedModel,
+                              status: "pending",
+                              createdAt: desktopQueueStart,
+                              startedAt: desktopQueueStart,
+                              updatedAt: desktopQueueStart,
+                              generationType: "text-to-image",
+                              params: {
+                                imageCount,
+                                frameSize,
+                                style,
+                                uploadedImages: getCombinedUploadedImages(),
+                              },
+                            }),
+                          );
+                          handleGenerate(generationId);
+                        } catch (e) {
+                          console.error(
+                            "Failed to start generation (Desktop):",
+                            e,
+                          );
+                        }
+                      }}
+                      disabled={
+                        !prompt.trim() ||
+                        runningGenerationsCount >= 4 ||
+                        isEnhancing
+                      }
+                      className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-70 disabled:hover:bg-[#2F6BFF] text-white px-4 py-2 rounded-lg text-[15px] font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)]"
+                      aria-busy={isEnhancing}
+                    >
+                      {isEnhancing
+                        ? "Enhancing..."
+                        : runningGenerationsCount >= 4
+                          ? "Queue Full"
+                          : "Generate"}
+                    </button>
                   </div>
                 </div>
               </div>

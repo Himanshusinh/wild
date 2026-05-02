@@ -134,6 +134,21 @@ const VideoDurationDropdown: React.FC<VideoDurationDropdownProps> = ({
       Boolean(hasFirstFrame) &&
       Boolean(hasLastFrame);
 
+    if (selectedModel?.startsWith("alibaba/happy-horse")) {
+      return Array.from({ length: 13 }, (_, index) => {
+        const value = index + 3;
+        return {
+          value,
+          label: `${value} seconds`,
+          description:
+            value <= 5
+              ? "Short video"
+              : value <= 10
+                ? "Standard length"
+                : "Extended video",
+        };
+      });
+    }
     if (selectedModel?.includes("MiniMax")) {
       // MiniMax-Hailuo-02 supports only 6s and 10s
       return [

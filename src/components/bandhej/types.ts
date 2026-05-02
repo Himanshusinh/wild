@@ -1,4 +1,4 @@
-import type { BandhejVersion } from "@/app/view/HomePage/compo/bandhejPromptCatalog";
+import type { BandhejVersion } from "@/app/view/HomePage/compo/styles/bandhej/bandhejPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = BandhejVersion;

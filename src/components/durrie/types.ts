@@ -1,4 +1,4 @@
-import type { DurrieVersion } from "@/app/view/HomePage/compo/durriePromptCatalog";
+import type { DurrieVersion } from "@/app/view/HomePage/compo/styles/durrie/durriePromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = DurrieVersion;

@@ -12,7 +12,7 @@ import CustomAudioPlayer from './CustomAudioPlayer';
 import { useHistoryLoader } from '@/hooks/useHistoryLoader';
 import MusicInputBox from './MusicInputBox';
 
-const SFX_GENERATION_TYPES = ['sfx', 'sound-effect', 'sound_effect', 'sound-effects', 'sound_effects', 'text-to-music'];
+const SFX_GENERATION_TYPES = ['sfx', 'sound-effect', 'sound_effect', 'sound-effects', 'sound_effects'];
 
 const SFXInputBox = ({ showHistoryOnly = false, selectedModel }: { showHistoryOnly?: boolean; selectedModel?: string }) => {
   const dispatch = useAppDispatch();

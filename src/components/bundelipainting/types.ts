@@ -1,4 +1,4 @@
-import type { BundeliPaintingVersion } from "@/app/view/HomePage/compo/bundelipaintingPromptCatalog";
+import type { BundeliPaintingVersion } from "@/app/view/HomePage/compo/styles/bundelipainting/bundelipaintingPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = BundeliPaintingVersion;

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useReducer } from "react";
+import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { saveUpload } from "@/lib/libraryApi";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
@@ -313,7 +314,7 @@ export function TraditionalStyleModal({
   if (!isOpen) return null;
   const styleLabel = `${state.style} · ${STYLE_LABELS[state.style].title}`;
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/45 p-3 sm:p-6 backdrop-blur-2xl">
       <div className="absolute inset-0" onClick={onClose} aria-hidden />
       <div
@@ -468,6 +469,7 @@ export function TraditionalStyleModal({
       </div>
 
       <FullscreenImageViewer isOpen={Boolean(fullscreenUrl)} src={fullscreenUrl || ""} onClose={() => setFullscreenUrl(null)} />
-    </div>
+    </div>,
+    document.body
   );
 }

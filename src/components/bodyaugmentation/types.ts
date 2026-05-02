@@ -1,4 +1,4 @@
-import type { BodyAugmentationVersion } from "@/app/view/HomePage/compo/bodyaugmentationPromptCatalog";
+import type { BodyAugmentationVersion } from "@/app/view/HomePage/compo/styles/bodyaugmentation/bodyaugmentationPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = BodyAugmentationVersion;

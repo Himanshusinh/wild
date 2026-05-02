@@ -1,4 +1,4 @@
-import type { KyilKhorVersion } from "@/app/view/HomePage/compo/kyilkhorPromptCatalog";
+import type { KyilKhorVersion } from "@/app/view/HomePage/compo/styles/kyilkhor/kyilkhorPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = KyilKhorVersion;

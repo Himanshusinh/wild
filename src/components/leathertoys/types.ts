@@ -1,4 +1,4 @@
-import type { LeatherToysVersion } from "@/app/view/HomePage/compo/leathertoysPromptCatalog";
+import type { LeatherToysVersion } from "@/app/view/HomePage/compo/styles/leathertoys/leathertoysPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = LeatherToysVersion;

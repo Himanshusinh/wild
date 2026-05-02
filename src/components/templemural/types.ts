@@ -1,4 +1,4 @@
-import type { TempleMuralVersion } from "@/app/view/HomePage/compo/templemuralPromptCatalog";
+import type { TempleMuralVersion } from "@/app/view/HomePage/compo/styles/templemural/templemuralPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = TempleMuralVersion;

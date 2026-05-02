@@ -1,4 +1,4 @@
-import type { LippanVersion } from "@/app/view/HomePage/compo/lippanPromptCatalog";
+import type { LippanVersion } from "@/app/view/HomePage/compo/styles/lippan/lippanPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = LippanVersion;

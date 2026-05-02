@@ -12,7 +12,7 @@ import CustomAudioPlayer from './CustomAudioPlayer';
 import { useHistoryLoader } from '@/hooks/useHistoryLoader';
 import MusicInputBox from './MusicInputBox';
 
-const DIALOGUE_GENERATION_TYPES = ['text-to-dialogue', 'text_to_dialogue', 'dialogue', 'text-to-music'];
+const DIALOGUE_GENERATION_TYPES = ['text-to-dialogue', 'text_to_dialogue', 'dialogue'];
 
 const DialogueInputBox = ({ showHistoryOnly = false, selectedModel }: { showHistoryOnly?: boolean; selectedModel?: string }) => {
   const dispatch = useAppDispatch();

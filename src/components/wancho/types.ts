@@ -1,4 +1,4 @@
-import type { WanchoVersion } from "@/app/view/HomePage/compo/wanchoPromptCatalog";
+import type { WanchoVersion } from "@/app/view/HomePage/compo/styles/wancho/wanchoPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = WanchoVersion;

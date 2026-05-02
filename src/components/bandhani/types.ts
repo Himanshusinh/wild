@@ -1,4 +1,4 @@
-import type { BandhaniVersion } from "@/app/view/HomePage/compo/bandhaniPromptCatalog";
+import type { BandhaniVersion } from "@/app/view/HomePage/compo/styles/bandhani/bandhaniPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = BandhaniVersion;

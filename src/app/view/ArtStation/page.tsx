@@ -6,13 +6,15 @@ import { useIntersectionObserverForRef } from '@/hooks/useInfiniteGenerations';
 import { API_BASE } from '../HomePage/routes'
 import CustomAudioPlayer from '../Generation/MusicGeneration/TextToMusic/compo/CustomAudioPlayer'
 import RemoveBgPopup from '../Generation/ImageGeneration/TextToImage/compo/RemoveBgPopup'
-import { Trash2 } from 'lucide-react'
+import { Menu, Trash2 } from 'lucide-react'
 import ArtStationPreview from '@/components/ArtStationPreview'
 import axiosInstance from '@/lib/axiosInstance'
 import { toMediaProxy, toDirectUrl } from '@/lib/thumb'
 import { downloadFileWithNaming, getFileType } from '@/utils/downloadUtils'
 import { getModelDisplayName } from '@/utils/modelDisplayNames'
 import { Masonry } from '@/components/masonry'
+import { useAppDispatch } from '@/store/hooks'
+import { setSidebarExpanded } from '@/store/slices/uiSlice'
 
 type PublicItem = {
   id: string;
@@ -107,6 +109,7 @@ const canonicalMediaKey = (url?: string) => {
 };
 
 export default function ArtStationPage() {
+  const dispatch = useAppDispatch()
   const searchParams = useSearchParams()
   const formatDate = (input?: string) => {
     if (!input) return ''
@@ -1471,19 +1474,30 @@ export default function ArtStationPage() {
       <div className={`flex ${isAuth ? 'md:ml-[68px]' : 'ml-0'} md:ml-18`}>
         <div className="flex-1 min-w-0 px-2 sm:px-4 md:px-3 ">
           {/* Sticky header + filters (pinned under navbar) */}
-          <div className="sticky top-0 z-20 bg-[#07070B] pt-8 md:pt-4 ">
-            <div className=" mb-2 md:mb-0">
-              <h3 className="text-white text-xl sm:text-xl md:text-2xl font-semibold md:mb-0 mb-0">
-                Art Station
-              </h3>
-              <p className="text-white/80 text-xs sm:text-lg md:text-md">
-                Discover amazing AI-generated content from our creative community
-              </p>
+          <div className="fixed top-0 left-0 right-0 z-40 border-b border-white/5 bg-[#07070B] pt-0 md:sticky md:top-0 md:left-auto md:right-auto md:pt-4">
+            <div className="mb-2 md:mb-0">
+              <div className="flex min-w-0 items-start gap-1.5 pl-10 md:block md:pl-0">
+                <button
+                  onClick={() => dispatch(setSidebarExpanded(true))}
+                  className="md:hidden fixed top-0 left-0 z-[60] flex h-10 w-10 items-center justify-center text-white/70 hover:text-white transition-colors cursor-pointer"
+                  aria-label="Open menu"
+                >
+                  <Menu size={24} />
+                </button>
+                <div className="min-w-0">
+                  <h3 className="text-white text-lg sm:text-2xl mt-2 md:mt-0 mb-1 md:mb-0 md:text-2xl font-bold md:font-semibold md:mb-0 mb-0 leading-tight tracking-tight">
+                    Art Station
+                  </h3>
+                  <p className="hidden md:block text-white/80 text-xs sm:text-lg md:text-md">
+                    Discover amazing AI-generated content from our creative community
+                  </p>
+                </div>
+              </div>
             </div>
 
             {/* Category Filter Bar */}
-            <div className="md:mb-2 md:pb-0 pb-2 md:mt-0 mt-0">
-              <div className="flex items-center md:gap-3 gap-2 overflow-x-auto md:pb-0 pb-0 scrollbar-none">
+            <div className="md:mb-2 md:pb-0 pb-2 md:mt-0 mt-1 ml-2 md:ml-0 mr-2 md:mr-0">
+              <div className="flex items-center md:gap-3 gap-1 overflow-x-auto md:pb-0 pb-0 scrollbar-none">
                 {(['All', 'Images', 'Videos'] as Category[]).map((category) => (
                   <button
                     key={category}
@@ -1566,7 +1580,7 @@ export default function ArtStationPage() {
           {error && <div className="text-red-400 mb-4 text-sm">{error}</div>}
 
           {/* Feed container uses main page scrollbar */}
-          <div ref={scrollContainerRef}>
+          <div ref={scrollContainerRef} className="pt-[86px] md:pt-0">
             {/* Masonry grid */}
             <Masonry
               items={cards}

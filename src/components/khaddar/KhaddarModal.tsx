@@ -1,8 +1,9 @@
 "use client";
 import React, { useCallback, useEffect, useMemo, useReducer } from "react";
+import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { saveUpload } from "@/lib/libraryApi";
-import { KHADDAR_PROMPT_FAMILIES } from "@/app/view/HomePage/compo/khaddarPromptCatalog";
+import { KHADDAR_PROMPT_FAMILIES } from "@/app/view/HomePage/compo/styles/khaddar/khaddarPromptCatalog";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import type { RootState } from "@/store";
 import { falGenerate } from "@/store/slices/generationsApi";
@@ -213,7 +214,7 @@ export function KhaddarModal({ isOpen, onClose }: { isOpen: boolean; onClose: ()
   const familyMeta = KHADDAR_PROMPT_FAMILIES[state.style];
   const styleTitle = `${state.style} - ${familyMeta.chip}`;
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/45 p-3 sm:p-6 backdrop-blur-2xl">
       <div className="absolute inset-0" onClick={onClose} aria-hidden />
       <div role="dialog" aria-modal="true" aria-label="KHADDAR Generator" className={`relative flex w-[min(1080px,calc(100vw-24px))] h-[min(760px,calc(100vh-24px))] flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0E0E12]/95 shadow-[0_24px_70px_rgba(0,0,0,0.7)] ring-1 ring-white/[0.04] transition-all duration-300 ${isVisible ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-2 scale-[0.985]"}`}>
@@ -287,5 +288,6 @@ export function KhaddarModal({ isOpen, onClose }: { isOpen: boolean; onClose: ()
       </div>
       <FullscreenImageViewer isOpen={Boolean(fullscreenUrl)} src={fullscreenUrl || ""} onClose={() => setFullscreenUrl(null)} />
     </div>
+  , document.body
   );
 }

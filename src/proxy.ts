@@ -16,6 +16,28 @@ export function proxy(req: NextRequest) {
   const trimmedPath = pathname.replace(/\/+$/, "") || "/";
   const normalizedPath = trimmedPath.toLowerCase();
   const pathnameLower = trimmedPath.toLowerCase();
+
+  // 0. Maintenance Mode Redirect
+  const isMaintenanceExcluded =
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/api') ||
+    pathname.includes('/favicon.ico') ||
+    pathname === '/coming-soon' ||
+    pathname.startsWith('/fonts/') ||
+    pathname.startsWith('/icons/') ||
+    pathname.startsWith('/images/') ||
+    pathname.startsWith('/core/') ||
+    pathname.startsWith('/styles/') ||
+    pathname.match(/\.(png|jpg|jpeg|gif|svg|webp|avif|ico|woff|woff2|ttf|otf|mp4|webm|mp3|wav)$/i);
+
+  /*
+  if (!isMaintenanceExcluded) {
+    const comingSoonUrl = req.nextUrl.clone();
+    comingSoonUrl.pathname = '/coming-soon';
+    return NextResponse.redirect(comingSoonUrl);
+  }
+  */
+
   const blockPrefixes = [
     "/view/home",
     "/dashboard",

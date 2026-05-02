@@ -1,0 +1,1 @@
+export { ChandigarhmodernistModal } from "./ChandigarhmodernistModal";

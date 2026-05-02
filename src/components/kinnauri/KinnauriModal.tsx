@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useReducer } from "react";
+import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { saveUpload } from "@/lib/libraryApi";
-import { KINNAURI_PROMPT_FAMILIES } from "@/app/view/HomePage/compo/kinnauriPromptCatalog";
+import { KINNAURI_PROMPT_FAMILIES } from "@/app/view/HomePage/compo/styles/kinnauri/kinnauriPromptCatalog";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import type { RootState } from "@/store";
 import { falGenerate } from "@/store/slices/generationsApi";
@@ -323,7 +324,7 @@ export function KinnauriModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
   const familyMeta = KINNAURI_PROMPT_FAMILIES[state.style];
   const styleTitle = `${state.style} - ${familyMeta.chip}`;
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/45 p-3 sm:p-6 backdrop-blur-2xl">
       <div className="absolute inset-0" onClick={onClose} aria-hidden />
 
@@ -496,5 +497,6 @@ export function KinnauriModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
         onClose={() => setFullscreenUrl(null)}
       />
     </div>
+  , document.body
   );
 }

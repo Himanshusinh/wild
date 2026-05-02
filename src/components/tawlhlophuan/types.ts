@@ -1,4 +1,4 @@
-import type { TawlhlophuanVersion } from "@/app/view/HomePage/compo/tawlhlophuanPromptCatalog";
+import type { TawlhlophuanVersion } from "@/app/view/HomePage/compo/styles/tawlhlophuan/tawlhlophuanPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = TawlhlophuanVersion;

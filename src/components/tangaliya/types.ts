@@ -1,4 +1,4 @@
-import type { TangaliyaVersion } from "@/app/view/HomePage/compo/tangaliyaPromptCatalog";
+import type { TangaliyaVersion } from "@/app/view/HomePage/compo/styles/tangaliya/tangaliyaPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = TangaliyaVersion;

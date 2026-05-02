@@ -16,6 +16,5 @@ export const metadata: Metadata = {
 };
 
 export default function ContactUs() {
-  return <ContactUsPage />;
+  return <ContactUsPage initialSupportOpen={false} />;
 }
-

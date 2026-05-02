@@ -1,4 +1,4 @@
-import type { PaithaniVersion } from "@/app/view/HomePage/compo/paithaniPromptCatalog";
+import type { PaithaniVersion } from "@/app/view/HomePage/compo/styles/paithani/paithaniPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = PaithaniVersion;

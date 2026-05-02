@@ -1,4 +1,4 @@
-import type { ExposedLateriteVersion } from "@/app/view/HomePage/compo/exposedlateritePromptCatalog";
+import type { ExposedLateriteVersion } from "@/app/view/HomePage/compo/styles/exposedlaterite/exposedlateritePromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = ExposedLateriteVersion;

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
 interface WelcomeModalProps {
@@ -23,11 +24,12 @@ const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onClose }) => {
 
     if (!isOpen) return null;
 
-    return (
-        <div className="fixed inset-0 bg-black/70  z-[100] flex items-center justify-center p-4">
+    return createPortal(
+        <div className="fixed inset-0 bg-black/70 z-[999] flex items-center justify-center p-4">
             <div
-                className={`relative w-full max-w-5xl lg:h-auto max-h-[80vh] md:h-[90vh] overflow-y-auto pb-6 bg-[#1c303d]/30 backdrop-blur-3xl border border-white/20 rounded-2xl shadow-2xl overflow-hidden transition-all duration-300 ${isVisible ? 'scale-100 opacity-100' : 'scale-95 opacity-0'
-                    }`}
+                className={`relative w-full max-w-5xl lg:h-auto max-h-[80vh] md:h-[90vh] overflow-y-auto pb-6 bg-[#1c303d]/30 backdrop-blur-3xl border border-white/20 rounded-2xl shadow-2xl overflow-hidden transition-all duration-300 ${
+                    isVisible ? 'scale-100 opacity-100' : 'scale-95 opacity-0'
+                }`}
             >
                 {/* Close Button */}
                 <button
@@ -55,36 +57,24 @@ const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onClose }) => {
 
                         <div className="space-y-3 mb-4">
                             <div className="flex items-start  px-3  rounded-lg ">
-                                {/* <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 mt-1">
-                  <span className="text-blue-600 font-semibold text-sm">AI</span>
-                </div> */}
                                 <div>
                                     <h3 className="md:text-md text-xs font-base text-white mb-1">AI Image Generation - Text to image, image to image, advanced editing canvas, and more.</h3>
                                 </div>
                             </div>
 
                             <div className="flex items-start  px-3  rounded-lg ">
-                                {/* <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0 mt-1">
-                  <span className="text-purple-600 font-semibold text-sm">AI</span>
-                </div> */}
                                 <div>
                                     <h3 className="md:text-md text-xs font-base text-white mb-1">AI Video Generation - Bring concepts to life with text to video, subject animations, and video transformations.</h3>
                                 </div>
                             </div>
 
                             <div className="flex items-start  px-3  rounded-lg ">
-                                {/* <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-1">
-                  <span className="text-green-600 font-semibold text-sm">AI</span>
-                </div> */}
                                 <div>
                                     <h3 className="md:text-md text-xs font-base text-white ">AI Music & Audio - Generate original soundtracks and audio from text or existing tracks.</h3>
                                 </div>
                             </div>
 
                             <div className="flex items-start  px-3  rounded-lg ">
-                                {/* <div className="w-8 h-8 rounded-full bg-pink-100 flex items-center justify-center flex-shrink-0 mt-1">
-                  <span className="text-pink-600 font-semibold text-sm">AI</span>
-                </div> */}
                                 <div>
                                     <h3 className="md:text-md text-xs font-base text-white mb-1">Branding Tools - Create mockups, product visualizations with models, and complete branding kits tailored to your needs.</h3>
                                 </div>
@@ -117,7 +107,8 @@ const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onClose }) => {
                     </div>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 

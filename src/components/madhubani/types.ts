@@ -1,4 +1,4 @@
-import type { MadhubaniVersion } from "@/app/view/HomePage/compo/madhubaniPromptCatalog";
+import type { MadhubaniVersion } from "@/app/view/HomePage/compo/styles/madhubani/madhubaniPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = MadhubaniVersion;

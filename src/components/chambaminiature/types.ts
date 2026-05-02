@@ -1,4 +1,4 @@
-import type { ChambaMiniatureVersion } from "@/app/view/HomePage/compo/chambaminiaturePromptCatalog";
+import type { ChambaMiniatureVersion } from "@/app/view/HomePage/compo/styles/chambaminiature/chambaminiaturePromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = ChambaMiniatureVersion;

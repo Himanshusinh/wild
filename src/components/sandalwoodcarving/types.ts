@@ -1,4 +1,4 @@
-import type { SandalwoodCarvingVersion } from "@/app/view/HomePage/compo/sandalwoodcarvingPromptCatalog";
+import type { SandalwoodCarvingVersion } from "@/app/view/HomePage/compo/styles/sandalwoodcarving/sandalwoodcarvingPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = SandalwoodCarvingVersion;

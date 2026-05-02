@@ -1,7 +1,7 @@
 // Blog Section Component - Converted from blog-page BlogSection.jsx
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 interface BlogPost {
@@ -23,8 +23,19 @@ interface BlogSectionProps {
 
 export default function BlogSection({ blogPosts }: BlogSectionProps) {
   const router = useRouter();
-  const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [isCategoryOpen, setIsCategoryOpen] = useState(false);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (isCategoryOpen && !(event.target as Element).closest('.custom-dropdown-container')) {
+        setIsCategoryOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isCategoryOpen]);
 
   const categories = useMemo(() => {
     const normalized = new Map();
@@ -51,15 +62,9 @@ export default function BlogSection({ blogPosts }: BlogSectionProps) {
       const matchesCategory =
         selectedCategory === 'all' || post.category === selectedCategory;
 
-      const query = searchQuery.trim().toLowerCase();
-      const matchesSearch =
-        query.length === 0 ||
-        post.title?.toLowerCase().includes(query) ||
-        post.description?.toLowerCase().includes(query);
-
-      return matchesCategory && matchesSearch;
+      return matchesCategory;
     });
-  }, [blogPosts, searchQuery, selectedCategory]);
+  }, [blogPosts, selectedCategory]);
 
   const handlePostClick = (postId: number) => {
     router.push(`/blog/${postId}`);
@@ -69,61 +74,18 @@ export default function BlogSection({ blogPosts }: BlogSectionProps) {
     <section className="blog-section">
       <div className="blog-container">
         <div className="blog-filters">
-          <div className="search-field-wrapper">
-            <label className="search-field">
-              <span className="visually-hidden">Search blog posts</span>
-              <input
-                type="text"
-                placeholder="Search"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              <svg
-                className="search-icon"
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M11 4a7 7 0 0 1 5.473 11.313l3.607 3.607a1 1 0 0 1-1.414 1.414l-3.607-3.607A7 7 0 1 1 11 4zm0 2a5 5 0 1 0 0 10 5 5 0 0 0 0-10z"
-                  fill="currentColor"
-                />
-              </svg>
-            </label>
-          </div>
 
-          <div className="category-field-wrapper">
-            <label className="category-field">
-              <span className="visually-hidden">Filter by category</span>
-              <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
+          <div className="tabs">
+            {categories.map((category) => (
+              <button
+                key={category}
+                className={`tab ${selectedCategory === category ? 'active' : ''}`}
+                onClick={() => setSelectedCategory(category)}
+                type="button"
               >
-                {categories.map((category) => (
-                  <option key={category} value={category}>
-                    {category === 'all' ? 'All Categories' : category}
-                  </option>
-                ))}
-              </select>
-              <svg
-                className="chevron-icon"
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M6 9l6 6 6-6"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </label>
+                {category === 'all' ? 'All Resources' : category}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -132,7 +94,7 @@ export default function BlogSection({ blogPosts }: BlogSectionProps) {
             <article
               key={post.id || index}
               className="blog-card"
-              style={{ animationDelay: `${index * 0.08}s` }}
+              style={{ animationDelay: `${index * 0.1}s` }}
               onClick={() => handlePostClick(post.id)}
               role="button"
               tabIndex={0}
@@ -144,32 +106,27 @@ export default function BlogSection({ blogPosts }: BlogSectionProps) {
               }}
             >
               <div className="blog-card-image">
-            <div
-              className="blog-card-image-placeholder"
-              style={{ display: post.image ? 'none' : 'block' }}
-              aria-hidden="true"
-            />
-            {post.image && (
-              <img
-                src={post.image}
-                alt={post.title}
-                loading="lazy"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.style.display = 'none';
-                  const placeholder = target.parentElement?.querySelector('.blog-card-image-placeholder') as HTMLElement;
-                  if (placeholder) placeholder.style.display = 'block';
-                }}
-              />
-            )}
+                {post.image ? (
+                  <img
+                    src={post.image}
+                    alt={post.title}
+                    loading="lazy"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                    }}
+                  />
+                ) : (
+                  <div className="blog-card-image-placeholder">🎨</div>
+                )}
               </div>
               <div className="blog-card-content">
-                <span className={`category-tag category-${post.categoryColor}`}>
-                  {post.category}
-                </span>
                 <h3 className="blog-card-title">{post.title}</h3>
                 <p className="blog-card-description">{post.description}</p>
                 <div className="blog-card-footer">
+                  <span className="category-tag">
+                    {post.category}
+                  </span>
                   <div className="read-time">
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                       <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5" />

@@ -1,4 +1,4 @@
-import type { SheerFieldClothVersion } from "@/app/view/HomePage/compo/sheerfieldclothPromptCatalog";
+import type { SheerFieldClothVersion } from "@/app/view/HomePage/compo/styles/sheerfieldcloth/sheerfieldclothPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = SheerFieldClothVersion;

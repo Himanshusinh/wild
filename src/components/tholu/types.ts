@@ -1,4 +1,4 @@
-import type { TholuVersion } from "@/app/view/HomePage/compo/tholuPromptCatalog";
+import type { TholuVersion } from "@/app/view/HomePage/compo/styles/tholu/tholuPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = TholuVersion;

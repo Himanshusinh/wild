@@ -2,7 +2,11 @@
 
 import React, { Suspense, useEffect } from 'react';
 import MainLayout from '@/app/view/Generation/Core/MainLayout';
-import EditImageInterface from '../compo/EditImageInterface';
+import dynamic from 'next/dynamic';
+
+const EditImageInterface = dynamic(() => import('../compo/EditImageInterface'), {
+  ssr: false,
+});
 import { ViewType, GenerationType } from '@/types/generation';
 
 const EditImageFillPage = () => {
@@ -17,7 +21,7 @@ const EditImageFillPage = () => {
         url.searchParams.set('feature', 'fill');
         window.history.replaceState({}, '', url.toString());
       }
-    } catch {}
+    } catch { }
   }, []);
 
   const onViewChange = (view: ViewType) => {

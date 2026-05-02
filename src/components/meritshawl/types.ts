@@ -1,4 +1,4 @@
-import type { MeritShawlVersion } from "@/app/view/HomePage/compo/meritshawlPromptCatalog";
+import type { MeritShawlVersion } from "@/app/view/HomePage/compo/styles/meritshawl/meritshawlPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = MeritShawlVersion;

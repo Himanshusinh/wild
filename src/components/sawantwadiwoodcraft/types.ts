@@ -1,4 +1,4 @@
-import type { SawantwadiWoodcraftVersion } from "@/app/view/HomePage/compo/sawantwadiwoodcraftPromptCatalog";
+import type { SawantwadiWoodcraftVersion } from "@/app/view/HomePage/compo/styles/sawantwadiwoodcraft/sawantwadiwoodcraftPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = SawantwadiWoodcraftVersion;

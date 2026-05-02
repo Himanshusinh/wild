@@ -1,4 +1,4 @@
-import type { KosaVersion } from "@/app/view/HomePage/compo/kosaPromptCatalog";
+import type { KosaVersion } from "@/app/view/HomePage/compo/styles/kosa/kosaPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = KosaVersion;

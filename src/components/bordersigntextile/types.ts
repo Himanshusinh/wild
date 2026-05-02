@@ -1,4 +1,4 @@
-import type { BorderSignTextileVersion } from "@/app/view/HomePage/compo/bordersigntextilePromptCatalog";
+import type { BorderSignTextileVersion } from "@/app/view/HomePage/compo/styles/bordersigntextile/bordersigntextilePromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = BorderSignTextileVersion;

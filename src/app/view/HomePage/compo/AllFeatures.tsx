@@ -446,7 +446,7 @@ export default function AllFeatures({ mode = "image" }: { mode?: "image" | "vide
                 "Erase /\nReplace": "/HomePage/Allfeatures/Erase-replace.avif",
                 "Expand\nImage": "/HomePage/Allfeatures/expand-image.avif",
                 "Vectorize": "/HomePage/Allfeatures/vectorize-bg.avif",
-                "Restore Old\nPhoto": "/HomePage/Allfeatures/restore-old-photo-bg.avif",
+                "Restore Old\nPhoto": "/HomePage/Allfeatures/Restore Old Photos.avif",
                 "Photo To Line\nDrawing": "/HomePage/Allfeatures/photo-to-line-drawing-bg.avif",
                 "Line Drawing\nTo Photo": "/HomePage/Allfeatures/line-drawing-to-photo-bg.avif",
                 "Remove\nElement": "/HomePage/Allfeatures/RemoveElement.avif",
@@ -479,25 +479,31 @@ export default function AllFeatures({ mode = "image" }: { mode?: "image" | "vide
                         (e.target as HTMLElement).style.display = 'none';
                       }}
                     />
-                    <div className="absolute left-2 top-2 rounded-full border-[0.5px] border-blue-400/30 bg-[#0E0E12]/70 px-[9px] py-[3px] text-[10px] font-semibold uppercase tracking-[0.05em] text-blue-400 backdrop-blur-[4px] z-10">
-                      {typeof card.badge === "string" ? card.badge : "1× · 4×"}
+                    <div className="absolute left-2 top-2 rounded-full border-[0.5px] border-white/10 bg-black/40 px-[9px] py-[3px] text-[10px] font-semibold uppercase tracking-[0.05em] text-white/70 backdrop-blur-[4px] z-10">
+                      {card.badge}
                     </div>
                   </div>
                   
-                  <div className="flex flex-col flex-1 px-1 relative">
-                    <h3 className="text-[15px] font-semibold tracking-tight line-clamp-1 mb-1 text-[#FAFAFA] group-hover:text-white transition-colors">
-                      {card.title.replace('\n', ' ')}
-                    </h3>
-                    
-                    <p className="text-[12px] leading-[1.4] line-clamp-2 pr-10 text-[#87878C]">
-                      {card.subtitle}
-                    </p>
-
-                    <div className="absolute bottom-0 right-0 w-7 h-7 rounded-full bg-white flex items-center justify-center text-black shadow-md transition-transform group-hover:scale-110">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="opacity-90">
-                        <path d="M5 12h14M12 5l7 7-7 7" />
-                      </svg>
+                  <div className="flex items-start gap-3 px-1 mb-4">
+                    <div className={`shrink-0 flex items-center justify-center w-8 h-8 rounded-[8px] ${card.iconClassName} text-white`}>
+                      {card.icon}
                     </div>
+                    
+                    <div className="flex flex-col min-w-0">
+                      <h3 className="text-[14px] font-semibold tracking-tight text-[#FAFAFA] group-hover:text-white transition-colors line-clamp-1">
+                        {card.title.replace('\n', ' ')}
+                      </h3>
+                      <p className="text-[11px] leading-[1.3] text-[#87878C] mt-0.5 line-clamp-2">
+                        {card.subtitle}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-auto px-1 flex items-center gap-1.5 text-[12px] font-medium text-blue-400 group-hover:text-blue-300 transition-colors">
+                    Try Now
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="opacity-90">
+                      <path d="M5 12h14M12 5l7 7-7 7" />
+                    </svg>
                   </div>
                 </Link>
               );

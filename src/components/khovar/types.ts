@@ -1,4 +1,4 @@
-import type { KhovarVersion } from "@/app/view/HomePage/compo/khovarPromptCatalog";
+import type { KhovarVersion } from "@/app/view/HomePage/compo/styles/khovar/khovarPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = KhovarVersion;

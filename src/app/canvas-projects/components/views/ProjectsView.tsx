@@ -61,7 +61,7 @@ export function ProjectsView() {
     const [projects, setProjects] = useState<CanvasProject[]>([]);
     const [currentUser, setCurrentUser] = useState<{ uid?: string; email?: string } | null>(null);
     const [invitations, setInvitations] = useState<CanvasInvitation[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [activeCategory, setActiveCategory] = useState<'owned' | 'shared'>('owned');
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');

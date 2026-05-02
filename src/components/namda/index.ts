@@ -1,0 +1,1 @@
+export { NamdaModal } from "./NamdaModal";

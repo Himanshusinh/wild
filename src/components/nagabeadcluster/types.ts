@@ -1,4 +1,4 @@
-import type { NagaBeadClusterVersion } from "@/app/view/HomePage/compo/nagabeadclusterPromptCatalog";
+import type { NagaBeadClusterVersion } from "@/app/view/HomePage/compo/styles/nagabeadcluster/nagabeadclusterPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = NagaBeadClusterVersion;

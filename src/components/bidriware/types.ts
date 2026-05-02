@@ -1,4 +1,4 @@
-import type { BidriwareVersion } from "@/app/view/HomePage/compo/bidriwarePromptCatalog";
+import type { BidriwareVersion } from "@/app/view/HomePage/compo/styles/bidriware/bidriwarePromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = BidriwareVersion;

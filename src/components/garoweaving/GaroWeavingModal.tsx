@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Wand2, RefreshCw, Layers, Sparkles, Image as ImageIcon, Type, ArrowRight, ShieldCheck, Zap } from 'lucide-react';
 import { GaroWeavingVersion, GaroWeavingState, INITIAL_GARO_WEAVING_STATE } from './types';
 import GaroWeavingHeader from './GaroWeavingHeader';
-import { garoweavingPromptCatalog } from '../../app/view/HomePage/compo/garoweavingPromptCatalog';
+import { garoweavingPromptCatalog } from '@/app/view/HomePage/compo/styles/garoweaving/garoweavingPromptCatalog';
 
 interface GaroWeavingModalProps {
   isOpen: boolean;
@@ -41,8 +42,8 @@ const GaroWeavingModal: React.FC<GaroWeavingModalProps> = ({ isOpen, onClose, on
     }, 1500);
   };
 
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+  return createPortal(
+    <div className="fixed inset-0 z-[999] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={onClose} />
       
       <div className="relative w-full max-w-4xl bg-[#0A0A0B] border border-white/10 rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
@@ -178,7 +179,8 @@ const GaroWeavingModal: React.FC<GaroWeavingModalProps> = ({ isOpen, onClose, on
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

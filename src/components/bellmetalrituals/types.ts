@@ -1,4 +1,4 @@
-import type { BellMetalRitualsVersion } from "@/app/view/HomePage/compo/bellmetalritualsPromptCatalog";
+import type { BellMetalRitualsVersion } from "@/app/view/HomePage/compo/styles/bellmetalrituals/bellmetalritualsPromptCatalog";
 import type { WarliAspectRatioChoice } from "@/components/warli/warliNanoAspect";
 
 export type StyleFamily = BellMetalRitualsVersion;
