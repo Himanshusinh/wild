@@ -9728,8 +9728,8 @@ const InputBox = () => {
       {/* Mobile-only: Selected images/characters grid above input box */}
       {!isInlineEditImagePage &&
         (uploadedImages.length > 0 || selectedCharacters.length > 0) && (
-          <div className="md:hidden fixed bottom-[172px] left-1/2 -translate-x-1/2 w-[96%] max-w-[96%] z-[49] px-2 pb-1">
-            <div className="grid grid-cols-5 gap-1 max-h-[100vh] overflow-y-auto overflow-x-hidden">
+          <div className="md:hidden fixed bottom-[147px] left-1/2 -translate-x-1/2 w-[96%] max-w-[96%] z-[49] px-2 pb-1">
+            <div className="grid grid-cols-5 gap-1 max-h-[100vh] overflow-y-auto overflow-x-hidden pt-3 px-0.5">
               {/* Combine characters and images for display */}
               {[
                 ...selectedCharacters.map((char: any, idx: number) => ({
@@ -9749,17 +9749,21 @@ const InputBox = () => {
                     return (
                       <div
                         key={`char-${item.data.id}`}
-                        className="relative aspect-square rounded-md overflow-hidden ring-1 ring-white/20 group transition-transform duration-200 hover:z-20 group-hover:z-20 hover:scale-110"
-                        title={`Character: ${item.data.name}`}
+                        className="relative group aspect-square flex-shrink-0"
                       >
-                        <img
-                          src={item.data.frontImageUrl}
-                          alt={item.data.name}
-                          aria-hidden="true"
-                          decoding="async"
-                          className="w-full h-full object-cover transition-opacity group-hover:opacity-30"
-                        />
-                        <div className="pointer-events-none absolute -top-1 -left-1 z-10">
+                        <div
+                          className="w-full h-full rounded-md overflow-hidden ring-1 ring-white/20 cursor-pointer transition-transform duration-200 hover:z-20 group-hover:z-20 hover:scale-110"
+                          title={`Character: ${item.data.name}`}
+                        >
+                          <img
+                            src={item.data.frontImageUrl}
+                            alt={item.data.name}
+                            aria-hidden="true"
+                            decoding="async"
+                            className="w-full h-full object-cover transition-opacity group-hover:opacity-30"
+                          />
+                        </div>
+                        <div className="pointer-events-none absolute -top-1.5 -left-1.5 z-20">
                           <div className="px-1 pl-1.5 pt-1 pb-0.5 rounded-md text-[8px] font-semibold bg-white/90 text-black shadow">
                             C
                           </div>
@@ -9780,27 +9784,31 @@ const InputBox = () => {
                     return (
                       <div
                         key={`img-${item.index}`}
-                        data-image-index={item.index}
-                        title={`Image ${item.index + 1}`}
-                        className="relative aspect-square rounded-md overflow-hidden ring-1 ring-white/20 group transition-transform duration-200 hover:z-20 group-hover:z-20 hover:scale-110 cursor-pointer"
-                        onClick={() => {
-                          setAssetViewer({
-                            isOpen: true,
-                            assetUrl: item.data,
-                            assetType: "image",
-                            title: `Uploaded Image ${item.index + 1}`,
-                          });
-                        }}
+                        className="relative group aspect-square flex-shrink-0"
                       >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={item.data}
-                          alt=""
-                          aria-hidden="true"
-                          decoding="async"
-                          className="w-full h-full object-cover transition-opacity group-hover:opacity-30"
-                        />
-                        <div className="pointer-events-none absolute -top-1 -left-1 z-10">
+                        <div
+                          data-image-index={item.index}
+                          title={`Image ${item.index + 1}`}
+                          className="w-full h-full rounded-md overflow-hidden ring-1 ring-white/20 cursor-pointer transition-transform duration-200 hover:z-20 group-hover:z-20 hover:scale-110"
+                          onClick={() => {
+                            setAssetViewer({
+                              isOpen: true,
+                              assetUrl: item.data,
+                              assetType: "image",
+                              title: `Uploaded Image ${item.index + 1}`,
+                            });
+                          }}
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={item.data}
+                            alt=""
+                            aria-hidden="true"
+                            decoding="async"
+                            className="w-full h-full object-cover transition-opacity group-hover:opacity-30"
+                          />
+                        </div>
+                      <div className="pointer-events-none absolute -top-1.5 -left-1.5 z-20">
                           <div className="px-1 pl-1.5 pt-1 pb-0.5 rounded-md text-[8px] font-semibold bg-white/90 text-black shadow">
                             {item.index + 1}
                           </div>
@@ -9829,13 +9837,13 @@ const InputBox = () => {
       {/* Desktop-only: Selected images/characters single-row above input box */}
       {!isInlineEditImagePage &&
         (uploadedImages.length > 0 || selectedCharacters.length > 0) && (
-          <div className="hidden md:flex fixed bottom-[170px] left-1/2 -translate-x-1/2 w-[90%] max-w-[900px] z-[50] px-2 py-3">
+          <div className="hidden md:flex  fixed bottom-[155px] left-1/2 -translate-x-1/2 w-[90%] max-w-[900px] z-[50] pt-3">
             <div
               className={`w-full ${
                 [...selectedCharacters, ...uploadedImages].length > 14
                   ? "grid [grid-template-columns:repeat(7,3.5rem)] gap-1 justify-start"
-                  : "flex flex-row gap-1 overflow-x-auto no-scrollbar justify-start"
-              } py-1`}
+                  : "flex flex-row gap-2 pl-2 overflow-x-auto no-scrollbar justify-start"
+              } pt-3 pb-1`}
             >
               {[
                 ...selectedCharacters.map((character: any) => ({
@@ -9868,10 +9876,10 @@ const InputBox = () => {
                             decoding="async"
                             className="w-full h-full object-cover transition-opacity group-hover:opacity-30"
                           />
-                          <div className="pointer-events-none absolute -top-1 -left-1 z-10">
-                            <div className="px-1 pl-1.5 pt-1 pb-0.5 rounded-md text-[8px] font-semibold bg-white/90 text-black shadow">
-                              C
-                            </div>
+                        </div>
+                        <div className="pointer-events-none absolute -top-1.5 -left-1.5 z-20">
+                          <div className="px-1 pl-1.5 pt-1 pb-0.5 rounded-md text-[8px] font-semibold bg-white/90 text-black shadow">
+                            C
                           </div>
                         </div>
                         <button
@@ -9910,10 +9918,10 @@ const InputBox = () => {
                           decoding="async"
                           className="w-full h-full object-cover transition-opacity group-hover:opacity-30"
                         />
-                        <div className="pointer-events-none absolute -top-1 -left-1 z-10">
-                          <div className="px-1 pl-1.5 pt-1 pb-0.5 rounded-md text-[8px] font-semibold bg-white/90 text-black shadow">
-                            {item.index + 1}
-                          </div>
+                      </div>
+                      <div className="pointer-events-none absolute -top-1.5 -left-1.5 z-20">
+                        <div className="px-1 pl-1.5 pt-1 pb-0.5 rounded-md text-[8px] font-semibold bg-white/90 text-black shadow">
+                          {item.index + 1}
                         </div>
                       </div>
                       <button
@@ -10039,17 +10047,17 @@ const InputBox = () => {
             ></div>
             {/* Top row: prompt + actions */}
             <div className="flex items-stretch md:gap-0 gap-0 relative z-10">
-              <div className="flex-1 flex items-start md:gap-3 gap-0 bg-transparent rounded-lg w-full relative min-h-[38px] md:min-h-[42px]">
+              <div className="flex-1 flex items-start md:gap-0 gap-0 bg-transparent rounded-lg w-full relative min-h-[38px] md:min-h-[42px]">
                 {/* ContentEditable with inline character tags - allows typing anywhere */}
-                <div className="relative pt-1" ref={pluginsMenuRef}>
+                <div className="relative pt-0 -mt-1" ref={pluginsMenuRef}>
                   <button
-                    className="flex h-6 w-6 items-center justify-center rounded-md text-white/90 transition hover:text-white"
+                    className="flex h-6 w-6 items-center justify-center rounded-md text-white transition hover:text-white"
                     onClick={() => setIsPluginsMenuOpen((prev) => !prev)}
                     type="button"
                     aria-label="Toggle plugins"
                     aria-pressed={isPluginsMenuOpen}
                   >
-                    <Plus className="h-3.5 w-3.5" />
+                    <Plus className="h-3.5 w-3.5 !text-[#ffffff] opacity-100 !stroke-[#ffffff] stroke-[2.5px]" style={{ color: '#ffffff', stroke: '#ffffff' }} />
                   </button>
                   {isPluginsMenuOpen && (
                     <div className="absolute left-0 bottom-7 z-40 min-w-[180px] rounded-lg border border-white/15 bg-[#0f1117]/95 p-1.5 shadow-2xl backdrop-blur-xl">
@@ -10288,7 +10296,7 @@ const InputBox = () => {
                     const inputEvent = new Event("input", { bubbles: true });
                     e.currentTarget.dispatchEvent(inputEvent);
                   }}
-                  className={`flex-1 pr-1 pt-0 pl-1 md:pl-0 md:pt-0 md:min-w-[200px] min-w-[150px] bg-transparent text-white placeholder-white/50 outline-none md:text-[13px] font-thin text-[12px] leading-relaxed overflow-y-auto transition-all duration-200 ${!prompt && selectedCharacters.length === 0 ? "text-white/70" : "text-white"} ${isEnhancing ? "animate-text-shine" : ""}`}
+                  className={`flex-1 pr-1 pt-0.5 pl-0 md:pl-0 md:pt-0 md:min-w-[200px] min-w-[150px] bg-transparent text-white placeholder-white/50 outline-none md:text-[13px] font-thin text-[12px] leading-relaxed overflow-y-auto transition-all duration-200 ${!prompt && selectedCharacters.length === 0 ? "text-white/70" : "text-white"} ${isEnhancing ? "animate-text-shine" : ""}`}
                   style={{
                     minHeight: `${PROMPT_EDITOR_MIN_HEIGHT_PX}px`,
                     maxHeight: `${PROMPT_EDITOR_MAX_HEIGHT_PX}px`,
