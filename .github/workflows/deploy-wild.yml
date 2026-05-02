@@ -55,6 +55,20 @@ jobs:
           fi
           echo "✅ NEXT_PUBLIC_API_BASE_URL format looks valid: $API_BASE"
 
+      - name: Validate NEXT_PUBLIC_CANVAS_URL format
+        shell: bash
+        run: |
+          CANVAS_URL="$(awk -F= '/^NEXT_PUBLIC_CANVAS_URL=/{print substr($0, index($0,$2)); exit}' .env.production | tr -d '\r' | xargs)"
+          if [ -z "$CANVAS_URL" ]; then
+            echo "❌ ERROR: NEXT_PUBLIC_CANVAS_URL missing in .env.production"
+            exit 1
+          fi
+          if [[ ! "$CANVAS_URL" =~ ^https?:// ]]; then
+            echo "❌ ERROR: NEXT_PUBLIC_CANVAS_URL must include protocol (http:// or https://). Current: $CANVAS_URL"
+            exit 1
+          fi
+          echo "✅ NEXT_PUBLIC_CANVAS_URL format looks valid: $CANVAS_URL"
+
       - name: Build & Push to ECR
         run: |
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
