@@ -7,9 +7,10 @@ import { ModelId, MODELS } from "./types";
 interface ModelSelectorProps {
   value: ModelId;
   onChange: (m: ModelId) => void;
+  disabled?: boolean;
 }
 
-export function ModelSelector({ value, onChange }: ModelSelectorProps) {
+export function ModelSelector({ value, onChange, disabled }: ModelSelectorProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -31,12 +32,13 @@ export function ModelSelector({ value, onChange }: ModelSelectorProps) {
       {/* Trigger */}
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => !disabled && setOpen((v) => !v)}
+        disabled={disabled}
         className={`flex w-full items-center justify-between rounded-xl border px-3.5 py-2.5 text-sm transition-all duration-150 ${
           open
             ? "border-white/20 bg-transparent"
             : "border-white/10 bg-transparent hover:border-white/15"
-        }`}
+        } disabled:opacity-40 disabled:cursor-not-allowed`}
       >
         <div className="flex items-center gap-2.5">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">

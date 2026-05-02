@@ -258,6 +258,10 @@ const getGlobalApiErrorMessage = (error: any, requestUrl: string): string => {
     return "The requested resource was not found.";
   }
 
+  if (status === 402) {
+    return "Insufficient credits. Please top up your balance to continue.";
+  }
+
   if (status === 429) {
     return "Too many requests. Please try again later.";
   }

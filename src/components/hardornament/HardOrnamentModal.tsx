@@ -47,49 +47,38 @@ const HardOrnamentModal: React.FC<HardOrnamentModalProps> = ({ isOpen, onClose, 
       <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={onClose} />
       
       <div className="relative w-full max-w-4xl bg-[#0A0A0B] border border-white/10 rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
-        {/* Header Section */}
-        <div className="p-6 border-b border-white/10 bg-gradient-to-r from-white/[0.02] to-transparent">
-          <button 
-            onClick={onClose}
-            className="absolute top-6 right-6 p-2 rounded-full hover:bg-white/10 transition-colors text-white/40 hover:text-white"
-          >
-            <X size={20} />
-          </button>
-          
-          <HardOrnamentHeader 
-            currentVersion={state.version}
-            onVersionChange={(v) => setState(prev => ({ ...prev, version: v }))}
-          />
-
-          {/* Mode Selector */}
-          <div className="flex gap-2">
-            <button
-              onClick={() => setState(prev => ({ ...prev, inputMode: 'text' }))}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-all ${
-                state.inputMode === 'text' 
-                  ? 'bg-white/10 text-white border border-white/20' 
-                  : 'text-white/40 hover:text-white/60'
-              }`}
-            >
-              <Type size={16} />
-              Text to Image
-            </button>
-            <button
-              onClick={() => setState(prev => ({ ...prev, inputMode: 'image' }))}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-all ${
-                state.inputMode === 'image' 
-                  ? 'bg-white/10 text-white border border-white/20' 
-                  : 'text-white/40 hover:text-white/60'
-              }`}
-            >
-              <ImageIcon size={16} />
-              Image to Image
-            </button>
-          </div>
-        </div>
+        <HardOrnamentHeader currentVersion={state.version}
+          onVersionChange={(v) => setState(prev => ({ ...prev, version: v }))}
+          onClose={onClose} disabled={isGenerating} />
 
         {/* Content Section */}
         <div className="flex-1 overflow-y-auto p-6 space-y-8">
+          {/* Mode Selector */}
+          <div className="flex gap-2 bg-white/[0.03] p-1 rounded-xl w-fit border border-white/5">
+            <button
+              onClick={() => setState(prev => ({ ...prev, inputMode: 'text' }))} disabled={isGenerating}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[11px] font-medium transition-all ${
+                state.inputMode === 'text' 
+                  ? 'bg-white/10 text-white shadow-sm border border-white/10' 
+                  : 'text-white/40 hover:text-white/60'
+              }`}
+            >
+              <Type size={14} />
+              Text to Image
+            </button>
+            <button
+              onClick={() => setState(prev => ({ ...prev, inputMode: 'image' }))} disabled={isGenerating}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[11px] font-medium transition-all ${
+                state.inputMode === 'image' 
+                  ? 'bg-white/10 text-white shadow-sm border border-white/10' 
+                  : 'text-white/40 hover:text-white/60'
+              }`}
+            >
+              <ImageIcon size={14} />
+              Image to Image
+            </button>
+          </div>
+
           {/* Input Area */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -101,13 +90,13 @@ const HardOrnamentModal: React.FC<HardOrnamentModalProps> = ({ isOpen, onClose, 
             </div>
             
             <div className="relative group">
-              <textarea
+              <textarea disabled={isGenerating}
                 value={state.prompt}
-                onChange={(e) => setState(prev => ({ ...prev, prompt: e.target.value }))}
+                onChange={(e) => setState(prev => ({ ...prev, prompt: e.target.value }))} 
                 placeholder={state.inputMode === 'text' 
                   ? "Describe the scene you want to generate in Hard Ornament style..." 
                   : "How should the style interact with your source image?"}
-                className="w-full h-32 bg-white/[0.02] border border-white/10 rounded-xl p-4 text-white placeholder:text-white/20 focus:outline-none focus:border-white/20 focus:bg-white/[0.04] transition-all resize-none text-sm leading-relaxed"
+                className="disabled:opacity-50 disabled:cursor-not-allowed w-full h-32 bg-white/[0.02] border border-white/10 rounded-xl p-4 text-white placeholder:text-white/20 focus:outline-none focus:border-white/20 focus:bg-white/[0.04] transition-all resize-none text-sm leading-relaxed"
               />
               <div className="absolute top-4 right-4 pointer-events-none opacity-20 group-focus-within:opacity-40 transition-opacity">
                 <Sparkles size={20} className="text-white" />

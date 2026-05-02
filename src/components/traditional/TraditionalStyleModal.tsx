@@ -185,7 +185,7 @@ export function TraditionalStyleModal({
   const buildPrompt = useCallback(() => {
     const aspect = coerceWarliAspectRatio(state.ratio, state.model);
     const projectInputs = state.inputMode === "text" ? state.sceneText.trim() : state.imageNote.trim();
-    
+
     let basePrompt = styleDesc;
     if (state.style === "V2") basePrompt = `Artistic translation of ${styleTitle}: ${styleDesc}`;
     if (state.style === "V3") basePrompt = `Cinematic 3D render of ${styleTitle}: ${styleDesc}, high detail, 8k, professional lighting`;
@@ -321,49 +321,47 @@ export function TraditionalStyleModal({
         role="dialog"
         aria-modal="true"
         aria-label={`${styleTitle} Generator`}
-        className={`relative flex w-[min(1080px,calc(100vw-24px))] h-[min(760px,calc(100vh-24px))] flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0E0E12]/95 shadow-[0_24px_70px_rgba(0,0,0,0.7)] ring-1 ring-white/[0.04] transition-all duration-300 ${
-          isVisible ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-2 scale-[0.985]"
-        }`}
+        className={`relative flex w-[min(1080px,calc(100vw-24px))] h-[min(760px,calc(100vh-24px))] flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0E0E12]/95 shadow-[0_24px_70px_rgba(0,0,0,0.7)] ring-1 ring-white/[0.04] transition-all duration-300 ${isVisible ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-2 scale-[0.985]"
+          }`}
       >
         <TraditionalHeader
-          style={state.style}
+ style={state.style}
           styleTitle={styleTitle}
           onStyleChange={(s) => dispatchLocal({ type: "SET_STYLE_VERSION", payload: s })}
-          onClose={onClose}
-        />
+          onClose={onClose} disabled={state.panelState !== "empty"} />
 
         <div className="grid min-h-0 flex-1 overflow-hidden lg:[grid-template-columns:420px_1fr]">
           <aside className="flex flex-col overflow-hidden border-r border-white/10 bg-[#0E0E12]">
             <div className="flex flex-1 flex-col gap-5 overflow-y-auto px-5 py-5 [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-white/[0.06] [&::-webkit-scrollbar]:w-1">
               <div className="flex flex-col gap-2">
                 <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-white/25">Input</span>
-                <ModeToggle mode={state.inputMode} onChange={(v) => dispatchLocal({ type: "SET_MODE", payload: v })} />
+                <ModeToggle disabled={state.panelState !== "empty"} mode={state.inputMode} onChange={(v) => dispatchLocal({ type: "SET_MODE", payload: v })} />
               </div>
 
               {state.inputMode === "text" ? (
-                <SceneInput value={state.sceneText} onChange={(v) => dispatchLocal({ type: "SET_SCENE_TEXT", payload: v })} />
+                <SceneInput disabled={state.panelState !== "empty"} value={state.sceneText} onChange={(v) => dispatchLocal({ type: "SET_SCENE_TEXT", payload: v })} />
               ) : (
                 <div className="flex flex-col gap-3">
-                  <UploadZone
+                  <UploadZone disabled={state.panelState !== "empty"}
                     uploadedImage={state.uploadedImage}
                     onUpload={(v) => dispatchLocal({ type: "SET_UPLOADED_IMAGE", payload: v })}
                   />
-                  <textarea
+                  <textarea disabled={state.panelState !== "empty"}
                     value={state.imageNote}
                     onChange={(e) => dispatchLocal({ type: "SET_IMAGE_NOTE", payload: e.target.value })}
                     rows={3}
                     placeholder="Optional notes..."
-                    className="w-full resize-none rounded-xl border border-white/10 bg-[#13131a] px-4 py-3 text-[13px] leading-relaxed text-white/80 outline-none transition-colors placeholder:text-white/20 focus:border-white/20"
+                    className="disabled:opacity-50 disabled:cursor-not-allowed w-full resize-none rounded-xl border border-white/10 bg-[#13131a] px-4 py-3 text-[13px] leading-relaxed text-white/80 outline-none transition-colors placeholder:text-white/20 focus:border-white/20"
                   />
                 </div>
               )}
 
               <div className="flex flex-col gap-2">
                 <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-white/25">Model</span>
-                <ModelSelector value={state.model} onChange={(v) => dispatchLocal({ type: "SET_MODEL", payload: v })} />
+                <ModelSelector disabled={state.panelState !== "empty"} value={state.model} onChange={(v) => dispatchLocal({ type: "SET_MODEL", payload: v })} />
               </div>
 
-              <SettingsPanel
+              <SettingsPanel disabled={state.panelState !== "empty"}
                 model={state.model}
                 resolution={state.resolution}
                 imageCount={state.imageCount}
@@ -374,9 +372,9 @@ export function TraditionalStyleModal({
                 onCountChange={(v) => dispatchLocal({ type: "SET_COUNT", payload: v })}
                 onResolutionChange={(v) => dispatchLocal({ type: "SET_RESOLUTION", payload: v })}
                 onRatioChange={handleRatioChange}
-                onIncludeBenchmarkChange={() => {}}
-                onIncludeVariableChange={() => {}}
-                onIncludeRestyleChange={() => {}}
+                onIncludeBenchmarkChange={() => { }}
+                onIncludeVariableChange={() => { }}
+                onIncludeRestyleChange={() => { }}
               />
             </div>
 
@@ -384,7 +382,7 @@ export function TraditionalStyleModal({
               <button
                 type="button"
                 onClick={() => void handleGenerate()}
-                disabled={state.panelState === "loading"}
+                disabled={state.panelState !== "empty"}
                 className="w-full rounded-lg bg-[#2F6BFF] py-2.5 text-[12px] font-semibold text-white transition hover:bg-[#2F6BFF]/90 disabled:opacity-50"
               >
                 Generate {styleTitle}
@@ -422,37 +420,40 @@ export function TraditionalStyleModal({
               ) : null}
             </div>
 
-            <div className="flex flex-1 flex-col overflow-y-auto p-5 [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-white/[0.06] [&::-webkit-scrollbar]:w-1">
+            <div className="flex flex-1 flex-col overflow-y-auto [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-white/[0.06] [&::-webkit-scrollbar]:w-1">
               {state.panelState === "empty" ? (
-                <div className="flex flex-1 flex-col items-center justify-center gap-2 p-10 text-center">
-                  <p className="text-sm font-medium text-white/20">No output yet</p>
-                  <p className="max-w-[320px] text-xs leading-relaxed text-white/10">
-                    Describe a scene inspired by {styleTitle} (or upload an image), then Generate.
-                  </p>
+                <div className="p-5">
+                  <div className="flex flex-1 flex-col items-center justify-center gap-2 p-10 text-center">
+                    <p className="text-sm font-medium text-white/20">No output yet</p>
+                    <p className="max-w-[320px] text-xs leading-relaxed text-white/10">
+                      Describe a scene inspired by {styleTitle} (or upload an image), then Generate.
+                    </p>
+                  </div>
                 </div>
               ) : null}
 
               {state.panelState === "loading" ? (
-                <div className="flex flex-1 flex-col items-center justify-center gap-6 p-6">
-                  <div className={`grid w-full gap-3 ${state.imageCount === 1 ? "grid-cols-1 max-w-lg" : "grid-cols-2"}`}>
-                    {Array.from({ length: state.imageCount }).map((_, i) => (
-                      <div
-                        key={i}
-                        className="relative flex aspect-square items-center justify-center overflow-hidden rounded-xl border border-white/[0.06] bg-[#111117]"
-                      >
-                        <img src="/styles/Logo.gif" alt="Generating..." className="h-16 w-16 object-contain opacity-40" draggable={false} />
-                      </div>
-                    ))}
-                  </div>
-                  <p className="text-[11px] text-white/20">Generating...</p>
+                <div className="p-5">
+                  <div className="flex flex-1 flex-col items-center justify-center gap-6 p-6">
+                    <div className={`grid w-full gap-3 ${state.imageCount === 1 ? "grid-cols-1 max-w-lg" : "grid-cols-2"}`}>
+                      {Array.from({ length: state.imageCount }).map((_, i) => (
+                        <div
+                          key={i}
+                          className="relative flex aspect-square items-center justify-center overflow-hidden rounded-xl bg-transparent"
+                        >
+                          <img src="/styles/Logo.gif" alt="Generating..." className="h-16 w-16 object-contain opacity-40" draggable={false} />
+                        </div>
+                      ))}
+                    </div>
                 </div>
-              ) : null}
+              </div>
+            ) : null}
 
               {state.panelState === "results" ? (
-                <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-0">
                   <OutputGrid
                     images={state.generatedImages}
-                    count={state.imageCount}
+                    count={state.imageCount} ratio={state.ratio}
                     onSaveImage={(i) => void handleSaveImage(i)}
                     onExpandImage={(i) => {
                       const url = state.generatedImages[i];
@@ -460,7 +461,9 @@ export function TraditionalStyleModal({
                       setFullscreenUrl(url);
                     }}
                   />
-                  <PromptPreview prompt={assembledPrompt} />
+                  <div className="px-5 py-5">
+                    <PromptPreview prompt={assembledPrompt} />
+                  </div>
                 </div>
               ) : null}
             </div>

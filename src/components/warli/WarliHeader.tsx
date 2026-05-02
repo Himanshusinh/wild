@@ -8,15 +8,20 @@ interface WarliHeaderProps {
   style: StyleFamily;
   onStyleChange: (s: StyleFamily) => void;
   onClose: () => void;
+  isLocked?: boolean;
 }
 
-export function WarliHeader({ style, onStyleChange, onClose }: WarliHeaderProps) {
-  const families: StyleFamily[] = ["A", "B", "C"];
+export function WarliHeader({
+  style,
+  onStyleChange,
+  onClose,
+  isLocked,
+}: WarliHeaderProps) {
+  const families: StyleFamily[] = ["V1", "V2", "V3"];
 
   return (
     <header className="flex shrink-0 items-center justify-between border-b border-white/10 bg-[#0a0a0f] px-5 py-3">
       <div className="flex items-center gap-3">
-        {/* Warli badge */}
         <div className="flex items-center gap-1.5 rounded-full border border-[#2F6BFF]/25 bg-[#2F6BFF]/[0.08] px-2.5 py-[5px]">
           <span className="h-1.5 w-1.5 rounded-full bg-[#2F6BFF] shadow-[0_0_5px_rgba(47,107,255,0.8)]" />
           <span className="text-[11px] font-medium uppercase tracking-[0.06em] text-[#60a5fa]">
@@ -24,42 +29,53 @@ export function WarliHeader({ style, onStyleChange, onClose }: WarliHeaderProps)
           </span>
         </div>
 
-        {/* Style A / B / C tabs */}
-        <div className="ml-1 flex gap-0.5 rounded-xl border border-white/10 bg-transparent p-[3px]">
-          {families.map((f) => (
-            <button
-              key={f}
-              type="button"
-              onClick={() => onStyleChange(f)}
-              className={`flex items-center gap-1.5 rounded-lg px-3 py-[5px] text-[11px] font-medium transition-all duration-150 ${
-                style === f
-                  ? "bg-[#1e1e28] text-white/85 shadow-[0_1px_4px_rgba(0,0,0,0.5)]"
-                  : "text-white/30 hover:text-white/55"
-              }`}
-            >
-              <span>{f}</span>
-              <span
-                className={`rounded-[4px] px-[5px] py-px text-[9px] font-semibold tracking-[0.04em] ${
-                  style === f
-                    ? "bg-[#2F6BFF]/[0.12] text-[#60a5fa]"
-                    : "bg-white/[0.04] text-white/20"
-                }`}
+        <div className="ml-1 flex gap-1 rounded-[14px] border border-white/5 bg-black/40 p-[3px]">
+          {families.map((f) => {
+            const isActive = style === f;
+            const label = STYLE_LABELS[f].badge;
+
+            return (
+              <button
+                key={f}
+                type="button"
+                disabled={isLocked}
+                onClick={() => onStyleChange(f)}
+                className={`group flex items-center gap-2.5 rounded-[10px] px-3 py-1.5 transition-all duration-300 ${isActive
+                    ? "bg-[#1c1c26] shadow-[0_4px_12px_-2px_rgba(0,0,0,0.4)] ring-1 ring-white/[0.08]"
+                    : "hover:bg-white/[0.04]"
+                  } disabled:opacity-30 disabled:cursor-not-allowed`}
               >
-                {STYLE_LABELS[f].badge}
-              </span>
-            </button>
-          ))}
+                <span
+                  className={`text-[12px] font-bold tracking-tight transition-colors ${isActive
+                      ? "text-[#58a6ff]"
+                      : "text-white/30 group-hover:text-white/50"
+                    }`}
+                >
+                  {f}
+                </span>
+                <span
+                  className={`rounded-[6px] px-1.5 py-[3px] text-[9px] font-black uppercase tracking-wider transition-all ${isActive
+                      ? "bg-[#162a4d] text-[#58a6ff] ring-1 ring-[#58a6ff]/20"
+                      : "bg-white/[0.03] text-white/15"
+                    }`}
+                >
+                  {label}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      <button
-        type="button"
-        aria-label="Close"
-        onClick={onClose}
-        className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-white/30 transition hover:bg-white/[0.08] hover:text-white/70"
-      >
-        <X className="h-4 w-4" />
-      </button>
+      <div className="flex items-center gap-4">
+        <button
+          type="button"
+          onClick={onClose}
+          className="flex h-8 w-8 items-center justify-center rounded-lg text-white/20 transition-colors hover:bg-white/[0.04] hover:text-white/80"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
     </header>
   );
 }

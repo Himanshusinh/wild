@@ -7,34 +7,62 @@ export function YakshaganaHeader({
   style,
   onStyleChange,
   onClose,
+  disabled
 }: {
   style: StyleFamily;
   onStyleChange: (s: StyleFamily) => void;
   onClose: () => void;
+  disabled?: boolean;
 }) {
+  const families: StyleFamily[] = ["V1", "V2", "V3"];
+
   return (
-    <header className="flex items-center justify-between border-b border-white/10 bg-[#0E0E12] px-6 py-4">
-      <div className="flex items-center gap-4">
-        <h2 className="text-sm font-bold uppercase tracking-widest text-white">YAKSHAGANA</h2>
-        <div className="h-4 w-px bg-white/10" />
-        <div className="flex gap-1">
-          {(["V1", "V2", "V3"] as StyleFamily[]).map((v) => (
+    <header className="flex h-16 shrink-0 items-center justify-between border-b border-white/[0.06] bg-[#0E0E12] px-5">
+      <div className="flex items-center gap-3">
+        {/* Style Title Pill */}
+        <div className="flex items-center gap-1.5 rounded-full border border-[#2F6BFF]/25 bg-[#2F6BFF]/[0.08] px-2.5 py-[5px]">
+          <span className="h-1.5 w-1.5 rounded-full bg-[#2F6BFF] shadow-[0_0_5px_rgba(47,107,255,0.8)]" />
+          <span className="text-[11px] font-medium uppercase tracking-[0.06em] text-[#60a5fa] whitespace-nowrap">
+            YAKSHAGANA
+          </span>
+        </div>
+
+        {/* Version Selector */}
+        <div className="ml-1 flex gap-0.5 rounded-xl border border-white/10 bg-[#13131a] p-[3px]">
+          {families.map((f) => (
             <button
-              key={v}
-              onClick={() => onStyleChange(v)}
-              className={`rounded-full px-3 py-1 text-[10px] font-bold transition-all ${
-                style === v
-                  ? "bg-white text-black"
-                  : "bg-white/5 text-white/40 hover:bg-white/10 hover:text-white/60"
+              key={f}
+              type="button"
+              onClick={() => onStyleChange(f)}
+              disabled={disabled}
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-[5px] text-[11px] font-medium transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed ${
+                style === f
+                  ? "bg-[#1e1e28] text-white/85 shadow-[0_1px_4px_rgba(0,0,0,0.5)]"
+                  : "text-white/30 hover:text-white/55"
               }`}
             >
-              {STYLE_LABELS[v].badge}
+              <span>{f}</span>
+              <span
+                className={`rounded-[4px] px-[5px] py-px text-[9px] font-semibold tracking-[0.04em] ${
+                  style === f
+                    ? "bg-[#2F6BFF]/[0.12] text-[#60a5fa]"
+                    : "bg-white/[0.04] text-white/20"
+                }`}
+              >
+                {STYLE_LABELS[f].badge}
+              </span>
             </button>
           ))}
         </div>
       </div>
-      <button onClick={onClose} className="rounded-full p-2 text-white/40 transition hover:bg-white/5 hover:text-white">
-        <X size={18} />
+
+      <button
+        type="button"
+        aria-label="Close"
+        onClick={onClose}
+        className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-white/30 transition hover:bg-white/[0.08] hover:text-white/70"
+      >
+        <X className="h-4 w-4" />
       </button>
     </header>
   );

@@ -24,5 +24,3 @@ export function resolveBackendBase(req: Request): string {
 
   return base.replace(/\/$/, '');
 }
-
-

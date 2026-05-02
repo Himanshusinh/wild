@@ -301,42 +301,41 @@ export function TawlhlohpuanModal({ isOpen, onClose }: { isOpen: boolean; onClos
         }`}
       >
         <TawlhlohpuanHeader
-          style={state.style}
+ style={state.style}
           onStyleChange={(s) => dispatchLocal({ type: "SET_STYLE", payload: s })}
-          onClose={onClose}
-        />
+          onClose={onClose} disabled={state.panelState !== "empty"} />
         <div className="grid min-h-0 flex-1 overflow-hidden lg:[grid-template-columns:420px_1fr]">
           <aside className="flex flex-col overflow-hidden border-r border-white/10 bg-[#0E0E12]">
             <div className="flex flex-1 flex-col gap-5 overflow-y-auto px-5 py-5 [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-white/[0.06] [&::-webkit-scrollbar]:w-1">
               <div className="flex flex-col gap-2">
                 <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-white/25">Input</span>
-                <ModeToggle mode={state.inputMode} onChange={(v) => dispatchLocal({ type: "SET_MODE", payload: v })} />
+                <ModeToggle disabled={state.panelState !== "empty"} mode={state.inputMode} onChange={(v) => dispatchLocal({ type: "SET_MODE", payload: v })} />
               </div>
 
               {state.inputMode === "text" ? (
-                <SceneInput value={state.sceneText} onChange={(v) => dispatchLocal({ type: "SET_SCENE_TEXT", payload: v })} />
+                <SceneInput disabled={state.panelState !== "empty"} value={state.sceneText} onChange={(v) => dispatchLocal({ type: "SET_SCENE_TEXT", payload: v })} />
               ) : (
                 <div className="flex flex-col gap-3">
-                  <UploadZone
+                  <UploadZone disabled={state.panelState !== "empty"}
                     uploadedImage={state.uploadedImage}
                     onUpload={(v) => dispatchLocal({ type: "SET_UPLOADED_IMAGE", payload: v })}
                   />
-                  <textarea
+                  <textarea disabled={state.panelState !== "empty"}
                     value={state.imageNote}
                     onChange={(e) => dispatchLocal({ type: "SET_IMAGE_NOTE", payload: e.target.value })}
                     rows={3}
                     placeholder="Optional notes..."
-                    className="w-full resize-none rounded-xl border border-white/10 bg-[#13131a] px-4 py-3 text-[13px] leading-relaxed text-white/80 outline-none transition-colors placeholder:text-white/20 focus:border-white/20"
+                    className="disabled:opacity-50 disabled:cursor-not-allowed w-full resize-none rounded-xl border border-white/10 bg-[#13131a] px-4 py-3 text-[13px] leading-relaxed text-white/80 outline-none transition-colors placeholder:text-white/20 focus:border-white/20"
                   />
                 </div>
               )}
 
               <div className="flex flex-col gap-2">
                 <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-white/25">Model</span>
-                <ModelSelector value={state.model} onChange={(v) => dispatchLocal({ type: "SET_MODEL", payload: v })} />
+                <ModelSelector disabled={state.panelState !== "empty"} value={state.model} onChange={(v) => dispatchLocal({ type: "SET_MODEL", payload: v })} />
               </div>
 
-              <SettingsPanel
+              <SettingsPanel disabled={state.panelState !== "empty"}
                 model={state.model}
                 resolution={state.resolution}
                 imageCount={state.imageCount}
@@ -357,7 +356,7 @@ export function TawlhlohpuanModal({ isOpen, onClose }: { isOpen: boolean; onClos
               <button
                 type="button"
                 onClick={() => void handleGenerate()}
-                disabled={state.panelState === "loading"}
+                disabled={state.panelState !== "empty"}
                 className="w-full rounded-lg bg-[#2F6BFF] py-2.5 text-[12px] font-semibold text-white transition hover:bg-[#2F6BFF]/90 disabled:opacity-50"
               >
                 Generate TAWLHLOHPUAN
@@ -397,18 +396,21 @@ export function TawlhlohpuanModal({ isOpen, onClose }: { isOpen: boolean; onClos
               ) : null}
             </div>
 
-            <div className="flex flex-1 flex-col overflow-y-auto p-5 [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-white/[0.06] [&::-webkit-scrollbar]:w-1">
+            <div className="flex flex-1 flex-col overflow-y-auto [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-white/[0.06] [&::-webkit-scrollbar]:w-1">
               {state.panelState === "empty" ? (
-                <div className="flex flex-1 flex-col items-center justify-center gap-2 p-10 text-center">
+                <div className="p-5">
+                  <div className="flex flex-1 flex-col items-center justify-center gap-2 p-10 text-center">
                   <p className="text-sm font-medium text-white/20">No output yet</p>
                   <p className="max-w-[320px] text-xs leading-relaxed text-white/10">
                     Describe a scene (or upload an image), then Generate.
                   </p>
                 </div>
+                </div>
               ) : null}
 
               {state.panelState === "loading" ? (
-                <div className="flex flex-1 flex-col items-center justify-center gap-6 p-6">
+                <div className="p-5">
+                  <div className="flex flex-1 flex-col items-center justify-center gap-6 p-6">
                   <div
                     className={`grid w-full gap-3 ${
                       state.imageCount === 1 ? "grid-cols-1 max-w-lg" : "grid-cols-2"
@@ -417,7 +419,7 @@ export function TawlhlohpuanModal({ isOpen, onClose }: { isOpen: boolean; onClos
                     {Array.from({ length: state.imageCount }).map((_, i) => (
                       <div
                         key={i}
-                        className="relative flex aspect-square items-center justify-center overflow-hidden rounded-xl border border-white/[0.06] bg-[#111117]"
+                        className="relative flex aspect-square items-center justify-center overflow-hidden rounded-xl bg-transparent"
                       >
                         <img
                           src="/styles/Logo.gif"
@@ -428,15 +430,15 @@ export function TawlhlohpuanModal({ isOpen, onClose }: { isOpen: boolean; onClos
                       </div>
                     ))}
                   </div>
-                  <p className="text-[11px] text-white/20">Generating...</p>
                 </div>
-              ) : null}
+              </div>
+            ) : null}
 
               {state.panelState === "results" ? (
-                <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-0">
                   <OutputGrid
                     images={state.generatedImages}
-                    count={state.imageCount}
+                    count={state.imageCount} ratio={state.ratio}
                     onSaveImage={(i) => void handleSaveImage(i)}
                     onExpandImage={(i) => {
                       const url = state.generatedImages[i];
@@ -444,7 +446,9 @@ export function TawlhlohpuanModal({ isOpen, onClose }: { isOpen: boolean; onClos
                       setFullscreenUrl(url);
                     }}
                   />
-                  <PromptPreview prompt={assembledPrompt} />
+                  <div className="px-5 py-5">
+                    <PromptPreview prompt={assembledPrompt} />
+                  </div>
                 </div>
               ) : null}
             </div>

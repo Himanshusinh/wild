@@ -52,26 +52,28 @@ export function WarliLeftPanel({
   onGenerate,
 }: WarliLeftPanelProps) {
   const loading = state.panelState === "loading";
+  const isDisabled = state.panelState !== "empty";
 
   return (
     <aside className="flex flex-col overflow-hidden border-r border-white/10 bg-[#0a0a0f]">
       <div className="flex flex-1 flex-col gap-5 overflow-y-auto px-5 py-5 [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-white/[0.06] [&::-webkit-scrollbar]:w-1">
         <div className="flex flex-col gap-2">
           <SectionLabel>Input</SectionLabel>
-          <ModeToggle mode={state.inputMode} onChange={onModeChange} />
+          <ModeToggle mode={state.inputMode} onChange={onModeChange} disabled={isDisabled} />
         </div>
 
         {state.inputMode === "text" ? (
-          <SceneInput value={state.sceneText} onChange={onSceneTextChange} />
+          <SceneInput value={state.sceneText} onChange={onSceneTextChange} disabled={isDisabled} />
         ) : (
           <div className="flex flex-col gap-3">
-            <UploadZone uploadedImage={state.uploadedImage} onUpload={onUpload} />
+            <UploadZone uploadedImage={state.uploadedImage} onUpload={onUpload} disabled={isDisabled} />
             <textarea
               value={state.imageNote}
               onChange={(e) => onImageNoteChange(e.target.value)}
+              disabled={isDisabled}
               rows={3}
               placeholder="Add instructions or context... e.g. focus on the woman's posture, convert to 2D mural, keep park setting"
-              className="w-full resize-none rounded-xl border border-white/10 bg-transparent px-4 py-3 text-[13px] leading-relaxed text-white/80 outline-none transition-colors placeholder:text-white/20 focus:border-white/20"
+              className="w-full resize-none rounded-xl border border-white/10 bg-transparent px-4 py-3 text-[13px] leading-relaxed text-white/80 outline-none transition-colors placeholder:text-white/20 focus:border-white/20 disabled:opacity-50 disabled:cursor-not-allowed"
             />
             <p className="px-0.5 text-[11px] text-white/20">
               Optional — describe what you want to emphasize or change.
@@ -81,11 +83,10 @@ export function WarliLeftPanel({
 
         <div className="flex flex-col gap-2">
           <SectionLabel>Model</SectionLabel>
-          <ModelSelector value={state.model} onChange={onModelChange} />
+          <ModelSelector value={state.model} onChange={onModelChange} disabled={isDisabled} />
         </div>
 
-        <SettingsPanel
-          model={state.model}
+        <SettingsPanel model={state.model}
           resolution={state.resolution}
           imageCount={state.imageCount}
           ratio={state.ratio}
@@ -98,6 +99,7 @@ export function WarliLeftPanel({
           onIncludeBenchmarkChange={onIncludeBenchmarkChange}
           onIncludeVariableChange={onIncludeVariableChange}
           onIncludeRestyleChange={onIncludeRestyleChange}
+          disabled={isDisabled}
         />
       </div>
 
@@ -108,7 +110,7 @@ export function WarliLeftPanel({
         imageCount={state.imageCount}
         ratioSummary={ratioSummary}
       />
-      <GenerateButton imageCount={state.imageCount} loading={loading} onClick={onGenerate} />
+      <GenerateButton imageCount={state.imageCount} loading={loading} disabled={isDisabled} onClick={onGenerate} />
     </aside>
   );
 }

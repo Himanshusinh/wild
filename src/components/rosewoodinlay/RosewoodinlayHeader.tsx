@@ -7,10 +7,12 @@ export function RosewoodinlayHeader({
   style,
   onStyleChange,
   onClose,
+  disabled,
 }: {
   style: StyleFamily;
   onStyleChange: (s: StyleFamily) => void;
   onClose: () => void;
+  disabled?: boolean;
 }) {
   return (
     <header className="flex items-center justify-between border-b border-white/10 bg-[#0E0E12] px-6 py-4">
@@ -21,8 +23,9 @@ export function RosewoodinlayHeader({
           {(["V1", "V2", "V3"] as StyleFamily[]).map((v) => (
             <button
               key={v}
+              disabled={disabled}
               onClick={() => onStyleChange(v)}
-              className={`rounded-full px-3 py-1 text-[10px] font-bold transition-all ${
+              className={`rounded-full px-3 py-1 text-[10px] font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
                 style === v
                   ? "bg-white text-black"
                   : "bg-white/5 text-white/40 hover:bg-white/10 hover:text-white/60"
