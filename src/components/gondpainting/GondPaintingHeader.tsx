@@ -2,10 +2,10 @@ import React from 'react';
 import { X } from 'lucide-react';
 import { GondPaintingVersion } from './types';
 
-interface GondPaintingHeaderProps {
-  currentVersion: GondPaintingVersion;
+interface GondPaintingHeaderProps {currentVersion: GondPaintingVersion;
   onVersionChange: (version: GondPaintingVersion) => void;
   onClose: () => void;
+  disabled?: boolean;
 }
 
 const STYLE_LABELS: Record<string, { badge: string }> = {

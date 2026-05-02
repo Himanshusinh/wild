@@ -2,10 +2,10 @@ import React from 'react';
 import { X } from 'lucide-react';
 import { JaintiaTextileVersion } from './types';
 
-interface JaintiaTextileHeaderProps {
-  currentVersion: JaintiaTextileVersion;
+interface JaintiaTextileHeaderProps {currentVersion: JaintiaTextileVersion;
   onVersionChange: (version: JaintiaTextileVersion) => void;
   onClose: () => void;
+  disabled?: boolean;
 }
 
 const STYLE_LABELS: Record<string, { badge: string }> = {

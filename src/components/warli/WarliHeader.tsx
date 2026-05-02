@@ -2,21 +2,26 @@
 
 import React from "react";
 import { X } from "lucide-react";
-import { StyleFamily, STYLE_LABELS } from "./types";
+import { StyleFamily } from "./types";
 
 interface WarliHeaderProps {
   style: StyleFamily;
   onStyleChange: (s: StyleFamily) => void;
   onClose: () => void;
+  isLocked?: boolean;
 }
 
-export function WarliHeader({ style, onStyleChange, onClose }: WarliHeaderProps) {
+export function WarliHeader({
+  style,
+  onStyleChange,
+  onClose,
+  isLocked,
+}: WarliHeaderProps) {
   const families: StyleFamily[] = ["V1", "V2", "V3"];
 
   return (
     <header className="flex shrink-0 items-center justify-between border-b border-white/10 bg-[#0a0a0f] px-5 py-3">
       <div className="flex items-center gap-3">
-        {/* Warli badge */}
         <div className="flex items-center gap-1.5 rounded-full border border-[#2F6BFF]/25 bg-[#2F6BFF]/[0.08] px-2.5 py-[5px]">
           <span className="h-1.5 w-1.5 rounded-full bg-[#2F6BFF] shadow-[0_0_5px_rgba(47,107,255,0.8)]" />
           <span className="text-[11px] font-medium uppercase tracking-[0.06em] text-[#60a5fa]">
@@ -24,42 +29,34 @@ export function WarliHeader({ style, onStyleChange, onClose }: WarliHeaderProps)
           </span>
         </div>
 
-        {/* Style A / B / C tabs */}
         <div className="ml-1 flex gap-0.5 rounded-xl border border-white/10 bg-transparent p-[3px]">
           {families.map((f) => (
             <button
               key={f}
               type="button"
+              disabled={isLocked}
               onClick={() => onStyleChange(f)}
-              className={`flex items-center gap-1.5 rounded-lg px-3 py-[5px] text-[11px] font-medium transition-all duration-150 ${
+              className={`min-w-[54px] rounded-lg px-3 py-1.5 text-[10px] font-bold transition-all duration-200 ${
                 style === f
-                  ? "bg-[#1e1e28] text-white/85 shadow-[0_1px_4px_rgba(0,0,0,0.5)]"
-                  : "text-white/30 hover:text-white/55"
-              }`}
+                  ? "bg-white/10 text-white shadow-sm ring-1 ring-white/10"
+                  : "text-white/30 hover:bg-white/[0.04] hover:text-white/50"
+              } disabled:opacity-30 disabled:cursor-not-allowed`}
             >
-              <span>{f}</span>
-              <span
-                className={`rounded-[4px] px-[5px] py-px text-[9px] font-semibold tracking-[0.04em] ${
-                  style === f
-                    ? "bg-[#2F6BFF]/[0.12] text-[#60a5fa]"
-                    : "bg-white/[0.04] text-white/20"
-                }`}
-              >
-                {STYLE_LABELS[f].badge}
-              </span>
+              {f}
             </button>
           ))}
         </div>
       </div>
 
-      <button
-        type="button"
-        aria-label="Close"
-        onClick={onClose}
-        className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-white/30 transition hover:bg-white/[0.08] hover:text-white/70"
-      >
-        <X className="h-4 w-4" />
-      </button>
+      <div className="flex items-center gap-4">
+        <button
+          type="button"
+          onClick={onClose}
+          className="flex h-8 w-8 items-center justify-center rounded-lg text-white/20 transition-colors hover:bg-white/[0.04] hover:text-white/80"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
     </header>
   );
 }

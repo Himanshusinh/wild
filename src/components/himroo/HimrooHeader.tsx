@@ -2,10 +2,10 @@ import React from 'react';
 import { X } from 'lucide-react';
 import { HimrooVersion } from './types';
 
-interface HimrooHeaderProps {
-  currentVersion: HimrooVersion;
+interface HimrooHeaderProps {currentVersion: HimrooVersion;
   onVersionChange: (version: HimrooVersion) => void;
   onClose: () => void;
+  disabled?: boolean;
 }
 
 const STYLE_LABELS: Record<string, { badge: string }> = {

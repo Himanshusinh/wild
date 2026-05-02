@@ -2,10 +2,10 @@ import React from 'react';
 import { X } from 'lucide-react';
 import { GaroWeavingVersion } from './types';
 
-interface GaroWeavingHeaderProps {
-  currentVersion: GaroWeavingVersion;
+interface GaroWeavingHeaderProps {currentVersion: GaroWeavingVersion;
   onVersionChange: (version: GaroWeavingVersion) => void;
   onClose: () => void;
+  disabled?: boolean;
 }
 
 const STYLE_LABELS: Record<string, { badge: string }> = {

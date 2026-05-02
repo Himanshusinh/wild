@@ -18,6 +18,7 @@ interface SettingsPanelProps {
   onIncludeBenchmarkChange: (v: boolean) => void;
   onIncludeVariableChange: (v: boolean) => void;
   onIncludeRestyleChange: (v: boolean) => void;
+  disabled?: boolean;
 }
 
 const RATIO_CATEGORIES = [
@@ -37,20 +38,23 @@ function Chip<T extends string | number>({
   label,
   active,
   onClick,
+  disabled,
 }: {
   value: T;
   label?: React.ReactNode;
   active: boolean;
   onClick: () => void;
+  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      disabled={disabled}
       className={`rounded-full border px-4 py-1.5 text-[11px] font-medium transition-all duration-200 ${active
-          ? "border-[#2F6BFF] bg-[#2F6BFF]/10 text-white shadow-[0_0_15px_-3px_rgba(47,107,255,0.4)]"
-          : "border-white/5 bg-white/[0.02] text-white/40 hover:border-white/10 hover:bg-white/[0.04] hover:text-white/60"
-        }`}
+        ? "border-[#2F6BFF] bg-[#2F6BFF]/[0.12] text-[#60a5fa]"
+        : "border-white/10 bg-white/[0.04] text-white/40 hover:border-white/20 hover:bg-white/[0.08]"
+      } disabled:opacity-30 disabled:cursor-not-allowed`}
     >
       {label ?? value}
     </button>
@@ -71,6 +75,7 @@ export function SettingsPanel({
   onIncludeBenchmarkChange,
   onIncludeVariableChange,
   onIncludeRestyleChange,
+  disabled,
 }: SettingsPanelProps) {
   const ratioOptions = getAspectRatioMenuForModel(model);
   const resolutionOptions = getResolutionMenuForModel(model);
@@ -88,6 +93,7 @@ export function SettingsPanel({
               value={res}
               active={resolution === res}
               onClick={() => onResolutionChange(res)}
+              disabled={disabled}
             />
           ))}
         </div>
@@ -102,6 +108,7 @@ export function SettingsPanel({
               value={c}
               active={imageCount === c}
               onClick={() => onCountChange(c as ImageCount)}
+              disabled={disabled}
             />
           ))}
         </div>
@@ -116,6 +123,7 @@ export function SettingsPanel({
           ratio={ratio}
           options={ratioOptions}
           onRatioChange={onRatioChange}
+          disabled={disabled}
         />
       </div>
 
@@ -127,10 +135,12 @@ function VisualRatioSelector({
   ratio,
   options,
   onRatioChange,
+  disabled,
 }: {
   ratio: string;
   options: readonly string[];
   onRatioChange: (r: any) => void;
+  disabled?: boolean;
 }) {
   const [category, setCategory] = React.useState(() => {
     if (RATIO_GROUPS.portrait.includes(ratio)) return "portrait";
@@ -188,16 +198,18 @@ function VisualRatioSelector({
               key={cat.id}
               type="button"
               onClick={() => {
+                if (disabled) return;
                 setCategory(cat.id);
                 const newFiltered = options.filter((opt) => RATIO_GROUPS[cat.id].includes(opt));
                 if (newFiltered.length > 0) {
                   onRatioChange(newFiltered[0]);
                 }
               }}
+              disabled={disabled}
               className={`flex-1 rounded-md py-1.5 text-[10px] font-bold transition-all duration-200 ${category === cat.id
                   ? "bg-[#1e1e28] text-white shadow-[0_1px_4px_rgba(0,0,0,0.5)]"
                   : "text-white/30 hover:text-white/60"
-                }`}
+                } disabled:opacity-30 disabled:cursor-not-allowed`}
             >
               {cat.label}
             </button>
@@ -211,13 +223,14 @@ function VisualRatioSelector({
             min={0}
             max={Math.max(0, filteredRatios.length - 1)}
             value={currentIndex === -1 ? 0 : currentIndex}
+            disabled={disabled}
             onChange={(e) => {
               const idx = parseInt(e.target.value);
               if (filteredRatios[idx]) {
                 onRatioChange(filteredRatios[idx]);
               }
             }}
-            className="slider-white-thumb h-1 w-full cursor-pointer appearance-none rounded-full bg-white/10 transition-all"
+            className="slider-white-thumb h-1 w-full cursor-pointer appearance-none rounded-full bg-white/10 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
           />
           <style jsx>{`
             .slider-white-thumb::-webkit-slider-thumb {

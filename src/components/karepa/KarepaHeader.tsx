@@ -4,13 +4,13 @@ import React from "react";
 import { X } from "lucide-react";
 import { StyleFamily, STYLE_LABELS } from "./types";
 
-interface KarepaHeaderProps {
-  style: StyleFamily;
+interface KarepaHeaderProps {style: StyleFamily;
   onStyleChange: (s: StyleFamily) => void;
   onClose: () => void;
+  disabled?: boolean;
 }
 
-export function KarepaHeader({ style, onStyleChange, onClose }: KarepaHeaderProps) {
+export function KarepaHeader({style, onStyleChange, onClose, disabled}: KarepaHeaderProps) {
   const families: StyleFamily[] = ["V1", "V2", "V3"];
 
   return (
@@ -28,7 +28,7 @@ export function KarepaHeader({ style, onStyleChange, onClose }: KarepaHeaderProp
             <button
               key={f}
               type="button"
-              onClick={() => onStyleChange(f)}
+              onClick={() => onStyleChange(f)} disabled={disabled}
               className={`flex items-center gap-1.5 rounded-lg px-3 py-[5px] text-[11px] font-medium transition-all duration-150 ${
                 style === f
                   ? "bg-[#1e1e28] text-white/85 shadow-[0_1px_4px_rgba(0,0,0,0.5)]"

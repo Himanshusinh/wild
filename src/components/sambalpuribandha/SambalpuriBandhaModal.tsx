@@ -218,31 +218,31 @@ export function SambalpuriBandhaModal({ isOpen, onClose }: { isOpen: boolean; on
     <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/45 p-3 sm:p-6 backdrop-blur-2xl">
       <div className="absolute inset-0" onClick={onClose} aria-hidden />
       <div role="dialog" aria-modal="true" aria-label="SAMBALPURI BANDHA Generator" className={`relative flex w-[min(1080px,calc(100vw-24px))] h-[min(760px,calc(100vh-24px))] flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0E0E12]/95 shadow-[0_24px_70px_rgba(0,0,0,0.7)] ring-1 ring-white/[0.04] transition-all duration-300 ${isVisible ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-2 scale-[0.985]"}`}>
-        <SambalpuriBandhaHeader style={state.style} onStyleChange={(s) => dispatchLocal({ type: "SET_STYLE", payload: s })} onClose={onClose} />
+        <SambalpuriBandhaHeader style={state.style} onStyleChange={(s) => dispatchLocal({ type: "SET_STYLE", payload: s })} onClose={onClose} disabled={state.panelState !== "empty"} />
         <div className="grid min-h-0 flex-1 overflow-hidden lg:[grid-template-columns:420px_1fr]">
           <aside className="flex flex-col overflow-hidden border-r border-white/10 bg-[#0E0E12]">
             <div className="flex flex-1 flex-col gap-5 overflow-y-auto px-5 py-5 [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-white/[0.06] [&::-webkit-scrollbar]:w-1">
               <div className="flex flex-col gap-2">
                 <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-white/25">Input</span>
-                <ModeToggle mode={state.inputMode} onChange={(v) => dispatchLocal({ type: "SET_MODE", payload: v })} />
+                <ModeToggle disabled={state.panelState !== "empty"} mode={state.inputMode} onChange={(v) => dispatchLocal({ type: "SET_MODE", payload: v })} />
               </div>
               {state.inputMode === "text" ? (
-                <SceneInput value={state.sceneText} onChange={(v) => dispatchLocal({ type: "SET_SCENE_TEXT", payload: v })} />
+                <SceneInput disabled={state.panelState !== "empty"} value={state.sceneText} onChange={(v) => dispatchLocal({ type: "SET_SCENE_TEXT", payload: v })} />
               ) : (
                 <div className="flex flex-col gap-3">
-                  <UploadZone uploadedImage={state.uploadedImage} onUpload={(v) => dispatchLocal({ type: "SET_UPLOADED_IMAGE", payload: v })} />
-                  <textarea value={state.imageNote} onChange={(e) => dispatchLocal({ type: "SET_IMAGE_NOTE", payload: e.target.value })} rows={3} placeholder="Optional notes..." className="w-full resize-none rounded-xl border border-white/10 bg-[#13131a] px-4 py-3 text-[13px] leading-relaxed text-white/80 outline-none transition-colors placeholder:text-white/20 focus:border-white/20" />
+                  <UploadZone disabled={state.panelState !== "empty"} uploadedImage={state.uploadedImage} onUpload={(v) => dispatchLocal({ type: "SET_UPLOADED_IMAGE", payload: v })} />
+                  <textarea disabled={state.panelState !== "empty"} value={state.imageNote} onChange={(e) => dispatchLocal({ type: "SET_IMAGE_NOTE", payload: e.target.value })} rows={3} placeholder="Optional notes..." className="disabled:opacity-50 disabled:cursor-not-allowed w-full resize-none rounded-xl border border-white/10 bg-[#13131a] px-4 py-3 text-[13px] leading-relaxed text-white/80 outline-none transition-colors placeholder:text-white/20 focus:border-white/20" />
                 </div>
               )}
               <div className="flex flex-col gap-2">
                 <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-white/25">Model</span>
-                <ModelSelector value={state.model} onChange={(v) => dispatchLocal({ type: "SET_MODEL", payload: v })} />
+                <ModelSelector disabled={state.panelState !== "empty"} value={state.model} onChange={(v) => dispatchLocal({ type: "SET_MODEL", payload: v })} />
               </div>
-              <SettingsPanel model={state.model} resolution={state.resolution} imageCount={state.imageCount} ratio={state.ratio} includeBenchmark={false} includeVariable={state.includeVariable} includeRestyle={false} onCountChange={(v) => dispatchLocal({ type: "SET_COUNT", payload: v })} onResolutionChange={(v) => dispatchLocal({ type: "SET_RESOLUTION", payload: v })} onRatioChange={handleRatioChange} onIncludeBenchmarkChange={() => {}} onIncludeVariableChange={(v) => dispatchLocal({ type: "SET_INCLUDE_VARIABLE", payload: v })} onIncludeRestyleChange={() => {}} />
+              <SettingsPanel disabled={state.panelState !== "empty"} model={state.model} resolution={state.resolution} imageCount={state.imageCount} ratio={state.ratio} includeBenchmark={false} includeVariable={state.includeVariable} includeRestyle={false} onCountChange={(v) => dispatchLocal({ type: "SET_COUNT", payload: v })} onResolutionChange={(v) => dispatchLocal({ type: "SET_RESOLUTION", payload: v })} onRatioChange={handleRatioChange} onIncludeBenchmarkChange={() => {}} onIncludeVariableChange={(v) => dispatchLocal({ type: "SET_INCLUDE_VARIABLE", payload: v })} onIncludeRestyleChange={() => {}} />
             </div>
             
             <div className="border-t border-white/[0.06] bg-[#0E0E12] px-5 py-4">
-              <button type="button" onClick={() => void handleGenerate()} disabled={state.panelState === "loading"} className="w-full rounded-lg bg-[#2F6BFF] py-2.5 text-[12px] font-semibold text-white transition hover:bg-[#2F6BFF]/90 disabled:opacity-50">Generate SAMBALPURI BANDHA</button>
+              <button type="button" onClick={() => void handleGenerate()} disabled={state.panelState !== "empty"} className="w-full rounded-lg bg-[#2F6BFF] py-2.5 text-[12px] font-semibold text-white transition hover:bg-[#2F6BFF]/90 disabled:opacity-50">Generate SAMBALPURI BANDHA</button>
             </div>
           </aside>
           <main className="flex min-h-0 flex-col overflow-hidden bg-[#0a0a0f]">

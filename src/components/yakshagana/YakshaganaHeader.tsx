@@ -7,10 +7,12 @@ export function YakshaganaHeader({
   style,
   onStyleChange,
   onClose,
+  disabled
 }: {
   style: StyleFamily;
   onStyleChange: (s: StyleFamily) => void;
   onClose: () => void;
+  disabled?: boolean;
 }) {
   const families: StyleFamily[] = ["V1", "V2", "V3"];
 
@@ -32,7 +34,8 @@ export function YakshaganaHeader({
               key={f}
               type="button"
               onClick={() => onStyleChange(f)}
-              className={`flex items-center gap-1.5 rounded-lg px-3 py-[5px] text-[11px] font-medium transition-all duration-150 ${
+              disabled={disabled}
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-[5px] text-[11px] font-medium transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed ${
                 style === f
                   ? "bg-[#1e1e28] text-white/85 shadow-[0_1px_4px_rgba(0,0,0,0.5)]"
                   : "text-white/30 hover:text-white/55"

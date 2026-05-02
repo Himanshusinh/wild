@@ -2,10 +2,10 @@ import React from 'react';
 import { X } from 'lucide-react';
 import { HmaramVersion } from './types';
 
-interface HmaramHeaderProps {
-  currentVersion: HmaramVersion;
+interface HmaramHeaderProps {currentVersion: HmaramVersion;
   onVersionChange: (version: HmaramVersion) => void;
   onClose: () => void;
+  disabled?: boolean;
 }
 
 const STYLE_LABELS: Record<string, { badge: string }> = {

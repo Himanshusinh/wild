@@ -2,10 +2,10 @@ import React from 'react';
 import { X } from 'lucide-react';
 import { HoysalaReliefVersion } from './types';
 
-interface HoysalaReliefHeaderProps {
-  currentVersion: HoysalaReliefVersion;
+interface HoysalaReliefHeaderProps {currentVersion: HoysalaReliefVersion;
   onVersionChange: (version: HoysalaReliefVersion) => void;
   onClose: () => void;
+  disabled?: boolean;
 }
 
 const STYLE_LABELS: Record<string, { badge: string }> = {

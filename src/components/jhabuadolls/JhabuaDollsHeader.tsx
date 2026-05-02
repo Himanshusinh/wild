@@ -6,6 +6,7 @@ interface JhabuaDollsHeaderProps {
   currentVersion: JhabuaDollsVersion;
   onVersionChange: (version: JhabuaDollsVersion) => void;
   onClose: () => void;
+  disabled?: boolean;
 }
 
 const STYLE_LABELS: Record<string, { badge: string }> = {
@@ -18,6 +19,7 @@ const JhabuaDollsHeader: React.FC<JhabuaDollsHeaderProps> = ({
   currentVersion,
   onVersionChange,
   onClose,
+  disabled
 }) => {
   const versions: JhabuaDollsVersion[] = ['v1', 'v2', 'v3'];
 
@@ -38,8 +40,9 @@ const JhabuaDollsHeader: React.FC<JhabuaDollsHeaderProps> = ({
             <button
               key={v}
               type="button"
+              disabled={disabled}
               onClick={() => onVersionChange(v)}
-              className={`flex items-center gap-1.5 rounded-lg px-3 py-[5px] text-[11px] font-medium transition-all duration-150 ${
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-[5px] text-[11px] font-medium transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed ${
                 currentVersion === v
                   ? "bg-[#1e1e28] text-white/85 shadow-[0_1px_4px_rgba(0,0,0,0.5)]"
                   : "text-white/30 hover:text-white/55"

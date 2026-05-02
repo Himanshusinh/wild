@@ -2,10 +2,10 @@ import React from 'react';
 import { X } from 'lucide-react';
 import { HardOrnamentVersion } from './types';
 
-interface HardOrnamentHeaderProps {
-  currentVersion: HardOrnamentVersion;
+interface HardOrnamentHeaderProps {currentVersion: HardOrnamentVersion;
   onVersionChange: (version: HardOrnamentVersion) => void;
   onClose: () => void;
+  disabled?: boolean;
 }
 
 const STYLE_LABELS: Record<string, { badge: string }> = {

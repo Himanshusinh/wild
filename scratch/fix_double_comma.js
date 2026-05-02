@@ -5,7 +5,6 @@ const root = 'c:\\Users\\chauh\\OneDrive\\Desktop\\wild mind\\wmnew\\wild\\src\\
 
 function walk(dir) {
     let results = [];
-    if (!fs.existsSync(dir)) return [];
     const list = fs.readdirSync(dir);
     list.forEach(file => {
         file = path.resolve(dir, file);
@@ -26,21 +25,19 @@ let count = 0;
 
 files.forEach(file => {
     let content = fs.readFileSync(file, 'utf8');
-    if (!content.includes('OutputGrid')) return;
-
     let modified = false;
 
-    // Pattern to find the over-closed loading state block (4 closing divs instead of 3)
-    const overClosedPattern = /<\/div>\s*<\/div>\s*<\/div>\s*<\/div>\s*\) : null\}/g;
+    // Pattern to find the double comma error:
+    // e.g. onClose,, disabled
     
-    if (overClosedPattern.test(content)) {
-        content = content.replace(overClosedPattern, '</div>\n                </div>\n              </div>\n            ) : null}');
+    if (content.includes(',, disabled')) {
+        content = content.replace(/,, disabled/g, ', disabled');
         modified = true;
     }
 
     if (modified) {
         fs.writeFileSync(file, content, 'utf8');
-        console.log(`Fixed Over-close: ${path.relative(root, file)}`);
+        console.log(`Fixed double comma in: ${path.relative(root, file)}`);
         count++;
     }
 });

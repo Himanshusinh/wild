@@ -316,43 +316,42 @@ export function BastarWoodcraftModal({ isOpen, onClose }: { isOpen: boolean; onC
         }`}
       >
         <BastarWoodcraftHeader
-          style={state.style}
+ style={state.style}
           onStyleChange={(s) => dispatchLocal({ type: "SET_STYLE", payload: s })}
-          onClose={onClose}
-        />
+          onClose={onClose} disabled={state.panelState !== "empty"} />
 
         <div className="grid min-h-0 flex-1 overflow-hidden lg:[grid-template-columns:420px_1fr]">
           <aside className="flex flex-col overflow-hidden border-r border-white/10 bg-[#0E0E12]">
             <div className="flex flex-1 flex-col gap-5 overflow-y-auto px-5 py-5 [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-white/[0.06] [&::-webkit-scrollbar]:w-1">
               <div className="flex flex-col gap-2">
                 <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-white/25">Input</span>
-                <ModeToggle mode={state.inputMode} onChange={(v) => dispatchLocal({ type: "SET_MODE", payload: v })} />
+                <ModeToggle disabled={state.panelState !== "empty"} mode={state.inputMode} onChange={(v) => dispatchLocal({ type: "SET_MODE", payload: v })} />
               </div>
 
               {state.inputMode === "text" ? (
-                <SceneInput value={state.sceneText} onChange={(v) => dispatchLocal({ type: "SET_SCENE_TEXT", payload: v })} />
+                <SceneInput disabled={state.panelState !== "empty"} value={state.sceneText} onChange={(v) => dispatchLocal({ type: "SET_SCENE_TEXT", payload: v })} />
               ) : (
                 <div className="flex flex-col gap-3">
-                  <UploadZone
+                  <UploadZone disabled={state.panelState !== "empty"}
                     uploadedImage={state.uploadedImage}
                     onUpload={(v) => dispatchLocal({ type: "SET_UPLOADED_IMAGE", payload: v })}
                   />
-                  <textarea
+                  <textarea disabled={state.panelState !== "empty"}
                     value={state.imageNote}
                     onChange={(e) => dispatchLocal({ type: "SET_IMAGE_NOTE", payload: e.target.value })}
                     rows={3}
                     placeholder="Optional notes..."
-                    className="w-full resize-none rounded-xl border border-white/10 bg-[#13131a] px-4 py-3 text-[13px] leading-relaxed text-white/80 outline-none transition-colors placeholder:text-white/20 focus:border-white/20"
+                    className="disabled:opacity-50 disabled:cursor-not-allowed w-full resize-none rounded-xl border border-white/10 bg-[#13131a] px-4 py-3 text-[13px] leading-relaxed text-white/80 outline-none transition-colors placeholder:text-white/20 focus:border-white/20"
                   />
                 </div>
               )}
 
               <div className="flex flex-col gap-2">
                 <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-white/25">Model</span>
-                <ModelSelector value={state.model} onChange={(v) => dispatchLocal({ type: "SET_MODEL", payload: v })} />
+                <ModelSelector disabled={state.panelState !== "empty"} value={state.model} onChange={(v) => dispatchLocal({ type: "SET_MODEL", payload: v })} />
               </div>
 
-              <SettingsPanel
+              <SettingsPanel disabled={state.panelState !== "empty"}
                 model={state.model}
                 resolution={state.resolution}
                 imageCount={state.imageCount}
@@ -373,7 +372,7 @@ export function BastarWoodcraftModal({ isOpen, onClose }: { isOpen: boolean; onC
               <button
                 type="button"
                 onClick={() => void handleGenerate()}
-                disabled={state.panelState === "loading"}
+                disabled={state.panelState !== "empty"}
                 className="w-full rounded-lg bg-[#2F6BFF] py-2.5 text-[12px] font-semibold text-white transition hover:bg-[#2F6BFF]/90 disabled:opacity-50"
               >
                 Generate BASTAR WOODCRAFT Textile

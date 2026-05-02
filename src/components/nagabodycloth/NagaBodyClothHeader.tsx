@@ -2,10 +2,10 @@ import React from 'react';
 import { X } from 'lucide-react';
 import { NagaBodyClothVersion } from './types';
 
-interface NagaBodyClothHeaderProps {
-  currentVersion: NagaBodyClothVersion;
+interface NagaBodyClothHeaderProps {currentVersion: NagaBodyClothVersion;
   onVersionChange: (version: NagaBodyClothVersion) => void;
   onClose: () => void;
+  disabled?: boolean;
 }
 
 const STYLE_LABELS: Record<string, { badge: string }> = {

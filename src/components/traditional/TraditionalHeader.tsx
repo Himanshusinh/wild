@@ -10,6 +10,7 @@ interface TraditionalHeaderProps {
   styleTitle: string;
   onStyleChange: (s: StyleVersion) => void;
   onClose: () => void;
+  disabled?: boolean;
 }
 
 export function TraditionalHeader({
@@ -17,6 +18,7 @@ export function TraditionalHeader({
   styleTitle,
   onStyleChange,
   onClose,
+  disabled
 }: TraditionalHeaderProps) {
   const versions: { id: StyleVersion; label: string; icon: React.ReactNode }[] = [
     { id: "V1", label: "Authentic", icon: <Boxes size={14} /> },
@@ -41,8 +43,9 @@ export function TraditionalHeader({
             <button
               key={v.id}
               type="button"
+              disabled={disabled}
               onClick={() => onStyleChange(v.id)}
-              className={`flex items-center gap-1.5 rounded-lg px-3 py-[5px] text-[11px] font-medium transition-all duration-150 ${
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-[5px] text-[11px] font-medium transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed ${
                 style === v.id
                   ? "bg-[#1e1e28] text-white/85 shadow-[0_1px_4px_rgba(0,0,0,0.5)]"
                   : "text-white/30 hover:text-white/55"
