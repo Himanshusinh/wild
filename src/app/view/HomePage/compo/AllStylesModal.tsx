@@ -136,7 +136,7 @@ const FilterDropdown = ({
         </button>
 
         {isOpen && (
-          <div className="absolute right-0 top-full z-30 mt-2 w-full min-w-[220px] overflow-hidden rounded-2xl border border-white/10 bg-[#08080b] p-2 shadow-[0_24px_80px_rgba(0,0,0,0.55)]">
+          <div className="absolute right-0 top-full z-30 mt-2 w-full min-w-[160px] overflow-hidden rounded-2xl border border-white/10 bg-[#08080b] p-1 shadow-[0_24px_80px_rgba(0,0,0,0.55)]">
             <div
               role="listbox"
               aria-label={ariaLabel}
