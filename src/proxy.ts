@@ -17,6 +17,7 @@ export function proxy(req: NextRequest) {
   const normalizedPath = trimmedPath.toLowerCase();
   const pathnameLower = trimmedPath.toLowerCase();
 
+  
   // 0. Maintenance Mode Redirect
   const isMaintenanceExcluded =
     pathname.startsWith('/_next') ||
