@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
-import { Search, X } from "lucide-react";
+import { ChevronDown, Search, X } from "lucide-react";
 import { STYLES } from "./CreativeStyle";
 
 interface AllStylesModalProps {
@@ -11,6 +11,11 @@ interface AllStylesModalProps {
   onClose: () => void;
   onStyleSelect: (id: string) => void;
 }
+
+type FilterOption = {
+  value: string;
+  label: string;
+};
 
 const StyleCard = ({
   style,
@@ -68,6 +73,112 @@ const StyleCard = ({
     </div>
   </button>
 );
+
+const FilterDropdown = ({
+  ariaLabel,
+  value,
+  options,
+  onChange,
+  className,
+}: {
+  ariaLabel: string;
+  value: string;
+  options: FilterOption[];
+  onChange: (value: string) => void;
+  className?: string;
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!dropdownRef.current?.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen]);
+
+  const selectedOption =
+    options.find((option) => option.value === value) ?? options[0];
+
+  return (
+    <div ref={dropdownRef} className={className}>
+      <div className="relative">
+        <button
+          type="button"
+          aria-label={ariaLabel}
+          aria-haspopup="listbox"
+          aria-expanded={isOpen}
+          onClick={() => setIsOpen((current) => !current)}
+          className="flex h-11 w-full items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm font-medium text-white outline-none transition hover:border-white/20 hover:bg-white/[0.06]"
+        >
+          <span className="truncate">{selectedOption.label}</span>
+          <ChevronDown
+            size={16}
+            className={`shrink-0 text-white/55 transition-transform ${isOpen ? "rotate-180" : ""}`}
+          />
+        </button>
+
+        {isOpen && (
+          <div className="absolute right-0 top-full z-30 mt-2 w-full min-w-[220px] overflow-hidden rounded-2xl border border-white/10 bg-[#08080b] p-2 shadow-[0_24px_80px_rgba(0,0,0,0.55)]">
+            <div
+              role="listbox"
+              aria-label={ariaLabel}
+              className="max-h-100 overflow-y-auto [scrollbar-width:thin]"
+            >
+              {options.map((option) => {
+                const isSelected = option.value === value;
+
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    role="option"
+                    aria-selected={isSelected}
+                    onClick={() => {
+                      onChange(option.value);
+                      setIsOpen(false);
+                    }}
+                    className={`flex w-full items-center justify-between rounded-lg px-4 py-2 text-left text-sm transition ${
+                      isSelected
+                        ? "bg-white text-black"
+                        : "text-white/82 hover:bg-white/[0.06]"
+                    }`}
+                  >
+                    <span className="truncate">{option.label}</span>
+                    <span
+                      className={`ml-3 h-2.5 w-2.5 shrink-0 rounded-full border ${
+                        isSelected
+                          ? "border-black bg-black"
+                          : "border-white/45 bg-transparent"
+                      }`}
+                    />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 export default function AllStylesModal({
   isOpen,
@@ -182,6 +293,24 @@ export default function AllStylesModal({
       typeCategories: [{ id: "all", label: "All Types" }, ...sortedTypes],
     };
   }, []);
+
+  const stateOptions = useMemo(
+    () =>
+      categories.map((category) => ({
+        value: category,
+        label: category === "All" ? "All States" : category,
+      })),
+    [categories],
+  );
+
+  const typeOptions = useMemo(
+    () =>
+      typeCategories.map((typeCategory) => ({
+        value: typeCategory.id,
+        label: typeCategory.label,
+      })),
+    [typeCategories],
+  );
 
   const contentToRender = useMemo(() => {
     const matchesSelectedType = (style: (typeof STYLES)[0]) =>
@@ -355,43 +484,21 @@ export default function AllStylesModal({
                 />
               </label>
 
-              <label className="block w-auto ">
-                <span className="sr-only">Filter by state</span>
-                <select
-                  value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
-                  className="h-11 w-auto rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm font-medium text-white outline-none transition focus:border-white/20 focus:bg-white/[0.06]"
-                >
-                  {categories.map((category) => (
-                    <option
-                      key={category}
-                      value={category}
-                      className="bg-[#15151b] text-white"
-                    >
-                      {category === "All" ? "All States" : category}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <FilterDropdown
+                ariaLabel="Filter by state"
+                value={selectedCategory}
+                options={stateOptions}
+                onChange={setSelectedCategory}
+                className="block w-full sm:w-[210px] lg:w-[230px]"
+              />
 
-              <label className="block w-full sm:w-[180px] lg:w-[200px]">
-                <span className="sr-only">Filter by type</span>
-                <select
-                  value={selectedTypeId}
-                  onChange={(e) => setSelectedTypeId(e.target.value)}
-                  className="h-11 w-auto rounded-xl border border-white/10 bg-white/[0.04] px-3 text-sm font-medium text-white outline-none transition focus:border-white/20 focus:bg-white/[0.06]"
-                >
-                  {typeCategories.map((typeCategory) => (
-                    <option
-                      key={typeCategory.id}
-                      value={typeCategory.id}
-                      className="bg-[#15151b] text-white"
-                    >
-                      {typeCategory.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <FilterDropdown
+                ariaLabel="Filter by type"
+                value={selectedTypeId}
+                options={typeOptions}
+                onChange={setSelectedTypeId}
+                className="block w-full sm:w-[180px] lg:w-[200px]"
+              />
 
               <button
                 onClick={onClose}
