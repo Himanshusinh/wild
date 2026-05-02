@@ -62,9 +62,29 @@ const getStoredIdToken = (): string | null => {
   }
 };
 
+const normalizeApiBaseUrl = (rawValue: string): string => {
+  const trimmed = (rawValue || "").trim();
+  if (!trimmed) return "";
+  if (!/^https?:\/\//i.test(trimmed)) {
+    console.error(
+      "[API] NEXT_PUBLIC_API_BASE_URL must include protocol (https://...). Received:",
+      trimmed,
+    );
+    return "";
+  }
+  try {
+    const parsed = new URL(trimmed);
+    return `${parsed.protocol}//${parsed.host}`.replace(/\/$/, "");
+  } catch {
+    console.error("[API] Invalid NEXT_PUBLIC_API_BASE_URL:", trimmed);
+    return "";
+  }
+};
+
 // Centralized axios instance configured to send cookies and optional Authorization header
-// Uses NEXT_PUBLIC_API_BASE_URL (must be set in environment variables)
-const resolvedBaseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL || "").trim();
+const resolvedBaseUrl = normalizeApiBaseUrl(
+  process.env.NEXT_PUBLIC_API_BASE_URL || "",
+);
 
 const axiosInstance = axios.create({
   baseURL: resolvedBaseUrl,
