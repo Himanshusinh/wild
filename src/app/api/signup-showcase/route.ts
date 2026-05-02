@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import { getSignupImages } from '@/lib/showcase-cache'
 
-export const revalidate = 3600
+// Avoid running heavy feed fetches during `next build` (CI hits staging API; can exceed 60s worker timeout).
+export const dynamic = 'force-dynamic'
 
 export async function GET() {
   try {
