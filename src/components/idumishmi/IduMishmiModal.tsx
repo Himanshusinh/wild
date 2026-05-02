@@ -262,8 +262,8 @@ export function IduMishmiModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
       dispatchLocal({ type: "SET_GENERATED_IMAGES", payload: images });
       dispatchLocal({ type: "SET_PANEL_STATE", payload: images.length ? "results" : "empty" });
       if (!images.length) toast.error("No images returned");
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "Generation failed";
+    } catch (e: any) {
+      const msg = e?.message || "Generation failed";
       toast.error(msg);
       dispatchLocal({ type: "SET_PANEL_STATE", payload: "empty" });
     }

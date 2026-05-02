@@ -2,7 +2,7 @@
 
 import React from "react";
 import { X } from "lucide-react";
-import { StyleFamily } from "./types";
+import { StyleFamily, STYLE_LABELS } from "./types";
 
 interface WarliHeaderProps {
   style: StyleFamily;
@@ -29,22 +29,41 @@ export function WarliHeader({
           </span>
         </div>
 
-        <div className="ml-1 flex gap-0.5 rounded-xl border border-white/10 bg-transparent p-[3px]">
-          {families.map((f) => (
-            <button
-              key={f}
-              type="button"
-              disabled={isLocked}
-              onClick={() => onStyleChange(f)}
-              className={`min-w-[54px] rounded-lg px-3 py-1.5 text-[10px] font-bold transition-all duration-200 ${
-                style === f
-                  ? "bg-white/10 text-white shadow-sm ring-1 ring-white/10"
-                  : "text-white/30 hover:bg-white/[0.04] hover:text-white/50"
-              } disabled:opacity-30 disabled:cursor-not-allowed`}
-            >
-              {f}
-            </button>
-          ))}
+        <div className="ml-1 flex gap-1 rounded-[14px] border border-white/5 bg-black/40 p-[3px]">
+          {families.map((f) => {
+            const isActive = style === f;
+            const label = STYLE_LABELS[f].badge;
+
+            return (
+              <button
+                key={f}
+                type="button"
+                disabled={isLocked}
+                onClick={() => onStyleChange(f)}
+                className={`group flex items-center gap-2.5 rounded-[10px] px-3 py-1.5 transition-all duration-300 ${isActive
+                    ? "bg-[#1c1c26] shadow-[0_4px_12px_-2px_rgba(0,0,0,0.4)] ring-1 ring-white/[0.08]"
+                    : "hover:bg-white/[0.04]"
+                  } disabled:opacity-30 disabled:cursor-not-allowed`}
+              >
+                <span
+                  className={`text-[12px] font-bold tracking-tight transition-colors ${isActive
+                      ? "text-[#58a6ff]"
+                      : "text-white/30 group-hover:text-white/50"
+                    }`}
+                >
+                  {f}
+                </span>
+                <span
+                  className={`rounded-[6px] px-1.5 py-[3px] text-[9px] font-black uppercase tracking-wider transition-all ${isActive
+                      ? "bg-[#162a4d] text-[#58a6ff] ring-1 ring-[#58a6ff]/20"
+                      : "bg-white/[0.03] text-white/15"
+                    }`}
+                >
+                  {label}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
 

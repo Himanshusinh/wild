@@ -240,8 +240,41 @@ const FAL_ERROR_MESSAGES: Record<string, (detail: FalErrorDetail) => string> = {
 const extractFalEnvelope = (error: any): FalErrorEnvelope | null => {
   if (!error) return null;
 
-  // Try to extract from response.data (axios format)
+  const status = error?.response?.status || error?.status;
   const responseData = error?.response?.data;
+
+  // Handle specific status codes even if no structured body
+  if (status === 402) {
+    return {
+      message: "Insufficient credits. Please top up your balance to continue.",
+      status: 402,
+      type: "insufficient_credits",
+      toast: {
+        type: "error",
+        title: "Credits Exhausted",
+        message: "Insufficient credits. Please top up your balance to continue.",
+      },
+    };
+  }
+
+  if (status === 401) {
+    return {
+      message: "Session expired. Please log in again.",
+      status: 401,
+      type: "unauthorized",
+    };
+  }
+
+  if (status === 429) {
+    return {
+      message: "Too many requests. Please slow down and try again.",
+      status: 429,
+      type: "rate_limit",
+      retryable: true,
+    };
+  }
+
+  // Try to extract from response.data (axios format)
   if (responseData) {
     const body =
       typeof responseData === "object"
@@ -257,7 +290,7 @@ const extractFalEnvelope = (error: any): FalErrorEnvelope | null => {
       const primaryDetail: FalErrorDetail | undefined = detailArray[0];
 
       // Extract error type
-      const errorType = primaryDetail?.type || body.type;
+      const errorType = primaryDetail?.type || body.type || body.code;
 
       // Extract retryable from header or body
       const headers = error?.response?.headers || {};
@@ -280,7 +313,7 @@ const extractFalEnvelope = (error: any): FalErrorEnvelope | null => {
         type: errorType,
         detail: detailArray,
         retryable,
-        status: error?.response?.status || body.status,
+        status: status || body.status,
         toast: body.toast || {
           type: "error",
           title: "Generation Failed",
@@ -298,6 +331,7 @@ const extractFalEnvelope = (error: any): FalErrorEnvelope | null => {
   );
   return {
     message: simpleMessage,
+    status,
     toast: {
       type: "error",
       title: "Generation Failed",

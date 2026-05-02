@@ -40,9 +40,9 @@ export const MODELS: ModelOption[] = [
 export const IMAGE_COUNTS: ImageCount[] = [1, 2, 4];
 
 export const STYLE_LABELS: Record<StyleFamily, { badge: string; title: string }> = {
-  V1: { badge: "2D MURAL", title: "Traditional 2D Mural" },
-  V2: { badge: "BAS-RELIEF", title: "Terracotta Bas-Relief" },
-  V3: { badge: "3D WORLD", title: "Full Cinematic 3D" },
+  V1: { badge: "AUTHENTIC", title: "Authentic Warli" },
+  V2: { badge: "ARTISAN", title: "Artisan Warli" },
+  V3: { badge: "CINEMATIC", title: "Cinematic Warli" },
 };
 
 export const INITIAL_STATE: WarliState = {

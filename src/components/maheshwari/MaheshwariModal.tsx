@@ -241,7 +241,8 @@ export function MaheshwariModal({ isOpen, onClose }: { isOpen: boolean; onClose:
       dispatchLocal({ type: "SET_PANEL_STATE", payload: images.length ? "results" : "empty" });
       if (!images.length) toast.error("No images returned");
     } catch (e: any) {
-      toast.error(e instanceof Error ? e.message : "Generation failed");
+      const msg = e?.message || "Generation failed";
+      toast.error(msg);
       dispatchLocal({ type: "SET_PANEL_STATE", payload: "empty" });
     }
   }, [dispatch, nanoBananaGoogleSearch, nanoBananaLimitGenerations, nanoBananaThinkingLevel, outputFormat, state]);
