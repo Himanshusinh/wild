@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
-import { X } from "lucide-react";
+import { Search, X } from "lucide-react";
 import { STYLES } from "./CreativeStyle";
 
 interface AllStylesModalProps {
@@ -12,7 +12,13 @@ interface AllStylesModalProps {
   onStyleSelect: (id: string) => void;
 }
 
-const StyleCard = ({ style, onClick }: { style: typeof STYLES[0]; onClick: () => void }) => (
+const StyleCard = ({
+  style,
+  onClick,
+}: {
+  style: (typeof STYLES)[0];
+  onClick: () => void;
+}) => (
   <button
     onClick={onClick}
     className="group flex flex-col text-left transition-all hover:-translate-y-1"
@@ -33,12 +39,18 @@ const StyleCard = ({ style, onClick }: { style: typeof STYLES[0]; onClick: () =>
       <div className="absolute bottom-4 left-4 right-4">
         <div
           className="text-[18px] font-bold uppercase tracking-wider text-white sm:text-[22px]"
-          style={{ fontFamily: "var(--font-bebas-neue), 'Bebas Neue', sans-serif" }}
+          style={{
+            fontFamily: "var(--font-bebas-neue), 'Bebas Neue', sans-serif",
+          }}
         >
           {style.title}
         </div>
-        <div className="mt-1 text-[11px] font-semibold tracking-wide text-white/85">{style.name}</div>
-        <div className="mt-1 line-clamp-2 text-[10px] leading-snug text-white/55">{style.desc}</div>
+        <div className="mt-1 text-[11px] font-semibold tracking-wide text-white/85">
+          {style.name}
+        </div>
+        <div className="mt-1 line-clamp-2 text-[10px] leading-snug text-white/55">
+          {style.desc}
+        </div>
       </div>
 
       {style.tag && (
@@ -57,14 +69,25 @@ const StyleCard = ({ style, onClick }: { style: typeof STYLES[0]; onClick: () =>
   </button>
 );
 
-export default function AllStylesModal({ isOpen, onClose, onStyleSelect }: AllStylesModalProps) {
+export default function AllStylesModal({
+  isOpen,
+  onClose,
+  onStyleSelect,
+}: AllStylesModalProps) {
   const [selectedCategory, setSelectedCategory] = useState("All");
+  const [selectedTypeId, setSelectedTypeId] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const [recentIds, setRecentIds] = useState<string[]>([]);
   const [scrollTop, setScrollTop] = useState(0);
-  const [scrollMetrics, setScrollMetrics] = useState({ clientHeight: 1, scrollHeight: 1 });
+  const [scrollMetrics, setScrollMetrics] = useState({
+    clientHeight: 1,
+    scrollHeight: 1,
+  });
   const [isDraggingThumb, setIsDraggingThumb] = useState(false);
   const listRef = useRef<HTMLDivElement | null>(null);
-  const dragStateRef = useRef<{ startY: number; startTop: number } | null>(null);
+  const dragStateRef = useRef<{ startY: number; startTop: number } | null>(
+    null,
+  );
 
   useEffect(() => {
     if (!isOpen) return;
@@ -84,13 +107,16 @@ export default function AllStylesModal({ isOpen, onClose, onStyleSelect }: AllSt
         scrollHeight: listRef.current.scrollHeight || 1,
       });
     }
-  }, [isOpen, selectedCategory]);
+  }, [isOpen, selectedCategory, selectedTypeId, searchQuery]);
 
   const handleGridScroll = () => {
     const el = listRef.current;
     if (!el) return;
     setScrollTop(el.scrollTop);
-    setScrollMetrics({ clientHeight: el.clientHeight, scrollHeight: el.scrollHeight });
+    setScrollMetrics({
+      clientHeight: el.clientHeight,
+      scrollHeight: el.scrollHeight,
+    });
   };
 
   const handleStyleSelect = (id: string) => {
@@ -112,7 +138,10 @@ export default function AllStylesModal({ isOpen, onClose, onStyleSelect }: AllSt
     const { startY, startTop } = dragStateRef.current;
     const deltaY = e.clientY - startY;
     const trackHeight = scrollMetrics.clientHeight;
-    const scrollable = Math.max(1, scrollMetrics.scrollHeight - scrollMetrics.clientHeight);
+    const scrollable = Math.max(
+      1,
+      scrollMetrics.scrollHeight - scrollMetrics.clientHeight,
+    );
     const scrollDelta = (deltaY / Math.max(1, trackHeight)) * scrollable;
     const next = Math.max(0, Math.min(scrollable, startTop + scrollDelta));
     listRef.current.scrollTop = next;
@@ -126,30 +155,77 @@ export default function AllStylesModal({ isOpen, onClose, onStyleSelect }: AllSt
     setIsDraggingThumb(false);
   };
 
-  const { groupedStyles, categories } = useMemo(() => {
+  const { groupedStyles, categories, typeCategories } = useMemo(() => {
     const groups: Record<string, typeof STYLES> = {};
+    const typeLabels = new Map<string, string>();
+
     STYLES.forEach((style) => {
-      const stateName = style.name.split(" (")[0];
+      const stateName = style.state;
       if (!groups[stateName]) groups[stateName] = [];
       groups[stateName].push(style);
+      if (!typeLabels.has(style.typeId)) {
+        typeLabels.set(style.typeId, style.tag);
+      }
     });
+
     const sortedStates = Object.keys(groups).sort();
+    const sortedTypes = Array.from(typeLabels.entries())
+      .map(([id, label]) => ({ id, label }))
+      .sort((left, right) => left.label.localeCompare(right.label));
+
     return {
-      groupedStyles: sortedStates.map((state) => ({ state, styles: groups[state] })),
+      groupedStyles: sortedStates.map((state) => ({
+        state,
+        styles: groups[state],
+      })),
       categories: ["All", "Recent", ...sortedStates],
+      typeCategories: [{ id: "all", label: "All Types" }, ...sortedTypes],
     };
   }, []);
 
   const contentToRender = useMemo(() => {
+    const matchesSelectedType = (style: (typeof STYLES)[0]) =>
+      selectedTypeId === "all" || style.typeId === selectedTypeId;
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+    const matchesSearchQuery = (style: (typeof STYLES)[0]) => {
+      if (!normalizedQuery) return true;
+      return [style.title, style.name, style.state, style.tag, style.desc]
+        .join(" ")
+        .toLowerCase()
+        .includes(normalizedQuery);
+    };
+    const matchesFilters = (style: (typeof STYLES)[0]) =>
+      matchesSelectedType(style) && matchesSearchQuery(style);
+
     if (selectedCategory === "All") {
+      const visibleGroups = groupedStyles
+        .map((group) => ({
+          ...group,
+          styles: group.styles.filter(matchesFilters),
+        }))
+        .filter((group) => group.styles.length > 0);
+
+      if (visibleGroups.length === 0) {
+        return (
+          <div className="flex h-full flex-col items-center justify-center pt-20 text-white/40">
+            <p className="text-sm font-medium">
+              No styles match the current filters.
+            </p>
+          </div>
+        );
+      }
+
       return (
         <div className="flex flex-col gap-10">
-          {groupedStyles.map((group) => (
+          {visibleGroups.map((group) => (
             <div key={group.state} className="flex flex-col gap-4">
               <div className="flex items-center gap-4">
                 <h3
                   className="text-2xl uppercase tracking-wider text-white"
-                  style={{ fontFamily: "var(--font-bebas-neue), 'Bebas Neue', sans-serif" }}
+                  style={{
+                    fontFamily:
+                      "var(--font-bebas-neue), 'Bebas Neue', sans-serif",
+                  }}
                 >
                   {group.state}
                 </h3>
@@ -157,7 +233,11 @@ export default function AllStylesModal({ isOpen, onClose, onStyleSelect }: AllSt
               </div>
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
                 {group.styles.map((style) => (
-                  <StyleCard key={style.id} style={style} onClick={() => handleStyleSelect(style.id)} />
+                  <StyleCard
+                    key={style.id}
+                    style={style}
+                    onClick={() => handleStyleSelect(style.id)}
+                  />
                 ))}
               </div>
             </div>
@@ -169,51 +249,89 @@ export default function AllStylesModal({ isOpen, onClose, onStyleSelect }: AllSt
     if (selectedCategory === "Recent") {
       const recentStyles = recentIds
         .map((id) => STYLES.find((s) => s.id === id))
-        .filter(Boolean) as typeof STYLES;
+        .filter((style): style is (typeof STYLES)[0] => Boolean(style))
+        .filter(matchesFilters);
       if (recentStyles.length === 0) {
         return (
           <div className="flex h-full flex-col items-center justify-center pt-20 text-white/40">
-            <p className="text-sm font-medium">No recent styles selected yet.</p>
+            <p className="text-sm font-medium">
+              {!searchQuery.trim() && selectedTypeId === "all"
+                ? "No recent styles selected yet."
+                : "No recent styles match the current filters."}
+            </p>
           </div>
         );
       }
       return (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
           {recentStyles.map((style) => (
-            <StyleCard key={style.id} style={style} onClick={() => handleStyleSelect(style.id)} />
+            <StyleCard
+              key={style.id}
+              style={style}
+              onClick={() => handleStyleSelect(style.id)}
+            />
           ))}
         </div>
       );
     }
 
-    const stateStyles = STYLES.filter((s) => s.name.split(" (")[0] === selectedCategory);
+    const stateStyles = STYLES.filter(
+      (s) => s.state === selectedCategory && matchesFilters(s),
+    );
+
+    if (stateStyles.length === 0) {
+      return (
+        <div className="flex h-full flex-col items-center justify-center pt-20 text-white/40">
+          <p className="text-sm font-medium">
+            No styles match the current filters.
+          </p>
+        </div>
+      );
+    }
+
     return (
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
         {stateStyles.map((style) => (
-          <StyleCard key={style.id} style={style} onClick={() => handleStyleSelect(style.id)} />
+          <StyleCard
+            key={style.id}
+            style={style}
+            onClick={() => handleStyleSelect(style.id)}
+          />
         ))}
       </div>
     );
-  }, [selectedCategory, groupedStyles, recentIds]);
+  }, [selectedCategory, groupedStyles, recentIds, searchQuery, selectedTypeId]);
 
   if (!isOpen) return null;
 
-  const maxScroll = Math.max(1, scrollMetrics.scrollHeight - scrollMetrics.clientHeight);
-  const thumbHeight = Math.max(36, (scrollMetrics.clientHeight / scrollMetrics.scrollHeight) * 100);
+  const maxScroll = Math.max(
+    1,
+    scrollMetrics.scrollHeight - scrollMetrics.clientHeight,
+  );
+  const thumbHeight = Math.max(
+    36,
+    (scrollMetrics.clientHeight / scrollMetrics.scrollHeight) * 100,
+  );
   const thumbTop = (scrollTop / maxScroll) * (100 - thumbHeight);
 
   return createPortal(
-    <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/60 p-3 backdrop-blur-xl sm:p-6" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-[150] flex items-center justify-center bg-black/60 p-3 backdrop-blur-xl sm:p-6"
+      onClick={onClose}
+    >
       <div
         className="relative flex h-[90vh] w-full max-w-8xl flex-col overflow-hidden rounded-3xl border border-white/10 bg-[#0E0E12] shadow-[0_32px_120px_rgba(0,0,0,0.8)]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="shrink-0 border-b border-white/5 px-5 py-4 sm:px-7">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
               <h2
                 className="text-2xl font-bold tracking-tight text-white sm:text-3xl"
-                style={{ fontFamily: "var(--font-bebas-neue), 'Bebas Neue', sans-serif" }}
+                style={{
+                  fontFamily:
+                    "var(--font-bebas-neue), 'Bebas Neue', sans-serif",
+                }}
               >
                 Explore All Styles
               </h2>
@@ -221,29 +339,68 @@ export default function AllStylesModal({ isOpen, onClose, onStyleSelect }: AllSt
                 Select a style to begin generating
               </p>
             </div>
-            <button
-              onClick={onClose}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-white/40 transition hover:border-white/20 hover:bg-white/5 hover:text-white"
-            >
-              <X size={20} />
-            </button>
-          </div>
-        </div>
 
-        <div className="shrink-0 flex items-center gap-2 overflow-x-auto border-b border-white/5 bg-white/[0.02] px-5 py-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:px-7">
-          {categories.map((category) => (
-            <button
-              key={category}
-              onClick={() => setSelectedCategory(category)}
-              className={`flex-shrink-0 whitespace-nowrap rounded-full px-5 py-2 text-sm font-medium transition-colors ${
-                selectedCategory === category
-                  ? "bg-white text-black"
-                  : "bg-white/[0.05] text-white/60 hover:bg-white/10 hover:text-white"
-              }`}
-            >
-              {category}
-            </button>
-          ))}
+            <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end lg:max-w-[70%] lg:flex-nowrap">
+              <label className="relative block w-full sm:w-[240px] lg:w-[280px]">
+                <Search
+                  size={16}
+                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-white/35"
+                />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search styles"
+                  className="h-11 w-full rounded-xl border border-white/10 bg-white/[0.04] pl-10 pr-4 text-sm text-white outline-none transition placeholder:text-white/30 focus:border-white/20 focus:bg-white/[0.06]"
+                />
+              </label>
+
+              <label className="block w-auto ">
+                <span className="sr-only">Filter by state</span>
+                <select
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  className="h-11 w-auto rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm font-medium text-white outline-none transition focus:border-white/20 focus:bg-white/[0.06]"
+                >
+                  {categories.map((category) => (
+                    <option
+                      key={category}
+                      value={category}
+                      className="bg-[#15151b] text-white"
+                    >
+                      {category === "All" ? "All States" : category}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="block w-full sm:w-[180px] lg:w-[200px]">
+                <span className="sr-only">Filter by type</span>
+                <select
+                  value={selectedTypeId}
+                  onChange={(e) => setSelectedTypeId(e.target.value)}
+                  className="h-11 w-auto rounded-xl border border-white/10 bg-white/[0.04] px-3 text-sm font-medium text-white outline-none transition focus:border-white/20 focus:bg-white/[0.06]"
+                >
+                  {typeCategories.map((typeCategory) => (
+                    <option
+                      key={typeCategory.id}
+                      value={typeCategory.id}
+                      className="bg-[#15151b] text-white"
+                    >
+                      {typeCategory.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <button
+                onClick={onClose}
+                className="flex h-10 w-10 shrink-0 items-center justify-center self-end rounded-full border border-white/10 bg-white/[0.03] text-white/40 transition hover:border-white/20 hover:bg-white/5 hover:text-white sm:self-auto"
+              >
+                <X size={20} />
+              </button>
+            </div>
+          </div>
         </div>
 
         <div
@@ -254,7 +411,7 @@ export default function AllStylesModal({ isOpen, onClose, onStyleSelect }: AllSt
           {contentToRender}
         </div>
 
-        <div className="absolute bottom-3 right-1.5 top-[76px] w-2 rounded-full bg-white/10">
+        <div className="absolute bottom-3 right-1.5 top-[90px] w-1 rounded-full bg-white/10">
           <div
             role="scrollbar"
             aria-valuemin={0}
@@ -265,13 +422,15 @@ export default function AllStylesModal({ isOpen, onClose, onStyleSelect }: AllSt
             onPointerUp={handleThumbPointerUp}
             onPointerCancel={handleThumbPointerUp}
             className={`absolute left-0 right-0 rounded-full bg-[#3B82F6]/90 shadow-[0_0_10px_rgba(59,130,246,0.35)] transition-colors ${
-              isDraggingThumb ? "cursor-grabbing bg-[#60A5FA]" : "cursor-grab hover:bg-[#60A5FA]"
+              isDraggingThumb
+                ? "cursor-grabbing bg-[#60A5FA]"
+                : "cursor-grab hover:bg-[#60A5FA]"
             }`}
             style={{ height: `${thumbHeight}%`, top: `${thumbTop}%` }}
           />
         </div>
       </div>
     </div>,
-    document.body
+    document.body,
   );
 }

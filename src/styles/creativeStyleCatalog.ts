@@ -1,5 +1,7 @@
 export type StyleItem = {
   id: string;
+  state: string;
+  typeId: string;
   name: string;
   title: string;
   desc: string;
@@ -10,7 +12,20 @@ export type StyleItem = {
   imageFilter?: string;
 };
 
-export const STYLES: StyleItem[] = [
+type RawStyleItem = Omit<StyleItem, "state" | "typeId"> & {
+  state?: string;
+  typeId?: string;
+};
+
+const inferStyleState = (name: string) => name.split(" (")[0].trim();
+const inferStyleTypeId = (tag: string) =>
+  tag
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+const rawStyles: RawStyleItem[] = [
   {
     id: "Maharashtra",
     name: "Maharashtra",
@@ -731,7 +746,8 @@ export const STYLES: StyleItem[] = [
     name: "Manipur",
     title: "BORDER-SIGN TEXTILE",
     desc: "A traditional textile system where meaning is defined through the relationship between a restrained field and a strong identity-bearing border.",
-    image: "/HomePage/creativeStyle/next-styles-images/border-sign-textile.avif",
+    image:
+      "/HomePage/creativeStyle/next-styles-images/border-sign-textile.avif",
     tag: "Textile",
     titleColor: "#ffffff",
     href: "/text-to-image",
@@ -995,7 +1011,8 @@ export const STYLES: StyleItem[] = [
     name: "Maharashtra",
     title: "SAWANTWADI WOODCRAFT",
     desc: "A traditional miniature craft where hand-carved wooden forms are painted and arranged into playful object-world sets.",
-    image: "/HomePage/creativeStyle/next-styles-images/sawantwadi-woodcraft.avif",
+    image:
+      "/HomePage/creativeStyle/next-styles-images/sawantwadi-woodcraft.avif",
     tag: "Woodcraft",
     titleColor: "#ffffff",
     href: "/text-to-image",
@@ -1072,7 +1089,8 @@ export const STYLES: StyleItem[] = [
     name: "Nagaland",
     title: "NAGA SHAWL",
     desc: "A tribe-specific woven system where pattern, structure, and identity are governed by a single coherent visual code.",
-    image: "/HomePage/creativeStyle/next-styles-images/tribe-signature-shawl-branch-nagaland.avif",
+    image:
+      "/HomePage/creativeStyle/next-styles-images/tribe-signature-shawl-branch-nagaland.avif",
     tag: "Shawl",
     titleColor: "#ffffff",
     href: "/text-to-image",
@@ -1281,7 +1299,8 @@ export const STYLES: StyleItem[] = [
     name: "Nagaland",
     title: "NAGA SHAWL (ORDINARY)",
     desc: "A community-specific handwoven textile defined by bold stripe patterns and extra-weft motifs that encode ancestral lineage.",
-    image: "/HomePage/creativeStyle/next-styles-images/naga-shawl-ordinary.avif",
+    image:
+      "/HomePage/creativeStyle/next-styles-images/naga-shawl-ordinary.avif",
     tag: "Textile",
     titleColor: "#ffffff",
     href: "/text-to-image",
@@ -2304,7 +2323,8 @@ export const STYLES: StyleItem[] = [
     name: "Daman & Diu",
     title: "INDO-PORTUGUESE ENVIRONMENT",
     desc: "A fortified coastal settlement where churches, gateways, and walls form a unified architectural system.",
-    image: "/HomePage/creativeStyle/5th-images/indo-portuguese-environment.avif",
+    image:
+      "/HomePage/creativeStyle/5th-images/indo-portuguese-environment.avif",
     tag: "Architecture",
     titleColor: "#ffffff",
     href: "/text-to-image",
@@ -2432,3 +2452,9 @@ export const STYLES: StyleItem[] = [
     imageFilter: "brightness(0.85) saturate(0.95)",
   },
 ];
+
+export const STYLES: StyleItem[] = rawStyles.map((style) => ({
+  ...style,
+  state: style.state ?? inferStyleState(style.name),
+  typeId: style.typeId ?? inferStyleTypeId(style.tag),
+}));

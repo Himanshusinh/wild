@@ -1,0 +1,50 @@
+
+
+
+uid: 'Pah3dtoPEaaf55jYmmqcNfqjt4W2', uidVerified: true }
+[AUTH][Redis] HIT { uid: 'Pah3dtoPEaaf55jYmmqcNfqjt4W2', uidVerified: true }
+Create subscription error: { message: 'User not found', status: 400 }
+[AUTH][Redis] HIT { uid: 'Pah3dtoPEaaf55jYmmqcNfqjt4W2', uidVerified: true }
+Create subscription error: { message: 'User not found', status: 400 }
+[AUTH][Redis] HIT { uid: 'Pah3dtoPEaaf55jYmmqcNfqjt4W2', uidVerified: true }
+Create subscription error: { message: 'User not found', status: 400 }
+
+
+see the logs of the api gateway the uid found but still it shows the user not found and when i try to upgrade th plan it also show the user not found @contextScopeItemMention 
+
+
+}
+👤 [CreateSubscription] Extracted UserID: Pah3dtoPEaaf55jYmmqcNfqjt4W2, Plan: CREATOR_MONTHLY
+📧 [CreateSubscription] Extracted Email: prajapatiaryan3103@gmail.com
+📝 [CreateSubscription] Received body: {
+  "userId": "Pah3dtoPEaaf55jYmmqcNfqjt4W2",
+  "planCode": "CREATOR_MONTHLY",
+  "billingDetails": {
+    "email": "prajapatiaryan3103@gmail.com",
+    "name": "Aryan Prajapati"
+  }
+}
+👤 [CreateSubscription] Extracted UserID: Pah3dtoPEaaf55jYmmqcNfqjt4W2, Plan: CREATOR_MONTHLY
+📧 [CreateSubscription] Extracted Email: prajapatiaryan3103@gmail.com
+
+
+
+
+payload:
+{planCode: "CREATOR_MONTHLY",…}
+billingDetails
+: 
+{email: "prajapatiaryan3103@gmail.com", name: "Aryan Prajapati"}
+email
+: 
+"prajapatiaryan3103@gmail.com"
+name
+: 
+"Aryan Prajapati"
+planCode
+: 
+"CREATOR_MONTHLY"
+
+
+response:
+{"message":"User not found","code":"ERR_BAD_REQUEST","status":400}
