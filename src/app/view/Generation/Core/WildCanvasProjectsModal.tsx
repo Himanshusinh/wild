@@ -15,18 +15,9 @@ const WildCanvasProjectsModal = ({ isOpen, onClose }: WildCanvasProjectsModalPro
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    // Determine canvas URL based on environment
+    // Canvas URL must come from env to avoid hardcoded staging/localhost drift
     const getCanvasUrl = () => {
-        if (process.env.NEXT_PUBLIC_CANVAS_URL) return process.env.NEXT_PUBLIC_CANVAS_URL;
-        if (typeof window === 'undefined') return '';
-        
-        const hostname = window.location.hostname;
-        if (hostname === 'wildmindai.com' || hostname === 'www.wildmindai.com') {
-            return 'https://studio.wildmindai.com';
-        } else if (hostname === 'onstaging-wildmindai.com' || hostname === 'onstaging.wildmindai.com') {
-             return 'https://onstaging-studios.wildmindai.com';
-        }
-        return 'http://localhost:3002';
+        return (process.env.NEXT_PUBLIC_CANVAS_URL || '').trim().replace(/\/$/, '');
     };
 
     const canvasUrl = getCanvasUrl();
@@ -71,11 +62,19 @@ const WildCanvasProjectsModal = ({ isOpen, onClose }: WildCanvasProjectsModalPro
     };
 
     const handleCreateNewProject = () => {
+        if (!canvasUrl) {
+            alert('Canvas URL is not configured. Please set NEXT_PUBLIC_CANVAS_URL.');
+            return;
+        }
         window.open(`${canvasUrl}?projectId=new`, '_blank', 'noopener,noreferrer');
         onClose();
     };
 
     const handleOpenProject = async (projectId: string) => {
+        if (!canvasUrl) {
+            alert('Canvas URL is not configured. Please set NEXT_PUBLIC_CANVAS_URL.');
+            return;
+        }
         // Try to get auth token to pass along (helps with cross-subdomain auth)
         // Since localStorage isn't shared across subdomains, we pass the token via URL hash
         // The hash is not sent to the server, so it's relatively safe
