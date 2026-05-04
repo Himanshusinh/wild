@@ -304,6 +304,83 @@ const getIndianBasePrompt = async (
   return null;
 };
 
+/** Valid CSS aspect-ratio for grid tiles (invalid values collapse to 0 height → "empty" days). */
+const toGridAspectRatioCss = (frameSize?: string): string => {
+  const raw = String(frameSize || "1:1").trim().toLowerCase();
+  if (
+    !raw ||
+    raw === "auto" ||
+    raw === "match_input_image" ||
+    raw === "match input image"
+  ) {
+    return "1 / 1";
+  }
+  const normalized = raw.replace(/\s+/g, "");
+  const parts = normalized.includes(":")
+    ? normalized.split(":")
+    : normalized.split("x");
+  if (parts.length === 2) {
+    const a = parseFloat(parts[0]);
+    const b = parseFloat(parts[1]);
+    if (Number.isFinite(a) && Number.isFinite(b) && a > 0 && b > 0) {
+      return `${a} / ${b}`;
+    }
+  }
+  return "1 / 1";
+};
+
+/** Resolved URL for a history image tile (must stay in sync with grid render). */
+const getHistoryImageDisplaySrc = (image: any): string => {
+  if (!image) return "";
+  const pick = [
+    image.thumbnailUrl,
+    image.avifUrl,
+    image.webpUrl,
+    image.url,
+    image.originalUrl,
+    image.firebaseUrl,
+  ]
+    .map((x) => String(x || "").trim())
+    .find((x) => x.length > 0);
+  if (pick) return pick;
+  const sp = image?.storagePath;
+  if (
+    typeof sp === "string" &&
+    sp.length > 0 &&
+    !sp.includes("_thumb.avif")
+  ) {
+    let basePath = sp.replace(/_thumb\.avif$/i, "").replace(/\.avif$/i, "");
+    if (!basePath.match(/\.(jpg|jpeg|png|webp)$/i)) basePath += ".jpg";
+    const built = toDirectUrl(basePath.replace(/^\//, ""));
+    return built && built.length > 0 ? built : "";
+  }
+  return "";
+};
+
+const historyImageHasRenderableSource = (image: any): boolean =>
+  getHistoryImageDisplaySrc(image).length > 0;
+
+/** Tile count that will actually be rendered for a day (after entry filter). */
+const countGalleryCellsForEntries = (entries: HistoryEntry[]): number => {
+  let n = 0;
+  for (const e of entries) {
+    const imgs = Array.isArray((e as any)?.images) ? (e as any).images : [];
+    n += imgs.length;
+  }
+  return n;
+};
+
+const historyEntryContributesGalleryTiles = (entry: any): boolean => {
+  const st = String(entry?.status || "");
+  const imgs = Array.isArray(entry?.images) ? entry.images : [];
+  if (st === "generating" || st === "pending") {
+    return imgs.length > 0;
+  }
+  if (imgs.length === 0) return false;
+  if (st === "failed") return true;
+  return imgs.some(historyImageHasRenderableSource);
+};
+
 const InputBox = () => {
   const dispatch = useAppDispatch();
   const router = useRouter();
@@ -2924,6 +3001,16 @@ const InputBox = () => {
     }
   }, [groupedByDate, sortOrder]);
 
+  // Only show date sections that actually render at least one image tile (avoids empty headers + stray dividers).
+  const sortedDatesWithVisibleTiles = useMemo(() => {
+    return sortedDates.filter((date) => {
+      const raw =
+        (groupedByDate as { [key: string]: HistoryEntry[] })[date] ?? [];
+      const entries = raw.filter(historyEntryContributesGalleryTiles);
+      return countGalleryCellsForEntries(entries) > 0;
+    });
+  }, [sortedDates, groupedByDate]);
+
   // Track previous entries for animation - update AFTER render completes
   // This ensures that during render, previousEntriesRef still contains entries from the PREVIOUS render
   useEffect(() => {
@@ -3675,7 +3762,8 @@ const InputBox = () => {
     containerRef: scrollRootRef,
     hasMore,
     loading,
-    enabled: historyEntries.length > 0 && sortedDates.length > 0,
+    enabled:
+      historyEntries.length > 0 && sortedDatesWithVisibleTiles.length > 0,
     loadMore: async () => {
       if (!userData) return;
       const nextPage = page + 1;
@@ -8571,8 +8659,8 @@ const InputBox = () => {
         /* Simple fixed-size image containers */
         .image-item {
           width: 100%;
+          min-width: 0;
           position: relative;
-          break-inside: avoid;
           margin-bottom: 4px;
         }
 
@@ -8583,28 +8671,30 @@ const InputBox = () => {
           }
         }
 
-        /* Simple grid layout - stable to prevent reflow */
+        /* CSS Grid (not multi-column): column-count masonry left holes and grey seam lines between flows. */
         .image-grid {
-          column-count: 2;
-          column-gap: 4px;
+          display: grid;
+          align-items: start;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 4px;
         }
 
         @media (min-width: 768px) {
           .image-grid {
-            column-count: 5;
-            column-gap: 12px;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 12px;
           }
         }
 
         @media (min-width: 1024px) {
           .image-grid {
-            column-count: 6;
-            column-gap: 4px;
-            transition: all 0.5s ease-in-out;
+            grid-template-columns: repeat(6, minmax(0, 1fr));
+            gap: 4px;
+            transition: gap 0.5s ease-in-out;
           }
 
           .assistant-open .image-grid {
-            column-count: 5;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
           }
           
           .image-item {
@@ -8649,7 +8739,8 @@ const InputBox = () => {
                 {/* Edit Button - Styled like Recent/Oldest */}
 
                 {/* Info button - only show when there are generations */}
-                {historyEntries.length > 0 && sortedDates.length > 0 && (
+                {historyEntries.length > 0 &&
+                  sortedDatesWithVisibleTiles.length > 0 && (
                   <button
                     onClick={() => setIsGuideModalOpen(true)}
                     className="relative group flex h-4.5 w-4.5 shrink-0 cursor-pointer items-center justify-center rounded-full bg-white/10 transition-colors hover:bg-white/20 md:h-6 md:w-6"
@@ -9349,9 +9440,225 @@ const InputBox = () => {
               {/* REMOVED: This section is now handled in the groupedByDate loop below to prevent duplicates */}
 
               {/* History Entries - Grouped by Date */}
-              {userData && sortedDates.length > 0 && (
+              {userData && sortedDatesWithVisibleTiles.length > 0 && (
                 <div className="mt-18 space-y-4 px-2 md:mt-16 md:px-0">
-                  {sortedDates.map((date) => (
+                  {sortedDatesWithVisibleTiles.map((date) => {
+                    const entriesForDay = (
+                      (
+                        groupedByDate as {
+                          [key: string]: HistoryEntry[];
+                        }
+                      )[date] || []
+                    ).filter(historyEntryContributesGalleryTiles);
+                    if (countGalleryCellsForEntries(entriesForDay) === 0) {
+                      return null;
+                    }
+
+                    const cells = entriesForDay.flatMap((entry: HistoryEntry) => {
+                      const entryImages: any[] = Array.isArray(
+                        (entry as any)?.images,
+                      )
+                        ? ((entry as any).images as any[])
+                        : [];
+
+                      return entryImages.map((image: any, imgIdx: number) => {
+                        const uniqueImageKey = image?.id
+                          ? `${entry.id}-${image.id}`
+                          : `${entry.id}-img-${imgIdx}`;
+                        const uniqueImageId =
+                          image?.id || `${entry.id}-img-${imgIdx}`;
+                        const isImageLoaded =
+                          loadedImages.has(uniqueImageKey);
+
+                        const imageDisplaySrc =
+                          getHistoryImageDisplaySrc(image);
+                        const hasImageUrl = imageDisplaySrc.length > 0;
+                        const isGeneratingStatus =
+                          (entry.status as string) === "generating" ||
+                          (entry.status as string) === "pending";
+                        const shouldShowLoading =
+                          isGeneratingStatus ||
+                          (entry.status === "completed" &&
+                            hasImageUrl &&
+                            !isImageLoaded) ||
+                          (!hasImageUrl && isGeneratingStatus);
+
+                        const isNewEntry =
+                          !previousEntriesRef.current.has(entry.id);
+
+                        return (
+                          <div
+                            key={uniqueImageKey}
+                            data-image-id={uniqueImageId}
+                            onClick={() => setPreview({ entry, image })}
+                            className={`image-item rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 cursor-pointer group ${
+                              isNewEntry ? "animate-fade-in-up" : ""
+                            }`}
+                            style={{
+                              aspectRatio: toGridAspectRatioCss(
+                                entry.frameSize as string | undefined,
+                              ),
+                              ...(isNewEntry
+                                ? {
+                                    animation:
+                                      "fadeInUp 0.6s ease-out forwards",
+                                    opacity: 0,
+                                  }
+                                : {}),
+                            }}
+                            draggable={true}
+                            onDragStart={(e) => {
+                              const url = imageDisplaySrc;
+                              if (url) {
+                                e.dataTransfer.setData("text/plain", url);
+                                e.dataTransfer.setData("text/uri-list", url);
+                                e.dataTransfer.effectAllowed = "copy";
+                              }
+                            }}
+                            onAnimationEnd={(e) => {
+                              if (isNewEntry) {
+                                e.currentTarget.style.opacity = "1";
+                              }
+                            }}
+                          >
+                            {entry.status === "failed" ? (
+                              <div
+                                className="absolute inset-0 flex items-center justify-center bg-black/90"
+                                style={{
+                                  width: "100%",
+                                  height: "100%",
+                                }}
+                              >
+                                <div className="flex flex-col items-center gap-2">
+                                  <svg
+                                    width="20"
+                                    height="20"
+                                    viewBox="0 0 24 24"
+                                    fill="currentColor"
+                                    className="text-red-400"
+                                  >
+                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                                  </svg>
+                                  <div className="text-xs text-red-400">
+                                    Failed
+                                  </div>
+                                </div>
+                              </div>
+                            ) : (
+                              <>
+                                {hasImageUrl && (
+                                  <div className="absolute inset-0 group">
+                                    <img
+                                      src={imageDisplaySrc}
+                                      alt=""
+                                      loading="lazy"
+                                      decoding="async"
+                                      className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                                      onLoad={() => {
+                                        setLoadedImages((prev) =>
+                                          new Set(prev).add(uniqueImageKey),
+                                        );
+                                      }}
+                                    />
+                                    {!isImageLoaded && (
+                                      <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
+                                    )}
+                                    <div className="pointer-events-none absolute bottom-1.5 left-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                                      <button
+                                        aria-label="Recreate image"
+                                        className="pointer-events-auto p-1 rounded-lg bg-white/20 hover:bg-white/30 text-white/90 backdrop-blur-3xl"
+                                        onClick={(e) =>
+                                          handleRecreate(e, entry)
+                                        }
+                                        onMouseDown={(e) =>
+                                          e.stopPropagation()
+                                        }
+                                      >
+                                        <Image
+                                          src="/icons/recreate.svg"
+                                          alt="Recreate"
+                                          width={18}
+                                          height={18}
+                                          className="w-5 h-5"
+                                        />
+                                      </button>
+                                    </div>
+                                    <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20 flex gap-2">
+                                      <button
+                                        aria-label="Copy prompt"
+                                        className="pointer-events-auto p-1 px-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white/90 backdrop-blur-3xl"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          copyPrompt(
+                                            e,
+                                            getCleanPrompt(entry.prompt),
+                                          );
+                                        }}
+                                        onMouseDown={(e) =>
+                                          e.stopPropagation()
+                                        }
+                                      >
+                                        <svg
+                                          width="14"
+                                          height="14"
+                                          viewBox="0 0 24 24"
+                                          fill="currentColor"
+                                        >
+                                          <path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" />
+                                        </svg>
+                                      </button>
+                                      <button
+                                        aria-label="Delete image"
+                                        className="pointer-events-auto p-1.5 rounded-lg bg-red-500/60 hover:bg-red-500/90 text-white backdrop-blur-3xl"
+                                        onClick={(e) =>
+                                          handleDeleteImage(e, entry)
+                                        }
+                                        onMouseDown={(e) =>
+                                          e.stopPropagation()
+                                        }
+                                      >
+                                        <Trash2 size={16} />
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {!hasImageUrl && isGeneratingStatus && (
+                                  <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
+                                )}
+
+                                {shouldShowLoading && (
+                                  <div
+                                    className="absolute inset-0 flex items-center justify-center bg-black/90 z-10"
+                                    style={{
+                                      width: "100%",
+                                      height: "100%",
+                                    }}
+                                  >
+                                    <div className="flex flex-col items-center gap-2">
+                                      <GifLoader
+                                        size={64}
+                                        alt="Generating"
+                                      />
+                                      <div className="text-xs text-white/60 text-center">
+                                        {isGeneratingStatus
+                                          ? "Generating..."
+                                          : "Loading..."}
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+                              </>
+                            )}
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
+                          </div>
+                        );
+                      });
+                    });
+
+                    if (cells.length === 0) return null;
+
+                    return (
                     <div key={date} className="space-y-2  md:mt-0">
                       {/* Date Header */}
                       <div className="flex items-center pt-1 md:pt-0 px-2 md:mx-8  md:gap-2 gap-2">
@@ -9376,276 +9683,11 @@ const InputBox = () => {
                         className="image-grid md:ml-9 ml-0"
                         key={`grid-${date}`}
                       >
-                        {/* Local entries are now merged into history entries below, so we don't render them separately here */}
-                        {/* This prevents the "two frames" issue where local and history entries both render */}
-
-                        {/* Render all entries for this date - includes both history and merged local entries */}
-                        {(() => {
-                          // Since local entries are now merged into groupedByDate, just render all entries
-                          const allEntries =
-                            (
-                              groupedByDate as { [key: string]: HistoryEntry[] }
-                            )[date] || [];
-
-                          return allEntries.flatMap((entry: HistoryEntry) => {
-                            const entryImages: any[] = Array.isArray(
-                              (entry as any)?.images,
-                            )
-                              ? ((entry as any).images as any[])
-                              : [];
-                            // Check if entry has ready images
-                            const hasImages = entryImages.length > 0;
-                            const hasReadyImages =
-                              hasImages &&
-                              entry.images.some(
-                                (img: any) =>
-                                  img?.url ||
-                                  img?.thumbnailUrl ||
-                                  img?.avifUrl ||
-                                  img?.originalUrl,
-                              );
-
-                            return entryImages.map(
-                              (image: any, imgIdx: number) => {
-                                // Generate unique key: use image.id if available, otherwise use index
-                                // This prevents duplicate keys when image.id is undefined
-                                const uniqueImageKey = image?.id
-                                  ? `${entry.id}-${image.id}`
-                                  : `${entry.id}-img-${imgIdx}`;
-                                const uniqueImageId =
-                                  image?.id || `${entry.id}-img-${imgIdx}`;
-                                const isImageLoaded =
-                                  loadedImages.has(uniqueImageKey);
-
-                                // CRITICAL FIX: Keep loading visible until image is actually loaded in browser
-                                // This prevents the frame from disappearing during the transition
-                                // For images that have URLs, check if they're loaded
-                                const hasImageUrl =
-                                  image?.thumbnailUrl ||
-                                  image?.avifUrl ||
-                                  image?.url;
-                                // Show loading if:
-                                // 1. Status is generating (always show loader)
-                                // 2. Status is completed but image hasn't loaded yet (show shimmer/loader)
-                                // 3. No image URL exists (placeholder from activeGenerations - show loader)
-                                const isGeneratingStatus =
-                                  (entry.status as string) === "generating" ||
-                                  (entry.status as string) === "pending";
-                                const shouldShowLoading =
-                                  isGeneratingStatus ||
-                                  (entry.status === "completed" &&
-                                    hasImageUrl &&
-                                    !isImageLoaded) ||
-                                  (!hasImageUrl && isGeneratingStatus);
-
-                                // Check if this is a newly loaded entry for animation
-                                // previousEntriesRef contains entries from PREVIOUS render (updated in useEffect after render)
-                                // So if entry.id is NOT in previousEntriesRef, it's a new entry that should animate
-                                const isNewEntry =
-                                  !previousEntriesRef.current.has(entry.id);
-
-                                return (
-                                  <div
-                                    key={uniqueImageKey}
-                                    data-image-id={uniqueImageId}
-                                    onClick={() => setPreview({ entry, image })}
-                                    className={`image-item rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 cursor-pointer group ${
-                                      isNewEntry ? "animate-fade-in-up" : ""
-                                    }`}
-                                    style={{
-                                      aspectRatio: (entry.frameSize || '1:1').replace(':', ' / ').replace('x', ' / '),
-                                      ...(isNewEntry
-                                        ? {
-                                            animation:
-                                              "fadeInUp 0.6s ease-out forwards",
-                                            opacity: 0,
-                                          }
-                                        : {}),
-                                    }}
-                                    draggable={true}
-                                    onDragStart={(e) => {
-                                      const url =
-                                        image.thumbnailUrl ||
-                                        image.avifUrl ||
-                                        image.url;
-                                      if (url) {
-                                        e.dataTransfer.setData(
-                                          "text/plain",
-                                          url,
-                                        );
-                                        e.dataTransfer.setData(
-                                          "text/uri-list",
-                                          url,
-                                        );
-                                        e.dataTransfer.effectAllowed = "copy";
-                                        // Optional: Set a custom drag image if needed, but browser default is usually fine
-                                      }
-                                    }}
-                                    onAnimationEnd={(e) => {
-                                      if (isNewEntry) {
-                                        e.currentTarget.style.opacity = "1";
-                                      }
-                                    }}
-                                  >
-                                    {/* Always render the image so onLoad can fire, but show loading overlay on top if needed */}
-                                    {entry.status === "failed" ? (
-                                      // Error frame
-                                      <div
-                                        className="absolute inset-0 flex items-center justify-center bg-black/90"
-                                        style={{
-                                          width: "100%",
-                                          height: "100%",
-                                        }}
-                                      >
-                                        <div className="flex flex-col items-center gap-2">
-                                          <svg
-                                            width="20"
-                                            height="20"
-                                            viewBox="0 0 24 24"
-                                            fill="currentColor"
-                                            className="text-red-400"
-                                          >
-                                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-                                          </svg>
-                                          <div className="text-xs text-red-400">
-                                            Failed
-                                          </div>
-                                        </div>
-                                      </div>
-                                    ) : (
-                                      <>
-                                        {/* Image - always render so onLoad fires */}
-                                        {hasImageUrl && (
-                                          <div className="absolute inset-0 group">
-                                            <img
-                                              src={
-                                                image.thumbnailUrl ||
-                                                image.avifUrl ||
-                                                image.url
-                                              }
-                                              alt=""
-                                              loading="lazy"
-                                              decoding="async"
-                                              className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-                                              onLoad={() => {
-                                                setLoadedImages((prev) =>
-                                                  new Set(prev).add(
-                                                    uniqueImageKey,
-                                                  ),
-                                                );
-                                              }}
-                                            />
-                                            {/* Shimmer loading effect - only show if image 
-                                            
-                                            
-                                            
-                                            
-                                            't loaded yet */}
-                                            {!isImageLoaded && (
-                                              <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
-                                            )}
-                                            {/* Hover buttons overlay - Recreate on left, Copy/Delete on right */}
-                                            <div className="pointer-events-none absolute bottom-1.5 left-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
-                                              <button
-                                                aria-label="Recreate image"
-                                                className="pointer-events-auto p-1 rounded-lg bg-white/20 hover:bg-white/30 text-white/90 backdrop-blur-3xl"
-                                                onClick={(e) =>
-                                                  handleRecreate(e, entry)
-                                                }
-                                                onMouseDown={(e) =>
-                                                  e.stopPropagation()
-                                                }
-                                              >
-                                                <Image
-                                                  src="/icons/recreate.svg"
-                                                  alt="Recreate"
-                                                  width={18}
-                                                  height={18}
-                                                  className="w-5 h-5"
-                                                />
-                                              </button>
-                                            </div>
-                                            <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20 flex gap-2">
-                                              <button
-                                                aria-label="Copy prompt"
-                                                className="pointer-events-auto p-1 px-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white/90 backdrop-blur-3xl"
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  copyPrompt(
-                                                    e,
-                                                    getCleanPrompt(
-                                                      entry.prompt,
-                                                    ),
-                                                  );
-                                                }}
-                                                onMouseDown={(e) =>
-                                                  e.stopPropagation()
-                                                }
-                                              >
-                                                <svg
-                                                  width="14"
-                                                  height="14"
-                                                  viewBox="0 0 24 24"
-                                                  fill="currentColor"
-                                                >
-                                                  <path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" />
-                                                </svg>
-                                              </button>
-                                              <button
-                                                aria-label="Delete image"
-                                                className="pointer-events-auto p-1.5 rounded-lg bg-red-500/60 hover:bg-red-500/90 text-white backdrop-blur-3xl"
-                                                onClick={(e) =>
-                                                  handleDeleteImage(e, entry)
-                                                }
-                                                onMouseDown={(e) =>
-                                                  e.stopPropagation()
-                                                }
-                                              >
-                                                <Trash2 size={16} />
-                                              </button>
-                                            </div>
-                                          </div>
-                                        )}
-
-                                        {/* Shimmer background for placeholders without images (persists on refresh) */}
-                                        {!hasImageUrl && isGeneratingStatus && (
-                                          <div className="shimmer absolute inset-0 opacity-100 transition-opacity duration-300" />
-                                        )}
-
-                                        {/* Loading overlay - show on top of image while loading */}
-                                        {shouldShowLoading && (
-                                          <div
-                                            className="absolute inset-0 flex items-center justify-center bg-black/90 z-10"
-                                            style={{
-                                              width: "100%",
-                                              height: "100%",
-                                            }}
-                                          >
-                                            <div className="flex flex-col items-center gap-2">
-                                              <GifLoader
-                                                size={64}
-                                                alt="Generating"
-                                              />
-                                              <div className="text-xs text-white/60 text-center">
-                                                {isGeneratingStatus
-                                                  ? "Generating..."
-                                                  : "Loading..."}
-                                              </div>
-                                            </div>
-                                          </div>
-                                        )}
-                                      </>
-                                    )}
-                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
-                                  </div>
-                                );
-                              },
-                            );
-                          });
-                        })()}
+                        {cells}
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
 
                   {/* Scroll pagination loading indicator */}
                   {loading && historyEntries.length > 0 && (
