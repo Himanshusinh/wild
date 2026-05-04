@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { createPortal } from "react-dom";
 import { X, Play, Info, Sparkles, Wand2, Boxes, Palette } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { CREATIVE_STYLE_IMAGE_BASE } from "@/constants/creativeStyleCdn";
 import { nagashawlPromptCatalog } from "./nagashawlPromptCatalog";
 
 interface FullscreenWalkthroughProps {
@@ -68,7 +69,7 @@ const NagashawlFullscreenWalkthrough: React.FC<FullscreenWalkthroughProps> = ({
       <div className="relative w-full h-full max-w-7xl mx-auto flex flex-col lg:flex-row overflow-hidden shadow-2xl lg:h-[85vh] lg:rounded-3xl border border-white/10 bg-[#0E0E12]">
         <div className="relative w-full lg:w-1/2 h-[35vh] lg:h-full">
           <img
-            src="/HomePage/creativeStyle/Next Styles Images/NAGA SHAWL.png"
+            src={`${CREATIVE_STYLE_IMAGE_BASE}${encodeURI("Next Styles Images/NAGA SHAWL.png")}`}
             alt="Naga Shawl"
             className="w-full h-full object-cover"
           />
