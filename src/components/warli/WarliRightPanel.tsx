@@ -17,7 +17,7 @@ interface WarliRightPanelProps {
   onRegenerate: () => void;
   onSaveAll: () => void;
   onSaveImage: (index: number) => void;
-  onExpandImage: (index: number) => void;
+  onExpandImage: (index: number, imageUrl?: string) => void;
 }
 
 const TEST_IMAGES: Record<StyleFamily, string> = {
@@ -136,6 +136,7 @@ export function WarliRightPanel({
   onSaveImage,
   onExpandImage,
 }: WarliRightPanelProps) {
+  const hoveredStyle: StyleFamily | null = style ?? null;
   const modelLabel = modelShortLabel(model);
   const rightTitle =
     panelState === "empty"
