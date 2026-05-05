@@ -15,6 +15,8 @@ type CustomDropdownProps = {
   onChange: (value: string) => void;
   className?: string;
   buttonClassName?: string;
+  searchable?: boolean;
+  searchPlaceholder?: string;
 };
 
 export const StyleFilterDropdown = ({
@@ -24,9 +26,13 @@ export const StyleFilterDropdown = ({
   onChange,
   className = '',
   buttonClassName = "flex h-8 w-full items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 text-sm font-semibold text-white outline-none transition hover:border-white/20 hover:bg-white/[0.05]",
+  searchable = true,
+  searchPlaceholder = 'Search...',
 }: CustomDropdownProps) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const dropdownRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -45,33 +51,82 @@ export const StyleFilterDropdown = ({
   }, [isOpen]);
 
   const selectedOption = options.find((option) => option.value === value) ?? options[0];
+  const selectedLabel = selectedOption?.label ?? '';
+
+  useEffect(() => {
+    if (!searchable) return;
+    if (!isOpen) setSearchQuery(selectedLabel);
+  }, [isOpen, searchable, selectedLabel]);
+
+  useEffect(() => {
+    if (!searchable || !isOpen) return;
+    inputRef.current?.focus();
+    inputRef.current?.setSelectionRange(
+      inputRef.current.value.length,
+      inputRef.current.value.length,
+    );
+  }, [isOpen, searchable]);
+
+  const filteredOptions = useMemo(() => {
+    if (!searchable) return options;
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return options;
+    return options.filter((option) =>
+      option.label.toLowerCase().includes(query),
+    );
+  }, [options, searchable, searchQuery]);
 
   return (
     <div ref={dropdownRef} className={className}>
       <div className="relative">
-        <button
-          type="button"
-          aria-label={ariaLabel}
-          aria-haspopup="listbox"
-          aria-expanded={isOpen}
-          onClick={() => setIsOpen((current) => !current)}
-          className={buttonClassName}
-        >
-          <span className="truncate">{selectedOption.label}</span>
-          <ChevronDown
-            size={15}
-            className={`shrink-0 text-white/55 transition-transform ${isOpen ? 'rotate-180' : ''}`}
-          />
-        </button>
+        {searchable ? (
+          <div className="relative">
+            <input
+              ref={inputRef}
+              type="text"
+              aria-label={ariaLabel}
+              aria-haspopup="listbox"
+              aria-expanded={isOpen}
+              value={searchQuery}
+              placeholder={searchPlaceholder}
+              onFocus={() => setIsOpen(true)}
+              onClick={() => setIsOpen(true)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                if (!isOpen) setIsOpen(true);
+              }}
+              className={`${buttonClassName} pr-8`}
+            />
+            <ChevronDown
+              size={15}
+              className={`pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 shrink-0 text-white/55 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+            />
+          </div>
+        ) : (
+          <button
+            type="button"
+            aria-label={ariaLabel}
+            aria-haspopup="listbox"
+            aria-expanded={isOpen}
+            onClick={() => setIsOpen((current) => !current)}
+            className={buttonClassName}
+          >
+            <span className="truncate">{selectedOption.label}</span>
+            <ChevronDown
+              size={15}
+              className={`shrink-0 text-white/55 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+            />
+          </button>
+        )}
 
         {isOpen && (
-          <div className="absolute right-0 top-full z-30 mt-2 w-full min-w-[170px] overflow-hidden rounded-2xl border border-white/10 bg-[#08080b] p-1 shadow-[0_24px_80px_rgba(0,0,0,0.55)]">
+          <div className="absolute right-0 top-full z-30 mt-2 w-full min-w-[150px] overflow-hidden rounded-2xl border border-white/10 bg-[#08080b] p-1 shadow-[0_24px_80px_rgba(0,0,0,0.55)]">
             <div
               role="listbox"
               aria-label={ariaLabel}
               className="max-h-100 overflow-y-auto [scrollbar-width:thin]"
             >
-              {options.map((option) => {
+              {filteredOptions.map((option) => {
                 const isSelected = option.value === value;
                 return (
                   <button
@@ -83,19 +138,19 @@ export const StyleFilterDropdown = ({
                       onChange(option.value);
                       setIsOpen(false);
                     }}
-                    className={`flex w-full items-center justify-between rounded-lg px-4 py-2 text-left text-sm transition ${
+                    className={`flex w-full items-center rounded-lg px-4 py-2 text-left text-sm transition ${
                       isSelected ? 'bg-white text-black' : 'text-white/82 hover:bg-white/[0.06]'
                     }`}
                   >
                     <span className="truncate">{option.label}</span>
-                    <span
-                      className={`ml-3 h-2.5 w-2.5 shrink-0 rounded-full border ${
-                        isSelected ? 'border-black bg-black' : 'border-white/45 bg-transparent'
-                      }`}
-                    />
                   </button>
                 );
               })}
+              {filteredOptions.length === 0 && (
+                <div className="px-4 py-2 text-xs text-white/45">
+                  No results found
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -120,6 +175,8 @@ type StyleFiltersBarProps = {
   searchClassName?: string;
   stateClassName?: string;
   typeClassName?: string;
+  stateDropdownSearchable?: boolean;
+  typeDropdownSearchable?: boolean;
 };
 
 export default function StyleFiltersBar({
@@ -138,6 +195,8 @@ export default function StyleFiltersBar({
   searchClassName = 'w-[260px]',
   stateClassName = 'w-[140px]',
   typeClassName = 'w-[140px]',
+  stateDropdownSearchable = false,
+  typeDropdownSearchable = false,
 }: StyleFiltersBarProps) {
   const normalizedStateOptions = useMemo(() => {
     const withAll = stateOptions.some((option) => option.value === 'all')
@@ -175,6 +234,8 @@ export default function StyleFiltersBar({
         options={normalizedStateOptions}
         onChange={onStateChange}
         className={stateClassName}
+        searchable={stateDropdownSearchable}
+        searchPlaceholder="Search states"
       />
 
       <StyleFilterDropdown
@@ -183,6 +244,8 @@ export default function StyleFiltersBar({
         options={normalizedTypeOptions}
         onChange={onTypeChange}
         className={typeClassName}
+        searchable={typeDropdownSearchable}
+        searchPlaceholder="Search types"
       />
     </div>
   );

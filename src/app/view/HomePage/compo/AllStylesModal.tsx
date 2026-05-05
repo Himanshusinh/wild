@@ -414,10 +414,12 @@ export default function AllStylesModal({
                 onStateChange={setSelectedCategory}
                 stateOptions={stateOptions}
                 stateClassName="w-full sm:w-[210px] lg:w-[230px]"
+                stateDropdownSearchable
                 typeValue={selectedTypeId}
                 onTypeChange={setSelectedTypeId}
                 typeOptions={typeOptions}
                 typeClassName="w-full sm:w-[180px] lg:w-[200px]"
+                typeDropdownSearchable
               />
 
               <button
