@@ -9796,7 +9796,8 @@ const InputBox = () => {
       />
 
       {/* Mobile-only: Selected images/characters grid above input box */}
-      {!isInlineEditImagePage &&
+      {false &&
+        !isInlineEditImagePage &&
         (uploadedImages.length > 0 || selectedCharacters.length > 0) && (
           <div className="md:hidden fixed bottom-[147px] left-1/2 -translate-x-1/2 w-[96%] max-w-[96%] z-[49] px-2 pb-1">
             <div className="grid grid-cols-5 gap-1 max-h-[100vh] overflow-y-auto overflow-x-hidden pt-3 px-0.5">
@@ -9905,7 +9906,8 @@ const InputBox = () => {
         )}
 
       {/* Desktop-only: Selected images/characters single-row above input box */}
-      {!isInlineEditImagePage &&
+      {false &&
+        !isInlineEditImagePage &&
         (uploadedImages.length > 0 || selectedCharacters.length > 0) && (
           <div className="hidden md:flex  fixed bottom-[155px] left-1/2 -translate-x-1/2 w-[90%] max-w-[900px] z-[50] pt-3">
             <div
@@ -10115,6 +10117,98 @@ const InputBox = () => {
                 opacity: prompt.trim() || isInputBoxHovered ? 0.2 : 0,
               }}
             ></div>
+            {/* Uploaded images/characters inside the input box */}
+            {!isInlineEditImagePage &&
+              (uploadedImages.length > 0 || selectedCharacters.length > 0) && (
+                <div className="relative z-10 px-2 pt-2 pb-1">
+                  <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+                    {[
+                      ...selectedCharacters.map((character: any) => ({
+                        type: "character",
+                        data: character,
+                        key: `inside-char-${character.id}`,
+                      })),
+                      ...uploadedImages.map((u: string, i: number) => ({
+                        type: "image",
+                        data: u,
+                        index: i,
+                        key: `inside-img-${i}`,
+                      })),
+                    ]
+                      .slice(0, getInputImageLimitForModel(selectedModel))
+                      .map((item: any) => {
+                        if (item.type === "character") {
+                          return (
+                            <div
+                              key={item.key}
+                              className="relative group h-10 w-10 flex-shrink-0"
+                            >
+                              <div
+                                className="h-10 w-10 rounded-md overflow-hidden ring-1 ring-white/20 cursor-pointer bg-black/40"
+                                title={`Character: ${item.data.name}`}
+                              >
+                                <img
+                                  src={item.data.frontImageUrl}
+                                  alt={item.data.name}
+                                  decoding="async"
+                                  className="w-full h-full object-cover transition-opacity group-hover:opacity-35"
+                                />
+                              </div>
+                              <button
+                                aria-label="Remove character"
+                                className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-red-400 drop-shadow"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  dispatch(removeSelectedCharacter(item.data.id));
+                                }}
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          );
+                        }
+                        return (
+                          <div
+                            key={item.key}
+                            className="relative group h-10 w-10 flex-shrink-0"
+                          >
+                            <div
+                              className="h-10 w-10 rounded-md overflow-hidden ring-1 ring-white/20 cursor-pointer bg-black/40"
+                              onClick={() => {
+                                setAssetViewer({
+                                  isOpen: true,
+                                  assetUrl: item.data,
+                                  assetType: "image",
+                                  title: `Uploaded Image ${item.index + 1}`,
+                                });
+                              }}
+                            >
+                              <img
+                                src={item.data}
+                                alt=""
+                                decoding="async"
+                                className="w-full h-full object-cover transition-opacity group-hover:opacity-35"
+                              />
+                            </div>
+                            <button
+                              aria-label="Remove image"
+                              className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-red-400 drop-shadow"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const next = uploadedImages.filter(
+                                  (_: string, idx: number) => idx !== item.index,
+                                );
+                                dispatch(setUploadedImages(next));
+                              }}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
+              )}
             {/* Top row: prompt + actions */}
             <div className="flex items-stretch md:gap-0 gap-0 relative z-10">
               <div className="flex-1 flex items-start md:gap-0 gap-0 bg-transparent rounded-lg w-full relative min-h-[38px] md:min-h-[42px]">
@@ -11405,7 +11499,7 @@ const InputBox = () => {
         <UploadModal
           isOpen={isUploadOpen}
           onClose={() => setIsUploadOpen(false)}
-          persistLocalDeviceUploads={false}
+          persistLocalDeviceUploads={true}
           remainingSlots={Math.max(
             0,
             getInputImageLimitForModel(selectedModel) -

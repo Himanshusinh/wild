@@ -43,7 +43,7 @@ const UploadModal: React.FC<UploadModalProps> = ({
   maxFileSizeBytes,
 }) => {
   const [mounted, setMounted] = React.useState(false);
-  const [tab, setTab] = React.useState<'library' | 'computer' | 'uploads'>('library');
+  const [tab, setTab] = React.useState<'library' | 'computer' | 'uploads'>('uploads');
 
   // State for library and uploads data
   const [libraryItems, setLibraryItems] = React.useState<LibraryItem[]>([]);
@@ -113,6 +113,7 @@ const UploadModal: React.FC<UploadModalProps> = ({
   const videoRef = React.useRef<HTMLVideoElement | null>(null);
   const streamRef = React.useRef<MediaStream | null>(null);
   const dropRef = React.useRef<HTMLDivElement>(null);
+  const localUploadInputRef = React.useRef<HTMLInputElement | null>(null);
   const listRef = React.useRef<HTMLDivElement>(null);
   const imageExtensionRegex = /\.(avif|bmp|gif|heic|heif|jpe?g|png|svg|webp)$/i;
   const makeMediaKey = React.useCallback((item: any) => {
@@ -160,10 +161,63 @@ const UploadModal: React.FC<UploadModalProps> = ({
       urls.push(asDataUrl);
     }
 
-    if (urls.length) {
-      setLocalUploads((prev) => [...prev, ...urls].slice(0, remainingSlots));
+    if (!urls.length) return;
+
+    // In "Your Uploads", persist immediately so refresh keeps items (DB + Zata).
+    if (tab === 'uploads' && persistLocalDeviceUploads) {
+      setIsSavingLocalUploads(true);
+      try {
+        const persistedNow: string[] = [];
+        for (const uploadUrl of urls) {
+          const resp = await saveUpload({ url: uploadUrl, type: 'image' });
+          if (resp.responseStatus !== 'success' || !resp.data?.url) {
+            throw new Error(resp.message || 'Failed to upload selected image');
+          }
+          const persistedUrl = String(resp.data.url || '').trim();
+          if (!persistedUrl) continue;
+          persistedNow.push(persistedUrl);
+
+          // Optimistically insert into "Your Uploads" grid immediately.
+          setUploadItems((prev) => {
+            const exists = prev.some((item: any) => item?.url === persistedUrl);
+            if (exists) return prev;
+            const optimistic: UploadItem = {
+              id: String(resp.data?.historyId || `upload-${Date.now()}`),
+              historyId: String(resp.data?.historyId || ''),
+              url: persistedUrl,
+              type: 'image',
+              createdAt: new Date().toISOString(),
+              storagePath: resp.data?.storagePath,
+              originalUrl: persistedUrl,
+            };
+            return [optimistic, ...prev];
+          });
+        }
+        if (persistedNow.length > 0) {
+          setSelection((prev) => {
+            const next = new Set(prev);
+            persistedNow.forEach((u) => next.add(u));
+            return next;
+          });
+          toast.success(
+            persistedNow.length === 1
+              ? 'Uploaded to Your Uploads'
+              : `${persistedNow.length} images uploaded to Your Uploads`,
+          );
+        }
+      } catch (error: any) {
+        console.error('[UploadModal] Immediate upload failed:', error);
+        toast.error(error?.message || 'Failed to upload image(s). Please try again.');
+        // Keep local preview fallback if immediate persistence fails.
+        setLocalUploads((prev) => [...prev, ...urls].slice(0, remainingSlots));
+      } finally {
+        setIsSavingLocalUploads(false);
+      }
+      return;
     }
-  }, [isSupportedImageFile, localUploads.length, remainingSlots]);
+
+    setLocalUploads((prev) => [...prev, ...urls].slice(0, remainingSlots));
+  }, [isSupportedImageFile, localUploads.length, persistLocalDeviceUploads, remainingSlots, tab]);
 
   const stopCamera = React.useCallback(() => {
     try {
@@ -260,7 +314,7 @@ const UploadModal: React.FC<UploadModalProps> = ({
       return;
     }
     if (!initialTab || initialTabAppliedRef.current) return;
-    setTab(initialTab);
+    setTab(initialTab === 'computer' ? 'uploads' : initialTab);
     initialTabAppliedRef.current = true;
   }, [isOpen, initialTab]);
 
@@ -494,7 +548,7 @@ const UploadModal: React.FC<UploadModalProps> = ({
     if (!isOpen) {
       setSelection(new Set());
       setLocalUploads([]);
-      setTab('library');
+      setTab('uploads');
       scrollPositionBeforeLoadRef.current = null;
       isLoadingMoreRef.current = false;
       // Reset library and uploads data when modal closes
@@ -585,11 +639,65 @@ const UploadModal: React.FC<UploadModalProps> = ({
   if (!isOpen) return null;
 
   const handleAdd = async () => {
-    if (tab === 'library' || tab === 'uploads') {
+    if (tab === 'library') {
       const chosen = Array.from(selection).slice(0, remainingSlots);
       if (chosen.length) onAdd(chosen);
       setSelection(new Set());
       onClose();
+      return;
+    }
+
+    if (tab === 'uploads') {
+      const localUploadSet = new Set(localUploads);
+      const chosenExisting = Array.from(selection)
+        .filter((url) => !localUploadSet.has(url))
+        .slice(0, remainingSlots);
+      const slotsLeftForLocal = Math.max(0, remainingSlots - chosenExisting.length);
+      const chosenLocal = localUploads.slice(0, slotsLeftForLocal);
+
+      if (!chosenExisting.length && !chosenLocal.length) {
+        onClose();
+        return;
+      }
+
+      if (!persistLocalDeviceUploads) {
+        onAdd([...chosenExisting, ...chosenLocal]);
+        setLocalUploads([]);
+        setSelection(new Set());
+        onClose();
+        return;
+      }
+
+      setIsSavingLocalUploads(true);
+      try {
+        const persistedUploads: string[] = [...chosenExisting];
+        for (const uploadUrl of chosenLocal) {
+          const normalized = String(uploadUrl || '').trim();
+          if (!normalized) continue;
+          if (normalized.startsWith('http://') || normalized.startsWith('https://')) {
+            persistedUploads.push(normalized);
+            continue;
+          }
+
+          const resp = await saveUpload({ url: normalized, type: 'image' });
+          if (resp.responseStatus !== 'success' || !resp.data?.url) {
+            throw new Error(resp.message || 'Failed to upload selected image');
+          }
+          persistedUploads.push(resp.data.url);
+        }
+
+        if (persistedUploads.length) {
+          onAdd(persistedUploads);
+        }
+        setLocalUploads([]);
+        setSelection(new Set());
+        onClose();
+      } catch (error: any) {
+        console.error('[UploadModal] Failed to persist local uploads:', error);
+        toast.error(error?.message || 'Failed to upload selected images. Please try again.');
+      } finally {
+        setIsSavingLocalUploads(false);
+      }
       return;
     }
 
@@ -646,9 +754,8 @@ const UploadModal: React.FC<UploadModalProps> = ({
         <div className="w-full max-w-3xl bg-black/70 backdrop-blur-xl ring-1 ring-white/20 rounded-lg overflow-hidden shadow-2xl">
           <div className="flex items-center justify-between md:px-4 px-3 gap-2 md:py-3 py-2 border-b border-white/10">
             <div className="flex items-center gap-2">
-              <button className={`md:px-3 px-2 md:py-1.5 py-0.5 rounded-lg md:text-sm text-[11px] ${tab === 'library' ? 'bg-white text-black' : 'bg-white/10 text-white/90'}`} onClick={() => setTab('library')}>Upload from your library</button>
               <button className={`md:px-3 px-2 md:py-1.5 py-0.5 rounded-lg md:text-sm text-[11px] ${tab === 'uploads' ? 'bg-white text-black' : 'bg-white/10 text-white/90'}`} onClick={() => setTab('uploads')}>Your Uploads</button>
-              <button className={`md:px-3 px-2 md:py-1.5 py-0.5 rounded-lg md:text-sm text-[11px] ${tab === 'computer' ? 'bg-white text-black' : 'bg-white/10 text-white/90'}`} onClick={() => setTab('computer')}>Upload from your device</button>
+              <button className={`md:px-3 px-2 md:py-1.5 py-0.5 rounded-lg md:text-sm text-[11px] ${tab === 'library' ? 'bg-white text-black' : 'bg-white/10 text-white/90'}`} onClick={() => setTab('library')}>Generated Images</button>
             </div>
             <button className="text-white/80 hover:text-white" onClick={onClose}>✕</button>
           </div>
@@ -667,10 +774,29 @@ const UploadModal: React.FC<UploadModalProps> = ({
                   <>
                     <div className="text-white/70 md:text-sm text-[11px] md:mb-3 mb-1 ">
                       {tab === 'uploads'
-                        ? `Select up to ${remainingSlots} image${remainingSlots === 1 ? '' : 's'} from your uploads`
+                        ? `Select up to ${remainingSlots} image${remainingSlots === 1 ? '' : 's'} from your uploads (or add from device)`
                         : `Select up to ${remainingSlots} image${remainingSlots === 1 ? '' : 's'} from your previously generated results`
                       }
                     </div>
+                    {tab === 'uploads' && isSavingLocalUploads && (
+                      <div className="mb-2 text-[11px] text-white/70">
+                        Uploading image to Your Uploads...
+                      </div>
+                    )}
+                    {tab === 'uploads' && (
+                      <input
+                        ref={localUploadInputRef}
+                        type="file"
+                        accept={accept}
+                        multiple
+                        className="hidden"
+                        onChange={async (e) => {
+                          const files = Array.from(e.target.files || []);
+                          await addFilesToLocalUploads(files);
+                          if (localUploadInputRef.current) localUploadInputRef.current.value = '';
+                        }}
+                      />
+                    )}
                     <div
                       ref={listRef}
                       onScroll={async (e) => {
@@ -803,12 +929,75 @@ const UploadModal: React.FC<UploadModalProps> = ({
                       }}
                       className="grid grid-cols-3 md:grid-cols-5 md:gap-3 gap-2 md:h-[50vh] h-[40vh] p-1 md:p-2 pt-1 md:pt-0 overflow-y-auto custom-scrollbar pr-1"
                     >
-                      {displayItems.length === 0 ? (
+                      {displayItems.length === 0 && !(tab === 'uploads' && localUploads.length > 0) ? (
                         <div className="col-span-full flex items-center justify-center md:h-32 h-24 text-white/60">
                           No items found
                         </div>
                       ) : (
-                        displayItems.map((im: any, index: number) => {
+                        <>
+                        {tab === 'uploads' && (
+                          <button
+                            type="button"
+                            onClick={() => localUploadInputRef.current?.click()}
+                            disabled={isSavingLocalUploads}
+                            className={`relative w-full md:h-32 h-24 rounded-lg overflow-hidden ring-1 ring-white/20 bg-black/30 border-2 border-dashed border-white/25 transition-colors flex flex-col items-center justify-center ${
+                              isSavingLocalUploads
+                                ? 'cursor-not-allowed opacity-60 text-white/50'
+                                : 'hover:border-white/50 text-white/70 hover:text-white'
+                            }`}
+                          >
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                              <path d="M12 5v14" />
+                              <path d="M5 12h14" />
+                            </svg>
+                            <div className="mt-1 text-[10px] md:text-xs font-medium">
+                              {isSavingLocalUploads ? 'Uploading...' : 'Upload'}
+                            </div>
+                          </button>
+                        )}
+                        {tab === 'uploads' && localUploads.map((url, idx) => {
+                          const selected = selection.has(url);
+                          return (
+                            <div
+                              role="button"
+                              tabIndex={0}
+                              key={`local-upload-grid-${idx}-${url.slice(0, 20)}`}
+                              onClick={() => {
+                                const next = new Set(selection);
+                                if (selected) next.delete(url); else next.add(url);
+                                setSelection(next);
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
+                                  const next = new Set(selection);
+                                  if (selected) next.delete(url); else next.add(url);
+                                  setSelection(next);
+                                }
+                              }}
+                              className={`relative w-full md:h-32 h-24 rounded-lg overflow-hidden ring-1 ${selected ? 'ring-white' : 'ring-white/20'} bg-black/50`}
+                            >
+                              <img src={url} alt="local upload" className="w-full h-full object-cover" loading="lazy" decoding="async" />
+                              <button
+                                type="button"
+                                aria-label="Remove local upload"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setLocalUploads((prev) => prev.filter((u, i) => !(u === url && i === idx)));
+                                  const next = new Set(selection);
+                                  next.delete(url);
+                                  setSelection(next);
+                                }}
+                                className="absolute top-1.5 right-1.5 w-6 h-6 rounded-md bg-black/60 hover:bg-black/80 text-white/90 flex items-center justify-center"
+                              >
+                                ×
+                              </button>
+                              {selected && <div className="absolute top-2 right-2 w-3 h-3 bg-white rounded-lg" />}
+                              <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors" />
+                            </div>
+                          );
+                        })}
+                        {displayItems.map((im: any, index: number) => {
                           const selected = selection.has(im.url);
                           // Create unique key using id, url, and index to prevent duplicates
                           const key = `${tab}-${im.id || im.url || index}-${index}`;
@@ -841,7 +1030,8 @@ const UploadModal: React.FC<UploadModalProps> = ({
                               <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors" />
                             </button>
                           );
-                        })
+                        })}
+                        </>
                       )}
                     </div>
                     {hasMore && (
