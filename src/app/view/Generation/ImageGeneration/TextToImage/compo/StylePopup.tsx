@@ -243,9 +243,24 @@ const StylePopup = ({ isOpen, onClose, onBusyChange }: StylePopupProps) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ imageDataUrl: customDataUrl }),
       });
-      const data = await res.json();
+      const raw = await res.text();
+      let data: any = null;
+      try {
+        data = raw ? JSON.parse(raw) : null;
+      } catch {
+        const hint = raw.trim().startsWith('<')
+          ? 'Service returned HTML instead of JSON (check backend route/deploy).'
+          : 'Service returned a non-JSON response.';
+        throw new Error(
+          `${hint}${res.status ? ` (HTTP ${res.status})` : ''}`,
+        );
+      }
       if (!data?.ok) {
-        setCustomError(data?.error || 'Analysis failed');
+        setCustomError(
+          data?.error ||
+            data?.message ||
+            `Analysis failed${res.status ? ` (HTTP ${res.status})` : ''}`,
+        );
         return;
       }
       const nameFromModel = typeof data.styleName === 'string' ? data.styleName.trim() : '';
