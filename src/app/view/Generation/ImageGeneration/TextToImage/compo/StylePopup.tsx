@@ -408,86 +408,90 @@ const StylePopup = ({ isOpen, onClose, onBusyChange }: StylePopupProps) => {
                 {/* Add custom style — same card frame as catalog styles */}
                 <div className="group flex flex-col text-left">
                   <div
-                    className={`relative aspect-[4/3] w-full overflow-hidden rounded-2xl border bg-[#18181f] transition-all ${
-                      customPlusExpanded
-                        ? 'border-white/25'
-                        : 'border-dashed border-white/20 hover:border-white/30'
-                    }`}
+                    className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl border border-dashed border-white/20 bg-[#18181f] transition-all hover:border-white/30"
                   >
-                    {!customPlusExpanded ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setCustomPlusExpanded(true);
-                          setCustomError(null);
-                        }}
-                        className="absolute inset-0 flex items-center justify-center text-white/40 transition hover:bg-white/[0.04] hover:text-white/75"
-                        aria-label="Add custom style"
-                      >
-                        <Plus className="h-11 w-11 sm:h-14 sm:w-14" strokeWidth={1.25} />
-                      </button>
-                    ) : (
-                      <div className="relative flex h-full min-h-0 w-full flex-col">
-                        <button
-                          type="button"
-                          onClick={
-                            customAnalyzing
-                              ? undefined
-                              : () => {
-                                  setCustomPlusExpanded(false);
-                                  setCustomError(null);
-                                }
-                          }
-                          disabled={customAnalyzing}
-                          title={customAnalyzing ? 'Wait for analysis to finish' : 'Close'}
-                          className={`absolute right-2 top-2 z-20 flex h-7 w-7 items-center justify-center rounded-full border border-white/15 bg-black/60 text-white/70 transition hover:bg-black/80 hover:text-white ${customAnalyzing ? 'cursor-not-allowed opacity-40' : ''}`}
-                          aria-label="Close"
-                        >
-                          <X size={14} />
-                        </button>
-                        <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-3 pt-9 [scrollbar-width:thin]">
-                          <input
-                            ref={customFileInputRef}
-                            type="file"
-                            accept="image/*"
-                            className="w-full text-[10px] text-white/70 file:mr-2 file:rounded-md file:border-0 file:bg-white file:px-2 file:py-1 file:text-[10px] file:font-medium file:text-black"
-                            onChange={(e) =>
-                              onCustomFile(e.target.files?.[0] ?? null)
-                            }
-                          />
-                          <input
-                            value={customDraftName}
-                            onChange={(e) => setCustomDraftName(e.target.value)}
-                            placeholder="Style name"
-                            className="w-full rounded-lg border border-white/10 bg-black/50 px-2 py-1.5 text-[11px] text-white placeholder:text-white/30 outline-none focus:border-white/25"
-                          />
-                          <button
-                            type="button"
-                            disabled={!customDataUrl || customAnalyzing}
-                            onClick={() => void runCustomAnalysis()}
-                            className="shrink-0 rounded-full bg-white px-3 py-1.5 text-[10px] font-semibold text-black disabled:opacity-40"
-                          >
-                            {customAnalyzing ? 'Analyzing…' : 'Analyze'}
-                          </button>
-                          {customDraftDirective.trim() ? (
-                            <button
-                              type="button"
-                              onClick={saveCustomStyleFromBuilder}
-                              className="shrink-0 rounded-full bg-blue-600 px-3 py-1.5 text-[10px] font-semibold text-white hover:bg-blue-500"
-                            >
-                              Save style
-                            </button>
-                          ) : null}
-                          {customError ? (
-                            <p className="text-[10px] leading-snug text-red-400">
-                              {customError}
-                            </p>
-                          ) : null}
-                        </div>
-                      </div>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomPlusExpanded(true);
+                        setCustomError(null);
+                      }}
+                      className="absolute inset-0 flex items-center justify-center text-white/40 transition hover:bg-white/[0.04] hover:text-white/75"
+                      aria-label="Add custom style"
+                    >
+                      <Plus className="h-11 w-11 sm:h-14 sm:w-14" strokeWidth={1.25} />
+                    </button>
                   </div>
                 </div>
+
+                {customPlusExpanded ? (
+                  <div className="fixed inset-0 z-[170] flex items-center justify-center bg-black/45 backdrop-blur-sm p-4">
+                    <div
+                      className="relative w-full max-w-md rounded-3xl border border-white/20 bg-[#121420] p-4 shadow-2xl"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <button
+                        type="button"
+                        onClick={
+                          customAnalyzing
+                            ? undefined
+                            : () => {
+                                setCustomPlusExpanded(false);
+                                setCustomError(null);
+                              }
+                        }
+                        disabled={customAnalyzing}
+                        title={customAnalyzing ? 'Wait for analysis to finish' : 'Close'}
+                        className={`absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-black/50 text-white/70 transition hover:bg-black/80 hover:text-white ${customAnalyzing ? 'cursor-not-allowed opacity-40' : ''}`}
+                        aria-label="Close composer"
+                      >
+                        <X size={16} />
+                      </button>
+
+                      <div className="space-y-3 pt-10">
+                        <input
+                          ref={customFileInputRef}
+                          type="file"
+                          accept="image/*"
+                          className="w-full text-xs text-white/70 file:mr-2 file:rounded-md file:border-0 file:bg-white file:px-2.5 file:py-1.5 file:text-xs file:font-medium file:text-black"
+                          onChange={(e) => onCustomFile(e.target.files?.[0] ?? null)}
+                        />
+                        <input
+                          value={customDraftName}
+                          onChange={(e) => setCustomDraftName(e.target.value)}
+                          placeholder="Style name"
+                          className="w-full rounded-xl border border-white/10 bg-black/50 px-3 py-2 text-sm text-white placeholder:text-white/35 outline-none focus:border-white/25"
+                        />
+                        <textarea
+                          value={customDraftDirective}
+                          onChange={(e) => setCustomDraftDirective(e.target.value)}
+                          placeholder="Prompt area (style instructions)"
+                          rows={4}
+                          className="w-full resize-none rounded-xl border border-white/10 bg-black/50 px-3 py-2 text-sm text-white placeholder:text-white/35 outline-none focus:border-white/25"
+                        />
+                        <button
+                          type="button"
+                          disabled={!customDataUrl || customAnalyzing}
+                          onClick={() => void runCustomAnalysis()}
+                          className="w-full rounded-full bg-white px-4 py-2 text-sm font-semibold text-black disabled:opacity-40"
+                        >
+                          {customAnalyzing ? 'Analyzing…' : 'Analyze'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={saveCustomStyleFromBuilder}
+                          disabled={!customDraftDirective.trim() || customAnalyzing}
+                          className="w-full rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-40"
+                        >
+                          Save style
+                        </button>
+                        {customError ? (
+                          <p className="text-xs leading-snug text-red-400">{customError}</p>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
 
                 {savedCustomStylesFromImage.map((item: SavedCustomStyleFromImage) => {
                     const isSelected =
