@@ -16,6 +16,91 @@ export type SavedCustomStyleFromImage = {
   /** data:image/... for card thumbnail */
   previewDataUrl: string;
 };
+
+type ActiveCustomStyleFromImage = {
+  id: string | null;
+  label: string;
+  directive: string;
+};
+
+const CUSTOM_STYLE_STORAGE_KEY = "wm_custom_styles_from_image_v1";
+
+function sanitizeSavedCustomStyles(
+  raw: unknown,
+): SavedCustomStyleFromImage[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((item: any) => ({
+      id: typeof item?.id === "string" ? item.id : "",
+      label: typeof item?.label === "string" ? item.label : "",
+      directive: typeof item?.directive === "string" ? item.directive : "",
+      previewDataUrl:
+        typeof item?.previewDataUrl === "string" ? item.previewDataUrl : "",
+    }))
+    .filter(
+      (item) =>
+        item.id.trim().length > 0 &&
+        item.label.trim().length > 0 &&
+        item.directive.trim().length > 0 &&
+        item.previewDataUrl.startsWith("data:image/"),
+    );
+}
+
+function sanitizeActiveCustomStyle(raw: unknown): ActiveCustomStyleFromImage | null {
+  if (!raw || typeof raw !== "object") return null;
+  const item = raw as any;
+  const label = typeof item?.label === "string" ? item.label.trim() : "";
+  const directive =
+    typeof item?.directive === "string" ? item.directive.trim() : "";
+  if (!label || !directive) return null;
+  const id =
+    item?.id != null && String(item.id).trim().length > 0
+      ? String(item.id)
+      : null;
+  return { id, label, directive };
+}
+
+function readPersistedCustomStyleState(): {
+  active: ActiveCustomStyleFromImage | null;
+  saved: SavedCustomStyleFromImage[];
+} {
+  if (typeof window === "undefined") {
+    return { active: null, saved: [] };
+  }
+  try {
+    const raw = window.localStorage.getItem(CUSTOM_STYLE_STORAGE_KEY);
+    if (!raw) return { active: null, saved: [] };
+    const parsed = JSON.parse(raw) as any;
+    return {
+      active: sanitizeActiveCustomStyle(parsed?.active),
+      saved: sanitizeSavedCustomStyles(parsed?.saved),
+    };
+  } catch {
+    return { active: null, saved: [] };
+  }
+}
+
+export function loadPersistedCustomStyleState(): {
+  active: ActiveCustomStyleFromImage | null;
+  saved: SavedCustomStyleFromImage[];
+} {
+  return readPersistedCustomStyleState();
+}
+
+function persistCustomStyleState(
+  active: ActiveCustomStyleFromImage | null,
+  saved: SavedCustomStyleFromImage[],
+) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(
+      CUSTOM_STYLE_STORAGE_KEY,
+      JSON.stringify({ active, saved }),
+    );
+  } catch {
+    // Non-fatal (private mode / quota issues).
+  }
+}
 // Import Runway thunks from generationsApi to synchronize active generation lifecycle for Runway flows
 import { runwayGenerate, runwayVideo, bflGenerate, falGenerate, replicateGenerate, minimaxGenerate } from '@/store/slices/generationsApi';
 
@@ -610,6 +695,10 @@ const generationSlice = createSlice({
       state.style = action.payload;
       if (action.payload !== CUSTOM_STYLE_FROM_IMAGE_ID) {
         state.customStyleFromImage = null;
+        persistCustomStyleState(
+          null,
+          state.savedCustomStylesFromImage,
+        );
       }
     },
     applyCustomStyleFromImage: (
@@ -628,16 +717,47 @@ const generationSlice = createSlice({
         label: action.payload.label.trim(),
         directive: action.payload.directive.trim(),
       };
+      persistCustomStyleState(
+        state.customStyleFromImage,
+        state.savedCustomStylesFromImage,
+      );
     },
     addSavedCustomStyleFromImage: (
       state,
       action: PayloadAction<SavedCustomStyleFromImage>,
     ) => {
       state.savedCustomStylesFromImage.push(action.payload);
+      persistCustomStyleState(
+        state.customStyleFromImage,
+        state.savedCustomStylesFromImage,
+      );
     },
     clearCustomStyleFromImage: (state) => {
       state.customStyleFromImage = null;
       if (state.style === CUSTOM_STYLE_FROM_IMAGE_ID) {
+        state.style = 'none';
+      }
+      persistCustomStyleState(
+        null,
+        state.savedCustomStylesFromImage,
+      );
+    },
+    hydrateCustomStylePersistence: (
+      state,
+      action: PayloadAction<{
+        active: ActiveCustomStyleFromImage | null;
+        saved: SavedCustomStyleFromImage[];
+      }>,
+    ) => {
+      state.savedCustomStylesFromImage = sanitizeSavedCustomStyles(
+        action.payload?.saved,
+      );
+      state.customStyleFromImage = sanitizeActiveCustomStyle(
+        action.payload?.active,
+      );
+      if (state.customStyleFromImage) {
+        state.style = CUSTOM_STYLE_FROM_IMAGE_ID;
+      } else if (state.style === CUSTOM_STYLE_FROM_IMAGE_ID) {
         state.style = 'none';
       }
     },
@@ -1336,6 +1456,7 @@ export const {
   applyCustomStyleFromImage,
   addSavedCustomStyleFromImage,
   clearCustomStyleFromImage,
+  hydrateCustomStylePersistence,
   setIndianStyleVersion,
   setIsGenerating,
   setError,

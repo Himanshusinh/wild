@@ -324,7 +324,7 @@ const StylePopup = ({ isOpen, onClose, onBusyChange }: StylePopupProps) => {
         aria-busy={customAnalyzing || undefined}
       >
         <div
-          className="relative flex w-full max-w-8xl max-h-[90vh] flex-col overflow-hidden rounded-3xl border border-white/10 bg-[#0E0E12] shadow-[0_32px_120px_rgba(0,0,0,0.8)]"
+          className="relative flex h-[90vh] w-full max-w-8xl flex-col overflow-hidden rounded-3xl border border-white/10 bg-[#0E0E12] shadow-[0_32px_120px_rgba(0,0,0,0.8)]"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}

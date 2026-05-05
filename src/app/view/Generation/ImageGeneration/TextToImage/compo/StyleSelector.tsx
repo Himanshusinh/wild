@@ -3,7 +3,11 @@
 import React, { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { setIndianStyleVersion } from "@/store/slices/generationSlice";
+import {
+  hydrateCustomStylePersistence,
+  loadPersistedCustomStyleState,
+  setIndianStyleVersion,
+} from "@/store/slices/generationSlice";
 import StylePopup from "@/app/view/Generation/ImageGeneration/TextToImage/compo/StylePopup";
 import { ChevronUp } from "lucide-react";
 import { ALL_INDIAN_STYLES } from "@/styles/indianStyles";
@@ -85,6 +89,11 @@ const StyleSelector = () => {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
+    dispatch(hydrateCustomStylePersistence(loadPersistedCustomStyleState()));
+  }, [mounted, dispatch]);
 
   useEffect(() => {
     if (!isVersionDropdownOpen) return;
