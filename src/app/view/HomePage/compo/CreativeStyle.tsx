@@ -2,6 +2,7 @@
 
 import { Fragment, useEffect, useRef, useState, type MouseEvent } from "react";
 import Link from "next/link";
+import { CREATIVE_STYLE_IMAGE_BASE } from "@/constants/creativeStyleCdn";
 import { STYLES } from "@/styles/creativeStyleCatalog";
 import type { StyleItem } from "@/styles/creativeStyleCatalog";
 export { STYLES } from "@/styles/creativeStyleCatalog";
@@ -9,9 +10,9 @@ export { STYLES } from "@/styles/creativeStyleCatalog";
 function WarliStyleCard({ style, onClick }: { style: StyleItem; onClick: (e: any) => void }) {
   const [hoveredImage, setHoveredImage] = useState<string | null>(null);
 
-  const v1Image = "/HomePage/creativeStyle/warlistyles/warliv1.jpg";
-  const v2Image = "/HomePage/creativeStyle/warlistyles/warliv2.jpg";
-  const v3Image = "/HomePage/creativeStyle/warlistyles/warliv3.jpg";
+  const v1Image = `${CREATIVE_STYLE_IMAGE_BASE}warlistyles/warliv1.jpg`;
+  const v2Image = `${CREATIVE_STYLE_IMAGE_BASE}warlistyles/warliv2.jpg`;
+  const v3Image = `${CREATIVE_STYLE_IMAGE_BASE}warlistyles/warliv3.jpg`;
   const defaultImage = style.image;
 
   return (
