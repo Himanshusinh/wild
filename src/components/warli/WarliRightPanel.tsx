@@ -138,6 +138,7 @@ export function WarliRightPanel({
   onSaveImage,
   onExpandImage,
 }: WarliRightPanelProps) {
+  const hoveredStyle: StyleFamily | null = style ?? null;
   const modelLabel = modelShortLabel(model);
   const rightTitle =
     panelState === "empty"
