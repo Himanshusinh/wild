@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import Image from "next/image";
 import { Trash2, ImageIcon } from "lucide-react";
 import type { HistoryEntry } from "@/types/history";
+import { Masonry } from "@/components/masonry";
 import ImageGenerationGuide from "../ImageGenerationGuide";
 import { GifLoader } from "./GifLoader";
 import {
@@ -87,6 +88,14 @@ export function InputBoxHistoryScrollBody(props: InputBoxHistoryScrollBodyProps)
     handleDeleteImage,
     formatDate,
   } = props;
+  const masonryConfig = React.useMemo(
+    () => ({
+      columns: [2, 5, 6] as const,
+      gap: [4, 12, 4] as const,
+      media: [768, 1024] as const,
+    }),
+    [],
+  );
 
   return (
     <div>
@@ -205,9 +214,14 @@ export function InputBoxHistoryScrollBody(props: InputBoxHistoryScrollBodyProps)
                           isNewEntry ? "animate-fade-in-up" : ""
                         }`}
                         style={{
-                          aspectRatio: toGridAspectRatioCss(
-                            entry.frameSize as string | undefined,
-                          ),
+                          ...(hasImageUrl
+                            ? {}
+                            : {
+                                // Keep placeholder geometry for pending states with no URL yet.
+                                aspectRatio: toGridAspectRatioCss(
+                                  entry.frameSize as string | undefined,
+                                ),
+                              }),
                           ...(isNewEntry
                             ? {
                                 animation:
@@ -257,13 +271,13 @@ export function InputBoxHistoryScrollBody(props: InputBoxHistoryScrollBodyProps)
                         ) : (
                           <>
                             {hasImageUrl && (
-                              <div className="absolute inset-0 group">
+                              <div className="relative group">
                                 <img
                                   src={imageDisplaySrc}
                                   alt=""
                                   loading="lazy"
                                   decoding="async"
-                                  className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                                  className="block w-full h-auto object-contain group-hover:scale-[1.01] transition-transform duration-200"
                                   onLoad={() => {
                                     setLoadedImages((prev) =>
                                       new Set(prev).add(uniqueImageKey),
@@ -388,13 +402,13 @@ export function InputBoxHistoryScrollBody(props: InputBoxHistoryScrollBodyProps)
                     </h3>
                   </div>
 
-                  {/* All Images for this Date - Simple Grid with stable layout */}
-                  <div
-                    className="image-grid md:ml-9 ml-0"
-                    key={`grid-${date}`}
-                  >
-                    {cells}
-                  </div>
+                  {/* Row-wise masonry: distribute tiles left-to-right per row, then stack naturally */}
+                  <Masonry
+                    items={cells}
+                    config={masonryConfig}
+                    className="md:ml-9 ml-0"
+                    render={(cell) => cell}
+                  />
                 </div>
                 );
               })}
