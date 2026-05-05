@@ -31,7 +31,7 @@ const rawStyles: RawStyleItem[] = [
     name: "Maharashtra",
     title: "Warli",
     desc: "Warli art is a traditional folk style from India that uses basic geometric shapes, like triangles, circles, and lines, to create stick-figure depictions of daily social life and nature",
-    image: "/HomePage/creativeStyle/warlistyles/warlistyle.png",
+    image: "/HomePage/creativeStyle/warlistyles/warlistyle.avif",
     tag: "Film",
     titleColor: "#ffffff",
     href: "/text-to-image",

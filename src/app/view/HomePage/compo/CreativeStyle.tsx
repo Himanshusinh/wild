@@ -22,7 +22,10 @@ function WarliStyleCard({ style, onClick }: { style: StyleItem; onClick: (e: any
       className="w-full md:w-[340px] shrink-0 snap-start"
     >
       <div className="mb-2 overflow-hidden rounded-xl border border-white/10 bg-[#18181f] sm:mb-3">
-        <div className="group relative flex h-[190px] overflow-hidden sm:h-[220px]">
+        <div 
+          className="group relative flex h-[190px] overflow-hidden sm:h-[220px]"
+          onMouseLeave={() => setHoveredIndex(null)}
+        >
           {images.map((imgSrc, idx) => {
             let width = "33.33%";
             if (hoveredIndex !== null) {
@@ -31,29 +34,32 @@ function WarliStyleCard({ style, onClick }: { style: StyleItem; onClick: (e: any
             return (
               <div
                 key={idx}
-                className="relative h-full overflow-hidden transition-[width] duration-800 ease-in-out cursor-pointer"
+                className="relative h-full overflow-hidden transition-[width] duration-700 ease-in-out cursor-pointer"
                 style={{ width }}
                 onMouseEnter={() => setHoveredIndex(idx)}
-                onMouseLeave={() => setHoveredIndex(null)}
               >
                 <img
                   src={imgSrc}
                   alt={`${style.name} v${idx + 1}`}
-                  className="h-full w-full object-cover"
+                  className="h-full w-full object-cover transition-transform duration-500"
                   style={{
                     filter: style.imageFilter,
-                    transition: "transform 0.5s ease-in-out",
-                    // Ensure image stays centered during width changes
-                    minWidth: "340px",
-                    position: "absolute",
-                    left: "50%",
-                    top: "50%",
-                    transform: `translate(-50%, -50%) ${hoveredIndex === idx ? "scale(1.05)" : "scale(1)"}`,
+                    transform: hoveredIndex === idx ? "scale(1.1)" : "scale(1)",
                   }}
                 />
               </div>
             );
           })}
+
+          {/* Outer Thumbnail Overlay */}
+          <img
+            src={style.image}
+            alt={style.name}
+            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-500 pointer-events-none ${
+              hoveredIndex !== null ? "opacity-0" : "opacity-100"
+            }`}
+            style={{ filter: style.imageFilter }}
+          />
 
           <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,transparent_40%,rgba(0,0,0,0.72)_100%)]" />
           <div className="absolute left-3 top-3 rounded-full border border-white/15 bg-black/45 px-2.5 py-1 text-[8px] font-bold uppercase tracking-[0.08em] text-white/80 backdrop-blur-[6px] sm:left-4 sm:top-4 sm:px-3 sm:text-[9px]">
@@ -82,6 +88,8 @@ function WarliStyleCard({ style, onClick }: { style: StyleItem; onClick: (e: any
     </Link>
   );
 }
+
+
 
 
 
