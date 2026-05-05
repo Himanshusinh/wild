@@ -8,12 +8,13 @@ import type { StyleItem } from "@/styles/creativeStyleCatalog";
 export { STYLES } from "@/styles/creativeStyleCatalog";
 
 function WarliStyleCard({ style, onClick }: { style: StyleItem; onClick: (e: any) => void }) {
-  const [hoveredImage, setHoveredImage] = useState<string | null>(null);
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
-  const v1Image = `${CREATIVE_STYLE_IMAGE_BASE}warlistyles/warliv1.jpg`;
-  const v2Image = `${CREATIVE_STYLE_IMAGE_BASE}warlistyles/warliv2.jpg`;
-  const v3Image = `${CREATIVE_STYLE_IMAGE_BASE}warlistyles/warliv3.jpg`;
-  const defaultImage = style.image;
+  const images = [
+    "/HomePage/creativeStyle/warlistyles/warliv1.jpg",
+    "/HomePage/creativeStyle/warlistyles/warliv2.jpg",
+    "/HomePage/creativeStyle/warlistyles/warliv3.jpg",
+  ];
 
   return (
     <Link
@@ -22,34 +23,106 @@ function WarliStyleCard({ style, onClick }: { style: StyleItem; onClick: (e: any
       className="w-full md:w-[340px] shrink-0 snap-start"
     >
       <div className="mb-2 overflow-hidden rounded-xl border border-white/10 bg-[#18181f] sm:mb-3">
-        <div className="group relative h-[190px] sm:h-[220px]">
-          <img
-            src={hoveredImage || defaultImage}
-            alt={style.name}
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
-            style={{ filter: style.imageFilter }}
-          />
+        <div
+          className="group relative flex h-[190px] overflow-hidden sm:h-[220px]"
+          onMouseLeave={() => setHoveredIndex(null)}
+        >
+          {images.map((imgSrc, idx) => {
+            let width = "33.3333%";
+            if (hoveredIndex !== null) {
+              width = hoveredIndex === idx ? "80%" : "10%";
+            }
+            return (
+              <div
+                key={idx}
+                className="relative h-full cursor-pointer overflow-hidden transition-[width] duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]"
+                style={{ width, willChange: "width" }}
+                onMouseEnter={() => setHoveredIndex(idx)}
+              >
+                <img
+                  src={imgSrc}
+                  alt={`${style.name} v${idx + 1}`}
+                  className={`h-full w-full object-cover transition-transform duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${hoveredIndex === idx ? "scale-[1.05]" : "scale-100"}`}
+                  style={{
+                    filter: style.imageFilter,
+                  }}
+                />
+              </div>
+            );
+          })}
 
-          {/* Hotspot Hover Areas */}
-          <div className="absolute inset-0 z-10 flex">
-            <div
-              className="h-full flex-1 cursor-pointer"
-              onMouseEnter={() => setHoveredImage(v1Image)}
-              onMouseLeave={() => setHoveredImage(null)}
-            />
-            <div
-              className="h-full flex-1 cursor-pointer"
-              onMouseEnter={() => setHoveredImage(v2Image)}
-              onMouseLeave={() => setHoveredImage(null)}
-            />
-            <div
-              className="h-full flex-1 cursor-pointer"
-              onMouseEnter={() => setHoveredImage(v3Image)}
-              onMouseLeave={() => setHoveredImage(null)}
-            />
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,transparent_38%,rgba(0,0,0,0.72)_100%)]" />
+          <div className="absolute left-3 top-3 rounded-full border border-white/15 bg-black/45 px-2.5 py-1 text-[8px] font-bold uppercase tracking-[0.08em] text-white/80 backdrop-blur-[6px] sm:left-4 sm:top-4 sm:px-3 sm:text-[9px]">
+            {style.tag}
           </div>
+          <div className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4">
+            <div
+              className="text-[30px] uppercase leading-none tracking-[0.06em] sm:text-[34px]"
+              style={{
+                color: style.titleColor,
+                fontFamily: "var(--font-bebas-neue), 'Bebas Neue', sans-serif",
+                textShadow: "0 2px 12px rgba(0,0,0,0.5)",
+              }}
+            >
+              {style.title}
+            </div>
+            <div className="mt-1 text-[11px] font-semibold tracking-wide text-white/85 sm:text-[12px]">
+              {style.name}
+            </div>
+            <div className="mt-1 max-w-[280px] text-[10px] leading-snug text-white/60 line-clamp-2 sm:max-w-[300px]">
+              {style.desc}
+            </div>
+          </div>
+        </div>
+      </div>
+    </Link>
+  );
+}
 
-          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,transparent_40%,rgba(0,0,0,0.72)_100%)]" />
+function ShellCraftStyleCard({ style, onClick }: { style: StyleItem; onClick: (e: any) => void }) {
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+
+  const images = [
+    "/HomePage/creativeStyle/shell_art/v1.jpg",
+    "/HomePage/creativeStyle/shell_art/v2.jpg",
+    "/HomePage/creativeStyle/shell_art/v3.jpg",
+  ];
+  const objectPositions: React.CSSProperties["objectPosition"][] = ["left center", "center center", "right center"];
+
+  return (
+    <Link
+      href={style.href}
+      onClick={onClick}
+      className="w-full md:w-[340px] shrink-0 snap-start"
+    >
+      <div className="mb-2 overflow-hidden rounded-xl border border-white/10 bg-[#18181f] sm:mb-3">
+        <div
+          className="group relative flex h-[190px] overflow-hidden sm:h-[220px]"
+          onMouseLeave={() => setHoveredIndex(null)}
+        >
+          {images.map((imgSrc, idx) => {
+            let width = "33.3333%";
+            if (hoveredIndex !== null) {
+              width = hoveredIndex === idx ? "80%" : "10%";
+            }
+            return (
+              <div
+                key={idx}
+                className="relative h-full cursor-pointer overflow-hidden transition-[width] duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]"
+                style={{ width, willChange: "width" }}
+                onMouseEnter={() => setHoveredIndex(idx)}
+              >
+                <img
+                  src={imgSrc}
+                  alt={`${style.name} v${idx + 1}`}
+                  className={`h-full w-full object-cover transition-transform duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${hoveredIndex === idx ? "scale-[1.05]" : "scale-100"}`}
+                  style={{ filter: style.imageFilter, objectPosition: objectPositions[idx] }}
+                />
+              </div>
+            );
+          })}
+
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,transparent_38%,rgba(0,0,0,0.72)_100%)]" />
           <div className="absolute left-3 top-3 rounded-full border border-white/15 bg-black/45 px-2.5 py-1 text-[8px] font-bold uppercase tracking-[0.08em] text-white/80 backdrop-blur-[6px] sm:left-4 sm:top-4 sm:px-3 sm:text-[9px]">
             {style.tag}
           </div>
@@ -537,7 +610,9 @@ export default function CreativeStyle({
 
   const handleStyleClick = (event: MouseEvent<HTMLAnchorElement>, style: StyleItem) => {
     const t = style.title.toLowerCase();
-    if (t === "warli" && onWarliOpen) {
+    const id = style.id.toLowerCase();
+
+    if ((id === "maharashtra" || t === "warli") && onWarliOpen) {
       event.preventDefault();
       onWarliOpen();
       return;
@@ -1397,12 +1472,12 @@ export default function CreativeStyle({
       onIduMishmiOpen();
       return;
     }
-    if (style.id === "jhabuadolls" || style.id === "maheshwari" || style.id === "mashruweaving" || 
-        style.id === "moirangphee" || style.id === "motibharat" || style.id === "mysorepainting" || 
-        style.id === "rosewoodinlay" || style.id === "nagashawlordinary" || style.id === "ngotekherh" || 
-        style.id === "nironalacquer" || style.id === "opaquewrap" || style.id === "tawlhlophuan" || 
-        style.id === "woodcarving" || style.id === "wroughtiron" || 
-        style.id === "yakshagana") {
+    if (style.id === "jhabuadolls" || style.id === "maheshwari" || style.id === "mashruweaving" ||
+      style.id === "moirangphee" || style.id === "motibharat" || style.id === "mysorepainting" ||
+      style.id === "rosewoodinlay" || style.id === "nagashawlordinary" || style.id === "ngotekherh" ||
+      style.id === "nironalacquer" || style.id === "opaquewrap" || style.id === "tawlhlophuan" ||
+      style.id === "woodcarving" || style.id === "wroughtiron" ||
+      style.id === "yakshagana") {
       event.preventDefault();
     }
 
@@ -1773,8 +1848,13 @@ export default function CreativeStyle({
         >
           {STYLES.slice(0, 12).map((style, index) => (
             <Fragment key={`${style.id}-${index}`}>
-              {style.id === "Maharashtra" ? (
+              {style.id.toLowerCase() === "maharashtra" ? (
                 <WarliStyleCard
+                  style={style}
+                  onClick={(event) => handleStyleClick(event, style)}
+                />
+              ) : style.id.toLowerCase() === "shellcraft" ? (
+                <ShellCraftStyleCard
                   style={style}
                   onClick={(event) => handleStyleClick(event, style)}
                 />
@@ -1854,9 +1934,8 @@ export default function CreativeStyle({
           onClick={scrollLeft}
           disabled={!showLeftArrow}
           aria-label="Scroll styles left"
-          className={`absolute left-2 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/55 text-white/85 backdrop-blur-md transition-all hover:border-white/20 hover:bg-black/75 active:scale-95 disabled:cursor-not-allowed md:flex lg:left-8 ${
-            showLeftArrow ? "opacity-100" : "pointer-events-none opacity-0"
-          }`}
+          className={`absolute left-2 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/55 text-white/85 backdrop-blur-md transition-all hover:border-white/20 hover:bg-black/75 active:scale-95 disabled:cursor-not-allowed md:flex lg:left-8 ${showLeftArrow ? "opacity-100" : "pointer-events-none opacity-0"
+            }`}
         >
           <svg width="16" height="16" viewBox="0 0 12 12" fill="none" aria-hidden="true">
             <path d="M8 2.5L4.5 6L8 9.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -1868,9 +1947,8 @@ export default function CreativeStyle({
           onClick={scrollRight}
           disabled={!showRightArrow}
           aria-label="Scroll styles right"
-          className={`absolute right-2 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/55 text-white/85 backdrop-blur-md transition-all hover:border-white/20 hover:bg-black/75 active:scale-95 disabled:cursor-not-allowed md:flex lg:right-8 ${
-            showRightArrow ? "opacity-100" : "pointer-events-none opacity-0"
-          }`}
+          className={`absolute right-2 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/55 text-white/85 backdrop-blur-md transition-all hover:border-white/20 hover:bg-black/75 active:scale-95 disabled:cursor-not-allowed md:flex lg:right-8 ${showRightArrow ? "opacity-100" : "pointer-events-none opacity-0"
+            }`}
         >
           <svg width="16" height="16" viewBox="0 0 12 12" fill="none" aria-hidden="true">
             <path d="M4 2.5L7.5 6L4 9.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />

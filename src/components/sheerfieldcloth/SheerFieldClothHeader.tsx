@@ -36,7 +36,7 @@ export function SheerFieldClothHeader({style, onStyleChange, onClose, disabled}:
               new CustomEvent("wm:style-navigate", { detail: { styleId } }),
             );
           }}
-          className="w-[220px]"
+          className="w-[160px]"
           buttonClassName="flex h-[30px] w-full items-center justify-between gap-1.5 rounded-full border border-[#2F6BFF]/25 bg-[#2F6BFF]/[0.08] px-3 text-[11px] font-medium uppercase tracking-[0.06em] text-[#60a5fa] outline-none transition hover:border-[#2F6BFF]/40 hover:bg-[#2F6BFF]/[0.14]"
         />
 
