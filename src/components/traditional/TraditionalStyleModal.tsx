@@ -19,6 +19,7 @@ import { PromptPreview } from "@/components/warli/PromptPreview";
 import { coerceStyleModalResolution, coerceWarliAspectRatio } from "@/components/warli/warliNanoAspect";
 import { FullscreenImageViewer } from "@/components/common/FullscreenImageViewer";
 import { TraditionalHeader } from "./TraditionalHeader";
+import { STYLES } from "@/styles/creativeStyleCatalog";
 import {
   INITIAL_STATE,
   type TraditionalStyleState,
@@ -153,11 +154,28 @@ export function TraditionalStyleModal({
   const [state, dispatchLocal] = useReducer(reducer, INITIAL_STATE);
   const [isVisible, setIsVisible] = React.useState(false);
   const [fullscreenUrl, setFullscreenUrl] = React.useState<string | null>(null);
+  const [activeStyle, setActiveStyle] = React.useState({
+    id: styleId,
+    title: styleTitle,
+    name: styleName,
+    desc: styleDesc,
+    tag: styleTag,
+  });
 
   const nanoBananaGoogleSearch = useAppSelector((s: RootState) => s.generation.nanoBananaGoogleSearch);
   const nanoBananaThinkingLevel = useAppSelector((s: RootState) => s.generation.nanoBananaThinkingLevel);
   const nanoBananaLimitGenerations = useAppSelector((s: RootState) => s.generation.nanoBananaLimitGenerations);
   const outputFormat = useAppSelector((s: RootState) => s.generation.outputFormat || "jpeg");
+
+  useEffect(() => {
+    setActiveStyle({
+      id: styleId,
+      title: styleTitle,
+      name: styleName,
+      desc: styleDesc,
+      tag: styleTag,
+    });
+  }, [styleId, styleTitle, styleName, styleDesc, styleTag]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -186,16 +204,16 @@ export function TraditionalStyleModal({
     const aspect = coerceWarliAspectRatio(state.ratio, state.model);
     const projectInputs = state.inputMode === "text" ? state.sceneText.trim() : state.imageNote.trim();
 
-    let basePrompt = styleDesc;
-    if (state.style === "V2") basePrompt = `Artistic translation of ${styleTitle}: ${styleDesc}`;
-    if (state.style === "V3") basePrompt = `Cinematic 3D render of ${styleTitle}: ${styleDesc}, high detail, 8k, professional lighting`;
+    let basePrompt = activeStyle.desc;
+    if (state.style === "V2") basePrompt = `Artistic translation of ${activeStyle.title}: ${activeStyle.desc}`;
+    if (state.style === "V3") basePrompt = `Cinematic 3D render of ${activeStyle.title}: ${activeStyle.desc}, high detail, 8k, professional lighting`;
 
     const projectLine = projectInputs
       ? `- ${projectInputs}`
-      : `- (none). Focus on the core aesthetic of ${styleTitle}.`;
+      : `- (none). Focus on the core aesthetic of ${activeStyle.title}.`;
 
     return [
-      `PRIMARY DIRECTIVE (${styleTitle} STYLE — follow strictly):`,
+      `PRIMARY DIRECTIVE (${activeStyle.title} STYLE — follow strictly):`,
       basePrompt,
       "",
       "PROJECT INPUTS:",
@@ -208,7 +226,7 @@ export function TraditionalStyleModal({
     ]
       .filter(Boolean)
       .join("\n");
-  }, [state, styleTitle, styleDesc]);
+  }, [state, activeStyle]);
 
   const assembledPrompt = useMemo(() => buildPrompt(), [buildPrompt]);
   const ratioSummary = useMemo(() => {
@@ -229,7 +247,7 @@ export function TraditionalStyleModal({
     dispatchLocal({ type: "SET_ASSEMBLED_PROMPT", payload: prompt });
     dispatchLocal({ type: "SET_PANEL_STATE", payload: "loading" });
 
-    const promptForModel = `${prompt} [Style: ${styleTag}]`;
+    const promptForModel = `${prompt} [Style: ${activeStyle.tag}]`;
     let uploadedForFal: string[] = [];
     try {
       if (state.inputMode === "image" && state.uploadedImage?.trim()) {
@@ -254,9 +272,9 @@ export function TraditionalStyleModal({
           prompt: promptForModel,
           meta: {
             style_premium: true,
-            style_key: styleId,
+            style_key: activeStyle.id,
             style_version: state.style,
-            source: `homepage-${styleId}-modal`,
+            source: `homepage-${activeStyle.id}-modal`,
           },
           aspect_ratio: aspect as any,
           num_images: state.imageCount,
@@ -278,21 +296,21 @@ export function TraditionalStyleModal({
       toast.error(msg);
       dispatchLocal({ type: "SET_PANEL_STATE", payload: "empty" });
     }
-  }, [dispatch, nanoBananaGoogleSearch, nanoBananaLimitGenerations, nanoBananaThinkingLevel, outputFormat, state, styleId, styleTag, buildPrompt]);
+  }, [dispatch, nanoBananaGoogleSearch, nanoBananaLimitGenerations, nanoBananaThinkingLevel, outputFormat, state, activeStyle, buildPrompt]);
 
   const handleSaveAll = useCallback(async () => {
     const urls = state.generatedImages.filter(Boolean);
     if (!urls.length) return;
     const t = toast.loading("Saving images...");
     try {
-      await downloadAllImageUrls(urls, `${styleId}-${state.style}`);
+      await downloadAllImageUrls(urls, `${activeStyle.id}-${state.style}`);
       toast.dismiss(t);
       toast.success("All downloads started");
     } catch {
       toast.dismiss(t);
       toast.error("Save all failed");
     }
-  }, [state.generatedImages, state.style, styleId]);
+  }, [state.generatedImages, state.style, activeStyle.id]);
 
   const handleSaveImage = useCallback(
     async (index: number) => {
@@ -300,7 +318,7 @@ export function TraditionalStyleModal({
       if (!url) return;
       const t = toast.loading("Saving...");
       try {
-        await downloadImageUrl(url, `${styleId}-${state.style}-${index + 1}`);
+        await downloadImageUrl(url, `${activeStyle.id}-${state.style}-${index + 1}`);
         toast.dismiss(t);
         toast.success("Download started");
       } catch {
@@ -308,7 +326,7 @@ export function TraditionalStyleModal({
         toast.error("Save failed");
       }
     },
-    [state.generatedImages, state.style, styleId],
+    [state.generatedImages, state.style, activeStyle.id],
   );
 
   if (!isOpen) return null;
@@ -325,8 +343,24 @@ export function TraditionalStyleModal({
           }`}
       >
         <TraditionalHeader
- style={state.style}
-          styleTitle={styleTitle}
+          style={state.style}
+          styleId={activeStyle.id}
+          styleTitle={activeStyle.title}
+          onStyleNavigate={(nextStyleId) => {
+            const next = STYLES.find((item) => item.id === nextStyleId);
+            if (!next) return;
+            setActiveStyle({
+              id: next.id,
+              title: next.title,
+              name: next.name,
+              desc: next.desc,
+              tag: next.tag,
+            });
+            setFullscreenUrl(null);
+            dispatchLocal({ type: "SET_PANEL_STATE", payload: "empty" });
+            dispatchLocal({ type: "SET_GENERATED_IMAGES", payload: [] });
+            dispatchLocal({ type: "SET_ASSEMBLED_PROMPT", payload: "" });
+          }}
           onStyleChange={(s) => dispatchLocal({ type: "SET_STYLE_VERSION", payload: s })}
           onClose={onClose} disabled={state.panelState !== "empty"} />
 
@@ -385,7 +419,7 @@ export function TraditionalStyleModal({
                 disabled={state.panelState !== "empty"}
                 className="w-full rounded-lg bg-[#2F6BFF] py-2.5 text-[12px] font-semibold text-white transition hover:bg-[#2F6BFF]/90 disabled:opacity-50"
               >
-                Generate {styleTitle}
+                Generate {activeStyle.title}
               </button>
             </div>
           </aside>
@@ -426,7 +460,7 @@ export function TraditionalStyleModal({
                   <div className="flex flex-1 flex-col items-center justify-center gap-2 p-10 text-center">
                     <p className="text-sm font-medium text-white/20">No output yet</p>
                     <p className="max-w-[320px] text-xs leading-relaxed text-white/10">
-                      Describe a scene inspired by {styleTitle} (or upload an image), then Generate.
+                      Describe a scene inspired by {activeStyle.title} (or upload an image), then Generate.
                     </p>
                   </div>
                 </div>

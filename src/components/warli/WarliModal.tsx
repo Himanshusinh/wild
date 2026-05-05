@@ -222,9 +222,10 @@ function buildPrompt(state: WarliState): string {
 interface WarliModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onStyleNavigate?: (styleId: string) => void;
 }
 
-export function WarliModal({ isOpen, onClose }: WarliModalProps) {
+export function WarliModal({ isOpen, onClose, onStyleNavigate }: WarliModalProps) {
   const dispatch = useAppDispatch();
   const [state, dispatchLocal] = useReducer(reducer, INITIAL_STATE);
   const [isVisible, setIsVisible] = React.useState(false);
@@ -395,10 +396,10 @@ export function WarliModal({ isOpen, onClose }: WarliModalProps) {
   );
 
   const handleExpandImage = useCallback(
-    (index: number, url?: string) => {
-      const targetUrl = url || state.generatedImages[index];
-      if (!targetUrl) return;
-      setFullscreenUrl(targetUrl);
+    (index: number, previewUrl?: string) => {
+      const url = previewUrl ?? state.generatedImages[index];
+      if (!url) return;
+      setFullscreenUrl(url);
     },
     [state.generatedImages],
   );
@@ -436,7 +437,7 @@ export function WarliModal({ isOpen, onClose }: WarliModalProps) {
         <WarliHeader
           style={state.style}
           onStyleChange={(s) => dispatchLocal({ type: "SET_STYLE", payload: s })}
-          onHoverStyleChange={setHoveredStyle}
+          onStyleNameSelect={onStyleNavigate}
           onClose={onClose}
           isLocked={state.panelState !== "empty"}
         />

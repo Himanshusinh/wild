@@ -4,6 +4,7 @@ import React from "react";
 import { RefreshCw, Download } from "lucide-react";
 import { OutputGrid } from "./OutputGrid";
 import { PromptPreview } from "./PromptPreview";
+import { CREATIVE_STYLE_IMAGE_BASE } from "@/constants/creativeStyleCdn";
 import { RightPanelState, StyleFamily, ImageCount, ModelId, MODELS } from "./types";
 
 interface WarliRightPanelProps {
@@ -18,16 +19,17 @@ interface WarliRightPanelProps {
   onRegenerate: () => void;
   onSaveAll: () => void;
   onSaveImage: (index: number) => void;
-  onExpandImage: (index: number, url?: string) => void;
+  /** Optional `previewUrl` for empty-state sample images (not in `generatedImages`). */
+  onExpandImage: (index: number, previewUrl?: string) => void;
 }
 
 const TEST_IMAGES: Record<StyleFamily, string> = {
-  V1: "/HomePage/creativeStyle/warlistyles/warliv1.jpg",
-  V2: "/HomePage/creativeStyle/warlistyles/warliv2.jpg",
-  V3: "/HomePage/creativeStyle/warlistyles/warliv3.jpg",
+  V1: `${CREATIVE_STYLE_IMAGE_BASE}warlistyles/warliv1.jpg`,
+  V2: `${CREATIVE_STYLE_IMAGE_BASE}warlistyles/warliv2.jpg`,
+  V3: `${CREATIVE_STYLE_IMAGE_BASE}warlistyles/warliv3.jpg`,
 };
 
-const DEFAULT_THUMBNAIL = "/HomePage/creativeStyle/warlistyles/warlistyle.png";
+const DEFAULT_THUMBNAIL = `${CREATIVE_STYLE_IMAGE_BASE}warlistyles/warlistyle.png`;
 
 function EmptyState() {
   return (
@@ -84,7 +86,7 @@ function ResultsState({
   assembledPrompt: string;
   ratio: string;
   onSaveImage: (index: number) => void;
-  onExpandImage: (index: number) => void;
+  onExpandImage: (index: number, previewUrl?: string) => void;
 }) {
   return (
     <div className="flex flex-col gap-0">
@@ -120,6 +122,7 @@ export function WarliRightPanel({
   onSaveImage,
   onExpandImage,
 }: WarliRightPanelProps) {
+  const hoveredStyle: StyleFamily | null = style ?? null;
   const modelLabel = modelShortLabel(model);
   const rightTitle =
     panelState === "empty"
@@ -161,7 +164,11 @@ export function WarliRightPanel({
       <div className="flex flex-1 flex-col overflow-y-auto [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-white/[0.06] [&::-webkit-scrollbar]:w-1">
         {panelState === "empty" && (
           <div className="p-5">
-            <EmptyState />
+            <EmptyState
+              style={style}
+              hoveredStyle={null}
+              onExpand={(url) => onExpandImage(-1, url)}
+            />
           </div>
         )}
         {panelState === "loading" && <div className="p-5"><LoadingState imageCount={imageCount} /></div>}

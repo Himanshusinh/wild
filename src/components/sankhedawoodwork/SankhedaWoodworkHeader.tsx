@@ -3,6 +3,8 @@
 import React from "react";
 import { X } from "lucide-react";
 import { StyleFamily, STYLE_LABELS } from "./types";
+import { StyleFilterDropdown } from "@/components/ui/StyleFiltersBar";
+import { STYLES } from "@/styles/creativeStyleCatalog";
 
 interface SankhedaWoodworkHeaderProps {style: StyleFamily;
   onStyleChange: (s: StyleFamily) => void;
@@ -12,16 +14,31 @@ interface SankhedaWoodworkHeaderProps {style: StyleFamily;
 
 export function SankhedaWoodworkHeader({style, onStyleChange, onClose, disabled}: SankhedaWoodworkHeaderProps) {
   const families: StyleFamily[] = ["V1", "V2", "V3"];
+  const styleNameOptions = React.useMemo(
+    () =>
+      STYLES.map((item) => ({
+        value: item.id,
+        label: item.title,
+      })),
+    [],
+  );
 
   return (
     <header className="flex shrink-0 items-center justify-between border-b border-white/10 bg-[#0E0E12] px-5 py-3">
       <div className="flex items-center gap-3">
-        <div className="flex items-center gap-1.5 rounded-full border border-[#2F6BFF]/25 bg-[#2F6BFF]/[0.08] px-2.5 py-[5px]">
-          <span className="h-1.5 w-1.5 rounded-full bg-[#2F6BFF] shadow-[0_0_5px_rgba(47,107,255,0.8)]" />
-          <span className="text-[11px] font-medium uppercase tracking-[0.06em] text-[#60a5fa]">
-            SANKHEDA WOODWORK
-          </span>
-        </div>
+        <StyleFilterDropdown
+          ariaLabel="Select style"
+          value="sankhedawoodwork"
+          options={styleNameOptions}
+          onChange={(styleId) => {
+            onClose();
+            window.dispatchEvent(
+              new CustomEvent("wm:style-navigate", { detail: { styleId } }),
+            );
+          }}
+          className="w-[220px]"
+          buttonClassName="flex h-[30px] w-full items-center justify-between gap-1.5 rounded-full border border-[#2F6BFF]/25 bg-[#2F6BFF]/[0.08] px-3 text-[11px] font-medium uppercase tracking-[0.06em] text-[#60a5fa] outline-none transition hover:border-[#2F6BFF]/40 hover:bg-[#2F6BFF]/[0.14]"
+        />
 
         <div className="ml-1 flex gap-0.5 rounded-xl border border-white/10 bg-[#13131a] p-[3px]">
           {families.map((f) => (

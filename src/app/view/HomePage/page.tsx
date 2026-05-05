@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
+import { CREATIVE_STYLE_IMAGE_BASE } from '@/constants/creativeStyleCdn'
 import toast from 'react-hot-toast'
 import { useRouter } from 'next/navigation'
 import { useAppDispatch } from '@/store/hooks'
@@ -25,15 +26,6 @@ const Recentcreation = dynamic(() => import('./compo/Recentcreation'), {
 const WelcomeModal = dynamic(() => import('./compo/WelcomeModal'), {
     ssr: false
 })
-const WarliFullscreenWalkthrough = dynamic(() => import('./compo/styles/warli/WarliFullscreenWalkthrough'), {
-    ssr: false
-})
-const AjrakhFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/styles/ajrakh/AjrakhFullscreenWalkthrough'),
-    {
-        ssr: false
-    }
-)
 const JhajjarFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
     () => import('./compo/styles/jhajjar/JhajjarFullscreenWalkthrough'),
     {
@@ -879,8 +871,6 @@ const HomePage: React.FC = () => {
     const [currentGenerationType, setCurrentGenerationType] = useState<GenerationType>('text-to-image');
     const [showWildmindSkitPopup, setShowWildmindSkitPopup] = useState(false);
     const [showWelcomeModal, setShowWelcomeModal] = useState(false);
-    const [showWarliWalkthrough, setShowWarliWalkthrough] = useState(false);
-    const [showAjrakhWalkthrough, setShowAjrakhWalkthrough] = useState(false);
     const [showJhajjarWalkthrough, setShowJhajjarWalkthrough] = useState(false);
     const [showKaaviWalkthrough, setShowKaaviWalkthrough] = useState(false);
     const [showKangraWalkthrough, setShowKangraWalkthrough] = useState(false);
@@ -1105,15 +1095,27 @@ const HomePage: React.FC = () => {
 
     const [showAllStylesModal, setShowAllStylesModal] = useState(false);
     const [openedFromAllStyles, setOpenedFromAllStyles] = useState(false);
+    const [showUnifiedTraditionalWalkthrough, setShowUnifiedTraditionalWalkthrough] = useState(false);
+    const [activeUnifiedStyleId, setActiveUnifiedStyleId] = useState<string | null>(null);
     const [homepageMode, setHomepageMode] = useState<'image' | 'video'>('image');
 
-    const handleStyleSelect = (id: string) => {
-        setOpenedFromAllStyles(true);
+    const handleStyleSelect = (
+        id: string,
+        source: "allStyles" | "direct" | "inherit" = "inherit",
+    ) => {
+        if (source === "allStyles") setOpenedFromAllStyles(true);
+        else if (source === "direct") setOpenedFromAllStyles(false);
+        // inherit => keep current flag (for in-modal style-to-style switches)
         // setShowAllStylesModal(false); // Keep it mounted to preserve scroll
 
+        const selected = STYLES.find((s) => s.id === id);
+        if (selected) {
+            setActiveUnifiedStyleId(id);
+            setShowUnifiedTraditionalWalkthrough(true);
+            return;
+        }
+
         switch (id) {
-            case "Maharashtra": setShowWarliWalkthrough(true); break;
-            case "ajrakh": setShowAjrakhWalkthrough(true); break;
             case "jhajjar": setShowJhajjarWalkthrough(true); break;
             case "kaavi": setShowKaaviWalkthrough(true); break;
             case "kangra": setShowKangraWalkthrough(true); break;
@@ -1338,6 +1340,19 @@ const HomePage: React.FC = () => {
         }
     };
 
+    useEffect(() => {
+        const onStyleNavigate = (event: Event) => {
+            const styleId = (event as CustomEvent<{ styleId?: string }>).detail?.styleId;
+            if (!styleId) return;
+            handleStyleSelect(styleId, "inherit");
+        };
+
+        window.addEventListener("wm:style-navigate", onStyleNavigate as EventListener);
+        return () => {
+            window.removeEventListener("wm:style-navigate", onStyleNavigate as EventListener);
+        };
+    }, [handleStyleSelect]);
+
     const handleCloseWalkthrough = (setter: (v: boolean) => void) => {
         setter(false);
         if (openedFromAllStyles) {
@@ -1517,12 +1532,12 @@ const HomePage: React.FC = () => {
                         onWarliOpen={() => {
                             setOpenedFromAllStyles(false);
                             setShowWelcomeModal(false);
-                            setShowWarliWalkthrough(true);
+                            handleStyleSelect("Maharashtra", "direct");
                         }}
                         onAjrakhOpen={() => {
                             setOpenedFromAllStyles(false);
                             setShowWelcomeModal(false);
-                            setShowAjrakhWalkthrough(true);
+                            handleStyleSelect("ajrakh", "direct");
                         }}
                         onJhajjarOpen={() => {
                             setOpenedFromAllStyles(false);
@@ -2794,13 +2809,15 @@ const HomePage: React.FC = () => {
             )}
 
             {/* Welcome Modal */}
-            <WarliFullscreenWalkthrough
-                isOpen={showWarliWalkthrough}
-                onClose={() => handleCloseWalkthrough(setShowWarliWalkthrough)}
-            />
-            <AjrakhFullscreenWalkthrough
-                isOpen={showAjrakhWalkthrough}
-                onClose={() => handleCloseWalkthrough(setShowAjrakhWalkthrough)}
+            <TraditionalStyleFullscreenWalkthrough
+                isOpen={showUnifiedTraditionalWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowUnifiedTraditionalWalkthrough)}
+                styleId={activeUnifiedStyleId || "Maharashtra"}
+                styleTitle={STYLES.find((s) => s.id === activeUnifiedStyleId)?.title || "Warli"}
+                styleName={STYLES.find((s) => s.id === activeUnifiedStyleId)?.name || "Maharashtra"}
+                styleDesc={STYLES.find((s) => s.id === activeUnifiedStyleId)?.desc || ""}
+                styleImage={STYLES.find((s) => s.id === activeUnifiedStyleId)?.image || ""}
+                styleTag={STYLES.find((s) => s.id === activeUnifiedStyleId)?.tag || "Style"}
             />
             <JhajjarFullscreenWalkthrough
                 isOpen={showJhajjarWalkthrough}
@@ -3394,7 +3411,7 @@ const HomePage: React.FC = () => {
             <AllStylesModal
                 isOpen={showAllStylesModal}
                 onClose={() => setShowAllStylesModal(false)}
-                onStyleSelect={handleStyleSelect}
+                onStyleSelect={(id) => handleStyleSelect(id, "allStyles")}
             />
             <BaghEmbroideryFullscreenWalkthrough
                 isOpen={showBaghEmbroideryWalkthrough}
@@ -3502,7 +3519,7 @@ const HomePage: React.FC = () => {
                 styleName="Uttar Pradesh"
                 styleTag="Uttar Pradesh"
                 styleDesc="A sacred wall-painting tradition where devotional imagery is embedded into architectural surfaces."
-                styleImage="/HomePage/creativeStyle/4th-images/banaras-mural.avif"
+                styleImage={`${CREATIVE_STYLE_IMAGE_BASE}4th-images/banaras-mural.avif`}
             />
             <TraditionalStyleFullscreenWalkthrough
                 isOpen={showBanarasiBrocadeWalkthrough}
@@ -3512,7 +3529,7 @@ const HomePage: React.FC = () => {
                 styleName="Uttar Pradesh"
                 styleTag="Uttar Pradesh"
                 styleDesc="A woven silk tradition where intricate patterns emerge directly from the loom using zari threads."
-                styleImage="/HomePage/creativeStyle/4th-images/banarasi-brocade.avif"
+                styleImage={`${CREATIVE_STYLE_IMAGE_BASE}4th-images/banarasi-brocade.avif`}
             />
             <TraditionalStyleFullscreenWalkthrough
                 isOpen={showBanjaraEmbroideryWalkthrough}
@@ -3522,7 +3539,7 @@ const HomePage: React.FC = () => {
                 styleName="Telangana"
                 styleTag="Telangana"
                 styleDesc="A nomadic textile tradition defined by bold geometric patterns, mirror-work, and vibrant embroidery."
-                styleImage="/HomePage/creativeStyle/4th-images/banjara-embroidery.avif"
+                styleImage={`${CREATIVE_STYLE_IMAGE_BASE}4th-images/banjara-embroidery.avif`}
             />
             <TraditionalStyleFullscreenWalkthrough
                 isOpen={showPataChitraWalkthrough}
@@ -3532,7 +3549,7 @@ const HomePage: React.FC = () => {
                 styleName="West Bengal"
                 styleTag="West Bengal"
                 styleDesc="A folk painting tradition where scroll-based narratives are brought to life through vibrant natural pigments."
-                styleImage="/HomePage/creativeStyle/4th-images/pata-chitra.avif"
+                styleImage={`${CREATIVE_STYLE_IMAGE_BASE}4th-images/pata-chitra.avif`}
             />
             <TraditionalStyleFullscreenWalkthrough
                 isOpen={showBhotiaWeavingWalkthrough}
@@ -3542,7 +3559,7 @@ const HomePage: React.FC = () => {
                 styleName="Uttarakhand"
                 styleTag="Uttarakhand"
                 styleDesc="A high-altitude wool-weaving tradition featuring rhythmic geometric patterns and thick, protective textures."
-                styleImage="/HomePage/creativeStyle/4th-images/bhotia-weaving.avif"
+                styleImage={`${CREATIVE_STYLE_IMAGE_BASE}4th-images/bhotia-weaving.avif`}
             />
             <TraditionalStyleFullscreenWalkthrough
                 isOpen={showCheriyalWalkthrough}
@@ -3552,7 +3569,7 @@ const HomePage: React.FC = () => {
                 styleName="Telangana"
                 styleTag="Telangana"
                 styleDesc="A narrative scroll-painting tradition where mythological stories are told through vibrant, stylized characters."
-                styleImage="/HomePage/creativeStyle/4th-images/cheriyal.avif"
+                styleImage={`${CREATIVE_STYLE_IMAGE_BASE}4th-images/cheriyal.avif`}
             />
             <TraditionalStyleFullscreenWalkthrough
                 isOpen={showChikankariWalkthrough}
@@ -3562,7 +3579,7 @@ const HomePage: React.FC = () => {
                 styleName="Uttar Pradesh"
                 styleTag="Uttar Pradesh"
                 styleDesc="A delicate shadow-work embroidery tradition from Lucknow, featuring intricate white-on-white floral motifs."
-                styleImage="/HomePage/creativeStyle/4th-images/chikankari.avif"
+                styleImage={`${CREATIVE_STYLE_IMAGE_BASE}4th-images/chikankari.avif`}
             />
             <TraditionalStyleFullscreenWalkthrough
                 isOpen={showCholaBronzeWalkthrough}
@@ -3572,7 +3589,7 @@ const HomePage: React.FC = () => {
                 styleName="Tamil Nadu"
                 styleTag="Tamil Nadu"
                 styleDesc="A monumental casting tradition where divine forms are sculpted with fluid grace and precise anatomical detail."
-                styleImage="/HomePage/creativeStyle/4th-images/chola-bronze.avif"
+                styleImage={`${CREATIVE_STYLE_IMAGE_BASE}4th-images/chola-bronze.avif`}
             />
             <TraditionalStyleFullscreenWalkthrough
                 isOpen={showCholaOldBronzeWalkthrough}
@@ -3582,7 +3599,7 @@ const HomePage: React.FC = () => {
                 styleName="Tamil Nadu"
                 styleTag="Tamil Nadu"
                 styleDesc="An aged bronze aesthetic where time-worn textures and deep patinas emphasize the sacred antiquity of the form."
-                styleImage="/HomePage/creativeStyle/4th-images/chola-old-bronze.avif"
+                styleImage={`${CREATIVE_STYLE_IMAGE_BASE}4th-images/chola-old-bronze.avif`}
             />
             <TraditionalStyleFullscreenWalkthrough
                 isOpen={showFarrukhabadPrintWalkthrough}
@@ -3592,7 +3609,7 @@ const HomePage: React.FC = () => {
                 styleName="Uttar Pradesh"
                 styleTag="Uttar Pradesh"
                 styleDesc="A traditional hand-block printing style known for its distinct rhythmic patterns and complex floral compositions."
-                styleImage="/HomePage/creativeStyle/4th-images/farrukhabad-print.avif"
+                styleImage={`${CREATIVE_STYLE_IMAGE_BASE}4th-images/farrukhabad-print.avif`}
             />
             <TraditionalStyleFullscreenWalkthrough
                 isOpen={showOdishaFiligreeWalkthrough}
@@ -3602,7 +3619,7 @@ const HomePage: React.FC = () => {
                 styleName="Odisha"
                 styleTag="Odisha"
                 styleDesc="A delicate silver-wire craft where intricate lace-like patterns are shaped into fine jewelry and sacred forms."
-                styleImage="/HomePage/creativeStyle/4th-images/odisha-filigree.avif"
+                styleImage={`${CREATIVE_STYLE_IMAGE_BASE}4th-images/odisha-filigree.avif`}
             />
             <TraditionalStyleFullscreenWalkthrough
                 isOpen={showGadwalSareeWalkthrough}
@@ -3612,7 +3629,7 @@ const HomePage: React.FC = () => {
                 styleName="Telangana"
                 styleTag="Telangana"
                 styleDesc="A unique weaving tradition where cotton bodies are fused with opulent silk and zari borders."
-                styleImage="/HomePage/creativeStyle/4th-images/gadwal-saree.avif"
+                styleImage={`${CREATIVE_STYLE_IMAGE_BASE}4th-images/gadwal-saree.avif`}
             />
             <TraditionalStyleFullscreenWalkthrough
                 isOpen={showGollabhamaSareeWalkthrough}
@@ -3622,7 +3639,7 @@ const HomePage: React.FC = () => {
                 styleName="Telangana"
                 styleTag="Telangana"
                 styleDesc="A pictorial weaving style from Siddipet, featuring rhythmic motifs of milkmaids carrying pots."
-                styleImage="/HomePage/creativeStyle/4th-images/gollabhama-saree.avif"
+                styleImage={`${CREATIVE_STYLE_IMAGE_BASE}4th-images/gollabhama-saree.avif`}
             />
             <TraditionalStyleFullscreenWalkthrough
                 isOpen={showGotaZariWalkthrough}
@@ -3632,7 +3649,7 @@ const HomePage: React.FC = () => {
                 styleName="Rajasthan"
                 styleTag="Rajasthan"
                 styleDesc="An opulent applique technique where metallic ribbons are shaped into shimmering floral and geometric designs."
-                styleImage="/HomePage/creativeStyle/4th-images/gota-zari.avif"
+                styleImage={`${CREATIVE_STYLE_IMAGE_BASE}4th-images/gota-zari.avif`}
             />
             <TraditionalStyleFullscreenWalkthrough
                 isOpen={showKaavadWalkthrough}
@@ -3642,7 +3659,7 @@ const HomePage: React.FC = () => {
                 styleName="Rajasthan"
                 styleTag="Rajasthan"
                 styleDesc="A portable wooden shrine tradition where painted panels unfold to reveal sacred narratives and mythological worlds."
-                styleImage="/HomePage/creativeStyle/4th-images/kaavad.avif"
+                styleImage={`${CREATIVE_STYLE_IMAGE_BASE}4th-images/kaavad.avif`}
             />
             <TraditionalStyleFullscreenWalkthrough
                 isOpen={showKalighatPaintingWalkthrough}
@@ -3652,7 +3669,7 @@ const HomePage: React.FC = () => {
                 styleName="West Bengal"
                 styleTag="West Bengal"
                 styleDesc="A bold, stylized painting tradition from Kolkata, defined by its fluid brushwork and rhythmic social narratives."
-                styleImage="/HomePage/creativeStyle/4th-images/kalighat-painting.avif"
+                styleImage={`${CREATIVE_STYLE_IMAGE_BASE}4th-images/kalighat-painting.avif`}
             />
             <TraditionalStyleFullscreenWalkthrough
                 isOpen={showKaruppurKalamkariWalkthrough}
@@ -3662,7 +3679,7 @@ const HomePage: React.FC = () => {
                 styleName="Tamil Nadu"
                 styleTag="Tamil Nadu"
                 styleDesc="A rare hand-painted textile tradition where golden threads and natural dyes create opulent ritual patterns."
-                styleImage="/HomePage/creativeStyle/4th-images/karuppur-kalamkari.avif"
+                styleImage={`${CREATIVE_STYLE_IMAGE_BASE}4th-images/karuppur-kalamkari.avif`}
             />
             <TraditionalStyleFullscreenWalkthrough
                 isOpen={showKolamGeometryWalkthrough}
@@ -3672,7 +3689,7 @@ const HomePage: React.FC = () => {
                 styleName="Tamil Nadu"
                 styleTag="Tamil Nadu"
                 styleDesc="A sacred mathematical art form where infinite loops and symmetry define threshold patterns and ritual spaces."
-                styleImage="/HomePage/creativeStyle/4th-images/kolam-geometry.avif"
+                styleImage={`${CREATIVE_STYLE_IMAGE_BASE}4th-images/kolam-geometry.avif`}
             />
             <TraditionalStyleFullscreenWalkthrough
                 isOpen={showLacBanglesWalkthrough}
@@ -3682,7 +3699,7 @@ const HomePage: React.FC = () => {
                 styleName="Rajasthan"
                 styleTag="Rajasthan"
                 styleDesc="A traditional jewelry craft where resinous lac is shaped and embellished with vibrant stones and metallic foils."
-                styleImage="/HomePage/creativeStyle/4th-images/lac-bangles.avif"
+                styleImage={`${CREATIVE_STYLE_IMAGE_BASE}4th-images/lac-bangles.avif`}
             />
             <TraditionalStyleFullscreenWalkthrough
                 isOpen={showMaduraiSungudiWalkthrough}
@@ -3692,7 +3709,7 @@ const HomePage: React.FC = () => {
                 styleName="Tamil Nadu"
                 styleTag="Tamil Nadu"
                 styleDesc="A traditional tie-and-dye textile from Madurai, characterized by its rhythmic dotted patterns and vibrant borders."
-                styleImage="/HomePage/creativeStyle/4th-images/madurai-sungudi.avif"
+                styleImage={`${CREATIVE_STYLE_IMAGE_BASE}4th-images/madurai-sungudi.avif`}
             />
             <TraditionalStyleFullscreenWalkthrough
                 isOpen={showMahabalipuramSculptureWalkthrough}
@@ -3702,7 +3719,7 @@ const HomePage: React.FC = () => {
                 styleName="Tamil Nadu"
                 styleTag="Tamil Nadu"
                 styleDesc="A monumental stone-carving tradition where rock-cut chariots and reliefs depict fluid, divine movements."
-                styleImage="/HomePage/creativeStyle/4th-images/mahabalipuram-sculpture.avif"
+                styleImage={`${CREATIVE_STYLE_IMAGE_BASE}4th-images/mahabalipuram-sculpture.avif`}
             />
             <TraditionalStyleFullscreenWalkthrough
                 isOpen={showNarayanpetSareeWalkthrough}
@@ -3712,7 +3729,7 @@ const HomePage: React.FC = () => {
                 styleName="Telangana"
                 styleTag="Telangana"
                 styleDesc="A distinct weaving tradition known for its sharp geometric borders and rich, contrasting temple motifs."
-                styleImage="/HomePage/creativeStyle/4th-images/narayanpet-saree.avif"
+                styleImage={`${CREATIVE_STYLE_IMAGE_BASE}4th-images/narayanpet-saree.avif`}
             />
             <TraditionalStyleFullscreenWalkthrough
                 isOpen={showNirmalArtWalkthrough}
@@ -3722,7 +3739,7 @@ const HomePage: React.FC = () => {
                 styleName="Telangana"
                 styleTag="Telangana"
                 styleDesc="A rich lacquered woodwork tradition where golden hues and vibrant colors bring mythological scenes to life."
-                styleImage="/HomePage/creativeStyle/4th-images/nirmal-art.avif"
+                styleImage={`${CREATIVE_STYLE_IMAGE_BASE}4th-images/nirmal-art.avif`}
             />
             <TraditionalStyleFullscreenWalkthrough
                 isOpen={showBambooCaneCraftWalkthrough}
@@ -3732,7 +3749,7 @@ const HomePage: React.FC = () => {
                 styleName="North East"
                 styleTag="North East"
                 styleDesc="A traditional weaving craft where bamboo and cane are shaped into functional forms and rhythmic structures."
-                styleImage="/HomePage/creativeStyle/4th-images/bamboo--cane-craft.avif"
+                styleImage={`${CREATIVE_STYLE_IMAGE_BASE}4th-images/bamboo--cane-craft.avif`}
             />
             <TraditionalStyleFullscreenWalkthrough
                 isOpen={showOdishaStoneCarvingWalkthrough}
@@ -3742,7 +3759,7 @@ const HomePage: React.FC = () => {
                 styleName="Odisha"
                 styleTag="Odisha"
                 styleDesc="An ancient stone-carving tradition where sacred forms and temple narratives are sculpted in relief and monumental scale."
-                styleImage="/HomePage/creativeStyle/4th-images/odisha-stone-carving.avif"
+                styleImage={`${CREATIVE_STYLE_IMAGE_BASE}4th-images/odisha-stone-carving.avif`}
             />
             <TraditionalStyleFullscreenWalkthrough
                 isOpen={showPachraWalkthrough}
@@ -3752,7 +3769,7 @@ const HomePage: React.FC = () => {
                 styleName="Tripura"
                 styleTag="Tripura"
                 styleDesc="A traditional handwoven textile from Tripura, defined by its specific cultural motifs and rhythmic weaving patterns."
-                styleImage="/HomePage/creativeStyle/4th-images/pachra.avif"
+                styleImage={`${CREATIVE_STYLE_IMAGE_BASE}4th-images/pachra.avif`}
             />
             <TraditionalStyleFullscreenWalkthrough
                 isOpen={showPembarthiMetalCraftWalkthrough}
@@ -3762,7 +3779,7 @@ const HomePage: React.FC = () => {
                 styleName="Telangana"
                 styleTag="Telangana"
                 styleDesc="An ancient metalwork tradition where brass and copper surfaces are adorned with intricate deep-relief hand carvings."
-                styleImage="/HomePage/creativeStyle/4th-images/pembarthi-metal-craft.avif"
+                styleImage={`${CREATIVE_STYLE_IMAGE_BASE}4th-images/pembarthi-metal-craft.avif`}
             />
             <TraditionalStyleFullscreenWalkthrough
                 isOpen={showPilkhuwaBlockPrintWalkthrough}
@@ -3772,7 +3789,7 @@ const HomePage: React.FC = () => {
                 styleName="Uttar Pradesh"
                 styleTag="Uttar Pradesh"
                 styleDesc="A traditional hand-block printing style from Uttar Pradesh, known for its distinct rhythmic patterns and floral compositions."
-                styleImage="/HomePage/creativeStyle/4th-images/pilkhuwa-block-print.avif"
+                styleImage={`${CREATIVE_STYLE_IMAGE_BASE}4th-images/pilkhuwa-block-print.avif`}
             />
             <TraditionalStyleFullscreenWalkthrough
                 isOpen={showRangwaliPichhodaWalkthrough}
@@ -3782,7 +3799,7 @@ const HomePage: React.FC = () => {
                 styleName="Uttarakhand"
                 styleTag="Uttarakhand"
                 styleDesc="A traditional ceremonial veil from Uttarakhand, characteristically adorned with auspicious symbols and vibrant dotted patterns."
-                styleImage="/HomePage/creativeStyle/4th-images/rangwali-pichhoda.avif"
+                styleImage={`${CREATIVE_STYLE_IMAGE_BASE}4th-images/rangwali-pichhoda.avif`}
             />
             <TraditionalStyleFullscreenWalkthrough
                 isOpen={showRignaiWalkthrough}
@@ -3792,7 +3809,7 @@ const HomePage: React.FC = () => {
                 styleName="Tripura"
                 styleTag="Tripura"
                 styleDesc="A traditional handwoven lower garment from Tripura, featuring complex geometric patterns and cultural symbolism."
-                styleImage="/HomePage/creativeStyle/4th-images/rignai.avif"
+                styleImage={`${CREATIVE_STYLE_IMAGE_BASE}4th-images/rignai.avif`}
             />
             <TraditionalStyleFullscreenWalkthrough
                 isOpen={showRisaWalkthrough}
@@ -3802,7 +3819,7 @@ const HomePage: React.FC = () => {
                 styleName="Tripura"
                 styleTag="Tripura"
                 styleDesc="A traditional handwoven upper cloth from Tripura, used as ceremonial headgear and a symbol of cultural honor."
-                styleImage="/HomePage/creativeStyle/4th-images/risa.avif"
+                styleImage={`${CREATIVE_STYLE_IMAGE_BASE}4th-images/risa.avif`}
             />
             <TraditionalStyleFullscreenWalkthrough
                 isOpen={showSanjhiWalkthrough}
@@ -3812,7 +3829,7 @@ const HomePage: React.FC = () => {
                 styleName="Uttar Pradesh"
                 styleTag="Uttar Pradesh"
                 styleDesc="A sacred paper-cutting tradition from Mathura, where intricate stencils are used to create devotional art and threshold patterns."
-                styleImage="/HomePage/creativeStyle/4th-images/sanjhi.avif"
+                styleImage={`${CREATIVE_STYLE_IMAGE_BASE}4th-images/sanjhi.avif`}
             />
             <TraditionalStyleFullscreenWalkthrough
                 isOpen={showTamilRitualCraftWalkthrough}
@@ -3822,7 +3839,7 @@ const HomePage: React.FC = () => {
                 styleName="Tamil Nadu"
                 styleTag="Tamil Nadu"
                 styleDesc="A broad category of ceremonial crafts from Tamil Nadu, designed for sacred temple rituals and festive processions."
-                styleImage="/HomePage/creativeStyle/4th-images/tamil-ritual-craft.avif"
+                styleImage={`${CREATIVE_STYLE_IMAGE_BASE}4th-images/tamil-ritual-craft.avif`}
             />
             <TraditionalStyleFullscreenWalkthrough
                 isOpen={showTanjorePaintingWalkthrough}
@@ -3832,7 +3849,7 @@ const HomePage: React.FC = () => {
                 styleName="Tamil Nadu"
                 styleTag="Tamil Nadu"
                 styleDesc="A classical painting style from Tamil Nadu, known for its rich colors, gold-leaf embellishments, and sacred iconography."
-                styleImage="/HomePage/creativeStyle/4th-images/tanjore-painting.avif"
+                styleImage={`${CREATIVE_STYLE_IMAGE_BASE}4th-images/tanjore-painting.avif`}
             />
             <TraditionalStyleFullscreenWalkthrough
                 isOpen={showThanjavurDollWalkthrough}
@@ -3842,7 +3859,7 @@ const HomePage: React.FC = () => {
                 styleName="Tamil Nadu"
                 styleTag="Tamil Nadu"
                 styleDesc="A traditional bobblehead craft from Tamil Nadu, featuring handmade terracotta forms that move with a distinct rhythmic grace."
-                styleImage="/HomePage/creativeStyle/4th-images/thanjavur-doll.avif"
+                styleImage={`${CREATIVE_STYLE_IMAGE_BASE}4th-images/thanjavur-doll.avif`}
             />
             <TraditionalStyleFullscreenWalkthrough
                 isOpen={showTherukoothuWalkthrough}
@@ -3852,7 +3869,7 @@ const HomePage: React.FC = () => {
                 styleName="Tamil Nadu"
                 styleTag="Tamil Nadu"
                 styleDesc="An ancient folk theatre tradition from Tamil Nadu, where sacred epics are enacted through music, dance, and vibrant costume design."
-                styleImage="/HomePage/creativeStyle/4th-images/therukoothu.avif"
+                styleImage={`${CREATIVE_STYLE_IMAGE_BASE}4th-images/therukoothu.avif`}
             />
             <TraditionalStyleFullscreenWalkthrough
                 isOpen={showTodaEmbroideryWalkthrough}
@@ -3862,7 +3879,7 @@ const HomePage: React.FC = () => {
                 styleName="Tamil Nadu"
                 styleTag="Tamil Nadu"
                 styleDesc="A unique reversible embroidery tradition from the Nilgiris, featuring precise geometric patterns in red and black wool."
-                styleImage="/HomePage/creativeStyle/4th-images/toda-embroidery.avif"
+                styleImage={`${CREATIVE_STYLE_IMAGE_BASE}4th-images/toda-embroidery.avif`}
             />
             <TraditionalStyleFullscreenWalkthrough
                 isOpen={showZardoziWalkthrough}
@@ -3872,7 +3889,7 @@ const HomePage: React.FC = () => {
                 styleName="Uttar Pradesh"
                 styleTag="Uttar Pradesh"
                 styleDesc="An opulent metallic embroidery tradition where gold and silver threads are used to create intricate surface patterns on rich fabrics."
-                styleImage="/HomePage/creativeStyle/4th-images/zardozi.avif"
+                styleImage={`${CREATIVE_STYLE_IMAGE_BASE}4th-images/zardozi.avif`}
             />
 
             <GabbaFullscreenWalkthrough
