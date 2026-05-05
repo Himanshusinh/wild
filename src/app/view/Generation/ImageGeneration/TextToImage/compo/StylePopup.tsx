@@ -75,6 +75,7 @@ const StylePopup = ({ isOpen, onClose, onBusyChange }: StylePopupProps) => {
   const [customError, setCustomError] = useState<string | null>(null);
   const [customDraftName, setCustomDraftName] = useState('');
   const [customDraftDirective, setCustomDraftDirective] = useState('');
+  const [customAnalyzedDirective, setCustomAnalyzedDirective] = useState('');
   const [customPlusExpanded, setCustomPlusExpanded] = useState(false);
   const customFileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -229,6 +230,7 @@ const StylePopup = ({ isOpen, onClose, onBusyChange }: StylePopupProps) => {
   const onCustomFile = (file: File | null) => {
     setCustomError(null);
     setCustomDraftDirective('');
+    setCustomAnalyzedDirective('');
     if (!file || !file.type.startsWith('image/')) {
       setCustomDraftName('');
       setCustomPreviewUrl(null);
@@ -255,7 +257,7 @@ const StylePopup = ({ isOpen, onClose, onBusyChange }: StylePopupProps) => {
     }
     setCustomError(null);
     setCustomAnalyzing(true);
-    setCustomDraftDirective('');
+    setCustomAnalyzedDirective('');
     try {
       const res = await fetch('/api/style/analyze-from-image', {
         method: 'POST',
@@ -284,7 +286,7 @@ const StylePopup = ({ isOpen, onClose, onBusyChange }: StylePopupProps) => {
       }
       const nameFromModel = typeof data.styleName === 'string' ? data.styleName.trim() : '';
       if (nameFromModel) setCustomDraftName(nameFromModel);
-      setCustomDraftDirective(
+      setCustomAnalyzedDirective(
         typeof data.styleDirective === 'string' ? data.styleDirective : '',
       );
     } catch (e: any) {
@@ -300,19 +302,24 @@ const StylePopup = ({ isOpen, onClose, onBusyChange }: StylePopupProps) => {
     setCustomDataUrl(null);
     setCustomDraftName('');
     setCustomDraftDirective('');
+    setCustomAnalyzedDirective('');
     setCustomError(null);
     if (customFileInputRef.current) customFileInputRef.current.value = '';
   };
 
   const saveCustomStyleFromBuilder = () => {
     const label = customDraftName.trim();
-    const directive = customDraftDirective.trim();
+    const analyzedDirective = customAnalyzedDirective.trim();
+    const extraDirective = customDraftDirective.trim();
+    const directive = [analyzedDirective, extraDirective]
+      .filter(Boolean)
+      .join('\n\n');
     if (!label) {
       setCustomError('Enter a style name.');
       return;
     }
-    if (!directive) {
-      setCustomError('Run analyze to get style instructions from the image.');
+    if (!analyzedDirective) {
+      setCustomError('Run analyze first to extract style instructions from the image.');
       return;
     }
     if (!customDataUrl) {
@@ -495,7 +502,7 @@ const StylePopup = ({ isOpen, onClose, onBusyChange }: StylePopupProps) => {
                         <textarea
                           value={customDraftDirective}
                           onChange={(e) => setCustomDraftDirective(e.target.value)}
-                          placeholder="Prompt area (style instructions)"
+                          placeholder="Prompt area (optional extra instructions)"
                           rows={4}
                           className="w-full resize-none rounded-xl border border-white/10 bg-black/50 px-3 py-2 text-sm text-white placeholder:text-white/35 outline-none focus:border-white/25"
                         />
@@ -510,7 +517,7 @@ const StylePopup = ({ isOpen, onClose, onBusyChange }: StylePopupProps) => {
                         <button
                           type="button"
                           onClick={saveCustomStyleFromBuilder}
-                          disabled={!customDraftDirective.trim() || customAnalyzing}
+                          disabled={!customAnalyzedDirective.trim() || customAnalyzing}
                           className="w-full rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-40"
                         >
                           Save style
