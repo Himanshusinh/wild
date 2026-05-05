@@ -12,7 +12,8 @@ import {
 } from '@/store/slices/generationSlice';
 import { STYLE_CATALOG } from '@/styles/stylesCatalog';
 import { ALL_INDIAN_STYLES } from '@/styles/indianStyles';
-import { X } from 'lucide-react';
+import { X, Plus } from 'lucide-react';
+import { CUSTOM_STYLE_FROM_IMAGE_ID } from '@/constants/customStyleFromImage';
 import StyleFiltersBar, { type StyleFilterOption } from '@/components/ui/StyleFiltersBar';
 
 // Wrapper component for style preview images with error handling
@@ -62,7 +63,7 @@ const StylePopup = ({ isOpen, onClose, onBusyChange }: StylePopupProps) => {
     (state: any) => state.generation?.savedCustomStylesFromImage ?? [],
   );
   const [mounted, setMounted] = useState(false);
-  const [activeCategory, setActiveCategory] = useState<'general' | 'indian'>('general');
+  const [activeCategory, setActiveCategory] = useState<'general' | 'indian' | 'custom'>('general');
   const [indianSearchQuery, setIndianSearchQuery] = useState('');
   const [indianStateFilter, setIndianStateFilter] = useState<string>('all');
   const [indianTypeFilter, setIndianTypeFilter] = useState<string>('all');
@@ -401,6 +402,16 @@ const StylePopup = ({ isOpen, onClose, onBusyChange }: StylePopupProps) => {
                 }`}
               >
                 Indian Styles
+              </button>
+              <button
+                onClick={() => setActiveCategory('custom')}
+                className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all ${
+                  activeCategory === 'custom'
+                    ? 'bg-white text-black'
+                    : 'text-white/40 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                Custom Styles
               </button>
             </div>
 
