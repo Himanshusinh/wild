@@ -9481,7 +9481,7 @@ const InputBox = (props: InputBoxProps = {}) => {
   };
 
   const newLocal =
-    "pointer-events-none absolute top-full left-1/2 z-[80] mt-1 -translate-x-1/2 rounded-md bg-black/90 px-2 py-1 text-[10px] whitespace-nowrap text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100";
+    "pointer-events-none absolute bottom-full left-1/2 z-[80] mb-1 -translate-x-1/2 rounded-md bg-black/90 px-2 py-1 text-[10px] whitespace-nowrap text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 md:bottom-[26px] md:mb-0";
   /** Multi-angle: strong blue (primary). Audio on: softer accent so only multi-angle reads as “selected”. */
   const pixverseV6ToggleActive =
     "bg-[#2F6BFF]/50 text-white ring-2 ring-[#6B9FFF] shadow-[0_0_20px_rgba(47,107,255,0.5)]";
@@ -9495,6 +9495,27 @@ const InputBox = (props: InputBoxProps = {}) => {
   const isLtx23ProModel = selectedModel.includes("ltx-2.3-pro");
   const isLtx2Model = selectedModel.includes("ltx2");
   const shouldUseHorizontalParamScroll = isLtx2Model || isLtx23Model;
+  const renderDesktopAudioToggle = () => (
+    <PortalHoverTooltip
+      wrapperClassName="hidden md:flex"
+      content={generateAudio ? "Audio: On" : "Audio: Off"}
+    >
+      <button
+        onClick={() => setGenerateAudio((v) => !v)}
+        className={`group h-[32px] w-[32px] rounded-lg items-center justify-center ring-1 ring-white/20 transition-all relative flex ${
+          generateAudio
+            ? "bg-transparent text-white "
+            : "bg-transparent text-white hover:bg-white/20 hover:text-white/80"
+        }`}
+      >
+        {generateAudio ? (
+          <Volume2 className="w-5 h-5" />
+        ) : (
+          <VolumeX className="w-5 h-5" />
+        )}
+      </button>
+    </PortalHoverTooltip>
+  );
   // (Removed duplicate hook declaration; initial load handled earlier)
 
   // Note: applySearch and live search logic are now handled by HistoryControls component
@@ -11165,25 +11186,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                         />
                       )}
                       {/* Audio toggle for Sora 2 */}
-                      <button
-                        onClick={() => setGenerateAudio((v) => !v)}
-                        className={`group hidden md:flex h-[32px] w-[32px] rounded-lg items-center justify-center ring-1 ring-white/20 transition-all relative ${
-                          generateAudio
-                            ? "bg-transparent text-white "
-                            : "bg-transparent text-white hover:bg-white/20 hover:text-white/80"
-                        }`}
-                      >
-                        <div className="relative">
-                          {generateAudio ? (
-                            <Volume2 className="w-5 h-5" />
-                          ) : (
-                            <VolumeX className="w-5 h-5" />
-                          )}
-                          <div className={newLocal}>
-                            {generateAudio ? "Audio: On" : "Audio: Off"}
-                          </div>
-                        </div>
-                      </button>
+                      {renderDesktopAudioToggle()}
                     </div>
                   );
                 }
@@ -11352,25 +11355,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                         onCloseThisDropdown={closeCameraMotionDropdown}
                       />
                       {/* Audio toggle for LTX 2.3 Fast/Pro */}
-                      <button
-                        onClick={() => setGenerateAudio((v) => !v)}
-                        className={`group hidden md:flex h-[32px] w-[32px] rounded-lg items-center justify-center ring-1 ring-white/20 transition-all relative ${
-                          generateAudio
-                            ? "bg-transparent text-white "
-                            : "bg-transparent text-white hover:bg-white/20 hover:text-white/80"
-                        }`}
-                      >
-                        <div className="relative">
-                          {generateAudio ? (
-                            <Volume2 className="w-5 h-5" />
-                          ) : (
-                            <VolumeX className="w-5 h-5" />
-                          )}
-                          <div className={newLocal}>
-                            {generateAudio ? "Audio: On" : "Audio: Off"}
-                          </div>
-                        </div>
-                      </button>
+                      {renderDesktopAudioToggle()}
                       {/* LTX 2.3 Pro extra inputs: audio + video files */}
                       {selectedModel.startsWith("ltx-2.3-pro") && (
                         <div className="relative">
@@ -11514,27 +11499,8 @@ const InputBox = (props: InputBoxProps = {}) => {
                         !(
                           activeFeature === "Lipsync" &&
                           selectedModel.includes("veo3.1")
-                        ) && (
-                          <button
-                            onClick={() => setGenerateAudio((v) => !v)}
-                            className={`group hidden md:flex h-[32px] w-[32px] rounded-lg items-center justify-center ring-1 ring-white/20 transition-all relative ${
-                              generateAudio
-                                ? "bg-transparent text-white "
-                                : "bg-transparent text-white hover:bg-white/20 hover:text-white/80"
-                            }`}
-                          >
-                            <div className="relative">
-                              {generateAudio ? (
-                                <Volume2 className="w-5 h-5" />
-                              ) : (
-                                <VolumeX className="w-5 h-5" />
-                              )}
-                              <div className={newLocal}>
-                                {generateAudio ? "Audio: On" : "Audio: Off"}
-                              </div>
-                            </div>
-                          </button>
-                        )}
+                        ) &&
+                        renderDesktopAudioToggle()}
                     </div>
                   );
                 }
@@ -11579,25 +11545,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                         }
                       />
                       {/* Audio toggle for Kling 2.6 Pro */}
-                      <button
-                        onClick={() => setGenerateAudio((v) => !v)}
-                        className={`group hidden md:flex h-[32px] w-[32px] rounded-lg items-center justify-center ring-1 ring-white/20 transition-all relative ${
-                          generateAudio
-                            ? "bg-transparent text-white "
-                            : "bg-transparent text-white hover:bg-white/20 hover:text-white/80"
-                        }`}
-                      >
-                        <div className="relative">
-                          {generateAudio ? (
-                            <Volume2 className="w-5 h-5" />
-                          ) : (
-                            <VolumeX className="w-5 h-5" />
-                          )}
-                          <div className={newLocal}>
-                            {generateAudio ? "Audio: On" : "Audio: Off"}
-                          </div>
-                        </div>
-                      </button>
+                      {renderDesktopAudioToggle()}
                     </div>
                   );
                 }
@@ -11658,25 +11606,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                         />
                       )}
                       {/* Audio toggle for Veo 3 */}
-                      <button
-                        onClick={() => setGenerateAudio((v) => !v)}
-                        className={`group hidden md:flex h-[32px] w-[32px] rounded-lg items-center justify-center ring-1 ring-white/20 transition-all relative ${
-                          generateAudio
-                            ? "bg-transparent text-white "
-                            : "bg-transparent text-white hover:bg-white/20 hover:text-white/80"
-                        }`}
-                      >
-                        <div className="relative">
-                          {generateAudio ? (
-                            <Volume2 className="w-5 h-5" />
-                          ) : (
-                            <VolumeX className="w-5 h-5" />
-                          )}
-                          <div className={newLocal}>
-                            {generateAudio ? "Audio: On" : "Audio: Off"}
-                          </div>
-                        </div>
-                      </button>
+                      {renderDesktopAudioToggle()}
                     </div>
                   );
                 }
@@ -11900,27 +11830,8 @@ const InputBox = (props: InputBoxProps = {}) => {
                       />
                       {/* Audio toggle - Seedance 1.5 and 2.0 */}
                       {(selectedModel.includes("seedance-1.5") ||
-                        isSeedance2FamilyModel(selectedModel)) && (
-                        <button
-                          onClick={() => setGenerateAudio((v) => !v)}
-                          className={`group hidden md:flex h-[32px] w-[32px] rounded-lg items-center justify-center ring-1 ring-white/20 transition-all relative ${
-                            generateAudio
-                              ? "bg-transparent text-white "
-                              : "bg-transparent text-white hover:bg-white/20 hover:text-white/80"
-                          }`}
-                        >
-                          <div className="relative">
-                            {generateAudio ? (
-                              <Volume2 className="w-5 h-5" />
-                            ) : (
-                              <VolumeX className="w-5 h-5" />
-                            )}
-                            <div className={newLocal}>
-                              {generateAudio ? "Audio: On" : "Audio: Off"}
-                            </div>
-                          </div>
-                        </button>
-                      )}
+                        isSeedance2FamilyModel(selectedModel)) &&
+                        renderDesktopAudioToggle()}
                       {isSeedance2ReferenceModel(selectedModel) && (
                         <div className="relative">
                           <input
@@ -12432,25 +12343,7 @@ const InputBox = (props: InputBoxProps = {}) => {
                         }
                       />
                       {/* Audio toggle for LTX V2 */}
-                      <button
-                        onClick={() => setGenerateAudio((v) => !v)}
-                        className={`group hidden md:flex h-[32px] w-[32px] rounded-lg items-center justify-center ring-1 ring-white/20 transition-all relative ${
-                          generateAudio
-                            ? "bg-transparent text-white "
-                            : "bg-transparent text-white hover:bg-white/20 hover:text-white/80"
-                        }`}
-                      >
-                        <div className="relative">
-                          {generateAudio ? (
-                            <Volume2 className="w-5 h-5" />
-                          ) : (
-                            <VolumeX className="w-5 h-5" />
-                          )}
-                          <div className={newLocal}>
-                            {generateAudio ? "Audio: On" : "Audio: Off"}
-                          </div>
-                        </div>
-                      </button>
+                      {renderDesktopAudioToggle()}
                     </div>
                   );
                 }
