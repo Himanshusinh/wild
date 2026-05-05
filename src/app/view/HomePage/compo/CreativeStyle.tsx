@@ -10,11 +10,10 @@ export { STYLES } from "@/styles/creativeStyleCatalog";
 function WarliStyleCard({ style, onClick }: { style: StyleItem; onClick: (e: any) => void }) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
-  const images = [
-    "/HomePage/creativeStyle/warlistyles/warliv1.jpg",
-    "/HomePage/creativeStyle/warlistyles/warliv2.jpg",
-    "/HomePage/creativeStyle/warlistyles/warliv3.jpg",
-  ];
+  const v1Image = `${CREATIVE_STYLE_IMAGE_BASE}warlistyles/warliv1.jpg`;
+  const v2Image = `${CREATIVE_STYLE_IMAGE_BASE}warlistyles/warliv2.jpg`;
+  const v3Image = `${CREATIVE_STYLE_IMAGE_BASE}warlistyles/warliv3.jpg`;
+  const defaultImage = style.image;
 
   return (
     <Link
@@ -23,7 +22,7 @@ function WarliStyleCard({ style, onClick }: { style: StyleItem; onClick: (e: any
       className="w-full md:w-[340px] shrink-0 snap-start"
     >
       <div className="mb-2 overflow-hidden rounded-xl border border-white/10 bg-[#18181f] sm:mb-3">
-        <div
+        <div 
           className="group relative flex h-[190px] overflow-hidden sm:h-[220px]"
           onMouseLeave={() => setHoveredIndex(null)}
         >
@@ -35,23 +34,34 @@ function WarliStyleCard({ style, onClick }: { style: StyleItem; onClick: (e: any
             return (
               <div
                 key={idx}
-                className="relative h-full cursor-pointer overflow-hidden transition-[width] duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]"
-                style={{ width, willChange: "width" }}
+                className="relative h-full overflow-hidden transition-[width] duration-700 ease-in-out cursor-pointer"
+                style={{ width }}
                 onMouseEnter={() => setHoveredIndex(idx)}
               >
                 <img
                   src={imgSrc}
                   alt={`${style.name} v${idx + 1}`}
-                  className={`h-full w-full object-cover transition-transform duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${hoveredIndex === idx ? "scale-[1.05]" : "scale-100"}`}
+                  className="h-full w-full object-cover transition-transform duration-500"
                   style={{
                     filter: style.imageFilter,
+                    transform: hoveredIndex === idx ? "scale(1.1)" : "scale(1)",
                   }}
                 />
               </div>
             );
           })}
 
-          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,transparent_38%,rgba(0,0,0,0.72)_100%)]" />
+          {/* Outer Thumbnail Overlay */}
+          <img
+            src={style.image}
+            alt={style.name}
+            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-500 pointer-events-none ${
+              hoveredIndex !== null ? "opacity-0" : "opacity-100"
+            }`}
+            style={{ filter: style.imageFilter }}
+          />
+
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,transparent_40%,rgba(0,0,0,0.72)_100%)]" />
           <div className="absolute left-3 top-3 rounded-full border border-white/15 bg-black/45 px-2.5 py-1 text-[8px] font-bold uppercase tracking-[0.08em] text-white/80 backdrop-blur-[6px] sm:left-4 sm:top-4 sm:px-3 sm:text-[9px]">
             {style.tag}
           </div>
@@ -79,76 +89,7 @@ function WarliStyleCard({ style, onClick }: { style: StyleItem; onClick: (e: any
   );
 }
 
-function ShellCraftStyleCard({ style, onClick }: { style: StyleItem; onClick: (e: any) => void }) {
-  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
-  const images = [
-    "/HomePage/creativeStyle/shell_art/v1.jpg",
-    "/HomePage/creativeStyle/shell_art/v2.jpg",
-    "/HomePage/creativeStyle/shell_art/v3.jpg",
-  ];
-  const objectPositions: React.CSSProperties["objectPosition"][] = ["left center", "center center", "right center"];
-
-  return (
-    <Link
-      href={style.href}
-      onClick={onClick}
-      className="w-full md:w-[340px] shrink-0 snap-start"
-    >
-      <div className="mb-2 overflow-hidden rounded-xl border border-white/10 bg-[#18181f] sm:mb-3">
-        <div
-          className="group relative flex h-[190px] overflow-hidden sm:h-[220px]"
-          onMouseLeave={() => setHoveredIndex(null)}
-        >
-          {images.map((imgSrc, idx) => {
-            let width = "33.3333%";
-            if (hoveredIndex !== null) {
-              width = hoveredIndex === idx ? "80%" : "10%";
-            }
-            return (
-              <div
-                key={idx}
-                className="relative h-full cursor-pointer overflow-hidden transition-[width] duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]"
-                style={{ width, willChange: "width" }}
-                onMouseEnter={() => setHoveredIndex(idx)}
-              >
-                <img
-                  src={imgSrc}
-                  alt={`${style.name} v${idx + 1}`}
-                  className={`h-full w-full object-cover transition-transform duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${hoveredIndex === idx ? "scale-[1.05]" : "scale-100"}`}
-                  style={{ filter: style.imageFilter, objectPosition: objectPositions[idx] }}
-                />
-              </div>
-            );
-          })}
-
-          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,transparent_38%,rgba(0,0,0,0.72)_100%)]" />
-          <div className="absolute left-3 top-3 rounded-full border border-white/15 bg-black/45 px-2.5 py-1 text-[8px] font-bold uppercase tracking-[0.08em] text-white/80 backdrop-blur-[6px] sm:left-4 sm:top-4 sm:px-3 sm:text-[9px]">
-            {style.tag}
-          </div>
-          <div className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4">
-            <div
-              className="text-[30px] uppercase leading-none tracking-[0.06em] sm:text-[34px]"
-              style={{
-                color: style.titleColor,
-                fontFamily: "var(--font-bebas-neue), 'Bebas Neue', sans-serif",
-                textShadow: "0 2px 12px rgba(0,0,0,0.5)",
-              }}
-            >
-              {style.title}
-            </div>
-            <div className="mt-1 text-[11px] font-semibold tracking-wide text-white/85 sm:text-[12px]">
-              {style.name}
-            </div>
-            <div className="mt-1 max-w-[280px] text-[10px] leading-snug text-white/60 line-clamp-2 sm:max-w-[300px]">
-              {style.desc}
-            </div>
-          </div>
-        </div>
-      </div>
-    </Link>
-  );
-}
 
 
 

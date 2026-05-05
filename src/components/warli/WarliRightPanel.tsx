@@ -19,7 +19,8 @@ interface WarliRightPanelProps {
   onRegenerate: () => void;
   onSaveAll: () => void;
   onSaveImage: (index: number) => void;
-  onExpandImage: (index: number, url?: string) => void;
+  /** Optional `previewUrl` for empty-state sample images (not in `generatedImages`). */
+  onExpandImage: (index: number, previewUrl?: string) => void;
 }
 
 const TEST_IMAGES: Record<StyleFamily, string> = {
@@ -162,7 +163,11 @@ export function WarliRightPanel({
       <div className="flex flex-1 flex-col overflow-y-auto [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-white/[0.06] [&::-webkit-scrollbar]:w-1">
         {panelState === "empty" && (
           <div className="p-5">
-            <EmptyState />
+            <EmptyState
+              style={style}
+              hoveredStyle={null}
+              onExpand={(url) => onExpandImage(-1, url)}
+            />
           </div>
         )}
         {panelState === "loading" && <div className="p-5"><LoadingState imageCount={imageCount} /></div>}

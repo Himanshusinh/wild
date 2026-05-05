@@ -396,10 +396,10 @@ export function WarliModal({ isOpen, onClose, onStyleNavigate }: WarliModalProps
   );
 
   const handleExpandImage = useCallback(
-    (index: number, url?: string) => {
-      const targetUrl = url || state.generatedImages[index];
-      if (!targetUrl) return;
-      setFullscreenUrl(targetUrl);
+    (index: number, previewUrl?: string) => {
+      const url = previewUrl ?? state.generatedImages[index];
+      if (!url) return;
+      setFullscreenUrl(url);
     },
     [state.generatedImages],
   );
