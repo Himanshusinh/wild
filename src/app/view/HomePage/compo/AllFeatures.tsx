@@ -49,7 +49,7 @@ const cards: CardConfig[] = [
   {
     title: "Edit\nImage",
     subtitle: "Inpaint - Outpaint - Replace",
-    href: "/view/EditImage",
+    href: "/text-to-image/edit-image",
     badge: "EDIT",
     icon: <Crop size={20} />,
     iconClassName: "bg-[linear-gradient(135deg,#4c1d95,#7c3aed)] shadow-[0_8px_24px_rgba(124,58,237,0.45)]",
@@ -61,7 +61,7 @@ const cards: CardConfig[] = [
   {
     title: "Upscale",
     subtitle: "Up to 4x HD resolution",
-    href: "/view/EditImage?feature=upscale",
+    href: "/text-to-image/edit-image?tool=expand&feature=upscale",
     badge: (
       <div className="flex items-center gap-1">
         <span className="rounded-[5px] border border-white/10 bg-white/5 px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-[0.06em] text-white/45">

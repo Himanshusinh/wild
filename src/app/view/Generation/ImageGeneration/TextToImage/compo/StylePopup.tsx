@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import Image from 'next/image';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
@@ -12,8 +12,8 @@ import {
 } from '@/store/slices/generationSlice';
 import { STYLE_CATALOG } from '@/styles/stylesCatalog';
 import { ALL_INDIAN_STYLES } from '@/styles/indianStyles';
-import { CUSTOM_STYLE_FROM_IMAGE_ID } from '@/constants/customStyleFromImage';
-import { Plus, X } from 'lucide-react';
+import { X } from 'lucide-react';
+import StyleFiltersBar, { type StyleFilterOption } from '@/components/ui/StyleFiltersBar';
 
 // Wrapper component for style preview images with error handling
 const StylePreviewImage = ({ src, alt }: { src: string; alt: string }) => {
@@ -62,8 +62,10 @@ const StylePopup = ({ isOpen, onClose, onBusyChange }: StylePopupProps) => {
     (state: any) => state.generation?.savedCustomStylesFromImage ?? [],
   );
   const [mounted, setMounted] = useState(false);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const [activeCategory, setActiveCategory] = useState<'general' | 'indian' | 'custom'>('general');
+  const [activeCategory, setActiveCategory] = useState<'general' | 'indian'>('general');
+  const [indianSearchQuery, setIndianSearchQuery] = useState('');
+  const [indianStateFilter, setIndianStateFilter] = useState<string>('all');
+  const [indianTypeFilter, setIndianTypeFilter] = useState<string>('all');
   const indianStyleValues = useRef(new Set(ALL_INDIAN_STYLES.map((s) => s.id)));
 
   const [customPreviewUrl, setCustomPreviewUrl] = useState<string | null>(null);
@@ -78,41 +80,6 @@ const StylePopup = ({ isOpen, onClose, onBusyChange }: StylePopupProps) => {
   useEffect(() => {
     setMounted(true);
   }, []);
-
-  // Auto-close after 1 minute, but never while custom style analysis is in flight.
-  useEffect(() => {
-    if (!isOpen) {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = null;
-      }
-      return;
-    }
-    if (customAnalyzing) {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = null;
-      }
-      return;
-    }
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    timeoutRef.current = setTimeout(() => {
-      onClose();
-    }, 60000);
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-    };
-  }, [isOpen, onClose, customAnalyzing]);
-
-  useEffect(() => {
-    if (!isOpen) onBusyChange?.(false);
-  }, [isOpen, onBusyChange]);
-
-  useEffect(() => {
-    onBusyChange?.(customAnalyzing);
-  }, [customAnalyzing, onBusyChange]);
 
   // Model-specific style filtering
   const isLucidOrigin = selectedModel === 'leonardoai/lucid-origin';
@@ -174,33 +141,84 @@ const StylePopup = ({ isOpen, onClose, onBusyChange }: StylePopupProps) => {
     );
   }, [isOpen, currentStyle]);
 
-  useEffect(() => {
-    if (!isOpen) {
-      setCustomError(null);
-      setCustomAnalyzing(false);
-      setCustomPlusExpanded(false);
-    }
-  }, [isOpen]);
+  const indianRowsUnfiltered = useMemo(
+    () =>
+      ALL_INDIAN_STYLES.map((s) => {
+        const typeLabel =
+          'tag' in s && typeof (s as { tag?: string }).tag === 'string'
+            ? (s as { tag: string }).tag
+            : null;
+        return {
+          name: s.title,
+          value: s.id,
+          image: s.image,
+          description: s.desc,
+          state: s.name,
+          typeLabel,
+          isIndian: true,
+        };
+      }).sort((a, b) =>
+        a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }),
+      ),
+    [],
+  );
 
-  useEffect(() => {
-    if (activeCategory !== 'custom') setCustomPlusExpanded(false);
-  }, [activeCategory]);
+  const indianStateOptions = useMemo(() => {
+    const set = new Set(indianRowsUnfiltered.map((r) => r.state));
+    return Array.from(set).sort((a, b) =>
+      a.localeCompare(b, undefined, { sensitivity: 'base' }),
+    );
+  }, [indianRowsUnfiltered]);
+
+  const indianTypeOptions = useMemo(() => {
+    const tags = new Set<string>();
+    let hasUntagged = false;
+    for (const r of indianRowsUnfiltered) {
+      if (r.typeLabel) tags.add(r.typeLabel);
+      else hasUntagged = true;
+    }
+    const sorted = Array.from(tags).sort((a, b) =>
+      a.localeCompare(b, undefined, { sensitivity: 'base' }),
+    );
+    if (hasUntagged) sorted.push('Other');
+    return sorted;
+  }, [indianRowsUnfiltered]);
+
+  const indianStateFilterOptions = useMemo<StyleFilterOption[]>(
+    () => indianStateOptions.map((state) => ({ value: state, label: state })),
+    [indianStateOptions],
+  );
+
+  const indianTypeFilterOptions = useMemo<StyleFilterOption[]>(
+    () => indianTypeOptions.map((type) => ({ value: type, label: type })),
+    [indianTypeOptions],
+  );
+
+  const filteredIndianRows = useMemo(() => {
+    const q = indianSearchQuery.trim().toLowerCase();
+    return indianRowsUnfiltered.filter((row) => {
+      if (indianStateFilter !== 'all' && row.state !== indianStateFilter)
+        return false;
+      if (indianTypeFilter !== 'all') {
+        if (indianTypeFilter === 'Other') {
+          if (row.typeLabel != null) return false;
+        } else if (row.typeLabel !== indianTypeFilter) return false;
+      }
+      if (q) {
+        const hay = `${row.name} ${row.description} ${row.state} ${row.value}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [
+    indianRowsUnfiltered,
+    indianSearchQuery,
+    indianStateFilter,
+    indianTypeFilter,
+  ]);
 
   const allStyles =
-    activeCategory === 'general'
-      ? styles
-      : activeCategory === 'indian'
-        ? ALL_INDIAN_STYLES.map((s) => ({
-            name: s.title,
-            value: s.id,
-            image: s.image,
-            description: s.desc,
-            state: s.name,
-            isIndian: true,
-          })).sort((a, b) =>
-            a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }),
-          )
-        : [];
+    activeCategory === 'general' ? styles : filteredIndianRows;
 
   const handleStyleSelect = (styleValue: string) => {
     dispatch(setStyle(styleValue));
@@ -361,44 +379,45 @@ const StylePopup = ({ isOpen, onClose, onBusyChange }: StylePopupProps) => {
             </button>
           </div>
 
-          {/* Category Tabs */}
-          <div className="flex items-center gap-2 px-5 py-3 border-b border-white/5 bg-white/[0.02]">
-            <button
-              type="button"
-              disabled={customAnalyzing}
-              onClick={() => setActiveCategory('general')}
-              className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all ${
-                activeCategory === 'general'
-                  ? 'bg-white text-black'
-                  : 'text-white/40 hover:text-white hover:bg-white/5'
-              } ${customAnalyzing ? 'cursor-not-allowed opacity-50' : ''}`}
-            >
-              General Styles
-            </button>
-            <button
-              type="button"
-              disabled={customAnalyzing}
-              onClick={() => setActiveCategory('indian')}
-              className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all ${
-                activeCategory === 'indian'
-                  ? 'bg-white text-black'
-                  : 'text-white/40 hover:text-white hover:bg-white/5'
-              } ${customAnalyzing ? 'cursor-not-allowed opacity-50' : ''}`}
-            >
-              Indian Styles
-            </button>
-            <button
-              type="button"
-              disabled={customAnalyzing}
-              onClick={() => setActiveCategory('custom')}
-              className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all ${
-                activeCategory === 'custom'
-                  ? 'bg-white text-black'
-                  : 'text-white/40 hover:text-white hover:bg-white/5'
-              } ${customAnalyzing ? 'cursor-not-allowed opacity-50' : ''}`}
-            >
-              Custom Styles
-            </button>
+          {/* Category Tabs + Indian Filters */}
+          <div className="flex items-center justify-between gap-3 border-b border-white/5 bg-white/[0.02] px-5 py-3">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setActiveCategory('general')}
+                className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all ${
+                  activeCategory === 'general'
+                    ? 'bg-white text-black'
+                    : 'text-white/40 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                General Styles
+              </button>
+              <button
+                onClick={() => setActiveCategory('indian')}
+                className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all ${
+                  activeCategory === 'indian'
+                    ? 'bg-white text-black'
+                    : 'text-white/40 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                Indian Styles
+              </button>
+            </div>
+
+            {activeCategory === 'indian' && (
+              <StyleFiltersBar
+                searchValue={indianSearchQuery}
+                onSearchChange={setIndianSearchQuery}
+                stateValue={indianStateFilter}
+                onStateChange={setIndianStateFilter}
+                stateOptions={indianStateFilterOptions}
+                stateClassName="w-[180px]"
+                typeValue={indianTypeFilter}
+                onTypeChange={setIndianTypeFilter}
+                typeOptions={indianTypeFilterOptions}
+                typeClassName="w-[180px]"
+              />
+            )}
           </div>
 
           {/* Styles Grid or custom builder */}
