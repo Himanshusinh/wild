@@ -7,6 +7,7 @@ import { setIndianStyleVersion } from "@/store/slices/generationSlice";
 import StylePopup from "@/app/view/Generation/ImageGeneration/TextToImage/compo/StylePopup";
 import { ChevronUp } from "lucide-react";
 import { ALL_INDIAN_STYLES } from "@/styles/indianStyles";
+import { CUSTOM_STYLE_FROM_IMAGE_ID } from "@/constants/customStyleFromImage";
 
 const INDIAN_STYLE_VERSION_OPTIONS: Array<{
   value: "V1" | "V2" | "V3";
@@ -29,6 +30,8 @@ const StyleSelector = () => {
     (state: any) => state.generation?.selectedModel || "new-turbo-model",
   );
   const [isStylePopupOpen, setIsStylePopupOpen] = useState(false);
+  /** Pauses auto-close while StylePopup runs custom style vision analysis. */
+  const [stylePopupBusy, setStylePopupBusy] = useState(false);
   const [isVersionDropdownOpen, setIsVersionDropdownOpen] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const versionDropdownRef = useRef<HTMLDivElement | null>(null);
@@ -39,37 +42,45 @@ const StyleSelector = () => {
     top: 0,
     left: 0,
   });
+  const customStyleFromImage = useAppSelector(
+    (state: any) => state.generation?.customStyleFromImage ?? null,
+  );
   const isIndianStyleSelected = ALL_INDIAN_STYLES.some((s) => s.id === style);
+  const styleButtonLabel =
+    style === "none"
+      ? "Style"
+      : style === CUSTOM_STYLE_FROM_IMAGE_ID
+        ? customStyleFromImage?.label || "Custom style"
+        : style;
 
   // Icons removed: display only text
 
-  // Auto-close popup after 5 seconds
+  // Auto-close after 1 minute, but not while custom style analysis is running.
   useEffect(() => {
-    if (isStylePopupOpen) {
-      // Clear any existing timeout
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-
-      // Set new timeout for 1 minute (Bug 46 fix)
-      timeoutRef.current = setTimeout(() => {
-        setIsStylePopupOpen(false);
-      }, 60000);
-    } else {
-      // Clear timeout if popup is closed
+    if (!isStylePopupOpen) {
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
         timeoutRef.current = null;
       }
+      return;
     }
-
-    // Cleanup on unmount
+    if (stylePopupBusy) {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+      return;
+    }
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(() => {
+      setIsStylePopupOpen(false);
+    }, 60000);
     return () => {
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [isStylePopupOpen]);
+  }, [isStylePopupOpen, stylePopupBusy]);
 
   useEffect(() => {
     setMounted(true);
@@ -120,8 +131,8 @@ const StyleSelector = () => {
               : "bg-transparent text-white/90 hover:bg-white/5"
           }`}
         >
-          <span className="capitalize">
-            {style === "none" ? "Style" : style}
+          <span className="capitalize line-clamp-1 max-w-[140px] md:max-w-[200px]">
+            {styleButtonLabel}
           </span>
           <div
             className={`w-4 h-4 flex  items-center justify-center ${
@@ -153,6 +164,7 @@ const StyleSelector = () => {
       <StylePopup
         isOpen={isStylePopupOpen}
         onClose={() => setIsStylePopupOpen(false)}
+        onBusyChange={setStylePopupBusy}
       />
       {mounted &&
         isVersionDropdownOpen &&

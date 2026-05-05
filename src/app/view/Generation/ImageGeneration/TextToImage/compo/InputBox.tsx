@@ -168,6 +168,7 @@ import HistoryControls from "@/app/view/Generation/VideoGeneration/TextToVideo/c
 import AssistantPanel from "./AssistantPanel";
 import { ALL_INDIAN_STYLES } from "@/styles/indianStyles";
 import { HOMEPAGE_PROMPT_CATALOG_LOADERS } from "@/styles/homepagePromptCatalogLoaders";
+import { CUSTOM_STYLE_FROM_IMAGE_ID } from "@/constants/customStyleFromImage";
 
 const GifLoader: React.FC<{
   size?: number;
@@ -388,6 +389,11 @@ const InputBox = () => {
   const authLoading = useAppSelector(
     (state: any) => state.auth?.loading ?? true,
   );
+  /** Avoid SSR/client mismatch: auth user is often null on server, hydrated on client. */
+  const [historyChromeMounted, setHistoryChromeMounted] = useState(false);
+  useEffect(() => {
+    setHistoryChromeMounted(true);
+  }, []);
   const pathname = usePathname();
   const isInlineEditImagePage = (pathname || "").startsWith(
     "/text-to-image/edit-image",
@@ -2034,6 +2040,9 @@ const InputBox = () => {
   );
   const style = useAppSelector(
     (state: any) => state.generation?.style || "realistic",
+  );
+  const customStyleFromImage = useAppSelector(
+    (state: any) => state.generation?.customStyleFromImage ?? null,
   );
   const indianStyleVersion = useAppSelector(
     (state: any) => state.generation?.indianStyleVersion || "V1",
@@ -4179,6 +4188,22 @@ const InputBox = () => {
           `Selected parameters: ${selectedParamsSummary}`,
         ].join("\n\n");
       }
+    } else if (
+      style === CUSTOM_STYLE_FROM_IMAGE_ID &&
+      customStyleFromImage?.directive
+    ) {
+      const selectedParamsSummary = [
+        `model=${selectedModel}`,
+        `style=${CUSTOM_STYLE_FROM_IMAGE_ID}`,
+        `customStyleLabel=${customStyleFromImage.label}`,
+        `frameSize=${frameSize || "auto"}`,
+        `imageCount=${imageCount}`,
+      ].join(", ");
+      promptForGeneration = [
+        `Visual style (derived from user's reference image via vision analysis). Apply this aesthetic to the generated image:\n${customStyleFromImage.directive}`,
+        `User prompt: ${finalPrompt}`,
+        `Selected parameters: ${selectedParamsSummary}`,
+      ].join("\n\n");
     }
     finalPrompt = promptForGeneration;
 
@@ -8823,7 +8848,8 @@ const InputBox = () => {
               </div>
 
               {/* Desktop: Search, Sort, and Date controls - positioned at right end of Image Generation text */}
-              {userData &&
+              {historyChromeMounted &&
+                userData &&
                 !pathname?.startsWith("/text-to-image/edit-image") && (
                   <div className="hidden md:flex items-center pr-4">
                     <HistoryControls mode="image" className="mb-0 pt-0" />
@@ -8831,7 +8857,9 @@ const InputBox = () => {
                 )}
             </div>
 
-            {userData && !pathname?.startsWith("/text-to-image/edit-image") && (
+            {historyChromeMounted &&
+              userData &&
+              !pathname?.startsWith("/text-to-image/edit-image") && (
               <div className="px-3 pb-1 md:hidden">
                 <div className="flex items-center gap-2">
                   <div className="relative min-w-0 flex-1">

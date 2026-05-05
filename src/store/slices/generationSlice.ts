@@ -6,6 +6,16 @@ import { GenerationType as SharedGenerationType } from '@/types/generation';
 import { getModelMapping } from '@/utils/modelMapping';
 import type { ActiveGeneration } from '@/lib/generationPersistence';
 import * as generationPersistence from '@/lib/generationPersistence';
+import { CUSTOM_STYLE_FROM_IMAGE_ID } from '@/constants/customStyleFromImage';
+
+/** User-saved reference styles (Custom Styles tab). */
+export type SavedCustomStyleFromImage = {
+  id: string;
+  label: string;
+  directive: string;
+  /** data:image/... for card thumbnail */
+  previewDataUrl: string;
+};
 // Import Runway thunks from generationsApi to synchronize active generation lifecycle for Runway flows
 import { runwayGenerate, runwayVideo, bflGenerate, falGenerate, replicateGenerate, minimaxGenerate } from '@/store/slices/generationsApi';
 
@@ -15,6 +25,13 @@ interface GenerationState {
   imageCount: number;
   frameSize: string;
   style: string;
+  /** Set when style === CUSTOM_STYLE_FROM_IMAGE_ID (vision-derived style block). */
+  customStyleFromImage: {
+    id: string | null;
+    label: string;
+    directive: string;
+  } | null;
+  savedCustomStylesFromImage: SavedCustomStyleFromImage[];
   indianStyleVersion: "V1" | "V2" | "V3";
   isGenerating: boolean; // Computed from activeGenerations.length > 0 for backward compatibility
   error: string | null;
@@ -132,6 +149,8 @@ const initialState: GenerationState = {
   imageCount: 1,
   frameSize: '1:1',
   style: 'none',
+  customStyleFromImage: null,
+  savedCustomStylesFromImage: [],
   indianStyleVersion: 'V1',
   isGenerating: false,
   error: null,
@@ -589,6 +608,38 @@ const generationSlice = createSlice({
     },
     setStyle: (state, action: PayloadAction<string>) => {
       state.style = action.payload;
+      if (action.payload !== CUSTOM_STYLE_FROM_IMAGE_ID) {
+        state.customStyleFromImage = null;
+      }
+    },
+    applyCustomStyleFromImage: (
+      state,
+      action: PayloadAction<{
+        id?: string | null;
+        label: string;
+        directive: string;
+      }>,
+    ) => {
+      state.style = CUSTOM_STYLE_FROM_IMAGE_ID;
+      const rawId = action.payload.id;
+      state.customStyleFromImage = {
+        id:
+          rawId != null && String(rawId).length > 0 ? String(rawId) : null,
+        label: action.payload.label.trim(),
+        directive: action.payload.directive.trim(),
+      };
+    },
+    addSavedCustomStyleFromImage: (
+      state,
+      action: PayloadAction<SavedCustomStyleFromImage>,
+    ) => {
+      state.savedCustomStylesFromImage.push(action.payload);
+    },
+    clearCustomStyleFromImage: (state) => {
+      state.customStyleFromImage = null;
+      if (state.style === CUSTOM_STYLE_FROM_IMAGE_ID) {
+        state.style = 'none';
+      }
     },
     setIndianStyleVersion: (
       state,
@@ -1282,6 +1333,9 @@ export const {
   setImageCount,
   setFrameSize,
   setStyle,
+  applyCustomStyleFromImage,
+  addSavedCustomStyleFromImage,
+  clearCustomStyleFromImage,
   setIndianStyleVersion,
   setIsGenerating,
   setError,
