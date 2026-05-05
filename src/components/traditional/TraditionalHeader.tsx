@@ -12,6 +12,7 @@ interface TraditionalHeaderProps {
   styleId: string;
   styleTitle: string;
   onStyleChange: (s: StyleVersion) => void;
+  onStyleNavigate?: (styleId: string) => void;
   onClose: () => void;
   disabled?: boolean;
 }
@@ -21,6 +22,7 @@ export function TraditionalHeader({
   styleId,
   styleTitle,
   onStyleChange,
+  onStyleNavigate,
   onClose,
   disabled
 }: TraditionalHeaderProps) {
@@ -46,14 +48,16 @@ export function TraditionalHeader({
           value={styleId}
           options={styleNameOptions}
           onChange={(nextStyleId) => {
+            if (onStyleNavigate) {
+              onStyleNavigate(nextStyleId);
+              return;
+            }
             onClose();
-            window.dispatchEvent(
-              new CustomEvent("wm:style-navigate", {
-                detail: { styleId: nextStyleId },
-              }),
-            );
+            window.dispatchEvent(new CustomEvent("wm:style-navigate", {
+              detail: { styleId: nextStyleId },
+            }));
           }}
-          className="w-[220px]"
+          className="w-[160px]"
           buttonClassName="flex h-[30px] w-full items-center justify-between gap-1.5 rounded-full border border-[#2F6BFF]/25 bg-[#2F6BFF]/[0.08] px-3 text-[11px] font-medium uppercase tracking-[0.06em] text-[#60a5fa] outline-none transition hover:border-[#2F6BFF]/40 hover:bg-[#2F6BFF]/[0.14]"
         />
 
