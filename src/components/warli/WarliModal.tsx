@@ -439,7 +439,7 @@ export function WarliModal({ isOpen, onClose, onStyleNavigate }: WarliModalProps
           onStyleChange={(s) => dispatchLocal({ type: "SET_STYLE", payload: s })}
           onStyleNameSelect={onStyleNavigate}
           onClose={onClose}
-          isLocked={state.panelState !== "empty"}
+          isLocked={state.panelState === "loading"}
         />
 
         <div className="grid min-h-0 flex-1 overflow-hidden lg:[grid-template-columns:420px_1fr]">

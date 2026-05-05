@@ -14,6 +14,7 @@ function WarliStyleCard({ style, onClick }: { style: StyleItem; onClick: (e: any
   const v2Image = `${CREATIVE_STYLE_IMAGE_BASE}warlistyles/warliv2.jpg`;
   const v3Image = `${CREATIVE_STYLE_IMAGE_BASE}warlistyles/warliv3.jpg`;
   const defaultImage = style.image;
+  const images = [v1Image, v2Image, v3Image];
 
   return (
     <Link

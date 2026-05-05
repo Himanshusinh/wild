@@ -362,25 +362,25 @@ export function TraditionalStyleModal({
             dispatchLocal({ type: "SET_ASSEMBLED_PROMPT", payload: "" });
           }}
           onStyleChange={(s) => dispatchLocal({ type: "SET_STYLE_VERSION", payload: s })}
-          onClose={onClose} disabled={state.panelState !== "empty"} />
+          onClose={onClose} disabled={state.panelState === "loading"} />
 
         <div className="grid min-h-0 flex-1 overflow-hidden lg:[grid-template-columns:420px_1fr]">
           <aside className="flex flex-col overflow-hidden border-r border-white/10 bg-[#0E0E12]">
             <div className="flex flex-1 flex-col gap-5 overflow-y-auto px-5 py-5 [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-white/[0.06] [&::-webkit-scrollbar]:w-1">
               <div className="flex flex-col gap-2">
                 <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-white/25">Input</span>
-                <ModeToggle disabled={state.panelState !== "empty"} mode={state.inputMode} onChange={(v) => dispatchLocal({ type: "SET_MODE", payload: v })} />
+                <ModeToggle disabled={state.panelState === "loading"} mode={state.inputMode} onChange={(v) => dispatchLocal({ type: "SET_MODE", payload: v })} />
               </div>
 
               {state.inputMode === "text" ? (
-                <SceneInput disabled={state.panelState !== "empty"} value={state.sceneText} onChange={(v) => dispatchLocal({ type: "SET_SCENE_TEXT", payload: v })} />
+                <SceneInput disabled={state.panelState === "loading"} value={state.sceneText} onChange={(v) => dispatchLocal({ type: "SET_SCENE_TEXT", payload: v })} />
               ) : (
                 <div className="flex flex-col gap-3">
-                  <UploadZone disabled={state.panelState !== "empty"}
+                  <UploadZone disabled={state.panelState === "loading"}
                     uploadedImage={state.uploadedImage}
                     onUpload={(v) => dispatchLocal({ type: "SET_UPLOADED_IMAGE", payload: v })}
                   />
-                  <textarea disabled={state.panelState !== "empty"}
+                  <textarea disabled={state.panelState === "loading"}
                     value={state.imageNote}
                     onChange={(e) => dispatchLocal({ type: "SET_IMAGE_NOTE", payload: e.target.value })}
                     rows={3}
@@ -392,36 +392,40 @@ export function TraditionalStyleModal({
 
               <div className="flex flex-col gap-2">
                 <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-white/25">Model</span>
-                <ModelSelector disabled={state.panelState !== "empty"} value={state.model} onChange={(v) => dispatchLocal({ type: "SET_MODEL", payload: v })} />
+                <ModelSelector disabled={state.panelState === "loading"} value={state.model} onChange={(v) => dispatchLocal({ type: "SET_MODEL", payload: v })} />
               </div>
 
-              <SettingsPanel disabled={state.panelState !== "empty"}
-                model={state.model}
-                resolution={state.resolution}
-                imageCount={state.imageCount}
-                ratio={state.ratio}
-                includeBenchmark={false}
-                includeVariable={false}
-                includeRestyle={false}
-                onCountChange={(v) => dispatchLocal({ type: "SET_COUNT", payload: v })}
-                onResolutionChange={(v) => dispatchLocal({ type: "SET_RESOLUTION", payload: v })}
-                onRatioChange={handleRatioChange}
-                onIncludeBenchmarkChange={() => { }}
-                onIncludeVariableChange={() => { }}
-                onIncludeRestyleChange={() => { }}
-              />
+              <div className="flex flex-col gap-2">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-white/25">Settings</span>
+                <SettingsPanel disabled={state.panelState === "loading"}
+                  model={state.model}
+                  resolution={state.resolution}
+                  imageCount={state.imageCount}
+                  ratio={state.ratio}
+                  includeBenchmark={false}
+                  includeVariable={false}
+                  includeRestyle={false}
+                  onCountChange={(v) => dispatchLocal({ type: "SET_COUNT", payload: v })}
+                  onResolutionChange={(v) => dispatchLocal({ type: "SET_RESOLUTION", payload: v })}
+                  onRatioChange={handleRatioChange}
+                  onIncludeBenchmarkChange={() => { }}
+                  onIncludeVariableChange={() => { }}
+                  onIncludeRestyleChange={() => { }}
+                />
+              </div>
             </div>
 
             <div className="border-t border-white/[0.06] bg-[#0E0E12] px-5 py-4">
               <button
                 type="button"
                 onClick={() => void handleGenerate()}
-                disabled={state.panelState !== "empty"}
+                disabled={state.panelState === "loading"}
                 className="w-full rounded-lg bg-[#2F6BFF] py-2.5 text-[12px] font-semibold text-white transition hover:bg-[#2F6BFF]/90 disabled:opacity-50"
               >
                 Generate {activeStyle.title}
               </button>
             </div>
+
           </aside>
 
           <main className="flex min-h-0 flex-col overflow-hidden bg-[#0a0a0f]">
