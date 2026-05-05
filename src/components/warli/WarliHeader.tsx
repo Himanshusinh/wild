@@ -3,10 +3,13 @@
 import React from "react";
 import { X } from "lucide-react";
 import { StyleFamily, STYLE_LABELS } from "./types";
+import { StyleFilterDropdown } from "@/components/ui/StyleFiltersBar";
+import { STYLES } from "@/styles/creativeStyleCatalog";
 
 interface WarliHeaderProps {
   style: StyleFamily;
   onStyleChange: (s: StyleFamily) => void;
+  onStyleNameSelect?: (styleId: string) => void;
   onClose: () => void;
   isLocked?: boolean;
 }
@@ -14,20 +17,44 @@ interface WarliHeaderProps {
 export function WarliHeader({
   style,
   onStyleChange,
+  onStyleNameSelect,
   onClose,
   isLocked,
 }: WarliHeaderProps) {
   const families: StyleFamily[] = ["V1", "V2", "V3"];
+  const styleNameOptions = React.useMemo(
+    () =>
+      STYLES.map((item) => ({
+        value: item.id,
+        label: item.title,
+      })),
+    [],
+  );
+
+  const handleStylePick = (styleId: string) => {
+    if (onStyleNameSelect) {
+      onStyleNameSelect(styleId);
+      return;
+    }
+    window.dispatchEvent(
+      new CustomEvent("wm:style-navigate", { detail: { styleId } }),
+    );
+  };
 
   return (
     <header className="flex shrink-0 items-center justify-between border-b border-white/10 bg-[#0a0a0f] px-5 py-3">
       <div className="flex items-center gap-3">
-        <div className="flex items-center gap-1.5 rounded-full border border-[#2F6BFF]/25 bg-[#2F6BFF]/[0.08] px-2.5 py-[5px]">
-          <span className="h-1.5 w-1.5 rounded-full bg-[#2F6BFF] shadow-[0_0_5px_rgba(47,107,255,0.8)]" />
-          <span className="text-[11px] font-medium uppercase tracking-[0.06em] text-[#60a5fa]">
-            Warli
-          </span>
-        </div>
+        <StyleFilterDropdown
+          ariaLabel="Select style"
+          value="Maharashtra"
+          options={styleNameOptions}
+          onChange={(styleId) => {
+            onClose();
+            handleStylePick(styleId);
+          }}
+          className="w-[220px]"
+          buttonClassName="flex h-[30px] w-full items-center justify-between gap-1.5 rounded-full border border-[#2F6BFF]/25 bg-[#2F6BFF]/[0.08] px-3 text-[11px] font-medium uppercase tracking-[0.06em] text-[#60a5fa] outline-none transition hover:border-[#2F6BFF]/40 hover:bg-[#2F6BFF]/[0.14]"
+        />
 
         <div className="ml-1 flex gap-1 rounded-[14px] border border-white/5 bg-black/40 p-[3px]">
           {families.map((f) => {

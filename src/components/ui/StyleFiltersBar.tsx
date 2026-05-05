@@ -14,14 +14,16 @@ type CustomDropdownProps = {
   options: StyleFilterOption[];
   onChange: (value: string) => void;
   className?: string;
+  buttonClassName?: string;
 };
 
-const CustomDropdown = ({
+export const StyleFilterDropdown = ({
   ariaLabel,
   value,
   options,
   onChange,
   className = '',
+  buttonClassName = "flex h-8 w-full items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 text-sm font-semibold text-white outline-none transition hover:border-white/20 hover:bg-white/[0.05]",
 }: CustomDropdownProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
@@ -53,7 +55,7 @@ const CustomDropdown = ({
           aria-haspopup="listbox"
           aria-expanded={isOpen}
           onClick={() => setIsOpen((current) => !current)}
-          className="flex h-8 w-full items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 text-sm font-semibold text-white outline-none transition hover:border-white/20 hover:bg-white/[0.05]"
+          className={buttonClassName}
         >
           <span className="truncate">{selectedOption.label}</span>
           <ChevronDown
@@ -167,7 +169,7 @@ export default function StyleFiltersBar({
         />
       </div>
 
-      <CustomDropdown
+      <StyleFilterDropdown
         ariaLabel={stateLabel}
         value={stateValue}
         options={normalizedStateOptions}
@@ -175,7 +177,7 @@ export default function StyleFiltersBar({
         className={stateClassName}
       />
 
-      <CustomDropdown
+      <StyleFilterDropdown
         ariaLabel={typeLabel}
         value={typeValue}
         options={normalizedTypeOptions}

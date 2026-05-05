@@ -1339,6 +1339,19 @@ const HomePage: React.FC = () => {
         }
     };
 
+    useEffect(() => {
+        const onStyleNavigate = (event: Event) => {
+            const styleId = (event as CustomEvent<{ styleId?: string }>).detail?.styleId;
+            if (!styleId) return;
+            handleStyleSelect(styleId);
+        };
+
+        window.addEventListener("wm:style-navigate", onStyleNavigate as EventListener);
+        return () => {
+            window.removeEventListener("wm:style-navigate", onStyleNavigate as EventListener);
+        };
+    }, [handleStyleSelect]);
+
     const handleCloseWalkthrough = (setter: (v: boolean) => void) => {
         setter(false);
         if (openedFromAllStyles) {
@@ -2798,6 +2811,10 @@ const HomePage: React.FC = () => {
             <WarliFullscreenWalkthrough
                 isOpen={showWarliWalkthrough}
                 onClose={() => handleCloseWalkthrough(setShowWarliWalkthrough)}
+                onStyleNavigate={(styleId: string) => {
+                    setShowWarliWalkthrough(false);
+                    handleStyleSelect(styleId);
+                }}
             />
             <AjrakhFullscreenWalkthrough
                 isOpen={showAjrakhWalkthrough}

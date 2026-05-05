@@ -325,7 +325,8 @@ export function TraditionalStyleModal({
           }`}
       >
         <TraditionalHeader
- style={state.style}
+          style={state.style}
+          styleId={styleId}
           styleTitle={styleTitle}
           onStyleChange={(s) => dispatchLocal({ type: "SET_STYLE_VERSION", payload: s })}
           onClose={onClose} disabled={state.panelState !== "empty"} />
