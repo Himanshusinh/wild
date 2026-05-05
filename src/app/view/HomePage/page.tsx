@@ -26,15 +26,6 @@ const Recentcreation = dynamic(() => import('./compo/Recentcreation'), {
 const WelcomeModal = dynamic(() => import('./compo/WelcomeModal'), {
     ssr: false
 })
-const WarliFullscreenWalkthrough = dynamic(() => import('./compo/styles/warli/WarliFullscreenWalkthrough'), {
-    ssr: false
-})
-const AjrakhFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
-    () => import('./compo/styles/ajrakh/AjrakhFullscreenWalkthrough'),
-    {
-        ssr: false
-    }
-)
 const JhajjarFullscreenWalkthrough = dynamic<{ isOpen: boolean; onClose: () => void }>(
     () => import('./compo/styles/jhajjar/JhajjarFullscreenWalkthrough'),
     {
@@ -880,8 +871,6 @@ const HomePage: React.FC = () => {
     const [currentGenerationType, setCurrentGenerationType] = useState<GenerationType>('text-to-image');
     const [showWildmindSkitPopup, setShowWildmindSkitPopup] = useState(false);
     const [showWelcomeModal, setShowWelcomeModal] = useState(false);
-    const [showWarliWalkthrough, setShowWarliWalkthrough] = useState(false);
-    const [showAjrakhWalkthrough, setShowAjrakhWalkthrough] = useState(false);
     const [showJhajjarWalkthrough, setShowJhajjarWalkthrough] = useState(false);
     const [showKaaviWalkthrough, setShowKaaviWalkthrough] = useState(false);
     const [showKangraWalkthrough, setShowKangraWalkthrough] = useState(false);
@@ -1106,15 +1095,27 @@ const HomePage: React.FC = () => {
 
     const [showAllStylesModal, setShowAllStylesModal] = useState(false);
     const [openedFromAllStyles, setOpenedFromAllStyles] = useState(false);
+    const [showUnifiedTraditionalWalkthrough, setShowUnifiedTraditionalWalkthrough] = useState(false);
+    const [activeUnifiedStyleId, setActiveUnifiedStyleId] = useState<string | null>(null);
     const [homepageMode, setHomepageMode] = useState<'image' | 'video'>('image');
 
-    const handleStyleSelect = (id: string) => {
-        setOpenedFromAllStyles(true);
+    const handleStyleSelect = (
+        id: string,
+        source: "allStyles" | "direct" | "inherit" = "inherit",
+    ) => {
+        if (source === "allStyles") setOpenedFromAllStyles(true);
+        else if (source === "direct") setOpenedFromAllStyles(false);
+        // inherit => keep current flag (for in-modal style-to-style switches)
         // setShowAllStylesModal(false); // Keep it mounted to preserve scroll
 
+        const selected = STYLES.find((s) => s.id === id);
+        if (selected) {
+            setActiveUnifiedStyleId(id);
+            setShowUnifiedTraditionalWalkthrough(true);
+            return;
+        }
+
         switch (id) {
-            case "Maharashtra": setShowWarliWalkthrough(true); break;
-            case "ajrakh": setShowAjrakhWalkthrough(true); break;
             case "jhajjar": setShowJhajjarWalkthrough(true); break;
             case "kaavi": setShowKaaviWalkthrough(true); break;
             case "kangra": setShowKangraWalkthrough(true); break;
@@ -1339,6 +1340,19 @@ const HomePage: React.FC = () => {
         }
     };
 
+    useEffect(() => {
+        const onStyleNavigate = (event: Event) => {
+            const styleId = (event as CustomEvent<{ styleId?: string }>).detail?.styleId;
+            if (!styleId) return;
+            handleStyleSelect(styleId, "inherit");
+        };
+
+        window.addEventListener("wm:style-navigate", onStyleNavigate as EventListener);
+        return () => {
+            window.removeEventListener("wm:style-navigate", onStyleNavigate as EventListener);
+        };
+    }, [handleStyleSelect]);
+
     const handleCloseWalkthrough = (setter: (v: boolean) => void) => {
         setter(false);
         if (openedFromAllStyles) {
@@ -1518,12 +1532,12 @@ const HomePage: React.FC = () => {
                         onWarliOpen={() => {
                             setOpenedFromAllStyles(false);
                             setShowWelcomeModal(false);
-                            setShowWarliWalkthrough(true);
+                            handleStyleSelect("Maharashtra", "direct");
                         }}
                         onAjrakhOpen={() => {
                             setOpenedFromAllStyles(false);
                             setShowWelcomeModal(false);
-                            setShowAjrakhWalkthrough(true);
+                            handleStyleSelect("ajrakh", "direct");
                         }}
                         onJhajjarOpen={() => {
                             setOpenedFromAllStyles(false);
@@ -2795,13 +2809,15 @@ const HomePage: React.FC = () => {
             )}
 
             {/* Welcome Modal */}
-            <WarliFullscreenWalkthrough
-                isOpen={showWarliWalkthrough}
-                onClose={() => handleCloseWalkthrough(setShowWarliWalkthrough)}
-            />
-            <AjrakhFullscreenWalkthrough
-                isOpen={showAjrakhWalkthrough}
-                onClose={() => handleCloseWalkthrough(setShowAjrakhWalkthrough)}
+            <TraditionalStyleFullscreenWalkthrough
+                isOpen={showUnifiedTraditionalWalkthrough}
+                onClose={() => handleCloseWalkthrough(setShowUnifiedTraditionalWalkthrough)}
+                styleId={activeUnifiedStyleId || "Maharashtra"}
+                styleTitle={STYLES.find((s) => s.id === activeUnifiedStyleId)?.title || "Warli"}
+                styleName={STYLES.find((s) => s.id === activeUnifiedStyleId)?.name || "Maharashtra"}
+                styleDesc={STYLES.find((s) => s.id === activeUnifiedStyleId)?.desc || ""}
+                styleImage={STYLES.find((s) => s.id === activeUnifiedStyleId)?.image || ""}
+                styleTag={STYLES.find((s) => s.id === activeUnifiedStyleId)?.tag || "Style"}
             />
             <JhajjarFullscreenWalkthrough
                 isOpen={showJhajjarWalkthrough}
@@ -3395,7 +3411,7 @@ const HomePage: React.FC = () => {
             <AllStylesModal
                 isOpen={showAllStylesModal}
                 onClose={() => setShowAllStylesModal(false)}
-                onStyleSelect={handleStyleSelect}
+                onStyleSelect={(id) => handleStyleSelect(id, "allStyles")}
             />
             <BaghEmbroideryFullscreenWalkthrough
                 isOpen={showBaghEmbroideryWalkthrough}

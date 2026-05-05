@@ -3,19 +3,15 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
-import { ChevronDown, Search, X } from "lucide-react";
+import { X } from "lucide-react";
 import { STYLES } from "./CreativeStyle";
+import StyleFiltersBar from "@/components/ui/StyleFiltersBar";
 
 interface AllStylesModalProps {
   isOpen: boolean;
   onClose: () => void;
   onStyleSelect: (id: string) => void;
 }
-
-type FilterOption = {
-  value: string;
-  label: string;
-};
 
 const StyleCard = ({
   style,
@@ -116,112 +112,6 @@ const StyleCard = ({
         <p>{style.desc}</p>
       </div>
     </button>
-  );
-};
-
-const FilterDropdown = ({
-  ariaLabel,
-  value,
-  options,
-  onChange,
-  className,
-}: {
-  ariaLabel: string;
-  value: string;
-  options: FilterOption[];
-  onChange: (value: string) => void;
-  className?: string;
-}) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const handlePointerDown = (event: PointerEvent) => {
-      if (!dropdownRef.current?.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setIsOpen(false);
-      }
-    };
-
-    document.addEventListener("pointerdown", handlePointerDown);
-    document.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      document.removeEventListener("pointerdown", handlePointerDown);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [isOpen]);
-
-  const selectedOption =
-    options.find((option) => option.value === value) ?? options[0];
-
-  return (
-    <div ref={dropdownRef} className={className}>
-      <div className="relative">
-        <button
-          type="button"
-          aria-label={ariaLabel}
-          aria-haspopup="listbox"
-          aria-expanded={isOpen}
-          onClick={() => setIsOpen((current) => !current)}
-          className="flex h-11 w-full items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm font-medium text-white outline-none transition hover:border-white/20 hover:bg-white/[0.06]"
-        >
-          <span className="truncate">{selectedOption.label}</span>
-          <ChevronDown
-            size={16}
-            className={`shrink-0 text-white/55 transition-transform ${isOpen ? "rotate-180" : ""}`}
-          />
-        </button>
-
-        {isOpen && (
-          <div className="absolute right-0 top-full z-30 mt-2 w-full min-w-[160px] overflow-hidden rounded-2xl border border-white/10 bg-[#08080b] p-1 shadow-[0_24px_80px_rgba(0,0,0,0.55)]">
-            <div
-              role="listbox"
-              aria-label={ariaLabel}
-              className="max-h-100 overflow-y-auto [scrollbar-width:thin]"
-            >
-              {options.map((option) => {
-                const isSelected = option.value === value;
-
-                return (
-                  <button
-                    key={option.value}
-                    type="button"
-                    role="option"
-                    aria-selected={isSelected}
-                    onClick={() => {
-                      onChange(option.value);
-                      setIsOpen(false);
-                    }}
-                    className={`flex w-full items-center justify-between rounded-lg px-4 py-2 text-left text-sm transition ${
-                      isSelected
-                        ? "bg-white text-black"
-                        : "text-white/82 hover:bg-white/[0.06]"
-                    }`}
-                  >
-                    <span className="truncate">{option.label}</span>
-                    <span
-                      className={`ml-3 h-2.5 w-2.5 shrink-0 rounded-full border ${
-                        isSelected
-                          ? "border-black bg-black"
-                          : "border-white/45 bg-transparent"
-                      }`}
-                    />
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
   );
 };
 
@@ -515,34 +405,19 @@ export default function AllStylesModal({
             </div>
 
             <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end lg:max-w-[70%] lg:flex-nowrap">
-              <label className="relative block w-full sm:w-[240px] lg:w-[280px]">
-                <Search
-                  size={16}
-                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-white/35"
-                />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search styles"
-                  className="h-11 w-full rounded-xl border border-white/10 bg-white/[0.04] pl-10 pr-4 text-sm text-white outline-none transition placeholder:text-white/30 focus:border-white/20 focus:bg-white/[0.06]"
-                />
-              </label>
-
-              <FilterDropdown
-                ariaLabel="Filter by state"
-                value={selectedCategory}
-                options={stateOptions}
-                onChange={setSelectedCategory}
-                className="block w-full sm:w-[210px] lg:w-[230px]"
-              />
-
-              <FilterDropdown
-                ariaLabel="Filter by type"
-                value={selectedTypeId}
-                options={typeOptions}
-                onChange={setSelectedTypeId}
-                className="block w-full sm:w-[180px] lg:w-[200px]"
+              <StyleFiltersBar
+                className="w-full flex-col sm:w-auto sm:flex-row"
+                searchValue={searchQuery}
+                onSearchChange={setSearchQuery}
+                searchClassName="w-full sm:w-[240px] lg:w-[280px]"
+                stateValue={selectedCategory}
+                onStateChange={setSelectedCategory}
+                stateOptions={stateOptions}
+                stateClassName="w-full sm:w-[210px] lg:w-[230px]"
+                typeValue={selectedTypeId}
+                onTypeChange={setSelectedTypeId}
+                typeOptions={typeOptions}
+                typeClassName="w-full sm:w-[180px] lg:w-[200px]"
               />
 
               <button
