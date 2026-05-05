@@ -229,6 +229,7 @@ export function WarliModal({ isOpen, onClose }: WarliModalProps) {
   const [state, dispatchLocal] = useReducer(reducer, INITIAL_STATE);
   const [isVisible, setIsVisible] = React.useState(false);
   const [fullscreenUrl, setFullscreenUrl] = React.useState<string | null>(null);
+  const [hoveredStyle, setHoveredStyle] = React.useState<StyleFamily | null>(null);
 
   const nanoBananaGoogleSearch = useAppSelector((s: RootState) => s.generation.nanoBananaGoogleSearch);
   const nanoBananaThinkingLevel = useAppSelector((s: RootState) => s.generation.nanoBananaThinkingLevel);
@@ -394,10 +395,10 @@ export function WarliModal({ isOpen, onClose }: WarliModalProps) {
   );
 
   const handleExpandImage = useCallback(
-    (index: number, previewUrl?: string) => {
-      const url = previewUrl ?? state.generatedImages[index];
-      if (!url) return;
-      setFullscreenUrl(url);
+    (index: number, url?: string) => {
+      const targetUrl = url || state.generatedImages[index];
+      if (!targetUrl) return;
+      setFullscreenUrl(targetUrl);
     },
     [state.generatedImages],
   );
@@ -435,6 +436,7 @@ export function WarliModal({ isOpen, onClose }: WarliModalProps) {
         <WarliHeader
           style={state.style}
           onStyleChange={(s) => dispatchLocal({ type: "SET_STYLE", payload: s })}
+          onHoverStyleChange={setHoveredStyle}
           onClose={onClose}
           isLocked={state.panelState !== "empty"}
         />
@@ -469,6 +471,7 @@ export function WarliModal({ isOpen, onClose }: WarliModalProps) {
             imageCount={state.imageCount}
             assembledPrompt={assembledPrompt}
             style={state.style}
+            hoveredStyle={hoveredStyle}
             model={state.model}
             ratio={state.ratio}
             onRegenerate={() => void handleGenerate()}
