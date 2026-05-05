@@ -6,12 +6,18 @@ import type { AppDispatch } from "@/store/index";
 import toast from "react-hot-toast";
 import { saveAutoResumeIntent } from "@/lib/autoResume";
 import { getSignInUrl } from "@/routes/routes";
-import { addActiveGeneration } from "@/store/slices/generationSlice";
+import {
+  addActiveGeneration,
+  removeSelectedCharacter,
+  setUploadedImages,
+} from "@/store/slices/generationSlice";
+import { Trash2 } from "lucide-react";
 import ModelsDropdown from "../ModelsDropdown";
 import { PromptDockParameterControls } from "./PromptDockParameterControls";
 import { PromptDockEditorRow } from "./PromptDockEditorRow";
 import { PromptDockGenerateButton } from "./PromptDockGenerateButton";
 import { handlePromptDockDrop } from "./promptDockDropHandlers";
+import { getInputImageLimitForModel } from "./modelImageLimits";
 
 export type InputBoxFixedPromptDockProps = {
   dispatch: AppDispatch;
@@ -34,6 +40,8 @@ export type InputBoxFixedPromptDockProps = {
   setIsCharacterModalOpen: (v: boolean) => void;
   setIsUploadOpen: (v: boolean) => void;
   uploadedImages: string[];
+  hasCustomStylePrompt?: boolean;
+  onViewUploadedImage: (url: string, zeroBasedIndex: number) => void;
   selectedModel: string;
   isEnhancing: boolean;
   userData: unknown;
@@ -101,6 +109,8 @@ export function InputBoxFixedPromptDock(props: InputBoxFixedPromptDockProps) {
     setIsCharacterModalOpen,
     setIsUploadOpen,
     uploadedImages,
+    hasCustomStylePrompt = false,
+    onViewUploadedImage,
     selectedModel,
     isEnhancing,
     userData,
@@ -223,7 +233,25 @@ export function InputBoxFixedPromptDock(props: InputBoxFixedPromptDockProps) {
     ],
   );
   const queueAtCapacity = runningGenerationsCount >= 4;
-  const isGenerateDisabled = !prompt.trim() || queueAtCapacity || isEnhancing;
+  const isGenerateDisabled =
+    (!prompt.trim() && !hasCustomStylePrompt) || queueAtCapacity || isEnhancing;
+  const attachmentItems = useMemo(
+    () =>
+      [
+        ...selectedCharacters.map((character: any) => ({
+          type: "character" as const,
+          data: character,
+          key: `char-${character?.id || ""}`,
+        })),
+        ...uploadedImages.map((u: string, i: number) => ({
+          type: "image" as const,
+          data: u,
+          index: i,
+          key: `img-${i}`,
+        })),
+      ].slice(0, getInputImageLimitForModel(selectedModel)),
+    [selectedCharacters, uploadedImages, selectedModel],
+  );
 
   const startGenerationFromDock = useCallback(async (
     source: "hidden" | "mobile" | "desktop",
@@ -338,6 +366,73 @@ export function InputBoxFixedPromptDock(props: InputBoxFixedPromptDockProps) {
                 opacity: prompt.trim() || isInputBoxHovered ? 0.2 : 0,
               }}
             ></div>
+            {attachmentItems.length > 0 && (
+              <div className="relative z-10 px-1.5 pt-1">
+                <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
+                  {attachmentItems.map((item: any) => {
+                    if (item.type === "character") {
+                      return (
+                        <div
+                          key={item.key}
+                          className="relative group h-10 w-10 flex-shrink-0"
+                          title={`Character: ${item.data?.name || ""}`}
+                        >
+                          <div className="h-10 w-10 rounded-md overflow-hidden ring-1 ring-white/20 bg-black/40">
+                            <img
+                              src={item.data?.frontImageUrl}
+                              alt={item.data?.name || "Character"}
+                              decoding="async"
+                              className="w-full h-full object-cover transition-opacity group-hover:opacity-35"
+                            />
+                          </div>
+                          <button
+                            aria-label="Remove character"
+                            className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-red-400 drop-shadow"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              dispatch(removeSelectedCharacter(item.data?.id));
+                            }}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div
+                        key={item.key}
+                        className="relative group h-10 w-10 flex-shrink-0"
+                      >
+                        <div
+                          className="h-10 w-10 rounded-md overflow-hidden ring-1 ring-white/20 bg-black/40 cursor-pointer"
+                          onClick={() => onViewUploadedImage(item.data, item.index)}
+                        >
+                          <img
+                            src={item.data}
+                            alt=""
+                            decoding="async"
+                            className="w-full h-full object-cover transition-opacity group-hover:opacity-35"
+                          />
+                        </div>
+                        <button
+                          aria-label="Remove uploaded image"
+                          className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-red-400 drop-shadow"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const next = uploadedImages.filter(
+                              (_: string, idx: number) => idx !== item.index,
+                            );
+                            dispatch(setUploadedImages(next));
+                          }}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
             {/* Top row: prompt + actions */}
             <PromptDockEditorRow
               dispatch={dispatch}

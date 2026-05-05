@@ -71,6 +71,7 @@ import {
   normalizeIncomingImageModel,
 } from "../modelImageLimits";
 import { INDIAN_STYLE_LOOKUP, getIndianBasePrompt } from "../indianStylePrompts";
+import { CUSTOM_STYLE_FROM_IMAGE_ID } from "@/constants/customStyleFromImage";
 import {
   convertFrameSizeToRunwayRatio,
   coerceRunwayRatio,
@@ -147,6 +148,7 @@ export function bindHandleGenerate(getRuntime: () => InputBoxGenerationRuntime) 
       selectedCharacters,
       selectedModel,
       style,
+      customStyleFromImage,
       toAbsoluteFromProxy,
       updateContentEditable,
       uploadedImages,
@@ -166,7 +168,12 @@ export function bindHandleGenerate(getRuntime: () => InputBoxGenerationRuntime) 
     } = getRuntime();
 
     const currentPrompt = overridePrompt || prompt;
-    const promptTrimmed = currentPrompt.trim();
+    const customStyleDirective =
+      style === CUSTOM_STYLE_FROM_IMAGE_ID
+        ? String(customStyleFromImage?.directive || "").trim()
+        : "";
+    const effectivePrompt = currentPrompt.trim() || customStyleDirective;
+    const promptTrimmed = effectivePrompt.trim();
 
     if (!document.hasFocus() && !generationId) {
       console.log(
@@ -228,7 +235,7 @@ export function bindHandleGenerate(getRuntime: () => InputBoxGenerationRuntime) 
     // Engage pagination block; prevents scroll-triggered load bursts while generation runs & history updates
     postGenerationBlockRef.current = true;
 
-    const originalPrompt = currentPrompt;
+    const originalPrompt = effectivePrompt;
     let finalPrompt = originalPrompt;
 
     // If prompt-enhance toggles are enabled for the selected model(s), call the backend enhancer first

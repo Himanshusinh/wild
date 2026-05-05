@@ -127,7 +127,6 @@ import {
   countGalleryCellsForEntries,
 } from "./inputBox/historyDisplayUtils";
 import { InputBoxGlobalStyles } from "./inputBox/InputBoxGlobalStyles";
-import { InputBoxReferenceAttachments } from "./inputBox/InputBoxReferenceAttachments";
 import { InputBoxHistoryChrome } from "./inputBox/InputBoxHistoryChrome";
 import { InputBoxHistoryOverlays } from "./inputBox/InputBoxHistoryOverlays";
 import { InputBoxHistoryScrollBody } from "./inputBox/InputBoxHistoryScrollBody";
@@ -152,6 +151,7 @@ import {
   createHandleFalError,
   createHandleReplicateError,
 } from "./inputBox/generation/falReplicateErrorHandlers";
+import { CUSTOM_STYLE_FROM_IMAGE_ID } from "@/constants/customStyleFromImage";
 
 const PROMPT_EDITOR_MIN_HEIGHT_PX = 68; // ~4 lines default
 const PROMPT_EDITOR_MAX_HEIGHT_PX = 68; // ~4 lines max
@@ -1360,6 +1360,9 @@ const InputBox = () => {
   );
   const style = useAppSelector(
     (state: any) => state.generation?.style || "realistic",
+  );
+  const customStyleFromImage = useAppSelector(
+    (state: any) => state.generation?.customStyleFromImage || null,
   );
   const indianStyleVersion = useAppSelector(
     (state: any) => state.generation?.indianStyleVersion || "V1",
@@ -3300,6 +3303,7 @@ const InputBox = () => {
     selectedCharacters,
     selectedModel,
     style,
+    customStyleFromImage,
     toAbsoluteFromProxy,
     updateContentEditable,
     uploadedImages,
@@ -3468,29 +3472,6 @@ const InputBox = () => {
         }}
       />
 
-      <InputBoxReferenceAttachments
-        isInlineEditImagePage={isInlineEditImagePage}
-        uploadedImages={uploadedImages}
-        selectedCharacters={selectedCharacters}
-        selectedModel={selectedModel}
-        onRemoveCharacter={(characterId) =>
-          dispatch(removeSelectedCharacter(characterId))
-        }
-        onRemoveUploadedImageAtIndex={(index) => {
-          const next = uploadedImages.filter(
-            (_: string, idx: number) => idx !== index,
-          );
-          dispatch(setUploadedImages(next));
-        }}
-        onViewUploadedImage={(url, zeroBasedIndex) =>
-          setAssetViewer({
-            isOpen: true,
-            assetUrl: url,
-            assetType: "image",
-            title: `Uploaded Image ${zeroBasedIndex + 1}`,
-          })
-        }
-      />
       {!isInlineEditImagePage && (
         <InputBoxFixedPromptDock
           dispatch={dispatch}
@@ -3511,6 +3492,18 @@ const InputBox = () => {
           setIsCharacterModalOpen={setIsCharacterModalOpen}
           setIsUploadOpen={setIsUploadOpen}
           uploadedImages={uploadedImages}
+          hasCustomStylePrompt={
+            style === CUSTOM_STYLE_FROM_IMAGE_ID &&
+            !!String(customStyleFromImage?.directive || "").trim()
+          }
+          onViewUploadedImage={(url, zeroBasedIndex) =>
+            setAssetViewer({
+              isOpen: true,
+              assetUrl: url,
+              assetType: "image",
+              title: `Uploaded Image ${zeroBasedIndex + 1}`,
+            })
+          }
           selectedModel={selectedModel}
           isEnhancing={isEnhancing}
           userData={userData}
