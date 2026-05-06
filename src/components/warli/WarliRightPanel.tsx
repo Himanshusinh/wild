@@ -19,7 +19,8 @@ interface WarliRightPanelProps {
   onRegenerate: () => void;
   onSaveAll: () => void;
   onSaveImage: (index: number) => void;
-  onExpandImage: (index: number, url?: string) => void;
+  /** Optional `previewUrl` for empty-state sample images (not in `generatedImages`). */
+  onExpandImage: (index: number, previewUrl?: string) => void;
 }
 
 const TEST_IMAGES: Record<StyleFamily, string> = {
@@ -30,9 +31,33 @@ const TEST_IMAGES: Record<StyleFamily, string> = {
 
 const DEFAULT_THUMBNAIL = `${CREATIVE_STYLE_IMAGE_BASE}warlistyles/warlistyle.png`;
 
-function EmptyState() {
+function EmptyState({
+  style,
+  hoveredStyle,
+  onExpand,
+}: {
+  style: StyleFamily;
+  hoveredStyle: StyleFamily | null;
+  onExpand: (url: string) => void;
+}) {
+  const activeStyle = hoveredStyle || style;
+  const sampleImage = TEST_IMAGES[activeStyle] || DEFAULT_THUMBNAIL;
+
   return (
     <div className="flex flex-1 flex-col items-center justify-center p-4 text-center">
+      <div className="mb-6 w-full max-w-sm overflow-hidden rounded-2xl border border-white/5 bg-white/[0.02]">
+        <div className="group relative aspect-video cursor-pointer overflow-hidden" onClick={() => onExpand(sampleImage)}>
+          <img
+            src={sampleImage}
+            alt="Warli Sample"
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+          <div className="absolute bottom-3 left-3 translate-y-2 opacity-0 transition-all group-hover:translate-y-0 group-hover:opacity-100">
+            <p className="text-[10px] font-medium tracking-wider text-white/80">PREVIEW SAMPLE</p>
+          </div>
+        </div>
+      </div>
       <div className="space-y-2">
         <p className="text-sm font-medium text-white/20">No output yet</p>
         <p className="max-w-[280px] text-xs leading-relaxed text-white/10">
@@ -162,7 +187,11 @@ export function WarliRightPanel({
       <div className="flex flex-1 flex-col overflow-y-auto [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-white/[0.06] [&::-webkit-scrollbar]:w-1">
         {panelState === "empty" && (
           <div className="p-5">
-            <EmptyState />
+            <EmptyState
+              style={style}
+              hoveredStyle={hoveredStyle}
+              onExpand={(url) => onExpandImage(-1, url)}
+            />
           </div>
         )}
         {panelState === "loading" && <div className="p-5"><LoadingState imageCount={imageCount} /></div>}

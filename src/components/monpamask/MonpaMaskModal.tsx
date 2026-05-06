@@ -353,7 +353,7 @@ export function MonpaMaskModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
         <MonpaMaskHeader
  style={state.style}
           onStyleChange={(s) => dispatchLocal({ type: "SET_STYLE", payload: s })}
-          onClose={onClose} disabled={state.panelState !== "empty"} />
+          onClose={onClose} disabled={state.panelState === "loading"} />
 
         <div className="grid min-h-0 flex-1 overflow-hidden lg:[grid-template-columns:420px_1fr]">
           <aside className="flex flex-col overflow-hidden border-r border-white/10 bg-[#0E0E12]">
@@ -362,24 +362,24 @@ export function MonpaMaskModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
                 <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-white/25">
                   Input
                 </span>
-                <ModeToggle disabled={state.panelState !== "empty"}
+                <ModeToggle disabled={state.panelState === "loading"}
                   mode={state.inputMode}
                   onChange={(v) => dispatchLocal({ type: "SET_MODE", payload: v })}
                 />
               </div>
 
               {state.inputMode === "text" ? (
-                <SceneInput disabled={state.panelState !== "empty"}
+                <SceneInput disabled={state.panelState === "loading"}
                   value={state.sceneText}
                   onChange={(v) => dispatchLocal({ type: "SET_SCENE_TEXT", payload: v })}
                 />
               ) : (
                 <div className="flex flex-col gap-3">
-                  <UploadZone disabled={state.panelState !== "empty"}
+                  <UploadZone disabled={state.panelState === "loading"}
                     uploadedImage={state.uploadedImage}
                     onUpload={(v) => dispatchLocal({ type: "SET_UPLOADED_IMAGE", payload: v })}
                   />
-                  <textarea disabled={state.panelState !== "empty"}
+                  <textarea disabled={state.panelState === "loading"}
                     value={state.imageNote}
                     onChange={(e) => dispatchLocal({ type: "SET_IMAGE_NOTE", payload: e.target.value })}
                     rows={3}
@@ -393,13 +393,13 @@ export function MonpaMaskModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
                 <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-white/25">
                   Model
                 </span>
-                <ModelSelector disabled={state.panelState !== "empty"}
+                <ModelSelector disabled={state.panelState === "loading"}
                   value={state.model}
                   onChange={(v) => dispatchLocal({ type: "SET_MODEL", payload: v })}
                 />
               </div>
 
-              <SettingsPanel disabled={state.panelState !== "empty"}
+              <SettingsPanel disabled={state.panelState === "loading"}
                 model={state.model}
                 resolution={state.resolution}
                 imageCount={state.imageCount}
@@ -420,7 +420,7 @@ export function MonpaMaskModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
               <button
                 type="button"
                 onClick={() => void handleGenerate()}
-                disabled={state.panelState !== "empty"}
+                disabled={state.panelState === "loading"}
                 className="w-full rounded-lg bg-[#2F6BFF] py-2.5 text-[12px] font-semibold text-white transition hover:bg-[#2F6BFF]/90 disabled:opacity-50"
               >
                 Generate Monpa Mask
