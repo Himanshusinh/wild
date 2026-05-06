@@ -206,6 +206,7 @@ export default function Storyboard() {
                       placeholderLabel="Upload Characters"
                       placeholderSublabel="JPG, PNG, WebP up to 25MB"
                       currentImage={null}
+                      changeLabel="Change"
                       onImageSelect={(url) => handleAddImages([url])}
                       openModal={openUploadModal}
                       className="h-48"
