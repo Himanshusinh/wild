@@ -9,6 +9,7 @@ import { STYLES } from "@/styles/creativeStyleCatalog";
 interface WarliHeaderProps {
   style: StyleFamily;
   onStyleChange: (s: StyleFamily) => void;
+  onHoverStyleChange?: (s: StyleFamily | null) => void;
   onStyleNameSelect?: (styleId: string) => void;
   onClose: () => void;
   isLocked?: boolean;
@@ -17,6 +18,7 @@ interface WarliHeaderProps {
 export function WarliHeader({
   style,
   onStyleChange,
+  onHoverStyleChange,
   onStyleNameSelect,
   onClose,
   isLocked,

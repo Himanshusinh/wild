@@ -163,11 +163,7 @@ export function WarliRightPanel({
       <div className="flex flex-1 flex-col overflow-y-auto [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-white/[0.06] [&::-webkit-scrollbar]:w-1">
         {panelState === "empty" && (
           <div className="p-5">
-            <EmptyState
-              style={style}
-              hoveredStyle={null}
-              onExpand={(url) => onExpandImage(-1, url)}
-            />
+            <EmptyState />
           </div>
         )}
         {panelState === "loading" && <div className="p-5"><LoadingState imageCount={imageCount} /></div>}
