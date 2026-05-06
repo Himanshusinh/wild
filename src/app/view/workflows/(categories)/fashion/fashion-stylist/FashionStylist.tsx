@@ -6,6 +6,7 @@ import { X, Camera, Zap, Download } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import axiosInstance from '@/lib/axiosInstance';
 import UploadModal from '@/app/view/Generation/ImageGeneration/TextToImage/compo/UploadModal';
+import WorkflowUploadArea from '@/app/view/workflows/components/WorkflowUploadArea';
 import ImageComparisonSlider from '@/app/view/workflows/components/ImageComparisonSlider';
 import { downloadFileWithNaming } from '@/utils/downloadUtils';
 import { useCredits } from '@/hooks/useCredits';
@@ -162,52 +163,27 @@ export default function FashionStylist() {
                 <p className="text-slate-400 text-lg mb-8 leading-relaxed">{workflowData.description}</p>
 
                 {/* Outfit Upload */}
-                <div className="mb-6">
-                  <label className="text-[10px] font-bold uppercase text-slate-500 mb-2 block tracking-widest pl-1">STEP 1: UPLOAD OUTFIT</label>
-                  <div className="border border-dashed border-white/15 rounded-xl bg-black/20 h-40 flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-[#60a5fa]/5 transition-colors relative overflow-hidden group"
-                    onClick={() => openUploadModal('outfit')}>
-                    {uploadedImage ? (
-                      <>
-                        <img src={uploadedImage} className="absolute inset-0 w-full h-full object-contain p-2 opacity-60 group-hover:opacity-40 transition-opacity" alt="Outfit" />
-                        <div className="relative z-10 flex flex-col items-center gap-2">
-                          <span className="text-white text-xs font-bold bg-black/60 px-4 py-1.5 rounded-full backdrop-blur border border-white/10 shadow-xl">Change Outfit</span>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="w-10 h-10 rounded-full bg-[#111] flex items-center justify-center text-slate-400 border border-white/5 shadow-inner transition-transform group-hover:scale-110"><Camera size={20} /></div>
-                        <div className="text-center">
-                          <span className="text-xs text-slate-300 block font-bold tracking-tight">Upload Outfit</span>
-                          <span className="text-[9px] text-slate-500 uppercase tracking-tighter">Flat lay or model photo</span>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                </div>
+                <WorkflowUploadArea
+                  label="STEP 1: UPLOAD OUTFIT"
+                  placeholderLabel="Upload Outfit"
+                  placeholderSublabel="Flat lay or model photo"
+                  currentImage={uploadedImage}
+                  changeLabel="Change Outfit"
+                  onImageSelect={(url) => setUploadedImage(url)}
+                  openModal={() => openUploadModal('outfit')}
+                />
 
                 {/* User Photo Upload */}
-                <div className="mb-8">
-                  <label className="text-[10px] font-bold uppercase text-slate-500 mb-2 block tracking-widest pl-1">STEP 2: UPLOAD USER PHOTO (HIM/HER)</label>
-                  <div className="border border-dashed border-white/15 rounded-xl bg-black/20 h-40 flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-[#60a5fa]/5 transition-colors relative overflow-hidden group"
-                    onClick={() => openUploadModal('user')}>
-                    {userImage ? (
-                      <>
-                        <img src={userImage} className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-40 transition-opacity" alt="User" />
-                        <div className="relative z-10 flex flex-col items-center gap-2">
-                          <span className="text-white text-xs font-bold bg-black/60 px-4 py-1.5 rounded-full backdrop-blur border border-white/10 shadow-xl">Change Photo</span>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="w-10 h-10 rounded-full bg-[#111] flex items-center justify-center text-slate-400 border border-white/5 shadow-inner transition-transform group-hover:scale-110"><Camera size={20} /></div>
-                        <div className="text-center">
-                          <span className="text-xs text-slate-300 block font-bold tracking-tight">Upload Your Photo</span>
-                          <span className="text-[9px] text-slate-500 uppercase tracking-tighter">Front-facing for best results</span>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                </div>
+                <WorkflowUploadArea
+                  label="STEP 2: UPLOAD USER PHOTO (HIM/HER)"
+                  placeholderLabel="Upload Your Photo"
+                  placeholderSublabel="Front-facing for best results"
+                  currentImage={userImage}
+                  changeLabel="Change Photo"
+                  onImageSelect={(url) => setUserImage(url)}
+                  openModal={() => openUploadModal('user')}
+                  objectFit="cover"
+                />
 
                 {/* Background Details */}
                 <div className="mb-8">

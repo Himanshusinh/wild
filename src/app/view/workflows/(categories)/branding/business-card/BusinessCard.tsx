@@ -12,6 +12,7 @@ import { WORKFLOWS_DATA } from '@/app/view/workflows/components/data';
 import { getSignInUrl } from '@/routes/routes';
 import ImageComparisonSlider from '@/app/view/workflows/components/ImageComparisonSlider';
 import { saveAutoResumeIntent, getAutoResumeIntent, clearAutoResumeIntent } from '@/lib/autoResume';
+import WorkflowUploadArea from '@/app/view/workflows/components/WorkflowUploadArea';
 
 export default function BusinessCard() {
   const router = useRouter();
@@ -261,30 +262,19 @@ export default function BusinessCard() {
                 </div>
 
                 <div className="mb-8">
-                  <label className="block text-xs font-bold uppercase text-slate-500 mb-4 tracking-wider">Upload Logo</label>
-                  <div
-                    onClick={() => {
-                      setIsUploadModalOpen(true);
+                  <WorkflowUploadArea
+                    placeholderLabel="Upload Logo"
+                    placeholderSublabel="JPG, PNG, WebP up to 25MB"
+                    currentImage={logoImage}
+                    changeLabel="Change Logo"
+                    onImageSelect={(url) => {
+                      setLogoImage(url);
+                      setGeneratedImage(null);
                     }}
-                    className="border border-dashed border-white/15 rounded-xl bg-black/20 h-32 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-[#60a5fa]/5 transition-colors relative overflow-hidden group"
-                  >
-                    {logoImage ? (
-                      <>
-                        <img src={logoImage} className="absolute inset-0 w-full h-full object-contain opacity-50 group-hover:opacity-30 transition-opacity" alt="Logo" />
-                        <div className="relative z-10 flex flex-col items-center gap-2">
-                          <span className="text-white font-medium bg-black/50 px-3 py-1 rounded-full backdrop-blur">Change Logo</span>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="w-8 h-8 rounded-full bg-[#111] flex items-center justify-center text-slate-400 group-hover:text-[#60a5fa] transition-colors"><Camera size={16} /></div>
-                        <div className="text-center">
-                          <span className="text-xs text-slate-300 block font-medium">Click to upload logo</span>
-                          <span className="text-[10px] text-slate-500 uppercase font-bold tracking-tighter">Required</span>
-                        </div>
-                      </>
-                    )}
-                  </div>
+                    openModal={() => setIsUploadModalOpen(true)}
+                    className="h-32"
+                    icon={<Camera size={16} />}
+                  />
                 </div>
 
                 <div className="mb-6">

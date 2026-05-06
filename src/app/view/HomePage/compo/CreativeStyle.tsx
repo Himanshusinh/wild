@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useRef, useState, type MouseEvent } from "react";
+import { Fragment, useEffect, useRef, useState, type MouseEvent, type WheelEvent as ReactWheelEvent } from "react";
 import Link from "next/link";
 import { CREATIVE_STYLE_IMAGE_BASE } from "@/constants/creativeStyleCdn";
 import { STYLES } from "@/styles/creativeStyleCatalog";
@@ -20,7 +20,7 @@ function WarliStyleCard({ style, onClick }: { style: StyleItem; onClick: (e: any
     <Link
       href={style.href}
       onClick={onClick}
-      className="w-full md:w-[340px] shrink-0 snap-start"
+      className="w-full shrink-0 snap-start md:w-full md:shrink"
     >
       <div className="mb-2 overflow-hidden rounded-xl border border-white/10 bg-[#18181f] sm:mb-3">
         <div 
@@ -102,7 +102,7 @@ function ShellCraftStyleCard({ style, onClick }: { style: StyleItem; onClick: (e
     <Link
       href={style.href}
       onClick={onClick}
-      className="w-full md:w-[340px] shrink-0 snap-start"
+      className="w-full shrink-0 snap-start md:w-full md:shrink"
     >
       <div className="mb-2 overflow-hidden rounded-xl border border-white/10 bg-[#18181f] sm:mb-3">
         <div
@@ -627,11 +627,34 @@ export default function CreativeStyle({
   onDhaniakhaliSareeOpen,
   onFrancoTamilEnvironmentOpen,
 }: CreativeStyleProps) {
-  const railRef = useRef<HTMLDivElement | null>(null);
-  const [showLeftArrow, setShowLeftArrow] = useState(false);
-  const [showRightArrow, setShowRightArrow] = useState(true);
+  const featuredStyles = STYLES.slice(0, 17);
+  const firstRowStyles = featuredStyles.slice(0, 9);
+  const secondRowStyles = featuredStyles.slice(9);
+  const bridgeStyle = firstRowStyles[firstRowStyles.length - 1];
+  const secondRowDisplayStyles = bridgeStyle ? [bridgeStyle, ...secondRowStyles] : secondRowStyles;
+  const firstRowRef = useRef<HTMLDivElement | null>(null);
+  const secondRowRef = useRef<HTMLDivElement | null>(null);
+  const [firstRowCanScrollLeft, setFirstRowCanScrollLeft] = useState(false);
+  const [firstRowCanScrollRight, setFirstRowCanScrollRight] = useState(false);
+  const [secondRowCanScrollLeft, setSecondRowCanScrollLeft] = useState(false);
+  const [secondRowCanScrollRight, setSecondRowCanScrollRight] = useState(false);
+  const dragStateRef = useRef<{
+    container: HTMLDivElement | null;
+    startX: number;
+    startScrollLeft: number;
+  }>({
+    container: null,
+    startX: 0,
+    startScrollLeft: 0,
+  });
+  const didDragRef = useRef(false);
 
   const handleStyleClick = (event: MouseEvent<HTMLAnchorElement>, style: StyleItem) => {
+    if (didDragRef.current) {
+      event.preventDefault();
+      return;
+    }
+
     const t = style.title.toLowerCase();
     const id = style.id.toLowerCase();
 
@@ -1804,35 +1827,146 @@ export default function CreativeStyle({
     }
   };
 
-  const scrollRight = () => {
-    const el = railRef.current;
-    if (!el) return;
-    el.scrollBy({ left: Math.max(260, el.clientWidth * 0.8), behavior: "smooth" });
+  const handleFirstRowWheel = (event: ReactWheelEvent<HTMLDivElement>) => {
+    const firstRow = firstRowRef.current;
+    const secondRow = secondRowRef.current;
+    if (!firstRow || !secondRow) return;
+
+    const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
+    if (delta === 0) return;
+
+    const firstRowMaxScroll = Math.max(0, firstRow.scrollWidth - firstRow.clientWidth);
+    const atFirstRowEnd = firstRow.scrollLeft >= firstRowMaxScroll - 2;
+    const atFirstRowStart = firstRow.scrollLeft <= 2;
+
+    if (delta > 0 && atFirstRowEnd) {
+      event.preventDefault();
+      secondRow.scrollBy({ left: delta, behavior: "auto" });
+      return;
+    }
+
+    if (delta < 0 && atFirstRowStart && secondRow.scrollLeft > 2) {
+      event.preventDefault();
+      secondRow.scrollBy({ left: delta, behavior: "auto" });
+    }
   };
 
-  const scrollLeft = () => {
-    const el = railRef.current;
-    if (!el) return;
-    el.scrollBy({ left: -Math.max(260, el.clientWidth * 0.8), behavior: "smooth" });
+  const handleSecondRowWheel = (event: ReactWheelEvent<HTMLDivElement>) => {
+    const firstRow = firstRowRef.current;
+    const secondRow = secondRowRef.current;
+    if (!firstRow || !secondRow) return;
+
+    const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
+    if (delta === 0) return;
+
+    const secondRowMaxScroll = Math.max(0, secondRow.scrollWidth - secondRow.clientWidth);
+    const atSecondRowEnd = secondRow.scrollLeft >= secondRowMaxScroll - 2;
+    const atSecondRowStart = secondRow.scrollLeft <= 2;
+    const firstRowMaxScroll = Math.max(0, firstRow.scrollWidth - firstRow.clientWidth);
+
+    if (delta > 0 && atSecondRowEnd && firstRow.scrollLeft < firstRowMaxScroll - 2) {
+      event.preventDefault();
+      firstRow.scrollBy({ left: delta, behavior: "auto" });
+      return;
+    }
+
+    if (delta < 0 && atSecondRowStart && firstRow.scrollLeft > 2) {
+      event.preventDefault();
+      firstRow.scrollBy({ left: delta, behavior: "auto" });
+    }
+  };
+
+  const scrollRowLeft = (row: "first" | "second") => {
+    const target = row === "first" ? firstRowRef.current : secondRowRef.current;
+    if (!target) return;
+    target.scrollBy({ left: -320, behavior: "smooth" });
+  };
+
+  const scrollRowRight = (row: "first" | "second") => {
+    const target = row === "first" ? firstRowRef.current : secondRowRef.current;
+    if (!target) return;
+    target.scrollBy({ left: 320, behavior: "smooth" });
+  };
+
+  const handleRowMouseDown = (event: MouseEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return;
+    const container = event.currentTarget;
+    dragStateRef.current = {
+      container,
+      startX: event.clientX,
+      startScrollLeft: container.scrollLeft,
+    };
+    didDragRef.current = false;
+
+    const handleMouseMove = (moveEvent: globalThis.MouseEvent) => {
+      const activeContainer = dragStateRef.current.container;
+      if (!activeContainer) return;
+
+      const deltaX = moveEvent.clientX - dragStateRef.current.startX;
+      if (Math.abs(deltaX) > 5) {
+        didDragRef.current = true;
+      }
+      const intendedScrollLeft = dragStateRef.current.startScrollLeft - deltaX;
+      const activeMaxScroll = Math.max(0, activeContainer.scrollWidth - activeContainer.clientWidth);
+      const clampedScrollLeft = Math.min(Math.max(intendedScrollLeft, 0), activeMaxScroll);
+      const overflow = intendedScrollLeft - clampedScrollLeft;
+      activeContainer.scrollLeft = clampedScrollLeft;
+
+      if (overflow === 0) return;
+
+      const firstRow = firstRowRef.current;
+      const secondRow = secondRowRef.current;
+      if (!firstRow || !secondRow) return;
+
+      const applyOverflow = (target: HTMLDivElement, amount: number) => {
+        const targetMaxScroll = Math.max(0, target.scrollWidth - target.clientWidth);
+        target.scrollLeft = Math.min(Math.max(target.scrollLeft + amount, 0), targetMaxScroll);
+      };
+
+      if (activeContainer === firstRow) {
+        applyOverflow(secondRow, overflow);
+      } else if (activeContainer === secondRow) {
+        applyOverflow(firstRow, overflow);
+      }
+    };
+
+    const handleMouseUp = () => {
+      dragStateRef.current.container = null;
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+      window.setTimeout(() => {
+        didDragRef.current = false;
+      }, 0);
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
   };
 
   useEffect(() => {
-    const el = railRef.current;
-    if (!el) return;
+    const firstRow = firstRowRef.current;
+    const secondRow = secondRowRef.current;
+    if (!firstRow || !secondRow) return;
 
-    const updateArrows = () => {
-      const maxScroll = Math.max(0, el.scrollWidth - el.clientWidth);
-      setShowLeftArrow(el.scrollLeft > 2);
-      setShowRightArrow(el.scrollLeft < maxScroll - 2);
+    const updateRowButtons = () => {
+      const firstMax = Math.max(0, firstRow.scrollWidth - firstRow.clientWidth);
+      const secondMax = Math.max(0, secondRow.scrollWidth - secondRow.clientWidth);
+
+      setFirstRowCanScrollLeft(firstRow.scrollLeft > 2);
+      setFirstRowCanScrollRight(firstRow.scrollLeft < firstMax - 2);
+      setSecondRowCanScrollLeft(secondRow.scrollLeft > 2);
+      setSecondRowCanScrollRight(secondRow.scrollLeft < secondMax - 2);
     };
 
-    updateArrows();
-    el.addEventListener("scroll", updateArrows, { passive: true });
-    window.addEventListener("resize", updateArrows);
+    updateRowButtons();
+    firstRow.addEventListener("scroll", updateRowButtons, { passive: true });
+    secondRow.addEventListener("scroll", updateRowButtons, { passive: true });
+    window.addEventListener("resize", updateRowButtons);
 
     return () => {
-      el.removeEventListener("scroll", updateArrows);
-      window.removeEventListener("resize", updateArrows);
+      firstRow.removeEventListener("scroll", updateRowButtons);
+      secondRow.removeEventListener("scroll", updateRowButtons);
+      window.removeEventListener("resize", updateRowButtons);
     };
   }, []);
 
@@ -1866,8 +2000,8 @@ export default function CreativeStyle({
 
       <div className="relative">
         <div
-          ref={railRef}
-          className="scrollbar-hide flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 sm:gap-4 sm:px-6 lg:px-16 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          onMouseDown={handleRowMouseDown}
+          className="scrollbar-hide flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 sm:gap-4 md:hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden cursor-grab active:cursor-grabbing select-none"
         >
           {STYLES.slice(0, 12).map((style, index) => (
             <Fragment key={`${style.id}-${index}`}>
@@ -1927,56 +2061,211 @@ export default function CreativeStyle({
               )}
             </Fragment>
           ))}
-
-          <button
-            key="explore-more-inline"
-            onClick={onAllStylesOpen}
-            className="w-full md:w-[340px] shrink-0 snap-start"
-          >
-            <div className="mb-2 h-[190px] sm:h-[220px] overflow-hidden rounded-xl border-2 border-dashed border-white/10 bg-white/[0.02] hover:bg-white/[0.05] hover:border-[#3B82F6]/30 transition-all group flex flex-col items-center justify-center gap-4">
-              <div className="p-4 rounded-full bg-white/5 border border-white/10 group-hover:scale-110 group-hover:bg-[#3B82F6]/10 group-hover:border-[#3B82F6]/20 transition-all">
-                <svg width="24" height="24" viewBox="0 0 12 12" fill="none" className="text-white/40 group-hover:text-[#3B82F6]">
-                  <path d="M2.5 6h7M6 2.5L9.5 6 6 9.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </div>
-              <div className="text-center">
-                <div className="text-[18px] uppercase tracking-wider text-white/80 font-bold" style={{ fontFamily: "var(--font-bebas-neue), 'Bebas Neue', sans-serif" }}>
-                  Explore More
-                </div>
-                <div className="text-[10px] text-white/40 font-medium uppercase tracking-[0.1em] mt-1">
-                  Explore {STYLES.length}+ Regional Styles
-                </div>
-              </div>
-            </div>
-          </button>
-
         </div>
+        <div className="hidden md:block">
+          <div className="relative">
+            <div
+              ref={firstRowRef}
+              onWheel={handleFirstRowWheel}
+              onMouseDown={handleRowMouseDown}
+              className="scrollbar-hide flex gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden cursor-grab active:cursor-grabbing select-none"
+            >
+              {firstRowStyles.map((style, index) => (
+                <div
+                  key={`desktop-row1-${style.id}-${index}`}
+                  className={`${index === firstRowStyles.length - 1 ? "w-[160px]" : "w-[320px]"} shrink-0 snap-start`}
+                >
+                  {style.id.toLowerCase() === "maharashtra" ? (
+                    <WarliStyleCard
+                      style={style}
+                      onClick={(event) => handleStyleClick(event, style)}
+                    />
+                  ) : style.id.toLowerCase() === "shellcraft" ? (
+                    <ShellCraftStyleCard
+                      style={style}
+                      onClick={(event) => handleStyleClick(event, style)}
+                    />
+                  ) : (
+                    <Link
+                      href={style.href}
+                      onClick={(event) => handleStyleClick(event, style)}
+                      className="w-full"
+                    >
+                      <div className="mb-2 overflow-hidden rounded-xl border border-white/10 bg-[#18181f] sm:mb-3">
+                        <div className="group relative h-[190px] sm:h-[220px]">
+                          <img
+                            src={style.image}
+                            alt={style.name}
+                            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+                            style={{ filter: style.imageFilter }}
+                          />
+                          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,transparent_40%,rgba(0,0,0,0.72)_100%)]" />
+                          <div className="absolute left-3 top-3 rounded-full border border-white/15 bg-black/45 px-2.5 py-1 text-[8px] font-bold uppercase tracking-[0.08em] text-white/80 backdrop-blur-[6px] sm:left-4 sm:top-4 sm:px-3 sm:text-[9px]">
+                            {style.tag}
+                          </div>
+                          <div className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4">
+                            <div
+                              className="text-[30px] uppercase leading-none tracking-[0.06em] sm:text-[34px]"
+                              style={{
+                                color: style.titleColor,
+                                fontFamily: "var(--font-bebas-neue), 'Bebas Neue', sans-serif",
+                                textShadow: "0 2px 12px rgba(0,0,0,0.5)",
+                              }}
+                            >
+                              {style.title}
+                            </div>
+                            <div className="mt-1 text-[11px] font-semibold tracking-wide text-white/85 sm:text-[12px]">
+                              {style.name}
+                            </div>
+                            <div className="mt-1 max-w-[280px] text-[10px] leading-snug text-white/60 line-clamp-2 sm:max-w-[300px]">
+                              {style.desc}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </Link>
+                  )}
+                </div>
+              ))}
+            </div>
+            {firstRowCanScrollLeft && (
+              <button
+                type="button"
+                onClick={() => scrollRowLeft("first")}
+                aria-label="Scroll first row left"
+                className="absolute left-2 top-1/2 z-10 hidden h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/55 text-white/85 backdrop-blur-md transition-all hover:border-white/20 hover:bg-black/75 active:scale-95 md:flex"
+              >
+                <svg width="18" height="18" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                  <path d="M8 2.5L4.5 6L8 9.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+            )}
+            {firstRowCanScrollRight && (
+              <button
+                type="button"
+                onClick={() => scrollRowRight("first")}
+                aria-label="Scroll first row right"
+                className="absolute right-2 top-1/2 z-10 hidden h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/55 text-white/85 backdrop-blur-md transition-all hover:border-white/20 hover:bg-black/75 active:scale-95 md:flex"
+              >
+                <svg width="18" height="18" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                  <path d="M4 2.5L7.5 6L4 9.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+            )}
+          </div>
 
-        <button
-          type="button"
-          onClick={scrollLeft}
-          disabled={!showLeftArrow}
-          aria-label="Scroll styles left"
-          className={`absolute left-2 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/55 text-white/85 backdrop-blur-md transition-all hover:border-white/20 hover:bg-black/75 active:scale-95 disabled:cursor-not-allowed md:flex lg:left-8 ${showLeftArrow ? "opacity-100" : "pointer-events-none opacity-0"
-            }`}
-        >
-          <svg width="16" height="16" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-            <path d="M8 2.5L4.5 6L8 9.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
-
-        <button
-          type="button"
-          onClick={scrollRight}
-          disabled={!showRightArrow}
-          aria-label="Scroll styles right"
-          className={`absolute right-2 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/55 text-white/85 backdrop-blur-md transition-all hover:border-white/20 hover:bg-black/75 active:scale-95 disabled:cursor-not-allowed md:flex lg:right-8 ${showRightArrow ? "opacity-100" : "pointer-events-none opacity-0"
-            }`}
-        >
-          <svg width="16" height="16" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-            <path d="M4 2.5L7.5 6L4 9.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
+          <div className="relative">
+            <div
+              ref={secondRowRef}
+              onWheel={handleSecondRowWheel}
+              onMouseDown={handleRowMouseDown}
+              className="scrollbar-hide mt-1 flex gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden cursor-grab active:cursor-grabbing select-none"
+            >
+              {secondRowDisplayStyles.map((style, index) => (
+                <div
+                  key={`desktop-row2-${style.id}-${index}`}
+                  className={`${index === 0 ? "w-[160px]" : "w-[320px]"} shrink-0 snap-start`}
+                >
+                  {style.id.toLowerCase() === "maharashtra" ? (
+                    <WarliStyleCard
+                      style={style}
+                      onClick={(event) => handleStyleClick(event, style)}
+                    />
+                  ) : style.id.toLowerCase() === "shellcraft" ? (
+                    <ShellCraftStyleCard
+                      style={style}
+                      onClick={(event) => handleStyleClick(event, style)}
+                    />
+                  ) : (
+                    <Link
+                      href={style.href}
+                      onClick={(event) => handleStyleClick(event, style)}
+                      className="w-full"
+                    >
+                      <div className="mb-2 overflow-hidden rounded-xl border border-white/10 bg-[#18181f] sm:mb-3">
+                        <div className="group relative h-[190px] sm:h-[220px]">
+                          <img
+                            src={style.image}
+                            alt={style.name}
+                            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+                            style={{ filter: style.imageFilter }}
+                          />
+                          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,transparent_40%,rgba(0,0,0,0.72)_100%)]" />
+                          <div className="absolute left-3 top-3 rounded-full border border-white/15 bg-black/45 px-2.5 py-1 text-[8px] font-bold uppercase tracking-[0.08em] text-white/80 backdrop-blur-[6px] sm:left-4 sm:top-4 sm:px-3 sm:text-[9px]">
+                            {style.tag}
+                          </div>
+                          <div className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4">
+                            <div
+                              className="text-[30px] uppercase leading-none tracking-[0.06em] sm:text-[34px]"
+                              style={{
+                                color: style.titleColor,
+                                fontFamily: "var(--font-bebas-neue), 'Bebas Neue', sans-serif",
+                                textShadow: "0 2px 12px rgba(0,0,0,0.5)",
+                              }}
+                            >
+                              {style.title}
+                            </div>
+                            <div className="mt-1 text-[11px] font-semibold tracking-wide text-white/85 sm:text-[12px]">
+                              {style.name}
+                            </div>
+                            <div className="mt-1 max-w-[280px] text-[10px] leading-snug text-white/60 line-clamp-2 sm:max-w-[300px]">
+                              {style.desc}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </Link>
+                  )}
+                </div>
+              ))}
+              <button
+                key="explore-more-desktop-row2"
+                onClick={onAllStylesOpen}
+                className="w-[320px] shrink-0 snap-start"
+              >
+                <div className="mb-2 h-[190px] sm:h-[220px] overflow-hidden rounded-xl border-2 border-dashed border-white/10 bg-white/[0.02] hover:bg-white/[0.05] hover:border-[#3B82F6]/30 transition-all group flex flex-col items-center justify-center gap-4">
+                  <div className="p-4 rounded-full bg-white/5 border border-white/10 group-hover:scale-110 group-hover:bg-[#3B82F6]/10 group-hover:border-[#3B82F6]/20 transition-all">
+                    <svg width="24" height="24" viewBox="0 0 12 12" fill="none" className="text-white/40 group-hover:text-[#3B82F6]">
+                      <path d="M2.5 6h7M6 2.5L9.5 6 6 9.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-[18px] uppercase tracking-wider text-white/80 font-bold" style={{ fontFamily: "var(--font-bebas-neue), 'Bebas Neue', sans-serif" }}>
+                      Explore More
+                    </div>
+                    <div className="text-[10px] text-white/40 font-medium uppercase tracking-[0.1em] mt-1">
+                      Explore {STYLES.length}+ Regional Styles
+                    </div>
+                  </div>
+                </div>
+              </button>
+            </div>
+            {secondRowCanScrollLeft && (
+              <button
+                type="button"
+                onClick={() => scrollRowLeft("second")}
+                aria-label="Scroll second row left"
+                className="absolute left-2 top-1/2 z-10 hidden h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/55 text-white/85 backdrop-blur-md transition-all hover:border-white/20 hover:bg-black/75 active:scale-95 md:flex"
+              >
+                <svg width="18" height="18" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                  <path d="M8 2.5L4.5 6L8 9.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+            )}
+            {secondRowCanScrollRight && (
+              <button
+                type="button"
+                onClick={() => scrollRowRight("second")}
+                aria-label="Scroll second row right"
+                className="absolute right-2 top-1/2 z-10 hidden h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/55 text-white/85 backdrop-blur-md transition-all hover:border-white/20 hover:bg-black/75 active:scale-95 md:flex"
+              >
+                <svg width="18" height="18" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                  <path d="M4 2.5L7.5 6L4 9.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+            )}
+          </div>
+        </div>
       </div>
     </section>
   );

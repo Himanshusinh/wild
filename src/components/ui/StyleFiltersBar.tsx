@@ -199,14 +199,14 @@ export default function StyleFiltersBar({
   typeDropdownSearchable = false,
 }: StyleFiltersBarProps) {
   const normalizedStateOptions = useMemo(() => {
-    const withAll = stateOptions.some((option) => option.value === 'all')
+    const withAll = stateOptions.some((option) => option.value.toLowerCase() === 'all')
       ? stateOptions
       : [{ value: 'all', label: 'All States' }, ...stateOptions];
     return withAll;
   }, [stateOptions]);
 
   const normalizedTypeOptions = useMemo(() => {
-    const withAll = typeOptions.some((option) => option.value === 'all')
+    const withAll = typeOptions.some((option) => option.value.toLowerCase() === 'all')
       ? typeOptions
       : [{ value: 'all', label: 'All Types' }, ...typeOptions];
     return withAll;
