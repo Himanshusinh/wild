@@ -52,7 +52,7 @@ export function WarliLeftPanel({
   onGenerate,
 }: WarliLeftPanelProps) {
   const loading = state.panelState === "loading";
-  const isDisabled = state.panelState !== "empty";
+  const isDisabled = state.panelState === "loading";
 
   return (
     <aside className="flex flex-col overflow-hidden border-r border-white/10 bg-[#0a0a0f]">
