@@ -615,6 +615,14 @@ const History = () => {
       return;
     }
 
+    // Support Ctrl+Click (and Meta+Click for Mac) for starting multi-selection
+    if (e.ctrlKey || e.metaKey) {
+      e.stopPropagation();
+      e.preventDefault();
+      toggleImageSelection(entry.id, media.id || mediaIndex.toString());
+      return;
+    }
+
     // If no images are selected, open preview modal as normal (but not for user uploads)
     if (selectedImages.size === 0) {
       // Don't open preview for user uploads - they're just uploaded files
