@@ -73,9 +73,7 @@ const StylePopup = ({ isOpen, onClose, onBusyChange }: StylePopupProps) => {
   const [customDataUrl, setCustomDataUrl] = useState<string | null>(null);
   const [customAnalyzing, setCustomAnalyzing] = useState(false);
   const [customError, setCustomError] = useState<string | null>(null);
-  const [customDraftName, setCustomDraftName] = useState('');
   const [customDraftDirective, setCustomDraftDirective] = useState('');
-  const [customAnalyzedDirective, setCustomAnalyzedDirective] = useState('');
   const [customPlusExpanded, setCustomPlusExpanded] = useState(false);
   const customFileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -230,9 +228,7 @@ const StylePopup = ({ isOpen, onClose, onBusyChange }: StylePopupProps) => {
   const onCustomFile = (file: File | null) => {
     setCustomError(null);
     setCustomDraftDirective('');
-    setCustomAnalyzedDirective('');
     if (!file || !file.type.startsWith('image/')) {
-      setCustomDraftName('');
       setCustomPreviewUrl(null);
       setCustomDataUrl(null);
       return;
@@ -250,6 +246,15 @@ const StylePopup = ({ isOpen, onClose, onBusyChange }: StylePopupProps) => {
     reader.readAsDataURL(file);
   };
 
+  const resetCustomBuilderForm = () => {
+    if (customPreviewUrl?.startsWith('blob:')) URL.revokeObjectURL(customPreviewUrl);
+    setCustomPreviewUrl(null);
+    setCustomDataUrl(null);
+    setCustomDraftDirective('');
+    setCustomError(null);
+    if (customFileInputRef.current) customFileInputRef.current.value = '';
+  };
+
   const runCustomAnalysis = async () => {
     if (!customDataUrl) {
       setCustomError('Upload an image first.');
@@ -257,7 +262,6 @@ const StylePopup = ({ isOpen, onClose, onBusyChange }: StylePopupProps) => {
     }
     setCustomError(null);
     setCustomAnalyzing(true);
-    setCustomAnalyzedDirective('');
     try {
       const res = await fetch('/api/style/analyze-from-image', {
         method: 'POST',
@@ -284,60 +288,36 @@ const StylePopup = ({ isOpen, onClose, onBusyChange }: StylePopupProps) => {
         );
         return;
       }
-      const nameFromModel = typeof data.styleName === 'string' ? data.styleName.trim() : '';
-      if (nameFromModel) setCustomDraftName(nameFromModel);
-      setCustomAnalyzedDirective(
-        typeof data.styleDirective === 'string' ? data.styleDirective : '',
+      const nameFromModel =
+        typeof data.styleName === 'string' ? data.styleName.trim() : '';
+      const analyzedDirective =
+        typeof data.styleDirective === 'string' ? data.styleDirective.trim() : '';
+      if (!analyzedDirective) {
+        setCustomError('Analysis returned no style instructions.');
+        return;
+      }
+      const extraDirective = customDraftDirective.trim();
+      const directive = [analyzedDirective, extraDirective]
+        .filter(Boolean)
+        .join('\n\n');
+      const label = nameFromModel || 'Custom style';
+      const id = crypto.randomUUID();
+      dispatch(
+        addSavedCustomStyleFromImage({
+          id,
+          label,
+          directive,
+          previewDataUrl: customDataUrl,
+        }),
       );
+      dispatch(applyCustomStyleFromImage({ id, label, directive }));
+      setCustomPlusExpanded(false);
+      resetCustomBuilderForm();
     } catch (e: any) {
       setCustomError(e?.message || 'Network error');
     } finally {
       setCustomAnalyzing(false);
     }
-  };
-
-  const resetCustomBuilderForm = () => {
-    if (customPreviewUrl?.startsWith('blob:')) URL.revokeObjectURL(customPreviewUrl);
-    setCustomPreviewUrl(null);
-    setCustomDataUrl(null);
-    setCustomDraftName('');
-    setCustomDraftDirective('');
-    setCustomAnalyzedDirective('');
-    setCustomError(null);
-    if (customFileInputRef.current) customFileInputRef.current.value = '';
-  };
-
-  const saveCustomStyleFromBuilder = () => {
-    const label = customDraftName.trim();
-    const analyzedDirective = customAnalyzedDirective.trim();
-    const extraDirective = customDraftDirective.trim();
-    const directive = [analyzedDirective, extraDirective]
-      .filter(Boolean)
-      .join('\n\n');
-    if (!label) {
-      setCustomError('Enter a style name.');
-      return;
-    }
-    if (!analyzedDirective) {
-      setCustomError('Run analyze first to extract style instructions from the image.');
-      return;
-    }
-    if (!customDataUrl) {
-      setCustomError('Upload an image first.');
-      return;
-    }
-    const id = crypto.randomUUID();
-    dispatch(
-      addSavedCustomStyleFromImage({
-        id,
-        label,
-        directive,
-        previewDataUrl: customDataUrl,
-      }),
-    );
-    dispatch(applyCustomStyleFromImage({ id, label, directive }));
-    setCustomPlusExpanded(false);
-    resetCustomBuilderForm();
   };
 
   const selectSavedCustomStyle = (item: SavedCustomStyleFromImage) => {
@@ -493,16 +473,10 @@ const StylePopup = ({ isOpen, onClose, onBusyChange }: StylePopupProps) => {
                           className="w-full text-xs text-white/70 file:mr-2 file:rounded-md file:border-0 file:bg-white file:px-2.5 file:py-1.5 file:text-xs file:font-medium file:text-black"
                           onChange={(e) => onCustomFile(e.target.files?.[0] ?? null)}
                         />
-                        <input
-                          value={customDraftName}
-                          onChange={(e) => setCustomDraftName(e.target.value)}
-                          placeholder="Style name"
-                          className="w-full rounded-xl border border-white/10 bg-black/50 px-3 py-2 text-sm text-white placeholder:text-white/35 outline-none focus:border-white/25"
-                        />
                         <textarea
                           value={customDraftDirective}
                           onChange={(e) => setCustomDraftDirective(e.target.value)}
-                          placeholder="Prompt area (optional extra instructions)"
+                          placeholder="Optional extra prompt (added when you analyze)"
                           rows={4}
                           className="w-full resize-none rounded-xl border border-white/10 bg-black/50 px-3 py-2 text-sm text-white placeholder:text-white/35 outline-none focus:border-white/25"
                         />
@@ -512,15 +486,7 @@ const StylePopup = ({ isOpen, onClose, onBusyChange }: StylePopupProps) => {
                           onClick={() => void runCustomAnalysis()}
                           className="w-full rounded-full bg-white px-4 py-2 text-sm font-semibold text-black disabled:opacity-40"
                         >
-                          {customAnalyzing ? 'Analyzing…' : 'Analyze'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={saveCustomStyleFromBuilder}
-                          disabled={!customAnalyzedDirective.trim() || customAnalyzing}
-                          className="w-full rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-40"
-                        >
-                          Save style
+                          {customAnalyzing ? 'Analyzing & saving…' : 'Analyze & save'}
                         </button>
                         {customError ? (
                           <p className="text-xs leading-snug text-red-400">{customError}</p>
