@@ -290,7 +290,7 @@ export default function AiCompanion() {
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center p-2">
               <img
-                src="/icons/wildmind_icon_darkbg.svg"
+                src="https://idr01.zata.ai/devstoragev1/public/icons/wildmind_icon_darkbg.svg"
                 alt="WildMind AI"
                 className="w-full h-full object-contain"
               />

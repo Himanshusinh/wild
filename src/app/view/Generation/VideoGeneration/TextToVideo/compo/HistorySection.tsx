@@ -58,7 +58,7 @@ const GifLoader: React.FC<{
       style={{ width: size, height: size }}
     >
       <Image
-        src="/styles/Logo.gif"
+        src="https://idr01.zata.ai/devstoragev1/public/styles/Logo.gif"
         alt={alt}
         width={size}
         height={size}
@@ -502,7 +502,7 @@ const HistorySection: React.FC<HistorySectionProps> = ({
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="flex flex-col items-center gap-4">
             <Image
-              src="/styles/Logo.gif"
+              src="https://idr01.zata.ai/devstoragev1/public/styles/Logo.gif"
               alt="Generating"
               width={80}
               height={80}

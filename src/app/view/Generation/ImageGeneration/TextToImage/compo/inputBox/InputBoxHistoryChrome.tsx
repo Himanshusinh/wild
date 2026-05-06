@@ -303,7 +303,7 @@ export function InputBoxHistoryChrome({
                     >
                       <span>Newest</span>
                       <img
-                        src="/icons/upload-square-2 (1).svg"
+                        src="https://idr01.zata.ai/devstoragev1/public/icons/upload-square-2%20(1).svg"
                         alt="Newest"
                         className={`h-4 w-4 ${sortOrder === "desc" ? "" : "invert opacity-80"}`}
                       />
@@ -319,7 +319,7 @@ export function InputBoxHistoryChrome({
                     >
                       <span>Oldest</span>
                       <img
-                        src="/icons/download-square-2.svg"
+                        src="https://idr01.zata.ai/devstoragev1/public/icons/download-square-2.svg"
                         alt="Oldest"
                         className={`h-4 w-4 ${sortOrder === "asc" ? "" : "invert opacity-80"}`}
                       />

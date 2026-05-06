@@ -466,7 +466,7 @@ export function TholuModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =
                       >
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
-                          src="/styles/Logo.gif"
+                          src="https://idr01.zata.ai/devstoragev1/public/styles/Logo.gif"
                           alt="Generating..."
                           className="h-16 w-16 object-contain opacity-40"
                           draggable={false}

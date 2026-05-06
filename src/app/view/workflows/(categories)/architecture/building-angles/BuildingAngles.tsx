@@ -36,8 +36,8 @@ export default function BuildingAngles() {
     description: "Generate multiple perspectives and angles of a building from a single reference image.",
     model: "Seadream4/ Nano Banana/ Qwen",
     cost: 90,
-    sampleBefore: "/workflow-samples/palace-angles-before.jpg",
-    sampleAfter: "/workflow-samples/palace-angles-after.jpg"
+    sampleBefore: "https://idr01.zata.ai/devstoragev1/public/workflow-samples/palace-angles-before.avif",
+    sampleAfter: "https://idr01.zata.ai/devstoragev1/public/workflow-samples/palace-angles-after.avif"
   };
 
   const CREDIT_COST = 90;

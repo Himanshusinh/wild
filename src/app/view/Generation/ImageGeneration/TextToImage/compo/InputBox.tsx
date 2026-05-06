@@ -3385,6 +3385,7 @@ const InputBox = () => {
         />
         <InputBoxHistoryScrollBody
           isInlineEditImagePage={isInlineEditImagePage}
+          page={page}
           sentinelRef={sentinelRef}
           authLoading={authLoading}
           userData={userData}

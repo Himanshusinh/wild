@@ -259,8 +259,8 @@ export default function FashionModelingPoses() {
               ) : (
                 <div className="relative w-full h-full flex items-center justify-center p-8">
                   <ImageComparisonSlider
-                    beforeImage="/workflow-samples/fashion-modeling-final-before.jpg"
-                    afterImage="/workflow-samples/fashion-modeling-final-after.jpg"
+                    beforeImage="https://idr01.zata.ai/devstoragev1/public/workflow-samples/fashion-modeling-final-before.avif"
+                    afterImage="https://idr01.zata.ai/devstoragev1/public/workflow-samples/fashion-modeling-final-after.avif"
                     beforeLabel="Before"
                     afterLabel="Result"
                     imageFit="object-cover"

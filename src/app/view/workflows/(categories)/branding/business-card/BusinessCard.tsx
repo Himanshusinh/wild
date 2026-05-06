@@ -59,8 +59,8 @@ export default function BusinessCard() {
     description: "Generate professional business card mockups from your logos or descriptions.",
     model: "Logo Creator AI",
     cost: 90,
-    sampleBefore: "/workflow-samples/business-card-before.png",
-    sampleAfter: "/workflow-samples/business-card-after.png"
+    sampleBefore: "https://idr01.zata.ai/devstoragev1/public/workflow-samples/business-card-before.avif",
+    sampleAfter: "https://idr01.zata.ai/devstoragev1/public/workflow-samples/business-card-after.avif"
   };
 
   const CREDIT_COST = 90;

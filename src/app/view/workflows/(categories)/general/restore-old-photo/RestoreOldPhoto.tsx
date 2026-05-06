@@ -336,7 +336,7 @@ export default function RestoreOldPhoto() {
                   {isGenerating && (
                     <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-10 transition-all duration-500">
                       <img
-                        src="/styles/Logo.gif"
+                        src="https://idr01.zata.ai/devstoragev1/public/styles/Logo.gif"
                         alt="Loading"
                         className="w-24 h-24 mb-4"
                       />
@@ -349,8 +349,8 @@ export default function RestoreOldPhoto() {
               ) : (
                 <div className="relative w-full h-full flex items-center justify-center p-8">
                   <ImageComparisonSlider
-                    beforeImage="/workflow-samples/portrait-before.jpg"
-                    afterImage="/workflow-samples/portrait-after.jpg"
+                    beforeImage="https://idr01.zata.ai/devstoragev1/public/workflow-samples/portrait-before.avif"
+                    afterImage="https://idr01.zata.ai/devstoragev1/public/workflow-samples/portrait-after.avif"
                     beforeLabel="Before"
                     afterLabel="After"
                     imageFit="object-contain"

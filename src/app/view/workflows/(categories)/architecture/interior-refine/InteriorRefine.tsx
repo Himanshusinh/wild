@@ -36,8 +36,8 @@ export default function InteriorRefine() {
     description: "Refine and enhance interior renders with realistic lighting, textures, and furniture placement.",
     model: "Seadream4/ Nano Banana/ Qwen",
     cost: 90,
-    sampleBefore: "/workflow-samples/interior-refine-before.jpg",
-    sampleAfter: "/workflow-samples/interior-refine-after.jpg"
+    sampleBefore: "https://idr01.zata.ai/devstoragev1/public/workflow-samples/interior-refine-before.avif",
+    sampleAfter: "https://idr01.zata.ai/devstoragev1/public/workflow-samples/interior-refine-after.avif"
   };
 
   const CREDIT_COST = 90;

@@ -141,8 +141,8 @@ export default function CreateLogo() {
     description: "Professional AI logo design from your sketches or descriptions.",
     model: "Logo Creator AI",
     cost: 90,
-    sampleBefore: "/workflow-samples/create-logo-before.png",
-    sampleAfter: "/workflow-samples/create-logo-grid.png"
+    sampleBefore: "https://idr01.zata.ai/devstoragev1/public/workflow-samples/create-logo-before.avif",
+    sampleAfter: "https://idr01.zata.ai/devstoragev1/public/workflow-samples/create-logo-grid.avif"
   };
 
   const CREDIT_COST = 90;

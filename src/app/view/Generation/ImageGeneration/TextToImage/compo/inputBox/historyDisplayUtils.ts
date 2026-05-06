@@ -1,5 +1,5 @@
 import type { HistoryEntry } from "@/types/history";
-import { toDirectUrl } from "@/lib/thumb";
+import { toDirectUrl, toThumbUrl } from "@/lib/thumb";
 
 /** Valid CSS aspect-ratio for grid tiles (invalid values collapse to 0 height → "empty" days). */
 export const toGridAspectRatioCss = (frameSize?: string): string => {
@@ -39,7 +39,12 @@ export const getHistoryImageDisplaySrc = (image: any): string => {
   ]
     .map((x) => String(x || "").trim())
     .find((x) => x.length > 0);
-  if (pick) return pick;
+  if (pick) {
+    // Prefer small thumbnails in grids to avoid Chrome OOM crashes on pages
+    // with many high-resolution images.
+    const thumb = toThumbUrl(pick, { w: 512, q: 60, fmt: "avif" });
+    return thumb || pick;
+  }
   const sp = image?.storagePath;
   if (
     typeof sp === "string" &&
@@ -49,7 +54,8 @@ export const getHistoryImageDisplaySrc = (image: any): string => {
     let basePath = sp.replace(/_thumb\.avif$/i, "").replace(/\.avif$/i, "");
     if (!basePath.match(/\.(jpg|jpeg|png|webp)$/i)) basePath += ".jpg";
     const built = toDirectUrl(basePath.replace(/^\//, ""));
-    return built && built.length > 0 ? built : "";
+    const thumb = toThumbUrl(built, { w: 512, q: 60, fmt: "avif" });
+    return (thumb || built) && (thumb || built).length > 0 ? (thumb || built) : "";
   }
   return "";
 };

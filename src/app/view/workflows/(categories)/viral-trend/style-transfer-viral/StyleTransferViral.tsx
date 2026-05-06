@@ -75,7 +75,7 @@ export default function StyleTransferViral() {
       // Simulation for now
       await new Promise(resolve => setTimeout(resolve, 3000));
       // Use a placeholder or the content image as fallback for now since we don't have a real backend connected for this yet
-      setGeneratedImage("/workflow-samples/style-transfer-after.jpg");
+      setGeneratedImage("https://idr01.zata.ai/devstoragev1/public/workflow-samples/style-transfer-after.avif");
       toast.success('Style transfer complete!');
 
     } catch (error: any) {
@@ -234,8 +234,8 @@ export default function StyleTransferViral() {
               ) : (
                 <div className="relative w-full h-full flex items-center justify-center p-8">
                   <ImageComparisonSlider
-                    beforeImage="/workflow-samples/style-transfer-before.jpg"
-                    afterImage="/workflow-samples/style-transfer-after.jpg"
+                    beforeImage="https://idr01.zata.ai/devstoragev1/public/workflow-samples/style-transfer-before.avif"
+                    afterImage="https://idr01.zata.ai/devstoragev1/public/workflow-samples/style-transfer-after.avif"
                     beforeLabel="Before"
                     afterLabel="Result"
                     imageFit="object-cover"

@@ -51,8 +51,8 @@ export default function InteriorProduct() {
     description: "Create professional product displays within high-end interior environments for catalog-quality renders.",
     model: "Seadream4/ Nano Banana/ Qwen",
     cost: 90,
-    sampleBefore: "/workflow-samples/interior-product-before.jpg",
-    sampleAfter: "/workflow-samples/interior-product-grid.jpg"
+    sampleBefore: "https://idr01.zata.ai/devstoragev1/public/workflow-samples/interior-product-before.avif",
+    sampleAfter: "https://idr01.zata.ai/devstoragev1/public/workflow-samples/interior-product-grid.avif"
   };
 
   const CREDIT_COST = 90;

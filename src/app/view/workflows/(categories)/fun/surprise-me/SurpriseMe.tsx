@@ -91,7 +91,7 @@ export default function SurpriseMe() {
       } else {
         // Simulation for now if no real API
         await new Promise(resolve => setTimeout(resolve, 3000));
-        setGeneratedImage("/workflow-samples/surpriseme-after.jpg");
+        setGeneratedImage("https://idr01.zata.ai/devstoragev1/public/workflow-samples/surpriseme-after.avif");
         toast.success('Surprise generated successfully!');
       }
 
@@ -240,7 +240,7 @@ export default function SurpriseMe() {
                   <img src={originalImage} className="max-w-full max-h-full object-contain rounded-lg shadow-2xl transition-all duration-300" alt="Preview" />
                   {isGenerating && (
                     <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-10 transition-all duration-500">
-                      <img src="/styles/Logo.gif" alt="Loading" className="w-24 h-24 mb-4" />
+                      <img src="https://idr01.zata.ai/devstoragev1/public/styles/Logo.gif" alt="Loading" className="w-24 h-24 mb-4" />
                       <p className="text-white font-medium text-lg animate-pulse">Generating surprise...</p>
                     </div>
                   )}
@@ -248,8 +248,8 @@ export default function SurpriseMe() {
               ) : (
                 <div className="relative w-full h-full flex items-center justify-center p-8">
                   <ImageComparisonSlider
-                    beforeImage="/workflow-samples/surpriseme-before.jpg"
-                    afterImage="/workflow-samples/surpriseme-after.jpg"
+                    beforeImage="https://idr01.zata.ai/devstoragev1/public/workflow-samples/surpriseme-before.avif"
+                    afterImage="https://idr01.zata.ai/devstoragev1/public/workflow-samples/surpriseme-after.avif"
                     beforeLabel="Before"
                     afterLabel="After"
                     imageFit="object-contain"

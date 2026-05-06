@@ -1618,7 +1618,7 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
                                 className={`px-3 py-1.5 text-xs font-bold rounded-md bg-[#60a5fa] text-black hover:bg-[#4f8edb] transition-colors ${(isGenerating || !selfiePhoto) ? 'opacity-50 cursor-not-allowed' : ''}`}
                               >
                                 {showLogoGifForCreate ? (
-                                  <img src="/logo.gif" alt="loading" className="w-6 h-6 object-contain" />
+                                  <img src="https://idr01.zata.ai/devstoragev1/public/styles/Logo.gif" alt="loading" className="w-6 h-6 object-contain" />
                                 ) : (
                                   'Create'
                                 )}

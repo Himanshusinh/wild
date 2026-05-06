@@ -340,8 +340,8 @@ export default function HairStyle() {
               ) : (
                 <div className="relative w-full h-full flex items-center justify-center p-8">
                   <ImageComparisonSlider
-                    beforeImage="/workflow-samples/hair-style-before.jpg"
-                    afterImage="/workflow-samples/hair-style-after.jpg"
+                    beforeImage="https://idr01.zata.ai/devstoragev1/public/workflow-samples/hair-style-before.avif"
+                    afterImage="https://idr01.zata.ai/devstoragev1/public/workflow-samples/hair-style-after.avif"
                     beforeLabel="Before"
                     afterLabel="Result"
                     imageFit="object-cover"

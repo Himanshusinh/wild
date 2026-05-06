@@ -765,7 +765,7 @@ const UploadModal: React.FC<UploadModalProps> = ({
               <div>
                 {loading && displayItems.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-[50vh] text-white/60">
-                    <img src="/styles/Logo.gif" alt="Loading..." className="w-24 h-24 opacity-80 mb-4" />
+                    <img src="https://idr01.zata.ai/devstoragev1/public/styles/Logo.gif" alt="Loading..." className="w-24 h-24 opacity-80 mb-4" />
                     <div className="text-lg">
                       {tab === 'uploads' ? 'Loading uploads...' : 'Loading library...'}
                     </div>

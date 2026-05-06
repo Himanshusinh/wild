@@ -40,7 +40,7 @@ const LegalLayout: React.FC<LegalLayoutProps> = ({ children, currentPage }) => {
               unoptimized
             />
             <Image
-              src="/icons/wildmind_text_whitebg (2).svg"
+              src="https://idr01.zata.ai/devstoragev1/public/icons/wildmind_text_whitebg%20(2).svg"
               alt="Wild Mind AI Text"
               width={120}
               height={24}

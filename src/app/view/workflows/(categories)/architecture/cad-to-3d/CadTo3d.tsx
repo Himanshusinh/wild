@@ -100,8 +100,8 @@ export default function CadTo3d() {
     description: "Transform 2D CAD drawings and floor plans into photorealistic 3D interior or exterior renders.",
     model: "Seadream4/ Nano Banana/ Qwen",
     cost: 90,
-    sampleBefore: "/workflow-samples/cad-to-3d-before.jpg",
-    sampleAfter: "/workflow-samples/cad-to-3d-after.jpg"
+    sampleBefore: "https://idr01.zata.ai/devstoragev1/public/workflow-samples/cad-to-3d-before.avif",
+    sampleAfter: "https://idr01.zata.ai/devstoragev1/public/workflow-samples/cad-to-3d-after.avif"
   };
 
   const CREDIT_COST = 90;

@@ -1350,8 +1350,8 @@ const EditVideoInterface: React.FC = () => {
 
   // Feature preview assets and display labels
   const featurePreviewGif: Record<EditFeature, string> = {
-    upscale: "/editimage/upscale_banner.jpg",
-    "remove-bg": "/editimage/RemoveBG_banner.jpg",
+    upscale: "https://idr01.zata.ai/devstoragev1/public/editimage/upscale-banner.avif",
+    "remove-bg": "https://idr01.zata.ai/devstoragev1/public/editimage/removebg-banner.avif",
   };
   const featureDisplayName: Record<EditFeature, string> = {
     upscale: "Upscale",
@@ -2167,7 +2167,7 @@ const EditVideoInterface: React.FC = () => {
           {processing[selectedFeature] && (
             <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/30 backdrop-blur-sm">
               <img
-                src="/styles/Logo.gif"
+                src="https://idr01.zata.ai/devstoragev1/public/styles/Logo.gif"
                 alt="Generating..."
                 className="w-32 h-32 md:w-48 md:h-48 opacity-90"
               />

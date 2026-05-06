@@ -204,7 +204,7 @@ export function proxy(req: NextRequest) {
     res.headers.set("Content-Type", "application/xml");
   }
 
-  if (pathname === "/robots.txt") {
+  if (pathname === "https://idr01.zata.ai/devstoragev1/public/robots.txt") {
     res.headers.set("Content-Type", "text/plain; charset=utf-8");
   }
   // For the main HTML document, we disable caching at the edge (Vercel/CDN)
@@ -303,8 +303,8 @@ export function proxy(req: NextRequest) {
   const isPublic =
     pathname === "/" ||
     // SEO assets must be public and unprotected
-    pathname === "/robots.txt" ||
-    pathname === "/sitemap.xml" ||
+    pathname === "https://idr01.zata.ai/devstoragev1/public/robots.txt" ||
+    pathname === "https://idr01.zata.ai/devstoragev1/public/sitemap.xml" ||
     pathname.startsWith("/sitemap-") ||
     pathname.endsWith(".xml") ||
     pathname.startsWith("/view/Landingpage") ||

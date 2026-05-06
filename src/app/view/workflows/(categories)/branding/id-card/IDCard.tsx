@@ -57,8 +57,8 @@ export default function IDCard() {
     description: "Generate professional corporate ID cards and employee badges.",
     model: "Branding AI",
     cost: 90,
-    sampleBefore: "/workflow-samples/id-card-after.png",
-    sampleAfter: "/workflow-samples/id-card-after.png"
+    sampleBefore: "https://idr01.zata.ai/devstoragev1/public/workflow-samples/id-card-after.avif",
+    sampleAfter: "https://idr01.zata.ai/devstoragev1/public/workflow-samples/id-card-after.avif"
   };
 
   const CREDIT_COST = 90;

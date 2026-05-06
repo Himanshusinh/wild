@@ -36,8 +36,8 @@ export default function LogoVariations() {
     description: "Generate multiple creative variations and styles for your existing logo.",
     model: "Logo Variation AI",
     cost: 90,
-    sampleBefore: "/workflow-samples/logo-variations-before.png",
-    sampleAfter: "/workflow-samples/logo-variations-after.png"
+    sampleBefore: "https://idr01.zata.ai/devstoragev1/public/workflow-samples/logo-variations-before.avif",
+    sampleAfter: "https://idr01.zata.ai/devstoragev1/public/workflow-samples/logo-variations-after.avif"
   };
 
   const CREDIT_COST = 90 * numVariations;

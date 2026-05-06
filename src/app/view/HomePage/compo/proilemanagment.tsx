@@ -359,7 +359,7 @@ const ProfileManagement = ({ initialUserData }: { initialUserData?: UserData }) 
                     Plan: {getPlanLabel((userData as any)?.planCode || userData?.plan).label}
                   </span>
                   <span className="px-2.5 py-1 rounded-full text-xs bg-white/10 text-white border border-white/10 flex items-center gap-1 min-w-[45px] justify-center">
-                    <Image src="/icons/coinswhite.svg" alt="credits" width={14} height={14} className="dark:brightness-100" />
+                    <Image src="https://idr01.zata.ai/devstoragev1/public/icons/coinswhite.svg" alt="credits" width={14} height={14} className="dark:brightness-100" />
                     {creditBalance ?? userData?.credits ?? 0}
                     {creditsLoading && (
                       <div className="w-2.5 h-2.5 border-2 border-white/20 border-t-white/80 rounded-full animate-spin ml-0.5" />
@@ -444,7 +444,7 @@ const ProfileManagement = ({ initialUserData }: { initialUserData?: UserData }) 
               onClick={() => router.push('/view/pricing')}
               className="flex items-center justify-center gap-2 px-5 py-2.5 bg-[#1C303D] hover:bg-blue-700 rounded-full transition-colors font-medium text-sm text-white"
             >
-              <Image src="/icons/coinswhite.svg" alt="credits" width={18} height={18} />
+              <Image src="https://idr01.zata.ai/devstoragev1/public/icons/coinswhite.svg" alt="credits" width={18} height={18} />
               Upgrade Plan
             </button>
             <button

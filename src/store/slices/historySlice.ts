@@ -1036,6 +1036,10 @@ const historySlice = createSlice({
         state.inFlight = false;
         state.currentRequestKey = null;
 
+        const forceRefresh =
+          (action.meta && action.meta.arg && (action.meta.arg as any).forceRefresh) ||
+          false;
+
         // Drop stale responses that don't match the currently selected filters.
         // This prevents an older unfiltered request from overwriting a newer
         // date/search/mode-filtered request that finished earlier.
@@ -1066,11 +1070,16 @@ const historySlice = createSlice({
             dateEnd,
           });
         };
-        if (
-          normalizeFilterSignature(incomingFilters) !==
-          normalizeFilterSignature(currentSelectedFilters)
-        ) {
-          return;
+        // If the caller explicitly requested a refresh, accept the response even if
+        // concurrent filter updates changed the signature mid-flight. This is the
+        // common path for /text-to-image initial load.
+        if (!forceRefresh) {
+          if (
+            normalizeFilterSignature(incomingFilters) !==
+            normalizeFilterSignature(currentSelectedFilters)
+          ) {
+            return;
+          }
         }
 
         // Always sync slice filters with the filters used for this load
@@ -1079,9 +1088,6 @@ const historySlice = createSlice({
             action.meta.arg &&
             (action.meta.arg.filters || action.meta.arg.backendFilters)) ||
           {};
-        const forceRefresh =
-          (action.meta && action.meta.arg && action.meta.arg.forceRefresh) ||
-          false;
         const requestedLimit =
           (action.meta &&
             action.meta.arg &&

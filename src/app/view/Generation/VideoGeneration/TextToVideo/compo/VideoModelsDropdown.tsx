@@ -1025,7 +1025,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                           <Lock className="h-2.5 w-2.5 text-amber-300 md:h-4 md:w-4" />
                         )}
                         <img
-                          src="/icons/crown.svg"
+                          src="https://idr01.zata.ai/devstoragev1/public/icons/crown.svg"
                           alt="pro"
                           className="h-2.5 w-2.5 md:h-4 md:w-4"
                         />
@@ -1087,7 +1087,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                           <Lock className="h-2.5 w-2.5 text-amber-300 md:h-4 md:w-4" />
                         )}
                         <img
-                          src="/icons/crown.svg"
+                          src="https://idr01.zata.ai/devstoragev1/public/icons/crown.svg"
                           alt="pro"
                           className="h-2.5 w-2.5 md:h-4 md:w-4"
                         />
@@ -1128,7 +1128,7 @@ const VideoModelsDropdown: React.FC<VideoModelsDropdownProps> = ({
                           <Lock className="h-2.5 w-2.5 text-amber-300 md:h-4 md:w-4" />
                         )}
                         <img
-                          src="/icons/crown.svg"
+                          src="https://idr01.zata.ai/devstoragev1/public/icons/crown.svg"
                           alt="pro"
                           className="h-2.5 w-2.5 md:h-4 md:w-4"
                         />

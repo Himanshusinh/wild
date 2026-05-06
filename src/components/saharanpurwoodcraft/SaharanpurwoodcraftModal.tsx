@@ -280,7 +280,7 @@ export function SaharanpurwoodcraftModal({ isOpen, onClose }: { isOpen: boolean;
                   <div className={`grid w-full gap-3 ${state.imageCount === 1 ? "grid-cols-1 max-w-lg" : "grid-cols-2"}`}>
                     {Array.from({ length: state.imageCount }).map((_, i) => (
                       <div key={i} className="relative flex aspect-square items-center justify-center overflow-hidden rounded-xl bg-transparent">
-                        <img src="/styles/Logo.gif" alt="Generating..." className="h-16 w-16 object-contain opacity-40" draggable={false} />
+                        <img src="https://idr01.zata.ai/devstoragev1/public/styles/Logo.gif" alt="Generating..." className="h-16 w-16 object-contain opacity-40" draggable={false} />
                       </div>
                     ))}
                   </div>

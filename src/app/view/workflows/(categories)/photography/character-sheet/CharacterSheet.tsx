@@ -37,8 +37,8 @@ export default function CharacterSheet() {
     description: "Generate comprehensive character sheets showing multiple angles and expressions of your character.",
     model: "Seadream4/ Nano Banana/ Qwen",
     cost: 80,
-    sampleBefore: "/workflow-samples/character-sheet-before.png",
-    sampleAfter: "/workflow-samples/character-sheet-after.jpg"
+    sampleBefore: "https://idr01.zata.ai/devstoragev1/public/workflow-samples/character-sheet-before.avif",
+    sampleAfter: "https://idr01.zata.ai/devstoragev1/public/workflow-samples/character-sheet-after.avif"
   }) as any;
 
   const CREDIT_COST = 90;

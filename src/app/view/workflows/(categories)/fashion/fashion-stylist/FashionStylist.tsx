@@ -305,8 +305,8 @@ export default function FashionStylist() {
               ) : (
                 <div className="relative w-full h-full flex items-center justify-center p-8">
                   <ImageComparisonSlider
-                    beforeImage="/workflow-samples/fashion-stylist-before-v3.jpg"
-                    afterImage="/workflow-samples/fashion-stylist-after-v3.jpg"
+                    beforeImage="https://idr01.zata.ai/devstoragev1/public/workflow-samples/fashion-stylist-before-v3.avif"
+                    afterImage="https://idr01.zata.ai/devstoragev1/public/workflow-samples/fashion-stylist-after-v3.avif"
                     beforeLabel="Before"
                     afterLabel="Result"
                     imageFit="object-cover"

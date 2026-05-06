@@ -43,8 +43,8 @@ export default function ReimagineProduct() {
     description: "Place your product in stunning new environments and artistic styles while keeping the product authentic.",
     model: "Seadream4/ Nano Banana/ Qwen",
     cost: 80,
-    sampleBefore: "/workflow-samples/reimagine-product-before-v2.png",
-    sampleAfter: "/workflow-samples/reimagine-product-after-v2.png",
+    sampleBefore: "https://idr01.zata.ai/devstoragev1/public/workflow-samples/reimagine-product-before-v2.avif",
+    sampleAfter: "https://idr01.zata.ai/devstoragev1/public/workflow-samples/reimagine-product-after-v2.avif",
   }) as any;
 
   const CREDIT_COST = 90;

@@ -36,8 +36,8 @@ export default function ThreeDIsometric() {
     description: "Generate clean, stylized 3D isometric views of architectural spaces or rooms.",
     model: "Seadream4/ Nano Banana/ Qwen",
     cost: 90,
-    sampleBefore: "/workflow-samples/3d-isometric-before.jpg",
-    sampleAfter: "/workflow-samples/3d-isometric-after.jpg"
+    sampleBefore: "https://idr01.zata.ai/devstoragev1/public/workflow-samples/3d-isometric-before.avif",
+    sampleAfter: "https://idr01.zata.ai/devstoragev1/public/workflow-samples/3d-isometric-after.avif"
   };
 
   const CREDIT_COST = 90;

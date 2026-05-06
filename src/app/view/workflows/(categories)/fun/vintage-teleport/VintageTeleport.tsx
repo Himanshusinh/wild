@@ -237,7 +237,7 @@ export default function VintageTeleport() {
                   <img src={originalImage} className="max-w-full max-h-full object-contain rounded-lg shadow-2xl transition-all duration-300" alt="Preview" />
                   {isGenerating && (
                     <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-10 transition-all duration-500">
-                      <img src="/styles/Logo.gif" alt="Loading" className="w-24 h-24 mb-4" />
+                      <img src="https://idr01.zata.ai/devstoragev1/public/styles/Logo.gif" alt="Loading" className="w-24 h-24 mb-4" />
                       <p className="text-white font-medium text-lg animate-pulse">Teleporting...</p>
                     </div>
                   )}
@@ -245,8 +245,8 @@ export default function VintageTeleport() {
               ) : (
                 <div className="relative w-full h-full flex items-center justify-center p-8">
                   <ImageComparisonSlider
-                    beforeImage="/workflow-samples/vintage-teleport-before.png"
-                    afterImage="/workflow-samples/vintage-teleport-after.jpg"
+                    beforeImage="https://idr01.zata.ai/devstoragev1/public/workflow-samples/vintage-teleport-before.avif"
+                    afterImage="https://idr01.zata.ai/devstoragev1/public/workflow-samples/vintage-teleport-after.avif"
                     beforeLabel="Before"
                     afterLabel="After"
                     imageFit="object-contain"

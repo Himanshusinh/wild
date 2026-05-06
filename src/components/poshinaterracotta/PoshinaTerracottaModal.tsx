@@ -431,7 +431,7 @@ export function PoshinaTerracottaModal({ isOpen, onClose }: { isOpen: boolean; o
                         key={i}
                         className="relative flex aspect-square items-center justify-center overflow-hidden rounded-xl bg-transparent"
                       >
-                        <img src="/styles/Logo.gif" alt="Generating..." className="h-16 w-16 object-contain opacity-40" draggable={false} />
+                        <img src="https://idr01.zata.ai/devstoragev1/public/styles/Logo.gif" alt="Generating..." className="h-16 w-16 object-contain opacity-40" draggable={false} />
                       </div>
                     ))}
                   </div>

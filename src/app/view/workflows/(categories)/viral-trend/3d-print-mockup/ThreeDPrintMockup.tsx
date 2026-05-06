@@ -75,7 +75,7 @@ export default function ThreeDPrintMockup() {
       // Simulation for now
       await new Promise(resolve => setTimeout(resolve, 3000));
       // Use the sample after image as a simulation result
-      setGeneratedImage("/workflow-samples/3d-print-after.jpg");
+      setGeneratedImage("https://idr01.zata.ai/devstoragev1/public/workflow-samples/3d-print-after.avif");
       toast.success('3D Print mockup generated!');
 
     } catch (error: any) {
@@ -234,8 +234,8 @@ export default function ThreeDPrintMockup() {
               ) : (
                 <div className="relative w-full h-full flex items-center justify-center p-8">
                   <ImageComparisonSlider
-                    beforeImage="/workflow-samples/3d-print-before.jpg"
-                    afterImage="/workflow-samples/3d-print-after.jpg"
+                    beforeImage="https://idr01.zata.ai/devstoragev1/public/workflow-samples/3d-print-before.avif"
+                    afterImage="https://idr01.zata.ai/devstoragev1/public/workflow-samples/3d-print-after.avif"
                     beforeLabel="Before"
                     afterLabel="Result"
                     imageFit="object-cover"

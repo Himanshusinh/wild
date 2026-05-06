@@ -62,15 +62,15 @@ const featureDisplayName: Record<EditFeature, string> = {
 };
 
 const featurePreviewGif: Record<EditFeature, string> = {
-  upscale: "/editimage/upscale_banner.jpg",
-  "remove-bg": "/editimage/RemoveBG_banner.jpg",
-  resize: "/editimage/resize_banner.jpg",
-  fill: "/editimage/replace_banner.jpg",
-  vectorize: "/editimage/vector_banner.jpg",
-  erase: "/editimage/replace_banner.jpg",
-  expand: "/editimage/replace_banner.jpg",
-  reimagine: "/editimage/replace_banner.jpg",
-  "live-chat": "/editimage/replace_banner.jpg",
+  upscale: "https://idr01.zata.ai/devstoragev1/public/editimage/upscale-banner.avif",
+  "remove-bg": "https://idr01.zata.ai/devstoragev1/public/editimage/removebg-banner.avif",
+  resize: "https://idr01.zata.ai/devstoragev1/public/editimage/resize-banner.avif",
+  fill: "https://idr01.zata.ai/devstoragev1/public/editimage/replace-banner.avif",
+  vectorize: "https://idr01.zata.ai/devstoragev1/public/editimage/vector-banner.avif",
+  erase: "https://idr01.zata.ai/devstoragev1/public/editimage/replace-banner.avif",
+  expand: "https://idr01.zata.ai/devstoragev1/public/editimage/replace-banner.avif",
+  reimagine: "https://idr01.zata.ai/devstoragev1/public/editimage/replace-banner.avif",
+  "live-chat": "https://idr01.zata.ai/devstoragev1/public/editimage/replace-banner.avif",
 };
 
 // Normalize any Next.js optimized image URL back to the original Zata (or source) URL.
@@ -1986,18 +1986,18 @@ const EditImageInterface: React.FC = () => {
 
   // Feature preview assets and display labels
   const featurePreviewGif: Record<EditFeature, string> = {
-    upscale: "/editimage/upscale_banner.jpg",
-    "remove-bg": "/editimage/RemoveBG_banner.jpg",
+    upscale: "https://idr01.zata.ai/devstoragev1/public/editimage/upscale-banner.avif",
+    "remove-bg": "https://idr01.zata.ai/devstoragev1/public/editimage/removebg-banner.avif",
     fill:
       eraseActionMode === "erase"
-        ? "/editimage/erase_banner.jpg"
-        : "/editimage/replace_banner.jpg",
-    erase: "/editimage/erase_banner.jpg",
-    expand: "/editimage/resize_banner.jpg",
-    resize: "/editimage/resize_banner.jpg",
-    vectorize: "/editimage/vector_banner.jpg",
-    reimagine: "/editimage/replace_banner.jpg",
-    "live-chat": "/editimage/resize_banner.jpg",
+        ? "https://idr01.zata.ai/devstoragev1/public/editimage/erase-banner.avif"
+        : "https://idr01.zata.ai/devstoragev1/public/editimage/replace-banner.avif",
+    erase: "https://idr01.zata.ai/devstoragev1/public/editimage/erase-banner.avif",
+    expand: "https://idr01.zata.ai/devstoragev1/public/editimage/resize-banner.avif",
+    resize: "https://idr01.zata.ai/devstoragev1/public/editimage/resize-banner.avif",
+    vectorize: "https://idr01.zata.ai/devstoragev1/public/editimage/vector-banner.avif",
+    reimagine: "https://idr01.zata.ai/devstoragev1/public/editimage/replace-banner.avif",
+    "live-chat": "https://idr01.zata.ai/devstoragev1/public/editimage/resize-banner.avif",
   };
   const featureDisplayName: Record<EditFeature, string> = {
     upscale: "Upscale",
@@ -7068,42 +7068,42 @@ const EditImageInterface: React.FC = () => {
                     >
                       {feature.id === "upscale" && (
                         <img
-                          src="/icons/scaling.svg"
+                          src="https://idr01.zata.ai/devstoragev1/public/icons/scaling.svg"
                           alt=""
                           className="w-[14px] h-[14px]"
                         />
                       )}
                       {feature.id === "remove-bg" && (
                         <img
-                          src="/icons/image-minus.svg"
+                          src="https://idr01.zata.ai/devstoragev1/public/icons/image-minus.svg"
                           alt=""
                           className="w-[14px] h-[14px]"
                         />
                       )}
                       {feature.id === "resize" && (
                         <img
-                          src="/icons/resize.svg"
+                          src="https://idr01.zata.ai/devstoragev1/public/icons/resize.svg"
                           alt=""
                           className="w-[13px] h-[13px]"
                         />
                       )}
                       {feature.id === "fill" && (
                         <img
-                          src="/icons/inpaint.svg"
+                          src="https://idr01.zata.ai/devstoragev1/public/icons/inpaint.svg"
                           alt=""
                           className="w-[14px] h-[14px]"
                         />
                       )}
                       {feature.id === "vectorize" && (
                         <img
-                          src="/icons/vector.svg"
+                          src="https://idr01.zata.ai/devstoragev1/public/icons/vector.svg"
                           alt=""
                           className="w-[14px] h-[14px]"
                         />
                       )}
                       {feature.id === "live-chat" && (
                         <img
-                          src="/icons/chat.svg"
+                          src="https://idr01.zata.ai/devstoragev1/public/icons/chat.svg"
                           alt=""
                           className="w-[14px] h-[14px]"
                         />
@@ -7407,7 +7407,7 @@ const EditImageInterface: React.FC = () => {
                       title="Upload other"
                     >
                       <Image
-                        src="/icons/fileupload.svg"
+                        src="https://idr01.zata.ai/devstoragev1/public/icons/fileupload.svg"
                         alt="Upload"
                         width={16}
                         height={16}
@@ -8948,7 +8948,7 @@ const EditImageInterface: React.FC = () => {
                 {processing[selectedFeature] && (
                   <div className="absolute inset-0 z-40 flex items-center justify-center bg-transparent backdrop-blur-sm">
                     <img
-                      src="/styles/Logo.gif"
+                      src="https://idr01.zata.ai/devstoragev1/public/styles/Logo.gif"
                       alt="Generating..."
                       className="w-32 h-32 md:w-48 md:h-48 opacity-90"
                     />

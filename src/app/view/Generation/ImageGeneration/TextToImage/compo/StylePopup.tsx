@@ -37,7 +37,7 @@ const StylePreviewImage = ({ src, alt }: { src: string; alt: string }) => {
       onError={() => {
         if (!hasError) {
           setHasError(true);
-          setImgSrc('/styles/Logo.gif');
+          setImgSrc('https://idr01.zata.ai/devstoragev1/public/styles/Logo.gif');
         }
       }}
     />

@@ -1719,7 +1719,7 @@ export default function ArtStationPage() {
                               {/* Use a simple music logo image to avoid prompt alt text showing */}
                               <img
                                 key={`audio-${cardId}`}
-                                src="/icons/musicgenerationwhite.svg"
+                                src="https://idr01.zata.ai/devstoragev1/public/icons/musicgenerationwhite.svg"
                                 alt=""
                                 loading={isPriority ? 'eager' : 'lazy'}
                                 fetchPriority={isPriority ? 'high' : 'auto'}
@@ -1766,7 +1766,7 @@ export default function ArtStationPage() {
                         {kind === 'video' && (
                           <div className="absolute bottom-2 right-2 opacity-80">
                             <div className="bg-black/40 rounded-md p-1">
-                              <img src="/icons/videoGenerationiconwhite.svg" alt="Video" className="w-5 h-5" />
+                              <img src="https://idr01.zata.ai/devstoragev1/public/icons/videoGenerationiconwhite.svg" alt="Video" className="w-5 h-5" />
                             </div>
                           </div>
                         )}

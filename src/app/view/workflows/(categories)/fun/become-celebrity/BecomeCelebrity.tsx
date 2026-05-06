@@ -38,8 +38,8 @@ export default function BecomeCelebrity() {
         description: "Ultra realistic candid photo in a crowded place with fans and cameras, giving a true celebrity vibe.",
         model: "Seadream4/ Nano Banana/ Qwen",
         cost: 110,
-        sampleBefore: "/workflow-samples/become-celebrity-before.jpg",
-        sampleAfter: "/workflow-samples/become-celebrity-after.jpg"
+        sampleBefore: "https://idr01.zata.ai/devstoragev1/public/workflow-samples/become-celebrity-before.avif",
+        sampleAfter: "https://idr01.zata.ai/devstoragev1/public/workflow-samples/become-celebrity-after.avif"
     };
 
     const CREDIT_COST = 110;
@@ -274,7 +274,7 @@ export default function BecomeCelebrity() {
                                     <img src={originalImage} className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" alt="Preview" />
                                     {isGenerating && (
                                         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-10 transition-all duration-500">
-                                            <img src="/styles/Logo.gif" alt="Loading" className="w-24 h-24 mb-4" />
+                                            <img src="https://idr01.zata.ai/devstoragev1/public/styles/Logo.gif" alt="Loading" className="w-24 h-24 mb-4" />
                                             <p className="text-white font-medium text-lg animate-pulse">Processing transformation...</p>
                                         </div>
                                     )}

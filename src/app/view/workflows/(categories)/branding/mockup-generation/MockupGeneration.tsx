@@ -36,8 +36,8 @@ export default function MockupGeneration() {
     description: "Generate professional product mockups for your brand and logo.",
     model: "Mockup Creator AI",
     cost: 90,
-    sampleBefore: "/workflow-samples/mockup-generation-before.png",
-    sampleAfter: "/workflow-samples/mockup-generation-after.png"
+    sampleBefore: "https://idr01.zata.ai/devstoragev1/public/workflow-samples/mockup-generation-before.avif",
+    sampleAfter: "https://idr01.zata.ai/devstoragev1/public/workflow-samples/mockup-generation-after.avif"
   };
 
   const CREDIT_COST = 90;

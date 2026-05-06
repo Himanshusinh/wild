@@ -90,7 +90,7 @@ export default function TurnIntoFigurine() {
 
       // Simulation for now
       await new Promise(resolve => setTimeout(resolve, 3000));
-      setGeneratedImage("/workflow-samples/figurine-example.jpg"); // Placeholder result
+      setGeneratedImage("https://idr01.zata.ai/devstoragev1/public/workflow-samples/figurine-example.avif"); // Placeholder result
       toast.success('Figurine generated successfully!');
 
     } catch (error: any) {
@@ -282,7 +282,7 @@ export default function TurnIntoFigurine() {
                 </div>
               ) : (
                 <div className="relative w-full h-full flex items-center justify-center p-8">
-                  <img src="/workflow-samples/figurine-example.jpg" className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" alt="Preview" />
+                  <img src="https://idr01.zata.ai/devstoragev1/public/workflow-samples/figurine-example.avif" className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" alt="Preview" />
                 </div>
               )}
             </div>

@@ -37,8 +37,8 @@ export default function ExpressionSheet() {
     description: "Generate a detailed sheet showing a character with various facial expressions and emotions.",
     model: "Seadream4/ Nano Banana/ Qwen",
     cost: 80,
-    sampleBefore: "/workflow-samples/expression-sheet-before.jpg",
-    sampleAfter: "/workflow-samples/expression-sheet-after.jpg"
+    sampleBefore: "https://idr01.zata.ai/devstoragev1/public/workflow-samples/expression-sheet-before.avif",
+    sampleAfter: "https://idr01.zata.ai/devstoragev1/public/workflow-samples/expression-sheet-after.avif"
   }) as any;
 
   const CREDIT_COST = 90;

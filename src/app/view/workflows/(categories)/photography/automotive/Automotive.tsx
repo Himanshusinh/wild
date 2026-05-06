@@ -57,8 +57,8 @@ export default function Automotive() {
     description: "Transform car photos with professional cinematic backgrounds, lighting, and motion effects.",
     model: "AutoRender AI",
     cost: 90,
-    sampleBefore: "/workflow-samples/automotive-before.png",
-    sampleAfter: "/workflow-samples/automotive-after.png"
+    sampleBefore: "https://idr01.zata.ai/devstoragev1/public/workflow-samples/automotive-before.avif",
+    sampleAfter: "https://idr01.zata.ai/devstoragev1/public/workflow-samples/automotive-after.avif"
   }) as any;
 
   const CREDIT_COST = 90;
@@ -294,7 +294,7 @@ export default function Automotive() {
                     <img src={carImage} className="w-full h-full object-contain" alt="Uploaded Car" />
                     {isGenerating && (
                       <div className="absolute inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-40 transition-all duration-500">
-                        <img src="/styles/Logo.gif" className="w-24 h-24" alt="Loading" />
+                        <img src="https://idr01.zata.ai/devstoragev1/public/styles/Logo.gif" className="w-24 h-24" alt="Loading" />
                       </div>
                     )}
                   </div>

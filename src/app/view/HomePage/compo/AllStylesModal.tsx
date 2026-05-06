@@ -6,6 +6,7 @@ import Image from "next/image";
 import { X } from "lucide-react";
 import { STYLES } from "./CreativeStyle";
 import StyleFiltersBar from "@/components/ui/StyleFiltersBar";
+import { CREATIVE_STYLE_IMAGE_BASE } from "@/constants/creativeStyleCdn";
 
 interface AllStylesModalProps {
   isOpen: boolean;
@@ -23,9 +24,9 @@ const StyleCard = ({
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const isShellCraft = style.id.toLowerCase() === "shellcraft";
   const shellImages = [
-    "/HomePage/creativeStyle/shell_art/v1.jpg",
-    "/HomePage/creativeStyle/shell_art/v2.jpg",
-    "/HomePage/creativeStyle/shell_art/v3.jpg",
+    `${CREATIVE_STYLE_IMAGE_BASE}shell_art/v1.jpg`,
+    `${CREATIVE_STYLE_IMAGE_BASE}shell_art/v2.jpg`,
+    `${CREATIVE_STYLE_IMAGE_BASE}shell_art/v3.jpg`,
   ];
   const shellObjectPositions: React.CSSProperties["objectPosition"][] = ["left center", "center center", "right center"];
 

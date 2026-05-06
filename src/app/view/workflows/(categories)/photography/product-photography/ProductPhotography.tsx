@@ -39,9 +39,9 @@ export default function ProductPhotography() {
     description: "Transform simple product snapshots into professional-grade studio photography with realistic lighting and environments.",
     model: "Seadream4/ Nano Banana/ Qwen",
     cost: 90,
-    sampleBefore: "/workflow-samples/product-photography-before-1.jpg",
-    sampleBeforeReference: "/workflow-samples/product-photography-before-2.png",
-    sampleAfter: "/workflow-samples/product-photography-after.jpg",
+    sampleBefore: "https://idr01.zata.ai/devstoragev1/public/workflow-samples/product-photography-before-1.avif",
+    sampleBeforeReference: "https://idr01.zata.ai/devstoragev1/public/workflow-samples/product-photography-before-2.avif",
+    sampleAfter: "https://idr01.zata.ai/devstoragev1/public/workflow-samples/product-photography-after.avif",
     isDualUpload: true
   }) as any;
 

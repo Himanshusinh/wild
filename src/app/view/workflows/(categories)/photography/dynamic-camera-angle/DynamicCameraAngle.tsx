@@ -43,8 +43,8 @@ export default function DynamicCameraAngle() {
     description: "Breathe new life into your product listings by reimagining them in contemporary, high-end artistic settings with dynamic angles.",
     model: "Seadream4/ Nano Banana/ Qwen",
     cost: 90,
-    sampleBefore: "/workflow-samples/dynamic-camera-angle-before.png",
-    sampleAfter: "/workflow-samples/dynamic-camera-angle-after.png"
+    sampleBefore: "https://idr01.zata.ai/devstoragev1/public/workflow-samples/dynamic-camera-angle-before.avif",
+    sampleAfter: "https://idr01.zata.ai/devstoragev1/public/workflow-samples/dynamic-camera-angle-after.avif"
   }) as any;
 
   const CREDIT_COST = 90;

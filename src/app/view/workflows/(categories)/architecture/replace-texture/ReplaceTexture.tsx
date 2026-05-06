@@ -37,8 +37,8 @@ export default function ReplaceTexture() {
     description: "Change materials and textures (wood, marble, concrete) of specific architectural elements seamlessly.",
     model: "Seadream4/ Nano Banana/ Qwen",
     cost: 90,
-    sampleBefore: "/workflow-samples/replace-texture-before.jpg",
-    sampleAfter: "/workflow-samples/replace-texture-after.jpg"
+    sampleBefore: "https://idr01.zata.ai/devstoragev1/public/workflow-samples/replace-texture-before.avif",
+    sampleAfter: "https://idr01.zata.ai/devstoragev1/public/workflow-samples/replace-texture-after.avif"
   };
 
   const CREDIT_COST = 90;

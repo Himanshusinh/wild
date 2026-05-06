@@ -36,8 +36,8 @@ export default function GenerateTexture() {
     description: "Create custom seamless PBR textures from text descriptions or reference images for architectural use.",
     model: "Seadream4/ Nano Banana/ Qwen",
     cost: 90,
-    sampleBefore: "/workflow-samples/generate-texture-before.jpg",
-    sampleAfter: "/workflow-samples/generate-texture-after.jpg"
+    sampleBefore: "https://idr01.zata.ai/devstoragev1/public/workflow-samples/generate-texture-before.avif",
+    sampleAfter: "https://idr01.zata.ai/devstoragev1/public/workflow-samples/generate-texture-after.avif"
   };
 
   const CREDIT_COST = 90;

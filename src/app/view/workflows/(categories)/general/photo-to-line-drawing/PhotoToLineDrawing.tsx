@@ -339,7 +339,7 @@ export default function PhotoToLineDrawing() {
                   {isGenerating && (
                     <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-10 transition-all duration-500">
                       <img
-                        src="/styles/Logo.gif"
+                        src="https://idr01.zata.ai/devstoragev1/public/styles/Logo.gif"
                         alt="Loading"
                         className="w-24 h-24 mb-4"
                       />
@@ -352,8 +352,8 @@ export default function PhotoToLineDrawing() {
               ) : (
                 <div className="relative w-full h-full flex items-center justify-center p-8">
                   <ImageComparisonSlider
-                    beforeImage="/workflow-samples/photo-to-line-before-v2.jpg"
-                    afterImage="/workflow-samples/photo-to-line-after-v2.jpg"
+                    beforeImage="https://idr01.zata.ai/devstoragev1/public/workflow-samples/photo-to-line-before-v2.avif"
+                    afterImage="https://idr01.zata.ai/devstoragev1/public/workflow-samples/photo-to-line-after-v2.avif"
                     beforeLabel="Before"
                     afterLabel="After"
                     imageFit="object-cover"

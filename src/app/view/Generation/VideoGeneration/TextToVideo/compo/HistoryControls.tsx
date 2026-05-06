@@ -584,7 +584,7 @@ export default function HistoryControls({
               >
                 <span>Newest</span>
                 <img
-                  src="/icons/upload-square-2 (1).svg"
+                  src="https://idr01.zata.ai/devstoragev1/public/icons/upload-square-2%20(1).svg"
                   alt="Newest"
                   className={`h-4 w-4 ${sortOrder === "desc" ? "" : "invert opacity-80"}`}
                 />
@@ -601,7 +601,7 @@ export default function HistoryControls({
               >
                 <span>Oldest</span>
                 <img
-                  src="/icons/download-square-2.svg"
+                  src="https://idr01.zata.ai/devstoragev1/public/icons/download-square-2.svg"
                   alt="Oldest"
                   className={`h-4 w-4 ${sortOrder === "asc" ? "" : "invert opacity-80"}`}
                 />
@@ -865,7 +865,7 @@ export default function HistoryControls({
           aria-label="Recent"
         >
           <img
-            src="/icons/upload-square-2 (1).svg"
+            src="https://idr01.zata.ai/devstoragev1/public/icons/upload-square-2%20(1).svg"
             alt="Recent"
             className={`${sortOrder === "desc" ? "" : "invert opacity-100"} w-4 h-4`}
           />
@@ -877,7 +877,7 @@ export default function HistoryControls({
           aria-label="Oldest"
         >
           <img
-            src="/icons/download-square-2.svg"
+            src="https://idr01.zata.ai/devstoragev1/public/icons/download-square-2.svg"
             alt="Oldest"
             className={`${sortOrder === "asc" ? "" : "invert opacity-100"} w-4 h-4`}
           />
@@ -942,7 +942,7 @@ export default function HistoryControls({
             aria-label="Date"
           >
             <img
-              src="/icons/calendar-days.svg"
+              src="https://idr01.zata.ai/devstoragev1/public/icons/calendar-days.svg"
               alt="Date"
               className={`${showCalendar || dateRange.start ? "" : "invert md:opacity-100 opacity-70"} w-4 h-4`}
             />
@@ -1154,7 +1154,7 @@ export default function HistoryControls({
               <div className="fixed top-[64px] left-0 right-0 bottom-0 z-[99990] flex items-center justify-center bg-black/55 backdrop-blur-sm pointer-events-none md:hidden">
                 <div className="flex flex-col items-center gap-4 px-4">
                   <Image
-                    src="/styles/Logo.gif"
+                    src="https://idr01.zata.ai/devstoragev1/public/styles/Logo.gif"
                     alt="Filtering by date"
                     width={72}
                     height={72}

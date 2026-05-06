@@ -39,8 +39,8 @@ export default function PoseControl() {
     description: "Control the pose of your subjects using pose reference images for precise photography compositions.",
     model: "Seadream4/ Nano Banana/ Qwen",
     cost: 90,
-    sampleBefore: "/workflow-samples/pose-control-before-v2.jpg",
-    sampleAfter: "/workflow-samples/pose-control-after-v2.png",
+    sampleBefore: "https://idr01.zata.ai/devstoragev1/public/workflow-samples/pose-control-before-v2.avif",
+    sampleAfter: "https://idr01.zata.ai/devstoragev1/public/workflow-samples/pose-control-after-v2.avif",
     imageFit: "object-cover",
     imagePosition: "object-top"
   }) as any;

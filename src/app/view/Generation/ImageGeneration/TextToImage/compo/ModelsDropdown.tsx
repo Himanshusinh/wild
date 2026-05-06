@@ -616,7 +616,7 @@ const ModelsDropdown = ({
                         {model.name}
                         {leftSet.has(model.value) && !model.isFree && (
                           <img
-                            src="/icons/crown.svg"
+                            src="https://idr01.zata.ai/devstoragev1/public/icons/crown.svg"
                             alt="pro"
                             className="w-4 h-4"
                           />
@@ -683,7 +683,7 @@ const ModelsDropdown = ({
                         {model.name}
                         {!model.isFree && (
                           <img
-                            src="/icons/crown.svg"
+                            src="https://idr01.zata.ai/devstoragev1/public/icons/crown.svg"
                             alt="pro"
                             className="w-4 h-4"
                           />

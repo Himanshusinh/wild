@@ -120,7 +120,7 @@ const Nav = () => {
         </div>
 
         <div className='flex items-center gap-2 md:gap-4'>
-          {/* <Image className='cursor-pointer border rounded-full p-2 border-white/15' src="/icons/searchwhite.svg" alt='logo' width={45} height={45} /> */}
+          {/* <Image className='cursor-pointer border rounded-full p-2 border-white/15' src="https://idr01.zata.ai/devstoragev1/public/icons/searchwhite.svg" alt='logo' width={45} height={45} /> */}
           {/* Credits button removed */}
 
           {/* Profile trigger removed for signed-in users */}
