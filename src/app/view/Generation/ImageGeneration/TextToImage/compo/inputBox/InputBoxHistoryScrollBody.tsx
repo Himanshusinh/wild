@@ -90,9 +90,9 @@ export function InputBoxHistoryScrollBody(props: InputBoxHistoryScrollBodyProps)
   } = props;
   const masonryConfig = React.useMemo(
     () => ({
-      columns: [2, 5, 6] as const,
-      gap: [4, 12, 4] as const,
-      media: [768, 1024] as const,
+      columns: [2, 5, 6] as [number, ...number[]],
+      gap: [4, 12, 4] as [number, ...number[]],
+      media: [768, 1024],
     }),
     [],
   );

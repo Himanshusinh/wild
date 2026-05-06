@@ -213,10 +213,10 @@ export default function StudioHomeShowcase() {
             >
               Build Visual Workflows
             </h2>
-            <p className="mt-1.5 max-w-xl text-[11px] leading-snug text-white/40 sm:text-xs">
+            {/* <p className="mt-1.5 max-w-xl text-[11px] leading-snug text-white/40 sm:text-xs">
               Live canvas below — same URL as Share → Homepage showcase (<code className="text-white/50">/embed</code>{" "}
               + view-only).
-            </p>
+            </p> */}
           </div>
         </div>
 
