@@ -6,6 +6,7 @@ import { X, Camera, Zap, Plus } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import UploadModal from '@/app/view/Generation/ImageGeneration/TextToImage/compo/UploadModal';
 import LightDirectionSphere from './LightDirectionSphere';
+import WorkflowUploadArea from '@/app/view/workflows/components/WorkflowUploadArea';
 
 export default function Relight() {
   const router = useRouter();
@@ -79,25 +80,18 @@ export default function Relight() {
                 <p className="text-slate-400 text-lg mb-8">{workflowData.description}</p>
 
                 <div className="mb-8">
-                  <div className="border border-dashed border-white/15 rounded-xl bg-black/20 h-48 flex flex-col items-center justify-center gap-4 cursor-pointer hover:bg-[#60a5fa]/5 transition-colors relative overflow-hidden group"
-                    onClick={openUploadModal}>
-                    {originalImage ? (
-                      <>
-                        <img src={originalImage} className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:opacity-30 transition-opacity" alt="Original" />
-                        <div className="relative z-10 flex flex-col items-center gap-2">
-                          <span className="text-white font-medium bg-black/50 px-3 py-1 rounded-full backdrop-blur">Change Image</span>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="w-12 h-12 rounded-full bg-[#111] flex items-center justify-center text-slate-400"><Camera size={24} /></div>
-                        <div className="text-center">
-                          <span className="text-sm text-slate-300 block font-medium">Upload Image</span>
-                          <span className="text-xs text-slate-500">JPG, PNG, WebP up to 25MB</span>
-                        </div>
-                      </>
-                    )}
-                  </div>
+                  <WorkflowUploadArea
+                    placeholderLabel="Upload Image"
+                    placeholderSublabel="JPG, PNG, WebP up to 25MB"
+                    currentImage={originalImage}
+                    changeLabel="Change Image"
+                    onImageSelect={(url) => {
+                      setOriginalImage(url);
+                    }}
+                    openModal={() => openUploadModal()}
+                    className="h-48"
+                    icon={<Camera size={24} />}
+                  />
                 </div>
 
                 <div className="mb-8 animate-in fade-in slide-in-from-top-2 duration-500">

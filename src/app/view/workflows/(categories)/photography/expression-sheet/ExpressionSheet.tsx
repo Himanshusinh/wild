@@ -11,6 +11,7 @@ import { useCredits } from '@/hooks/useCredits';
 import { downloadFileWithNaming } from '@/utils/downloadUtils';
 import { WORKFLOWS_DATA } from '@/app/view/workflows/components/data';
 import { getSignInUrl } from '@/routes/routes';
+import WorkflowUploadArea from '@/app/view/workflows/components/WorkflowUploadArea';
 
 export default function ExpressionSheet() {
   const router = useRouter();
@@ -144,25 +145,19 @@ export default function ExpressionSheet() {
                 <div className="text-xs text-slate-500 mb-6">Model: {workflowData.model}</div>
 
                 <div className="mb-8">
-                  <div className="border border-dashed border-white/15 rounded-xl bg-black/20 h-48 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-[#60a5fa]/5 transition-colors relative overflow-hidden group"
-                    onClick={() => setIsUploadModalOpen(true)}>
-                    {originalImage ? (
-                      <>
-                        <img src={originalImage} className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:opacity-30 transition-opacity" alt="Original" />
-                        <div className="relative z-10">
-                          <span className="text-xs text-white font-medium bg-black/50 px-3 py-1.5 rounded-full backdrop-blur text-center">Change Character Image</span>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="w-10 h-10 rounded-full bg-[#111] flex items-center justify-center text-slate-400"><Camera size={20} /></div>
-                        <div className="text-center">
-                          <span className="text-sm text-slate-300 block font-medium">Upload Character Image</span>
-                          <span className="text-[10px] text-slate-500">Portrait suggested</span>
-                        </div>
-                      </>
-                    )}
-                  </div>
+                  <WorkflowUploadArea
+                    placeholderLabel="Upload Character Image"
+                    placeholderSublabel="Portrait suggested"
+                    currentImage={originalImage}
+                    changeLabel="Change Character Image"
+                    onImageSelect={(url) => {
+                      setOriginalImage(url);
+                      setGeneratedImage(null);
+                    }}
+                    openModal={() => setIsUploadModalOpen(true)}
+                    className="h-48"
+                    icon={<Camera size={20} />}
+                  />
                 </div>
 
                 <div className="mb-4">
