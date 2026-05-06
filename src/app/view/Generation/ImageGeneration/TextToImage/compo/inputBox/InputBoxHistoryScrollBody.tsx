@@ -280,12 +280,6 @@ export function InputBoxHistoryScrollBody(props: InputBoxHistoryScrollBodyProps)
                             {hasImageUrl && (
                               <div
                                 className="relative group w-full"
-                                style={{
-                                  // Always bound tile geometry; prevents huge DOM nodes and heavy Masonry reflow.
-                                  aspectRatio: toGridAspectRatioCss(
-                                    entry.frameSize as string | undefined,
-                                  ),
-                                }}
                               >
                                 <img
                                   src={imageDisplaySrc}
@@ -293,7 +287,9 @@ export function InputBoxHistoryScrollBody(props: InputBoxHistoryScrollBodyProps)
                                   loading="lazy"
                                   decoding="async"
                                   fetchPriority="low"
-                                  className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.01] transition-transform duration-200"
+                                  // Let the image define the tile height so masonry shows the TRUE aspect ratio.
+                                  // (We only use aspectRatio placeholders when there's no URL yet.)
+                                  className="block w-full h-auto group-hover:scale-[1.01] transition-transform duration-200"
                                   onLoad={() => {
                                     setLoadedImages((prev) => {
                                       const next = new Set(prev);
