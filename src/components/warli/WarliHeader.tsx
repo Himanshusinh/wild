@@ -9,6 +9,7 @@ import { STYLES } from "@/styles/creativeStyleCatalog";
 interface WarliHeaderProps {
   style: StyleFamily;
   onStyleChange: (s: StyleFamily) => void;
+  onHoverStyleChange?: (s: StyleFamily | null) => void;
   onStyleNameSelect?: (styleId: string) => void;
   onClose: () => void;
   isLocked?: boolean;
@@ -17,6 +18,7 @@ interface WarliHeaderProps {
 export function WarliHeader({
   style,
   onStyleChange,
+  onHoverStyleChange,
   onStyleNameSelect,
   onClose,
   isLocked,
@@ -52,7 +54,7 @@ export function WarliHeader({
             onClose();
             handleStylePick(styleId);
           }}
-          className="w-[220px]"
+          className="w-[160px]"
           buttonClassName="flex h-[30px] w-full items-center justify-between gap-1.5 rounded-full border border-[#2F6BFF]/25 bg-[#2F6BFF]/[0.08] px-3 text-[11px] font-medium uppercase tracking-[0.06em] text-[#60a5fa] outline-none transition hover:border-[#2F6BFF]/40 hover:bg-[#2F6BFF]/[0.14]"
         />
 
@@ -67,6 +69,8 @@ export function WarliHeader({
                 type="button"
                 disabled={isLocked}
                 onClick={() => onStyleChange(f)}
+                onMouseEnter={() => onHoverStyleChange?.(f)}
+                onMouseLeave={() => onHoverStyleChange?.(null)}
                 className={`group flex items-center gap-2.5 rounded-[10px] px-3 py-1.5 transition-all duration-300 ${isActive
                     ? "bg-[#1c1c26] shadow-[0_4px_12px_-2px_rgba(0,0,0,0.4)] ring-1 ring-white/[0.08]"
                     : "hover:bg-white/[0.04]"

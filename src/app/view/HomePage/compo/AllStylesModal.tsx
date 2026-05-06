@@ -19,56 +19,101 @@ const StyleCard = ({
 }: {
   style: (typeof STYLES)[0];
   onClick: () => void;
-}) => (
-  <button
-    onClick={onClick}
-    className="group flex flex-col text-left transition-all hover:-translate-y-1"
-  >
-    <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl border border-white/10 bg-[#18181f] transition-colors group-hover:border-white/20">
-      <Image
-        src={style.image}
-        alt={style.title}
-        fill
-        unoptimized
-        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 20vw"
-        loading="lazy"
-        className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-        style={{ filter: style.imageFilter as React.CSSProperties["filter"] }}
-      />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-80" />
+}) => {
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const isShellCraft = style.id.toLowerCase() === "shellcraft";
+  const shellImages = [
+    "/HomePage/creativeStyle/shell_art/v1.jpg",
+    "/HomePage/creativeStyle/shell_art/v2.jpg",
+    "/HomePage/creativeStyle/shell_art/v3.jpg",
+  ];
+  const shellObjectPositions: React.CSSProperties["objectPosition"][] = ["left center", "center center", "right center"];
 
-      <div className="absolute bottom-4 left-4 right-4">
-        <div
-          className="text-[18px] font-bold uppercase tracking-wider text-white sm:text-[22px]"
-          style={{
-            fontFamily: "var(--font-bebas-neue), 'Bebas Neue', sans-serif",
-          }}
-        >
-          {style.title}
+  return (
+    <button
+      onClick={onClick}
+      className="group flex flex-col text-left transition-all hover:-translate-y-1"
+    >
+      <div
+        className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl border border-white/10 bg-[#18181f] transition-colors group-hover:border-white/20"
+        onMouseLeave={() => setHoveredIndex(null)}
+      >
+        {isShellCraft ? (
+          <div className="flex h-full w-full overflow-hidden">
+            {shellImages.map((src, idx) => {
+              let width = "33.3333%";
+              if (hoveredIndex !== null) width = hoveredIndex === idx ? "80%" : "10%";
+              return (
+                <div
+                  key={src}
+                  className="relative h-full overflow-hidden transition-[width] duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]"
+                  style={{ width, willChange: "width" }}
+                  onMouseEnter={() => setHoveredIndex(idx)}
+                >
+                  <Image
+                    src={src}
+                    alt={`${style.title} v${idx + 1}`}
+                    fill
+                    unoptimized
+                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 20vw"
+                    loading="lazy"
+                    className={`h-full w-full object-cover transition-transform duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${hoveredIndex === idx ? "scale-105" : "scale-100"}`}
+                    style={{
+                      filter: style.imageFilter as React.CSSProperties["filter"],
+                      objectPosition: shellObjectPositions[idx],
+                    }}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <Image
+            src={style.image}
+            alt={style.title}
+            fill
+            unoptimized
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 20vw"
+            loading="lazy"
+            className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+            style={{ filter: style.imageFilter as React.CSSProperties["filter"] }}
+          />
+        )}
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-80" />
+
+        <div className="pointer-events-none absolute bottom-4 left-4 right-4">
+          <div
+            className="text-[18px] font-bold uppercase tracking-wider text-white sm:text-[22px]"
+            style={{
+              fontFamily: "var(--font-bebas-neue), 'Bebas Neue', sans-serif",
+            }}
+          >
+            {style.title}
+          </div>
+          <div className="mt-1 text-[11px] font-semibold tracking-wide text-white/85">
+            {style.name}
+          </div>
+          <div className="mt-1 line-clamp-2 text-[10px] leading-snug text-white/55">
+            {style.desc}
+          </div>
         </div>
-        <div className="mt-1 text-[11px] font-semibold tracking-wide text-white/85">
-          {style.name}
-        </div>
-        <div className="mt-1 line-clamp-2 text-[10px] leading-snug text-white/55">
-          {style.desc}
-        </div>
+
+        {style.tag && (
+          <div className="pointer-events-none absolute left-4 top-4">
+            <span className="rounded-full border border-white/20 bg-black/40 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider text-white/80 backdrop-blur-md">
+              {style.tag}
+            </span>
+          </div>
+        )}
       </div>
 
-      {style.tag && (
-        <div className="absolute left-4 top-4">
-          <span className="rounded-full border border-white/20 bg-black/40 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider text-white/80 backdrop-blur-md">
-            {style.tag}
-          </span>
-        </div>
-      )}
-    </div>
-
-    <div className="sr-only">
-      <div>{style.name}</div>
-      <p>{style.desc}</p>
-    </div>
-  </button>
-);
+      <div className="sr-only">
+        <div>{style.name}</div>
+        <p>{style.desc}</p>
+      </div>
+    </button>
+  );
+};
 
 export default function AllStylesModal({
   isOpen,
@@ -369,10 +414,12 @@ export default function AllStylesModal({
                 onStateChange={setSelectedCategory}
                 stateOptions={stateOptions}
                 stateClassName="w-full sm:w-[210px] lg:w-[230px]"
+                stateDropdownSearchable
                 typeValue={selectedTypeId}
                 onTypeChange={setSelectedTypeId}
                 typeOptions={typeOptions}
                 typeClassName="w-full sm:w-[180px] lg:w-[200px]"
+                typeDropdownSearchable
               />
 
               <button

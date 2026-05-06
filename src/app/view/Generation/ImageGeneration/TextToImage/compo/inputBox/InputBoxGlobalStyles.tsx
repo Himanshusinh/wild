@@ -54,11 +54,15 @@ export function InputBoxGlobalStyles() {
         flex-grow: 0 !important;
       }
 
-      /* Simple fixed-size image containers */
+      /* Masonry cards */
       .image-item {
+        display: inline-block;
         width: 100%;
         min-width: 0;
         position: relative;
+        break-inside: avoid;
+        -webkit-column-break-inside: avoid;
+        page-break-inside: avoid;
         margin-bottom: 4px;
       }
 
@@ -69,30 +73,28 @@ export function InputBoxGlobalStyles() {
         }
       }
 
-      /* CSS Grid (not multi-column): column-count masonry left holes and grey seam lines between flows. */
+      /* Masonry columns preserve each image's natural ratio. */
       .image-grid {
-        display: grid;
-        align-items: start;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 4px;
+        column-count: 2;
+        column-gap: 4px;
       }
 
       @media (min-width: 768px) {
         .image-grid {
-          grid-template-columns: repeat(5, minmax(0, 1fr));
-          gap: 12px;
+          column-count: 5;
+          column-gap: 12px;
         }
       }
 
       @media (min-width: 1024px) {
         .image-grid {
-          grid-template-columns: repeat(6, minmax(0, 1fr));
-          gap: 4px;
-          transition: gap 0.5s ease-in-out;
+          column-count: 6;
+          column-gap: 4px;
+          transition: column-gap 0.5s ease-in-out;
         }
 
         .assistant-open .image-grid {
-          grid-template-columns: repeat(5, minmax(0, 1fr));
+          column-count: 5;
         }
 
         .image-item {
