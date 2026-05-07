@@ -7,4 +7,9 @@ node_modules
 coverage
 .dockerignore
 
+# Raw creative-style image dumps can contain names that break Docker extraction on CI.
+# We only ship the optimized folders (e.g. `5th-images`) instead.
+public/HomePage/creativeStyle/5th images
+public/HomePage/creativeStyle/5th images/**
+
 
