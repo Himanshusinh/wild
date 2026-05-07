@@ -69,29 +69,19 @@ function EmptyState({
 }
 
 function LoadingState({ imageCount }: { imageCount: ImageCount }) {
-  const slots = Array.from({ length: imageCount });
-
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-6 p-6">
-      <div
-        className={`grid w-full gap-3 ${imageCount === 1 ? "grid-cols-1 max-w-lg" : "grid-cols-2"
-          }`}
-      >
-        {slots.map((_, i) => (
-          <div
-            key={i}
-            className="relative flex aspect-square items-center justify-center overflow-hidden rounded-xl bg-transparent"
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="https://idr01.zata.ai/devstoragev1/public/styles/Logo.gif"
-              alt="Generating..."
-              className="h-16 w-16 object-contain opacity-40"
-              draggable={false}
-            />
-          </div>
-        ))}
-      </div>
+      <div className="grid w-full gap-3 grid-cols-1 max-w-lg">
+                          <div className="relative flex aspect-square items-center justify-center overflow-hidden rounded-xl bg-transparent">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src="https://idr01.zata.ai/devstoragev1/public/styles/Logo.gif"
+                              alt="Generating..."
+                              className="h-16 w-16 object-contain opacity-40"
+                              draggable={false}
+                            />
+                          </div>
+                        </div>
 
     </div>
   );
@@ -113,18 +103,13 @@ function ResultsState({
   onExpandImage: (index: number, previewUrl?: string) => void;
 }) {
   return (
-    <div className="flex flex-col gap-0">
-      <OutputGrid
-        images={images}
+    <div className="flex flex-col gap-0 h-full flex-1">
+                  <OutputGrid prompt={assembledPrompt} images={images}
         count={imageCount}
         ratio={ratio}
         onSaveImage={onSaveImage}
-        onExpandImage={onExpandImage}
-      />
-      <div className="px-5 py-5">
-        <PromptPreview prompt={assembledPrompt} />
-      </div>
-    </div>
+        onExpandImage={onExpandImage} />
+                </div>
   );
 }
 
@@ -184,7 +169,7 @@ export function WarliRightPanel({
         )}
       </div>
 
-      <div className="flex flex-1 flex-col overflow-y-auto [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-white/[0.06] [&::-webkit-scrollbar]:w-1">
+      <div className="flex flex-1 flex-col overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {panelState === "empty" && (
           <div className="p-5">
             <EmptyState

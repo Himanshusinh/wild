@@ -1,10 +1,12 @@
 import React, { useState } from "react";
 import { Download, Expand, ChevronLeft, ChevronRight } from "lucide-react";
+import { PromptPreview } from "./PromptPreview";
 
 interface OutputGridProps {
   images: string[];
   count: number;
   ratio?: string;
+  prompt?: string;
   onSaveImage?: (index: number) => void;
   onExpandImage?: (index: number) => void;
 }
@@ -17,7 +19,7 @@ function Placeholder() {
   );
 }
 
-export function OutputGrid({ images, count, ratio, onSaveImage, onExpandImage }: OutputGridProps) {
+export function OutputGrid({ images, count, ratio, prompt, onSaveImage, onExpandImage }: OutputGridProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
 
   // Map string ratios to Tailwind aspect ratio classes
@@ -36,7 +38,7 @@ export function OutputGrid({ images, count, ratio, onSaveImage, onExpandImage }:
 
   // Ensure we only deal with actual generated images
   const validImages = images.filter((img) => Boolean(img) && typeof img === "string");
-  const displayImages = validImages.length > 0 ? validImages : Array(count).fill(null);
+  const displayImages = validImages.length > 0 ? validImages.slice(0, count) : Array(count).fill(null);
 
   const handleNext = () => {
     setCurrentIndex((prev) => (prev + 1) % displayImages.length);
@@ -50,16 +52,16 @@ export function OutputGrid({ images, count, ratio, onSaveImage, onExpandImage }:
   const currentImage = displayImages[currentIndex];
 
   return (
-    <div className="relative w-full max-w-4xl mx-auto group">
+    <div className="relative w-full h-full flex flex-col group">
       {/* Main Image Container */}
       <div
-        className={`relative ${aspectClass} w-full overflow-hidden rounded-2xl border border-white/10 bg-[#0a0a0f] shadow-2xl transition-all duration-500`}
+        className={`relative flex-1 w-full overflow-hidden bg-[#0a0a0f] transition-all duration-500`}
       >
         {currentImage ? (
           <img
             src={currentImage}
             alt={`Generated result ${currentIndex + 1}`}
-            className="h-full w-full object-cover transition-transform duration-700 hover:scale-[1.02]"
+            className="h-full w-full object-contain transition-transform duration-700 hover:scale-[1.02]"
           />
         ) : (
           <Placeholder />
@@ -68,21 +70,51 @@ export function OutputGrid({ images, count, ratio, onSaveImage, onExpandImage }:
         {/* Action Overlay (Always visible on hover) */}
         {currentImage && (
           <div className="absolute inset-0 flex items-end p-6 opacity-0 transition-opacity duration-300 group-hover:opacity-100 bg-gradient-to-t from-black/80 via-transparent to-transparent">
-            <div className="flex gap-2">
-              <button
-                type="button"
-                className="flex items-center gap-2 rounded-xl border border-white/10 bg-black/40 px-4 py-2 text-[12px] font-semibold text-white backdrop-blur-md transition-all hover:bg-black/60 hover:scale-105"
-                onClick={() => onSaveImage?.(currentIndex)}
-              >
-                <Download className="h-4 w-4" /> Save
-              </button>
-              <button
-                type="button"
-                className="flex items-center gap-2 rounded-xl border border-white/10 bg-black/40 px-4 py-2 text-[12px] font-semibold text-white backdrop-blur-md transition-all hover:bg-black/60 hover:scale-105"
-                onClick={() => onExpandImage?.(currentIndex)}
-              >
-                <Expand className="h-4 w-4" /> Full View
-              </button>
+            <div className="relative flex w-full items-end justify-between">
+              {/* Left Side: Prompt Preview */}
+              {prompt && (
+                <div className="w-[200px] pointer-events-auto mr-auto">
+                  <PromptPreview prompt={prompt} />
+                </div>
+              )}
+
+              {/* Center: Pagination Dots */}
+              {hasMultiple && (
+                <div className="absolute bottom-1 left-1/2 -translate-x-1/2 flex gap-1.5 px-3 py-1.5 rounded-full bg-black/30 backdrop-blur-md border border-white/5">
+                  {displayImages.map((_, idx) => (
+                    <button
+                      key={idx}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCurrentIndex(idx);
+                      }}
+                      className={`h-1.5 transition-all duration-300 rounded-full ${
+                        idx === currentIndex ? "w-4 bg-white" : "w-1.5 bg-white/30 hover:bg-white/50"
+                      }`}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* Right Side: Actions */}
+              <div className="flex gap-2 items-center ml-auto">
+                <button
+                  type="button"
+                  className="p-2 text-white/70 transition-all hover:text-white hover:scale-110"
+                  onClick={() => onSaveImage?.(currentIndex)}
+                  title="Save"
+                >
+                  <Download className="h-5 w-5" />
+                </button>
+                <button
+                  type="button"
+                  className="p-2 text-white/70 transition-all hover:text-white hover:scale-110"
+                  onClick={() => onExpandImage?.(currentIndex)}
+                  title="Full View"
+                >
+                  <Expand className="h-5 w-5" />
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -108,19 +140,7 @@ export function OutputGrid({ images, count, ratio, onSaveImage, onExpandImage }:
         </>
       )}
 
-      {/* Indicators / Pagination Dots */}
-      {hasMultiple && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 px-3 py-1.5 rounded-full bg-black/30 backdrop-blur-md border border-white/5">
-          {displayImages.map((_, idx) => (
-            <button
-              key={idx}
-              onClick={() => setCurrentIndex(idx)}
-              className={`h-1.5 transition-all duration-300 rounded-full ${idx === currentIndex ? "w-4 bg-white" : "w-1.5 bg-white/30 hover:bg-white/50"
-                }`}
-            />
-          ))}
-        </div>
-      )}
+
     </div>
   );
 }
