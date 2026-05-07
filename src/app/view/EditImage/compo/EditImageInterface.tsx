@@ -3115,7 +3115,7 @@ const EditImageInterface: React.FC = () => {
             const seedreamImageUrl = await ensureZataUrl(imageInput);
             const seedreamPayload: any = {
               prompt: "convert into 2D vector image",
-              model: "bytedance/seedream-4",
+              model: "bytedance/seedream-5-lite",
               size: "2K",
               image_input: [seedreamImageUrl],
               sequential_image_generation: "disabled",
