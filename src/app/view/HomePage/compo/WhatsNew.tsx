@@ -113,7 +113,7 @@ const NEW_ITEMS: NewItem[] = [
     Icon: Sparkles,
     media: {
       kind: "image",
-      src: "https://idr01.zata.ai/devstoragev1/public/styles/pro_color_photography.avif",
+      src: "https://idr01.zata.ai/devstoragev1/public/styles/pro-color-photography.avif",
       alt: "High-fidelity photography background for Qwen Image 2 Pro",
       position: "center",
     },
