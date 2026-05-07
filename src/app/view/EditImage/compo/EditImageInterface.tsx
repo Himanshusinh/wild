@@ -79,6 +79,18 @@ const normalizeEditImageUrl = (raw: string | null | undefined): string => {
   if (!raw) return "";
   let url = raw;
   try {
+    // If the URL is a direct Zata storage URL, route it through our media proxy.
+    // This avoids cross-origin/auth edge cases (esp. for SVG outputs).
+    if (url.includes("idr01.zata.ai/devstoragev1/")) {
+      const idx = url.indexOf("idr01.zata.ai/devstoragev1/");
+      if (idx !== -1) {
+        const after = url.substring(idx + "idr01.zata.ai/devstoragev1/".length);
+        if (after && !url.startsWith("/api/proxy/media/")) {
+          return `/api/proxy/media/${encodeURIComponent(after)}`;
+        }
+      }
+    }
+
     if (url.includes("/_next/image")) {
       // Support both absolute and relative URLs
       const base =
@@ -95,6 +107,27 @@ const normalizeEditImageUrl = (raw: string | null | undefined): string => {
     // Fall through to returning the original URL
   }
   return url;
+};
+
+// Detect SVG outputs (vectorize feature). next/image with `fill` + `unoptimized`
+// can fail to display SVGs that lack intrinsic width/height, so we fall back to
+// a plain <img> element for these outputs.
+const isSvgUrl = (raw: string | null | undefined): boolean => {
+  if (!raw) return false;
+  try {
+    const lower = String(raw).toLowerCase();
+    if (lower.startsWith("data:image/svg")) return true;
+    const path = lower.split("?")[0].split("#")[0];
+    return path.endsWith(".svg");
+  } catch {
+    return false;
+  }
+};
+
+const isInlineImageUrl = (raw: string | null | undefined): boolean => {
+  if (!raw) return false;
+  const v = String(raw);
+  return v.startsWith("data:image/") || v.startsWith("blob:");
 };
 
 const aspectPresets: Record<
@@ -816,6 +849,20 @@ const EditImageInterface: React.FC = () => {
   ): Promise<string | null> => {
     if (!url) return null;
     const normalized = normalizeEditImageUrl(url);
+    const ZATA_PREFIX = "https://idr01.zata.ai/devstoragev1/";
+
+    // If normalizeEditImageUrl() rewrote a Zata URL to our local proxy path,
+    // convert it back to an absolute Zata URL for provider APIs (Replicate/FAL/etc),
+    // which require a fully-qualified public URI.
+    try {
+      if (normalized.startsWith("/api/proxy/media/")) {
+        const encoded = normalized.substring("/api/proxy/media/".length);
+        const decoded = decodeURIComponent(encoded);
+        if (decoded) return `${ZATA_PREFIX}${decoded}`;
+      }
+    } catch {
+      // fall through
+    }
 
     // If it's already a Zata URL or HTTP URL, use it directly
     if (normalized.startsWith("http://") || normalized.startsWith("https://")) {
@@ -3119,7 +3166,10 @@ const EditImageInterface: React.FC = () => {
           const body: any = { isPublic };
           if (String(vectorizeInput).startsWith("data:"))
             body.image = vectorizeInput;
-          else body.image_url = vectorizeInputUrl;
+          else {
+            // Provider APIs require a fully-qualified HTTPS URL (not our local proxy path)
+            body.image_url = await ensureZataUrl(vectorizeInputUrl);
+          }
           const res = await axiosInstance.post(
             "/api/fal/recraft/vectorize",
             body,
@@ -3169,7 +3219,10 @@ const EditImageInterface: React.FC = () => {
           };
           if (String(vectorizeInput).startsWith("data:"))
             body.image = vectorizeInput;
-          else body.image_url = vectorizeInputUrl;
+          else {
+            // Provider APIs require a fully-qualified HTTPS URL (not our local proxy path)
+            body.image_url = await ensureZataUrl(vectorizeInputUrl);
+          }
           const res = await axiosInstance.post("/api/fal/image2svg", body);
           const out =
             res?.data?.data?.images?.[0]?.url ||
@@ -7632,15 +7685,27 @@ const EditImageInterface: React.FC = () => {
                                 clipPath: `inset(0 ${100 - sliderPosition}% 0 0)`,
                               }}
                             >
-                              <Image
-                                src={normalizeEditImageUrl(
-                                  inputs[selectedFeature] as string,
-                                )}
-                                alt="Original"
-                                fill
-                                unoptimized
-                                className="object-contain object-center"
-                              />
+                              {isInlineImageUrl(inputs[selectedFeature]) ||
+                              isSvgUrl(inputs[selectedFeature]) ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  src={normalizeEditImageUrl(
+                                    inputs[selectedFeature] as string,
+                                  )}
+                                  alt="Original"
+                                  className="absolute inset-0 w-full h-full object-contain object-center"
+                                />
+                              ) : (
+                                <Image
+                                  src={normalizeEditImageUrl(
+                                    inputs[selectedFeature] as string,
+                                  )}
+                                  alt="Original"
+                                  fill
+                                  unoptimized
+                                  className="object-contain object-center"
+                                />
+                              )}
                             </div>
 
                             {/* Generated (right) */}
@@ -7650,35 +7715,66 @@ const EditImageInterface: React.FC = () => {
                                 clipPath: `inset(0 0 0 ${sliderPosition}%)`,
                               }}
                             >
-                              <Image
-                                src={normalizeEditImageUrl(
-                                  outputs[selectedFeature] as string,
-                                )}
-                                alt="Generated"
-                                fill
-                                unoptimized
-                                className="object-contain object-center"
-                                style={{ objectPosition: "center center" }}
-                                onError={(e) => {
-                                  console.error(
-                                    "[EditImage] Output image failed to load:",
-                                    {
-                                      src: outputs[selectedFeature],
-                                      selectedFeature,
-                                      error: e,
-                                    },
-                                  );
-                                }}
-                                onLoad={() => {
-                                  console.log(
-                                    "[EditImage] Output image loaded successfully:",
-                                    {
-                                      src: outputs[selectedFeature],
-                                      selectedFeature,
-                                    },
-                                  );
-                                }}
-                              />
+                              {isSvgUrl(outputs[selectedFeature]) ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  src={normalizeEditImageUrl(
+                                    outputs[selectedFeature] as string,
+                                  )}
+                                  alt="Generated"
+                                  className="absolute inset-0 w-full h-full object-contain object-center"
+                                  style={{ objectPosition: "center center" }}
+                                  onError={(e) => {
+                                    console.error(
+                                      "[EditImage] Output image failed to load:",
+                                      {
+                                        src: outputs[selectedFeature],
+                                        selectedFeature,
+                                        error: e,
+                                      },
+                                    );
+                                  }}
+                                  onLoad={() => {
+                                    console.log(
+                                      "[EditImage] Output image loaded successfully:",
+                                      {
+                                        src: outputs[selectedFeature],
+                                        selectedFeature,
+                                      },
+                                    );
+                                  }}
+                                />
+                              ) : (
+                                <Image
+                                  src={normalizeEditImageUrl(
+                                    outputs[selectedFeature] as string,
+                                  )}
+                                  alt="Generated"
+                                  fill
+                                  unoptimized
+                                  className="object-contain object-center"
+                                  style={{ objectPosition: "center center" }}
+                                  onError={(e) => {
+                                    console.error(
+                                      "[EditImage] Output image failed to load:",
+                                      {
+                                        src: outputs[selectedFeature],
+                                        selectedFeature,
+                                        error: e,
+                                      },
+                                    );
+                                  }}
+                                  onLoad={() => {
+                                    console.log(
+                                      "[EditImage] Output image loaded successfully:",
+                                      {
+                                        src: outputs[selectedFeature],
+                                        selectedFeature,
+                                      },
+                                    );
+                                  }}
+                                />
+                              )}
                             </div>
 
                             {/* Slider */}
@@ -7719,50 +7815,97 @@ const EditImageInterface: React.FC = () => {
                             tabIndex={0}
                             style={{ outline: "none" }}
                           >
-                            <Image
-                              ref={imageRef}
-                              src={normalizeEditImageUrl(
-                                outputs[selectedFeature] as string,
-                              )}
-                              alt="Output"
-                              fill
-                              unoptimized
-                              className="object-contain object-center"
-                              style={{
-                                transform: `scale(${scale}) translate(${offset.x / scale}px, ${offset.y / scale}px)`,
-                                transformOrigin: "center center",
-                                objectPosition: "center center",
-                              }}
-                              onLoad={(e) => {
-                                const img = e.target as HTMLImageElement;
-                                setNaturalSize({
-                                  width: img.naturalWidth,
-                                  height: img.naturalHeight,
-                                });
-                                console.log(
-                                  "[EditImage] Zoom mode output image loaded:",
-                                  {
-                                    src: outputs[selectedFeature],
-                                    selectedFeature,
-                                    dimensions: {
-                                      width: img.naturalWidth,
-                                      height: img.naturalHeight,
+                            {isSvgUrl(outputs[selectedFeature]) ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                ref={imageRef as any}
+                                src={normalizeEditImageUrl(
+                                  outputs[selectedFeature] as string,
+                                )}
+                                alt="Output"
+                                className="absolute inset-0 w-full h-full object-contain object-center"
+                                style={{
+                                  transform: `scale(${scale}) translate(${offset.x / scale}px, ${offset.y / scale}px)`,
+                                  transformOrigin: "center center",
+                                  objectPosition: "center center",
+                                }}
+                                onLoad={(e) => {
+                                  const img = e.target as HTMLImageElement;
+                                  setNaturalSize({
+                                    width: img.naturalWidth || img.width || 1024,
+                                    height:
+                                      img.naturalHeight || img.height || 1024,
+                                  });
+                                  console.log(
+                                    "[EditImage] Zoom mode output image loaded:",
+                                    {
+                                      src: outputs[selectedFeature],
+                                      selectedFeature,
+                                      dimensions: {
+                                        width: img.naturalWidth,
+                                        height: img.naturalHeight,
+                                      },
                                     },
-                                  },
-                                );
-                              }}
-                              onError={(e) => {
-                                console.error(
-                                  "[EditImage] Zoom mode output image failed to load:",
-                                  {
-                                    src: outputs[selectedFeature],
-                                    selectedFeature,
-                                    error: e,
-                                  },
-                                );
-                              }}
-                              onClick={handleImageClick}
-                            />
+                                  );
+                                }}
+                                onError={(e) => {
+                                  console.error(
+                                    "[EditImage] Zoom mode output image failed to load:",
+                                    {
+                                      src: outputs[selectedFeature],
+                                      selectedFeature,
+                                      error: e,
+                                    },
+                                  );
+                                }}
+                                onClick={handleImageClick}
+                              />
+                            ) : (
+                              <Image
+                                ref={imageRef}
+                                src={normalizeEditImageUrl(
+                                  outputs[selectedFeature] as string,
+                                )}
+                                alt="Output"
+                                fill
+                                unoptimized
+                                className="object-contain object-center"
+                                style={{
+                                  transform: `scale(${scale}) translate(${offset.x / scale}px, ${offset.y / scale}px)`,
+                                  transformOrigin: "center center",
+                                  objectPosition: "center center",
+                                }}
+                                onLoad={(e) => {
+                                  const img = e.target as HTMLImageElement;
+                                  setNaturalSize({
+                                    width: img.naturalWidth,
+                                    height: img.naturalHeight,
+                                  });
+                                  console.log(
+                                    "[EditImage] Zoom mode output image loaded:",
+                                    {
+                                      src: outputs[selectedFeature],
+                                      selectedFeature,
+                                      dimensions: {
+                                        width: img.naturalWidth,
+                                        height: img.naturalHeight,
+                                      },
+                                    },
+                                  );
+                                }}
+                                onError={(e) => {
+                                  console.error(
+                                    "[EditImage] Zoom mode output image failed to load:",
+                                    {
+                                      src: outputs[selectedFeature],
+                                      selectedFeature,
+                                      error: e,
+                                    },
+                                  );
+                                }}
+                                onClick={handleImageClick}
+                              />
+                            )}
 
                             {/* Zoom Controls */}
                             <div className="absolute md:bottom-3 bottom-1 md:right-3 right-1 z-30 2xl:bottom-4 2xl:right-4">
@@ -7817,50 +7960,97 @@ const EditImageInterface: React.FC = () => {
                         tabIndex={0}
                         style={{ outline: "none" }}
                       >
-                        <Image
-                          ref={imageRef}
-                          src={normalizeEditImageUrl(
-                            outputs[selectedFeature] as string,
-                          )}
-                          alt="Output"
-                          fill
-                          unoptimized
-                          className="object-contain object-center"
-                          style={{
-                            transform: `scale(${scale}) translate(${offset.x / scale}px, ${offset.y / scale}px)`,
-                            transformOrigin: "center center",
-                            objectPosition: "center center",
-                          }}
-                          onLoad={(e) => {
-                            const img = e.target as HTMLImageElement;
-                            setNaturalSize({
-                              width: img.naturalWidth,
-                              height: img.naturalHeight,
-                            });
-                            console.log(
-                              "[EditImage] No-input mode output image loaded:",
-                              {
-                                src: outputs[selectedFeature],
-                                selectedFeature,
-                                dimensions: {
-                                  width: img.naturalWidth,
-                                  height: img.naturalHeight,
+                        {isSvgUrl(outputs[selectedFeature]) ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            ref={imageRef as any}
+                            src={normalizeEditImageUrl(
+                              outputs[selectedFeature] as string,
+                            )}
+                            alt="Output"
+                            className="absolute inset-0 w-full h-full object-contain object-center"
+                            style={{
+                              transform: `scale(${scale}) translate(${offset.x / scale}px, ${offset.y / scale}px)`,
+                              transformOrigin: "center center",
+                              objectPosition: "center center",
+                            }}
+                            onLoad={(e) => {
+                              const img = e.target as HTMLImageElement;
+                              setNaturalSize({
+                                width: img.naturalWidth || img.width || 1024,
+                                height:
+                                  img.naturalHeight || img.height || 1024,
+                              });
+                              console.log(
+                                "[EditImage] No-input mode output image loaded:",
+                                {
+                                  src: outputs[selectedFeature],
+                                  selectedFeature,
+                                  dimensions: {
+                                    width: img.naturalWidth,
+                                    height: img.naturalHeight,
+                                  },
                                 },
-                              },
-                            );
-                          }}
-                          onError={(e) => {
-                            console.error(
-                              "[EditImage] No-input mode output image failed to load:",
-                              {
-                                src: outputs[selectedFeature],
-                                selectedFeature,
-                                error: e,
-                              },
-                            );
-                          }}
-                          onClick={handleImageClick}
-                        />
+                              );
+                            }}
+                            onError={(e) => {
+                              console.error(
+                                "[EditImage] No-input mode output image failed to load:",
+                                {
+                                  src: outputs[selectedFeature],
+                                  selectedFeature,
+                                  error: e,
+                                },
+                              );
+                            }}
+                            onClick={handleImageClick}
+                          />
+                        ) : (
+                          <Image
+                            ref={imageRef}
+                            src={normalizeEditImageUrl(
+                              outputs[selectedFeature] as string,
+                            )}
+                            alt="Output"
+                            fill
+                            unoptimized
+                            className="object-contain object-center"
+                            style={{
+                              transform: `scale(${scale}) translate(${offset.x / scale}px, ${offset.y / scale}px)`,
+                              transformOrigin: "center center",
+                              objectPosition: "center center",
+                            }}
+                            onLoad={(e) => {
+                              const img = e.target as HTMLImageElement;
+                              setNaturalSize({
+                                width: img.naturalWidth,
+                                height: img.naturalHeight,
+                              });
+                              console.log(
+                                "[EditImage] No-input mode output image loaded:",
+                                {
+                                  src: outputs[selectedFeature],
+                                  selectedFeature,
+                                  dimensions: {
+                                    width: img.naturalWidth,
+                                    height: img.naturalHeight,
+                                  },
+                                },
+                              );
+                            }}
+                            onError={(e) => {
+                              console.error(
+                                "[EditImage] No-input mode output image failed to load:",
+                                {
+                                  src: outputs[selectedFeature],
+                                  selectedFeature,
+                                  error: e,
+                                },
+                              );
+                            }}
+                            onClick={handleImageClick}
+                          />
+                        )}
 
                         {/* Zoom Controls */}
                         <div className="absolute md:bottom-3 bottom-1 md:right-3 right-1 z-30 2xl:bottom-4 2xl:right-4">
@@ -7959,38 +8149,72 @@ const EditImageInterface: React.FC = () => {
                           )
                         ) : (
                           <>
-                            <Image
-                              src={normalizeEditImageUrl(
-                                inputs[selectedFeature] as string,
-                              )}
-                              alt="Input"
-                              fill
-                              unoptimized
-                              className="object-contain object-center"
-                              onLoad={(e) => {
-                                if (selectedFeature === "expand") {
-                                  const img = e.target as HTMLImageElement;
-                                  setExpandOriginalSize({
-                                    width: img.naturalWidth,
-                                    height: img.naturalHeight,
-                                  });
-                                  setInputNaturalSize({
-                                    width: img.naturalWidth,
-                                    height: img.naturalHeight,
-                                  });
-                                  // Trigger canvas redraw after a short delay to ensure container is ready
-                                  setTimeout(() => {
-                                    drawExpandCanvas();
-                                  }, 100);
-                                } else {
-                                  const img = e.target as HTMLImageElement;
-                                  setInputNaturalSize({
-                                    width: img.naturalWidth,
-                                    height: img.naturalHeight,
-                                  });
-                                }
-                              }}
-                            />
+                            {isInlineImageUrl(inputs[selectedFeature]) ||
+                            isSvgUrl(inputs[selectedFeature]) ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={normalizeEditImageUrl(
+                                  inputs[selectedFeature] as string,
+                                )}
+                                alt="Input"
+                                className="absolute inset-0 w-full h-full object-contain object-center"
+                                onLoad={(e) => {
+                                  if (selectedFeature === "expand") {
+                                    const img = e.target as HTMLImageElement;
+                                    setExpandOriginalSize({
+                                      width: img.naturalWidth,
+                                      height: img.naturalHeight,
+                                    });
+                                    setInputNaturalSize({
+                                      width: img.naturalWidth,
+                                      height: img.naturalHeight,
+                                    });
+                                    setTimeout(() => {
+                                      drawExpandCanvas();
+                                    }, 100);
+                                  } else {
+                                    const img = e.target as HTMLImageElement;
+                                    setInputNaturalSize({
+                                      width: img.naturalWidth,
+                                      height: img.naturalHeight,
+                                    });
+                                  }
+                                }}
+                              />
+                            ) : (
+                              <Image
+                                src={normalizeEditImageUrl(
+                                  inputs[selectedFeature] as string,
+                                )}
+                                alt="Input"
+                                fill
+                                unoptimized
+                                className="object-contain object-center"
+                                onLoad={(e) => {
+                                  if (selectedFeature === "expand") {
+                                    const img = e.target as HTMLImageElement;
+                                    setExpandOriginalSize({
+                                      width: img.naturalWidth,
+                                      height: img.naturalHeight,
+                                    });
+                                    setInputNaturalSize({
+                                      width: img.naturalWidth,
+                                      height: img.naturalHeight,
+                                    });
+                                    // Trigger canvas redraw after a short delay to ensure container is ready
+                                    setTimeout(() => {
+                                      drawExpandCanvas();
+                                    }, 100);
+                                  } else {
+                                    const img = e.target as HTMLImageElement;
+                                    setInputNaturalSize({
+                                      width: img.naturalWidth,
+                                      height: img.naturalHeight,
+                                    });
+                                  }
+                                }}
+                              />
+                            )}
                             {selectedFeature === "expand" &&
                               expandOriginalSize.width > 0 && (
                                 <div

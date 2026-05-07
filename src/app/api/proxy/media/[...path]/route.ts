@@ -110,12 +110,18 @@ export async function GET(req: Request, context: { params: Promise<{ path?: stri
       if (v) outHeaders.set(h, v);
     });
     
-    // Ensure content-type is set if missing
-    if (!outHeaders.has('content-type')) {
-      const ext = decodedPath.split('.').pop()?.toLowerCase();
-      const guessed = guessContentTypeFromExt(ext);
-      if (guessed) outHeaders.set('content-type', guessed);
-      else outHeaders.set('content-type', 'application/octet-stream');
+    // Ensure content-type is correct. Some upstreams return application/octet-stream for SVGs.
+    const ext = decodedPath.split('.').pop()?.toLowerCase();
+    const guessed = guessContentTypeFromExt(ext);
+    const currentCt = (outHeaders.get('content-type') || '').toLowerCase();
+    const isGenericCt =
+      !currentCt ||
+      currentCt.includes('application/octet-stream') ||
+      currentCt.includes('binary/octet-stream');
+    if (guessed && (isGenericCt || currentCt === 'text/plain')) {
+      outHeaders.set('content-type', guessed);
+    } else if (!currentCt) {
+      outHeaders.set('content-type', guessed || 'application/octet-stream');
     }
     
     // Add CORS headers for video streaming
