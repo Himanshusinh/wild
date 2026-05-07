@@ -628,7 +628,7 @@ const EditImageInterface: React.FC = () => {
   >("");
   // Live Chat dropdown keys
   const [liveActiveDropdown, setLiveActiveDropdown] = useState<
-    "liveModel" | "liveFrame" | "liveResolution" | ""
+    "liveModel" | "liveFrame" | "liveResolution" | "liveQuality" | ""
   >("");
   // Vectorize controls
   const [vectorizeModel, setVectorizeModel] = useState<
@@ -666,6 +666,7 @@ const EditImageInterface: React.FC = () => {
   const [liveModel, setLiveModel] = useState<
     | "google/nano-banana-pro"
     | "google/nano-banana-2"
+    | "openai/gpt-image-2"
     | "seedream-v4.5"
     | "seedream-5-lite"
     | "qwen/qwen-image-2-pro"
@@ -675,8 +676,11 @@ const EditImageInterface: React.FC = () => {
     "1:1" | "3:4" | "4:3" | "16:9" | "9:16"
   >("1:1");
   const [liveResolution, setLiveResolution] = useState<
-    "1K" | "2K" | "3K" | "4K"
+    "1K" | "2K" | "3K" | "4K" | "auto"
   >("1K");
+  const [liveQuality, setLiveQuality] = useState<
+    "low" | "medium" | "high" | "auto"
+  >("auto");
   const [livePrompt, setLivePrompt] = useState<string>("");
   const [liveChatMessages, setLiveChatMessages] = useState<
     Array<{
@@ -720,6 +724,7 @@ const EditImageInterface: React.FC = () => {
     value:
       | "google/nano-banana-pro"
       | "google/nano-banana-2"
+      | "openai/gpt-image-2"
       | "seedream-v4.5"
       | "seedream-5-lite"
       | "qwen/qwen-image-2-pro"
@@ -727,6 +732,7 @@ const EditImageInterface: React.FC = () => {
   }> = [
     { label: "Nano Banana 2", value: "google/nano-banana-2" },
     { label: "Nano Banana Pro", value: "google/nano-banana-pro" },
+    { label: "GPT Image 2", value: "openai/gpt-image-2" },
     { label: "Qwen Image 2 Pro", value: "qwen/qwen-image-2-pro" },
     { label: "Seedream v4.5", value: "seedream-v4.5" },
     { label: "Seedream 5 Lite", value: "seedream-5-lite" },
@@ -735,10 +741,13 @@ const EditImageInterface: React.FC = () => {
 
   const liveResolutionOptionsByModel: Record<
     (typeof liveAllowedModels)[number]["value"],
-    Array<"1K" | "2K" | "3K" | "4K">
+    Array<"1K" | "2K" | "3K" | "4K" | "auto">
   > = {
     "google/nano-banana-pro": ["1K", "2K", "4K"],
     "google/nano-banana-2": ["1K", "2K", "4K"],
+    // GPT Image 2 does not support "resolution" (1K/2K/4K) — it uses image_size + quality.
+    // Keep the existing dropdown UI but lock it to a single supported value.
+    "openai/gpt-image-2": ["auto"],
     "seedream-v4.5": ["1K", "2K", "4K"],
     "seedream-5-lite": ["2K", "3K"],
     "qwen/qwen-image-2-pro": ["1K", "2K"],
@@ -761,21 +770,25 @@ const EditImageInterface: React.FC = () => {
     value:
       | "google/nano-banana-pro"
       | "google/nano-banana-2"
+      | "openai/gpt-image-2"
       | "seedream-v4.5"
       | "seedream-5-lite"
       | "qwen/qwen-image-2-pro"
       | "qwen-image-edit-2511",
     resolution?: string,
+    quality?: "low" | "medium" | "high" | "auto",
   ) => {
     const mapped = value;
-    const quality = undefined;
+    const resolvedQuality =
+      mapped === "openai/gpt-image-2" ? quality || "auto" : undefined;
     const credits = getCreditsForModel(
       mapped,
       undefined,
-      resolution,
+      // GPT Image 2 isn't priced by "resolution" in our table.
+      mapped === "openai/gpt-image-2" ? undefined : resolution,
       undefined,
       undefined,
-      quality,
+      resolvedQuality,
     );
     if (credits != null) return credits;
     // Fallback defaults
@@ -788,6 +801,11 @@ const EditImageInterface: React.FC = () => {
       if (resolution === "2K") return 222;
       return 154;
     }
+    if (mapped === "openai/gpt-image-2") {
+      if (resolvedQuality === "low") return 10;
+      if (resolvedQuality === "medium") return 38;
+      return 102; // high/auto
+    }
     if (mapped === "seedream-v4.5") return 100;
     if (mapped === "seedream-5-lite") return 90;
     if (mapped === "qwen/qwen-image-2-pro") return 170;
@@ -796,8 +814,8 @@ const EditImageInterface: React.FC = () => {
   };
 
   const liveCredits = useMemo(
-    () => getLiveModelCredits(liveModel, liveResolution),
-    [liveModel, liveResolution],
+    () => getLiveModelCredits(liveModel, liveResolution, liveQuality),
+    [liveModel, liveResolution, liveQuality],
   );
 
   const availableModels = useMemo(() => {
@@ -1079,6 +1097,23 @@ const EditImageInterface: React.FC = () => {
           isPublic: true,
         };
         res = await axiosInstance.post("/api/replicate/generate", payload);
+        out = parseOutputUrl(res);
+      } else if (liveModel === "openai/gpt-image-2") {
+        const payload: any = {
+          prompt: livePrompt,
+          model: "openai/gpt-image-2",
+          // Backend handler supports: prompt, image_urls (edit), image_size, quality, output_format.
+          quality: liveQuality,
+          output_format: "jpeg",
+          uploadedImages: [imageUrl],
+          aspect_ratio: liveFrameSize,
+          // Let backend map aspect_ratio -> image_size (square_hd / portrait_4_3 / etc).
+          // Do NOT send "resolution" here; GPT Image 2 doesn't support it.
+          num_images: 1,
+          generationType: "live-chat",
+          isPublic: true,
+        };
+        res = await axiosInstance.post("/api/fal/generate", payload);
         out = parseOutputUrl(res);
       } else if (liveModel === "seedream-5-lite") {
         const payload: any = {
@@ -3115,7 +3150,7 @@ const EditImageInterface: React.FC = () => {
             const seedreamImageUrl = await ensureZataUrl(imageInput);
             const seedreamPayload: any = {
               prompt: "convert into 2D vector image",
-              model: "bytedance/seedream-4",
+              model: "bytedance/seedream-5-lite",
               size: "2K",
               image_input: [seedreamImageUrl],
               sequential_image_generation: "disabled",
@@ -5777,6 +5812,9 @@ const EditImageInterface: React.FC = () => {
                                       {getLiveModelCredits(
                                         opt.value,
                                         liveResolution,
+                                        opt.value === "openai/gpt-image-2"
+                                          ? liveQuality
+                                          : undefined,
                                       )}{" "}
                                       credits
                                     </span>
@@ -5839,8 +5877,9 @@ const EditImageInterface: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Resolution shown when supported by selected model */}
-                    {liveResolutionOptions.length > 0 && (
+                    {/* Resolution shown when supported by selected model (not for GPT Image 2) */}
+                    {liveModel !== "openai/gpt-image-2" &&
+                      liveResolutionOptions.length > 0 && (
                       <div>
                         <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">
                           Resolution
@@ -5878,6 +5917,81 @@ const EditImageInterface: React.FC = () => {
                                   <span className="truncate">{r}</span>
                                 </button>
                               ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* GPT Image 2 quality */}
+                    {liveModel === "openai/gpt-image-2" && (
+                      <div>
+                        <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">
+                          Quality
+                        </label>
+                        <div className="relative edit-dropdown">
+                          <button
+                            onClick={() =>
+                              setLiveActiveDropdown(
+                                liveActiveDropdown === "liveQuality"
+                                  ? ""
+                                  : "liveQuality",
+                              )
+                            }
+                            className="h-[38px] w-64 px-4 rounded-xl text-[13px] font-medium border border-white/12 hover:bg-white/3 transition flex items-center justify-between bg-transparent text-white/90"
+                          >
+                            <span className="truncate">
+                              {liveQuality === "auto"
+                                ? "Auto"
+                                : liveQuality === "low"
+                                  ? "Low"
+                                  : liveQuality === "medium"
+                                    ? "Medium"
+                                    : "High"}
+                            </span>
+                            <ChevronUp
+                              className={`w-4 h-4 ml-2 shrink-0 transition-transform duration-200 ${liveActiveDropdown === "liveQuality" ? "" : "rotate-180"}`}
+                            />
+                          </button>
+                          {liveActiveDropdown === "liveQuality" && (
+                            <div className="absolute top-full z-100 left-0 w-full bg-black backdrop-blur-xl rounded-xl mt-1 ring-1 ring-white/15">
+                              {(
+                                ["low", "medium", "high", "auto"] as const
+                              ).map((q) => {
+                                const label =
+                                  q === "auto"
+                                    ? "Auto"
+                                    : q === "low"
+                                      ? "Low"
+                                      : q === "medium"
+                                        ? "Medium"
+                                        : "High";
+                                const qCredits = getLiveModelCredits(
+                                  "openai/gpt-image-2",
+                                  undefined,
+                                  q,
+                                );
+                                return (
+                                  <button
+                                    key={q}
+                                    onClick={() => {
+                                      setLiveQuality(q);
+                                      setLiveActiveDropdown("");
+                                    }}
+                                    className={`w-full px-4 py-2.5 text-left text-[13px] flex items-center gap-2 ${liveQuality === q ? "bg-white/10 text-white font-medium" : "text-white/75 hover:bg-white/8 hover:text-white"}`}
+                                  >
+                                    {liveQuality === q && (
+                                      <span className="w-1.5 h-1.5 rounded-full bg-[#2F6BFF] shrink-0" />
+                                    )}
+                                    <span className="truncate flex-1">
+                                      {label}
+                                    </span>
+                                    <span className="text-[11px] text-white/45">
+                                      {qCredits} credits
+                                    </span>
+                                  </button>
+                                );
+                              })}
                             </div>
                           )}
                         </div>
