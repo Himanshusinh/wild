@@ -2,11 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Clapperboard, Image as ImageIcon } from "lucide-react";
+import { ArrowRight, Clapperboard, Image as ImageIcon, Plus } from "lucide-react";
 import { saveAutoResumeIntent } from "@/lib/autoResume";
 import { enhancePromptAPI } from "@/lib/api/geminiApi";
 import { getSignInUrl } from "@/routes/routes";
 import toast from "react-hot-toast";
+import UploadModal from "../../Generation/ImageGeneration/TextToImage/compo/UploadModal";
 
 type GenerationMode = "image" | "video";
 
@@ -78,6 +79,8 @@ export default function MasonrySection({ mode = "image", onModeChange }: Masonry
   const [isEnhancing, setIsEnhancing] = useState(false);
   const [selectedGenerateType, setSelectedGenerateType] = useState<GenerationMode>(mode);
   const [showGenerateMenu, setShowGenerateMenu] = useState(false);
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
 
   const hasSignedInUser = () => {
     if (typeof window === "undefined") return false;
@@ -215,19 +218,15 @@ export default function MasonrySection({ mode = "image", onModeChange }: Masonry
           One prompt away from something extraordinary.
         </p>
 
-        <div className="mb-2 flex w-full max-w-[920px] items-center gap-0.5 rounded-full border border-[#E5E4E0] bg-white p-1 pl-2.5 pr-1 shadow-[0_1px_4px_rgba(0,0,0,0.08)] sm:gap-1 sm:mb-3 sm:p-1.5 sm:pl-5">
-          <span className="mr-1 flex shrink-0 text-[#8f9199] sm:mr-1.5">
-            <svg width="16" height="16" viewBox="0 0 18 18" fill="none">
-              <rect x="2" y="2" width="14" height="14" rx="3" stroke="currentColor" strokeWidth="1.4" />
-              <path
-                d="M2 13l4-4 3 3 2-2 5 5"
-                stroke="currentColor"
-                strokeWidth="1.3"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </span>
+        <div className="mb-2 flex w-full max-w-[920px] items-center gap-0.5 rounded-full border border-[#E5E4E0] bg-white p-1 pl-1 pr-1 shadow-[0_1px_4px_rgba(0,0,0,0.08)] sm:gap-1 sm:mb-3 sm:p-1.5 sm:pl-3">
+          <button
+            type="button"
+            onClick={() => setIsUploadModalOpen(true)}
+            aria-label="Upload image"
+            className="mr-1 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#ddd9d2] bg-[#e8e7e3] text-[#333] transition-colors hover:bg-[#e8e7e3] hover:text-[#111] sm:mr-1 sm:h-10 sm:w-10 sm:border-[#E5E4E0] sm:bg-[#f5f4f2] sm:text-[#777]"
+          >
+            <Plus className="h-4 w-4" strokeWidth={2.4} />
+          </button>
 
           <input
             ref={inputRef}
@@ -400,6 +399,13 @@ export default function MasonrySection({ mode = "image", onModeChange }: Masonry
         </div>
 
       </div>
+
+      <UploadModal
+        isOpen={isUploadModalOpen}
+        onClose={() => setIsUploadModalOpen(false)}
+        onAdd={(urls) => setUploadedImages((p) => [...p, ...urls].slice(0, 4))}
+        remainingSlots={4 - uploadedImages.length}
+      />
     </section>
   );
 }
