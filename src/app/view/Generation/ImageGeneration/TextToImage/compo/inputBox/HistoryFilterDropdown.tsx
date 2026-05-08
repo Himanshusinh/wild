@@ -32,8 +32,6 @@ export default function HistoryFilterDropdown({
   onDateRangeChange,
   isFutureMobileCalendarDate,
 }: HistoryFilterDropdownProps) {
-  if (!isOpen) return null;
-
   const dispatch = useAppDispatch();
   const currentHistoryFilters = useAppSelector((s: any) => s?.history?.filters || {});
 
@@ -84,6 +82,8 @@ export default function HistoryFilterDropdown({
     "z-image-turbo",
     "GPT Image 1.5",
   ];
+
+  if (!isOpen) return null;
 
   const runBackendRefreshWithAdvancedFilters = React.useCallback(
     async (next: {
