@@ -3,7 +3,6 @@
 import React from "react";
 import { ImageCount, AspectRatio, IMAGE_COUNTS, ModelId } from "./types";
 import { getAspectRatioMenuForModel, getResolutionMenuForModel } from "./warliNanoAspect";
-import { motion } from "framer-motion";
 
 interface SettingsPanelProps {
   model: ModelId;
@@ -55,7 +54,7 @@ function Chip<T extends string | number>({
       className={`rounded-full border px-4 py-1.5 text-[11px] font-medium transition-all duration-200 ${active
         ? "border-[#2F6BFF] bg-[#2F6BFF]/[0.12] text-[#60a5fa]"
         : "border-white/10 bg-white/[0.04] text-white/40 hover:border-white/20 hover:bg-white/[0.08]"
-        } disabled:opacity-30 disabled:cursor-not-allowed`}
+      } disabled:opacity-30 disabled:cursor-not-allowed`}
     >
       {label ?? value}
     </button>
@@ -208,8 +207,8 @@ function VisualRatioSelector({
               }}
               disabled={disabled}
               className={`flex-1 rounded-md py-1.5 text-[10px] font-bold transition-all duration-200 ${category === cat.id
-                ? "bg-[#1e1e28] text-white shadow-[0_1px_4px_rgba(0,0,0,0.5)]"
-                : "text-white/30 hover:text-white/60"
+                  ? "bg-[#1e1e28] text-white shadow-[0_1px_4px_rgba(0,0,0,0.5)]"
+                  : "text-white/30 hover:text-white/60"
                 } disabled:opacity-30 disabled:cursor-not-allowed`}
             >
               {cat.label}
@@ -219,102 +218,43 @@ function VisualRatioSelector({
 
         {/* Slider Area */}
         <div className="flex flex-col gap-1.5 px-0.5">
-          <SmoothSlider
-            value={currentIndex === -1 ? 0 : currentIndex}
+          <input
+            type="range"
+            min={0}
             max={Math.max(0, filteredRatios.length - 1)}
+            value={currentIndex === -1 ? 0 : currentIndex}
             disabled={disabled}
-            onChange={(idx) => {
+            onChange={(e) => {
+              const idx = parseInt(e.target.value);
               if (filteredRatios[idx]) {
                 onRatioChange(filteredRatios[idx]);
               }
             }}
+            className="slider-white-thumb h-1 w-full cursor-pointer appearance-none rounded-full bg-white/10 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
           />
+          <style jsx>{`
+            .slider-white-thumb::-webkit-slider-thumb {
+              -webkit-appearance: none;
+              appearance: none;
+              width: 12px;
+              height: 12px;
+              background: #ffffff;
+              border-radius: 50%;
+              cursor: pointer;
+              box-shadow: 0 0 5px rgba(0,0,0,0.3);
+            }
+            .slider-white-thumb::-moz-range-thumb {
+              width: 12px;
+              height: 12px;
+              background: #ffffff;
+              border-radius: 50%;
+              cursor: pointer;
+              border: none;
+              box-shadow: 0 0 5px rgba(0,0,0,0.3);
+            }
+          `}</style>
         </div>
       </div>
     </div>
   );
 }
-
-function SmoothSlider({
-  value,
-  max,
-  onChange,
-  disabled,
-}: {
-  value: number;
-  max: number;
-  onChange: (v: number) => void;
-  disabled?: boolean;
-}) {
-  const containerRef = React.useRef<HTMLDivElement>(null);
-  const [localVisualValue, setLocalVisualValue] = React.useState(value / Math.max(1, max));
-  const [isDragging, setIsDragging] = React.useState(false);
-
-  // Sync local visual value when external value changes (but NOT while dragging)
-  React.useEffect(() => {
-    if (!isDragging) {
-      setLocalVisualValue(value / Math.max(1, max));
-    }
-  }, [value, max, isDragging]);
-
-  const handleInteraction = (clientX: number) => {
-    if (!containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    const x = Math.max(0, Math.min(clientX - rect.left, rect.width));
-    const percentage = x / Math.max(1, rect.width);
-
-    setLocalVisualValue(percentage);
-
-    if (max > 0) {
-      const newValue = Math.round(percentage * max);
-      onChange(newValue);
-    }
-  };
-
-  const onPointerDown = (e: React.PointerEvent) => {
-    if (disabled) return;
-    setIsDragging(true);
-    handleInteraction(e.clientX);
-
-    const onPointerMove = (moveEvent: PointerEvent) => {
-      handleInteraction(moveEvent.clientX);
-    };
-
-    const onPointerUp = () => {
-      setIsDragging(false);
-      window.removeEventListener("pointermove", onPointerMove);
-      window.removeEventListener("pointerup", onPointerUp);
-    };
-
-    window.addEventListener("pointermove", onPointerMove, { passive: true });
-    window.addEventListener("pointerup", onPointerUp);
-  };
-
-  return (
-    <div
-      ref={containerRef}
-      onPointerDown={onPointerDown}
-      className={`relative h-6 w-full cursor-pointer flex items-center group touch-none ${disabled ? "opacity-30 cursor-not-allowed" : ""
-        }`}
-    >
-      {/* Track */}
-      <div className="h-1 w-full rounded-full bg-white/10" />
-
-      {/* Thumb Container */}
-      <div className="absolute inset-0 flex items-center pointer-events-none">
-        <motion.div
-          className="h-3.5 w-3.5 rounded-full bg-white shadow-[0_0_10px_rgba(0,0,0,0.5)] border border-black/10"
-          initial={false}
-          animate={{
-            left: `${localVisualValue * 100}%`,
-            x: "-50%",
-          }}
-          transition={isDragging ? { type: "tween", duration: 0 } : { type: "spring", stiffness: 400, damping: 35 }}
-          whileHover={!disabled ? { scale: 1.2 } : {}}
-          whileTap={!disabled ? { scale: 1.15 } : {}}
-        />
-      </div>
-    </div>
-  );
-}
-
