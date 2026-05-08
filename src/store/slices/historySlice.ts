@@ -283,6 +283,10 @@ export const loadHistory = createAsyncThunk(
         (params as any).mode = (filtersForBackend as any).mode;
       if (filtersForBackend?.model)
         params.model = mapModelSkuForBackend(filtersForBackend.model);
+      if ((filtersForBackend as any)?.style)
+        (params as any).style = String((filtersForBackend as any).style);
+      if ((filtersForBackend as any)?.frameSize)
+        (params as any).frameSize = String((filtersForBackend as any).frameSize);
       // Add search parameter if present
       if (
         (filtersForBackend as any)?.search &&
@@ -434,6 +438,26 @@ export const loadHistory = createAsyncThunk(
         };
       });
 
+      // Client-side safety net: if backend doesn't support style/frameSize filters, apply them here.
+      let filteredItems = items;
+      try {
+        const styleFilter = (filters as any)?.style || (backendFilters as any)?.style;
+        const frameSizeFilter =
+          (filters as any)?.frameSize || (backendFilters as any)?.frameSize;
+        if (styleFilter) {
+          filteredItems = filteredItems.filter(
+            (it: any) => String(it?.style || "").toLowerCase() === String(styleFilter).toLowerCase(),
+          );
+        }
+        if (frameSizeFilter) {
+          filteredItems = filteredItems.filter(
+            (it: any) =>
+              String(it?.frameSize || "").toLowerCase() ===
+              String(frameSizeFilter).toLowerCase(),
+          );
+        }
+      } catch {}
+
       // Backend returns hasMore (preferred). If absent, infer using RAW item count before filtering failures.
       const requestedLimit = (paginationParams && paginationParams.limit) || 10;
       const rawItemCount = Array.isArray(result.items)
@@ -448,7 +472,7 @@ export const loadHistory = createAsyncThunk(
       }
       const nextCursor = result.nextCursor;
 
-      return { entries: items, hasMore, nextCursor };
+      return { entries: filteredItems, hasMore, nextCursor };
     } catch (error: any) {
       if (
         error === "__CONDITION_ABORT__" ||
@@ -709,6 +733,10 @@ export const loadMoreHistory = createAsyncThunk(
         (params as any).mode = (filtersForBackend as any).mode;
       if (filtersForBackend?.model)
         params.model = mapModelSkuForBackend(filtersForBackend.model);
+      if ((filtersForBackend as any)?.style)
+        (params as any).style = String((filtersForBackend as any).style);
+      if ((filtersForBackend as any)?.frameSize)
+        (params as any).frameSize = String((filtersForBackend as any).frameSize);
       // Add search parameter if present (check both filtersForBackend and filters)
       const searchQuery =
         (filtersForBackend as any)?.search || (filters as any)?.search;

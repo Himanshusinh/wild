@@ -217,6 +217,13 @@ export function InputBoxHistoryChrome({
               <HistoryFilterDropdown 
                 isOpen={isFilterOpen} 
                 onClose={() => setIsFilterOpen(false)} 
+                sortOrder={sortOrder}
+                onSortChange={onSortChange}
+                dateRange={dateRange}
+                onDateRangeChange={async (nextRange) => {
+                  await refreshHistoryFromBackend({ dateRange: nextRange });
+                }}
+                isFutureMobileCalendarDate={isFutureMobileCalendarDate}
               />
             </div>
           </div>
@@ -328,6 +335,13 @@ export function InputBoxHistoryChrome({
                 <HistoryFilterDropdown 
                   isOpen={isFilterOpen} 
                   onClose={() => setIsFilterOpen(false)} 
+                  sortOrder={sortOrder}
+                  onSortChange={onSortChange}
+                  dateRange={dateRange}
+                  onDateRangeChange={async (nextRange) => {
+                    await refreshHistoryFromBackend({ dateRange: nextRange });
+                  }}
+                  isFutureMobileCalendarDate={isFutureMobileCalendarDate}
                 />
               </div>
             </div>
