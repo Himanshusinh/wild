@@ -425,7 +425,7 @@ export function InputBoxHistoryScrollBody(props: InputBoxHistoryScrollBodyProps)
                   </div>
 
                   {/* Masonry: CSS columns (stable, date-first, no row forcing) */}
-                  <div className="columns-2 md:columns-5 lg:columns-6 gap-2 md:ml-9 ml-0 [column-fill:_balance]">
+                  <div className="columns-2 md:columns-5 lg:columns-5 gap-2 md:ml-9 ml-0 [column-fill:_balance]">
                     {visibleCells}
                   </div>
                 </div>
