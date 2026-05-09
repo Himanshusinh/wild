@@ -119,7 +119,7 @@ const extractUserPromptFromBackend = (text: string): string | null => {
       return l;
     })
     .filter(line => line.length > 0 && !line.includes("(none)"));
-    
+
   return lines.join("\n").trim() || null;
 };
 
@@ -1613,21 +1613,21 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
       {!isFsOpen && (
         <button
           aria-label="Close"
-        className="text-white/100 hover:text-white text-lg absolute md:top-8 top-0 md:right-10 right-0 z-[100]  hover:bg-black/70 rounded-full w-8 h-8 md:w-10 md:h-10 flex items-center justify-center transition-colors pointer-events-auto"
-        onClick={(e) => {
-          e.stopPropagation()
-          e.preventDefault()
-          console.log('[ImagePreviewModal] Close button clicked')
-          onClose()
-        }}
-        onMouseDown={(e) => {
-          e.stopPropagation()
-          e.preventDefault()
-        }}
-        onTouchStart={(e) => {
-          e.stopPropagation()
-        }}
-      >✕</button>
+          className="text-white/100 hover:text-white text-lg absolute md:top-8 top-0 md:right-10 right-0 z-[100]  hover:bg-black/70 rounded-full w-8 h-8 md:w-10 md:h-10 flex items-center justify-center transition-colors pointer-events-auto"
+          onClick={(e) => {
+            e.stopPropagation()
+            e.preventDefault()
+            console.log('[ImagePreviewModal] Close button clicked')
+            onClose()
+          }}
+          onMouseDown={(e) => {
+            e.stopPropagation()
+            e.preventDefault()
+          }}
+          onTouchStart={(e) => {
+            e.stopPropagation()
+          }}
+        >✕</button>
       )}
       <div
         className="relative  h-full   md:w-full md:max-w-6xl w-[90%] max-w-[90%] bg-transparent  md:border md:border-white/10 rounded-xl overflow-hidden shadow-3xl"
@@ -1775,45 +1775,45 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
 
             {/* Prompt (show only userPrompt if provided) */}
             {hasUserPrompt ? (
-            <div className="mb-4">
-              <div className="flex items-center justify-between text-white/60 text-xs uppercase tracking-wider mb-0">
-                <span>Prompt</span>
-                <button
-                  onClick={() => copyPrompt(cleanUserPrompt, `preview-${preview.entry.id}`)}
-                  className={`flex items-center gap-2 px-2 py-1.5 text-white/80 text-xs rounded-lg transition-colors ${copiedButtonId === `preview-${preview.entry.id}`
-                    ? 'bg-green-500/20 text-green-400'
-                    : 'bg-white/10 hover:bg-white/20'
-                    }`}
-                >
-                  {copiedButtonId === `preview-${preview.entry.id}` ? (
-                    <>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M20 6L9 17l-5-5" />
-                      </svg>
-                      Copied!
-                    </>
-                  ) : (
-                    <>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                      </svg>
-                    </>
-                  )}
-                </button>
+              <div className="mb-4">
+                <div className="flex items-center justify-between text-white/60 text-xs uppercase tracking-wider mb-0">
+                  <span>Prompt</span>
+                  <button
+                    onClick={() => copyPrompt(cleanUserPrompt, `preview-${preview.entry.id}`)}
+                    className={`flex items-center gap-2 px-2 py-1.5 text-white/80 text-xs rounded-lg transition-colors ${copiedButtonId === `preview-${preview.entry.id}`
+                      ? 'bg-green-500/20 text-green-400'
+                      : 'bg-white/10 hover:bg-white/20'
+                      }`}
+                  >
+                    {copiedButtonId === `preview-${preview.entry.id}` ? (
+                      <>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M20 6L9 17l-5-5" />
+                        </svg>
+                        Copied!
+                      </>
+                    ) : (
+                      <>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
+                      </>
+                    )}
+                  </button>
+                </div>
+                <div className={`text-white/90 text-xs leading-relaxed whitespace-pre-wrap break-words ${!isPromptExpanded && isLongPrompt ? 'line-clamp-4' : ''}`}>
+                  {cleanUserPrompt}
+                </div>
+                {isLongPrompt && (
+                  <button
+                    onClick={() => setIsPromptExpanded(!isPromptExpanded)}
+                    className="mt-2 text-xs text-white/70 hover:text-white underline"
+                  >
+                    Read {isPromptExpanded ? 'less' : 'more'}
+                  </button>
+                )}
               </div>
-              <div className={`text-white/90 text-xs leading-relaxed whitespace-pre-wrap break-words ${!isPromptExpanded && isLongPrompt ? 'line-clamp-4' : ''}`}>
-                {cleanUserPrompt}
-              </div>
-              {isLongPrompt && (
-                <button
-                  onClick={() => setIsPromptExpanded(!isPromptExpanded)}
-                  className="mt-2 text-xs text-white/70 hover:text-white underline"
-                >
-                  Read {isPromptExpanded ? 'less' : 'more'}
-                </button>
-              )}
-            </div>
             ) : null}
 
 

@@ -54,6 +54,7 @@ export default function HistoryFilterDropdown({
   const [isToolOpen, setIsToolOpen] = React.useState(false);
   const [isStyleOpen, setIsStyleOpen] = React.useState(false);
   const [isModelOpen, setIsModelOpen] = React.useState(false);
+  const [isAspectOpen, setIsAspectOpen] = React.useState(false);
 
   const QUICK_TOOLS = ["Upscale", "Retouch", "Mockup"];
   const ALL_TOOLS = [
@@ -605,16 +606,17 @@ export default function HistoryFilterDropdown({
         <div className="space-y-1.5 col-span-2">
           <h3 className="text-[9px] font-bold text-white/30 tracking-wider uppercase">Aspect Ratio</h3>
           <div className="flex flex-wrap gap-1">
-            {["Any", "1:1", "4:3", "3:2", "16:9", "9:16"].map((r) => (
+            {["1:1", "4:3", "3:2", "16:9"].map((r) => (
               <button
                 key={r}
                 type="button"
                 onClick={async () => {
-                  setSelectedAspect(r);
+                  const nextAspect = selectedAspect === r ? "Any" : r;
+                  setSelectedAspect(nextAspect);
                   await runBackendRefreshWithAdvancedFilters({
                     tool: selectedTool,
                     style: selectedStyle,
-                    aspect: r,
+                    aspect: nextAspect,
                     model: selectedModel,
                   });
                 }}
@@ -627,6 +629,60 @@ export default function HistoryFilterDropdown({
                 {r}
               </button>
             ))}
+
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setIsAspectOpen(!isAspectOpen)}
+                className={`h-6 px-2 rounded-lg text-[9px] transition-all flex items-center gap-1 ${
+                  ["9:16", "3:4", "2:3", "21:9"].includes(selectedAspect)
+                    ? "bg-white text-black font-medium"
+                    : "bg-white/[0.03] border border-white/5 text-white/60 hover:bg-white/10"
+                }`}
+              >
+                {["9:16", "3:4", "2:3", "21:9"].includes(selectedAspect) ? selectedAspect : "More"}
+                <svg
+                  width="8"
+                  height="8"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className={`transition-transform ${isAspectOpen ? "rotate-180" : ""}`}
+                >
+                  <path d="M6 9l6 6 6-6" />
+                </svg>
+              </button>
+
+              {isAspectOpen && (
+                <div className="absolute left-0 bottom-full mb-1 w-20 rounded-xl border border-white/10 bg-[#0E0E11] shadow-2xl p-1 z-[150]">
+                  {["9:16", "3:4", "2:3", "21:9"].map((r) => (
+                    <button
+                      key={r}
+                      type="button"
+                      onClick={async () => {
+                        const nextAspect = selectedAspect === r ? "Any" : r;
+                        setSelectedAspect(nextAspect);
+                        setIsAspectOpen(false);
+                        await runBackendRefreshWithAdvancedFilters({
+                          tool: selectedTool,
+                          style: selectedStyle,
+                          aspect: nextAspect,
+                          model: selectedModel,
+                        });
+                      }}
+                      className={`w-full text-left px-2 py-1.5 rounded-lg text-[9px] transition-colors ${
+                        selectedAspect === r ? "bg-white/10 text-white" : "text-white/60 hover:bg-white/5 hover:text-white/90"
+                      }`}
+                    >
+                      {r}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
