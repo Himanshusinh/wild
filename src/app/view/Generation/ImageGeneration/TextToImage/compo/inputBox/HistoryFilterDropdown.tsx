@@ -83,8 +83,6 @@ export default function HistoryFilterDropdown({
     "GPT Image 1.5",
   ];
 
-  if (!isOpen) return null;
-
   const runBackendRefreshWithAdvancedFilters = React.useCallback(
     async (next: {
       tool?: string | null;
@@ -381,6 +379,8 @@ export default function HistoryFilterDropdown({
       </div>
     </div>
   );
+
+  if (!isOpen) return null;
 
   return (
     <div ref={wrapperRef} className="absolute top-full right-0 mt-1.5 z-[100]">
