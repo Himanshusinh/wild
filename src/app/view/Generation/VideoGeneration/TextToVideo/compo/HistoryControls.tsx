@@ -36,6 +36,8 @@ export default function HistoryControls({
   // Default limit: 20 for video/music, 60 for image (can be overridden)
   const paginationLimit = limit || (mode === "image" ? 60 : 20);
   const emphasizeDisabledDatesOnMobile = mode === "image" || mode === "video";
+  const showDesktopSortButtons = mode !== "image";
+  const showDesktopDateButton = mode !== "image";
   const dispatch = useAppDispatch();
   const currentFilters = useAppSelector(
     (state: any) => state.history?.filters || {},
@@ -859,317 +861,324 @@ export default function HistoryControls({
           )}
         </div>
 
-        <button
-          onClick={() => onSortChange("desc")}
-          className={`flex items-center justify-center gap-1.5 px-3 h-[28px] min-w-0 rounded-lg text-[12px] transition-all whitespace-nowrap ${sortOrder === "desc" ? "bg-white text-black font-semibold shadow-lg" : "text-white/70 hover:bg-white/10 border border-white/10"}`}
-          aria-label="Recent"
-        >
-          <img
-            src="https://idr01.zata.ai/devstoragev1/public/icons/upload-square-2%20(1).svg"
-            alt="Recent"
-            className={`${sortOrder === "desc" ? "" : "invert opacity-100"} w-4 h-4`}
-          />
-          <span>Recent</span>
-        </button>
-        <button
-          onClick={() => onSortChange("asc")}
-          className={`flex items-center justify-center gap-1.5 px-3 h-[28px] min-w-0 rounded-lg text-[12px] transition-all whitespace-nowrap ${sortOrder === "asc" ? "bg-white text-black font-semibold shadow-lg" : "text-white/70 hover:bg-white/10 border border-white/10"}`}
-          aria-label="Oldest"
-        >
-          <img
-            src="https://idr01.zata.ai/devstoragev1/public/icons/download-square-2.svg"
-            alt="Oldest"
-            className={`${sortOrder === "asc" ? "" : "invert opacity-100"} w-4 h-4`}
-          />
-          <span>Oldest</span>
-        </button>
-
-        <div className="relative flex items-center gap-1">
-          <input
-            ref={dateInputRef}
-            type="date"
-            value={dateInput}
-            onChange={async (e) => {
-              const value = e.target.value;
-              setDateInput(value);
-              await runMobileDateFilterRefresh(async () => {
-                if (!value) {
-                  await onDateChange({ start: null, end: null }, "");
-                  return;
-                }
-                const d = new Date(value + "T00:00:00");
-                const start = new Date(
-                  d.getFullYear(),
-                  d.getMonth(),
-                  d.getDate(),
-                  0,
-                  0,
-                  0,
-                );
-                const end = new Date(
-                  d.getFullYear(),
-                  d.getMonth(),
-                  d.getDate(),
-                  23,
-                  59,
-                  59,
-                  999,
-                );
-                await onDateChange({ start, end }, value);
-              });
-            }}
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              width: 1,
-              height: 1,
-              opacity: 0,
-            }}
-          />
-          <button
-            ref={calendarButtonRef}
-            onClick={(e) => {
-              e.stopPropagation();
-              const base = dateRange.start
-                ? new Date(dateRange.start)
-                : new Date();
-              setCalendarMonth(base.getMonth());
-              setCalendarYear(base.getFullYear());
-              setShowCalendar((v) => !v);
-            }}
-            className={`relative group h-[34px] md:h-[26px] w-[34px] md:w-[28px] flex items-center justify-center rounded-xl md:rounded-lg text-[13px] transition-all ${showCalendar || dateRange.start ? "bg-white text-black font-semibold shadow-lg" : "bg-white/5 border border-white/10 hover:bg-white/10 text-white/70"}`}
-            aria-label="Date"
-          >
-            <img
-              src="https://idr01.zata.ai/devstoragev1/public/icons/calendar-days.svg"
-              alt="Date"
-              className={`${showCalendar || dateRange.start ? "" : "invert md:opacity-100 opacity-70"} w-4 h-4`}
-            />
-          </button>
-          {showCalendar &&
-            mounted &&
-            typeof document !== "undefined" &&
-            calendarPosition &&
-            createPortal(
-              <div
-                ref={calendarRef}
-                data-calendar-popup="true"
-                className="fixed w-[280px] max-w-[calc(100vw-1rem)] select-none bg-black/90 backdrop-blur-3xl rounded-xl ring-1 ring-white/20 shadow-2xl p-3"
-                onMouseDown={(e) => e.stopPropagation()}
-                style={{
-                  top: `${calendarPosition.top}px`,
-                  right: `${calendarPosition.right}px`,
-                  zIndex: 99999,
-                }}
-              >
-                <div className="flex items-center justify-between mb-2 text-white">
-                  <button
-                    className="px-2 py-1 rounded hover:bg-white/10"
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      e.preventDefault();
-                      const prev = new Date(calendarYear, calendarMonth - 1, 1);
-                      setCalendarYear(prev.getFullYear());
-                      setCalendarMonth(prev.getMonth());
-                    }}
-                  >
-                    ‹
-                  </button>
-                  <div className="text-sm font-semibold">
-                    {new Date(calendarYear, calendarMonth, 1).toLocaleString(
-                      undefined,
-                      { month: "long", year: "numeric" },
-                    )}
-                  </div>
-                  <button
-                    className="px-2 py-1 rounded hover:bg-white/10"
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      e.preventDefault();
-                      const next = new Date(calendarYear, calendarMonth + 1, 1);
-                      setCalendarYear(next.getFullYear());
-                      setCalendarMonth(next.getMonth());
-                    }}
-                  >
-                    ›
-                  </button>
-                </div>
-                <div className="grid grid-cols-7 text-[11px] text-white/70 mb-1">
-                  {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((d) => (
-                    <div key={d} className="text-center py-1">
-                      {d}
-                    </div>
-                  ))}
-                </div>
-                <div className="grid grid-cols-7 gap-1">
-                  {Array.from({ length: calendarFirstWeekday }).map((_, i) => (
-                    <div key={`pad-${i}`} className="h-8" />
-                  ))}
-                  {Array.from({ length: calendarDaysInMonth }).map((_, i) => {
-                    const day = i + 1;
-                    const thisDate = new Date(calendarYear, calendarMonth, day);
-                    const isSelected =
-                      !!dateRange.start &&
-                      new Date(dateRange.start).toDateString() ===
-                        thisDate.toDateString();
-                    const isFuture =
-                      thisDate.getTime() > new Date().setHours(23, 59, 59, 999);
-                    const futureDateClass = emphasizeDisabledDatesOnMobile
-                      ? "cursor-not-allowed bg-white/[0.03] text-white/10 opacity-35 ring-1 ring-white/[0.04] md:bg-white/5 md:text-white/20 md:opacity-100 md:ring-0"
-                      : "text-white/20 cursor-not-allowed";
-                    const activeDateClass = isSelected
-                      ? "bg-white/25 ring-1 ring-white/40"
-                      : "bg-white/5";
-                    return (
-                      <button
-                        key={day}
-                        disabled={isFuture}
-                        aria-disabled={isFuture}
-                        className={`h-8 rounded text-sm text-center ${isFuture ? futureDateClass : `text-white hover:bg-white/15 ${activeDateClass}`}`}
-                        onMouseDown={(e) => e.stopPropagation()}
-                        onClick={async (e) => {
-                          if (isFuture) return;
-                          e.stopPropagation();
-                          e.preventDefault();
-                          const start = new Date(
-                            thisDate.getFullYear(),
-                            thisDate.getMonth(),
-                            thisDate.getDate(),
-                            0,
-                            0,
-                            0,
-                          );
-                          const end = new Date(
-                            thisDate.getFullYear(),
-                            thisDate.getMonth(),
-                            thisDate.getDate(),
-                            23,
-                            59,
-                            59,
-                            999,
-                          );
-                          const iso = thisDate.toISOString().slice(0, 10);
-                          setDateInput(iso);
-                          await runMobileDateFilterRefresh(async () => {
-                            await onDateChange({ start, end }, iso);
-                          });
-                          setShowCalendar(false);
-                        }}
-                      >
-                        {day}
-                      </button>
-                    );
-                  })}
-                </div>
-                <div className="flex items-center justify-between mt-3">
-                  <button
-                    className="text-white/80 text-sm px-2 py-1 rounded hover:bg-white/10"
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onClick={async (e) => {
-                      e.stopPropagation();
-                      e.preventDefault();
-                      setDateInput("");
-                      await runMobileDateFilterRefresh(async () => {
-                        await onDateChange({ start: null, end: null }, "");
-                      });
-                      setShowCalendar(false);
-                    }}
-                  >
-                    Clear
-                  </button>
-                  <button
-                    className="text-white/90 text-sm px-2 py-1 rounded hover:bg-white/10"
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onClick={async (e) => {
-                      e.stopPropagation();
-                      e.preventDefault();
-                      const now = new Date();
-                      setCalendarMonth(now.getMonth());
-                      setCalendarYear(now.getFullYear());
-
-                      // Bug 60 fix: Selecting 'Today' should apply the filter
-                      const start = new Date(
-                        now.getFullYear(),
-                        now.getMonth(),
-                        now.getDate(),
-                        0,
-                        0,
-                        0,
-                      );
-                      const end = new Date(
-                        now.getFullYear(),
-                        now.getMonth(),
-                        now.getDate(),
-                        23,
-                        59,
-                        59,
-                        999,
-                      );
-                      const iso = now.toISOString().slice(0, 10);
-                      setDateInput(iso);
-                      await runMobileDateFilterRefresh(async () => {
-                        await onDateChange({ start, end }, iso);
-                      });
-                      setShowCalendar(false);
-                    }}
-                  >
-                    Today
-                  </button>
-                </div>
-              </div>,
-              document.body,
-            )}
-          {dateRange.start && (
+        {showDesktopSortButtons && (
+          <>
             <button
-              className="px-1 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white text-md"
-              onClick={async () => {
-                setDateInput("");
+              onClick={() => onSortChange("desc")}
+              className={`flex items-center justify-center gap-1.5 px-3 h-[28px] min-w-0 rounded-lg text-[12px] transition-all whitespace-nowrap ${sortOrder === "desc" ? "bg-white text-black font-semibold shadow-lg" : "text-white/70 hover:bg-white/10 border border-white/10"}`}
+              aria-label="Recent"
+            >
+              <img
+                src="https://idr01.zata.ai/devstoragev1/public/icons/upload-square-2%20(1).svg"
+                alt="Recent"
+                className={`${sortOrder === "desc" ? "" : "invert opacity-100"} w-4 h-4`}
+              />
+              <span>Recent</span>
+            </button>
+            <button
+              onClick={() => onSortChange("asc")}
+              className={`flex items-center justify-center gap-1.5 px-3 h-[28px] min-w-0 rounded-lg text-[12px] transition-all whitespace-nowrap ${sortOrder === "asc" ? "bg-white text-black font-semibold shadow-lg" : "text-white/70 hover:bg-white/10 border border-white/10"}`}
+              aria-label="Oldest"
+            >
+              <img
+                src="https://idr01.zata.ai/devstoragev1/public/icons/download-square-2.svg"
+                alt="Oldest"
+                className={`${sortOrder === "asc" ? "" : "invert opacity-100"} w-4 h-4`}
+              />
+              <span>Oldest</span>
+            </button>
+          </>
+        )}
+
+        {showDesktopDateButton && (
+          <div className="relative flex items-center gap-1">
+            <input
+              ref={dateInputRef}
+              type="date"
+              value={dateInput}
+              onChange={async (e) => {
+                const value = e.target.value;
+                setDateInput(value);
                 await runMobileDateFilterRefresh(async () => {
-                  await onDateChange({ start: null, end: null }, "");
+                  if (!value) {
+                    await onDateChange({ start: null, end: null }, "");
+                    return;
+                  }
+                  const d = new Date(value + "T00:00:00");
+                  const start = new Date(
+                    d.getFullYear(),
+                    d.getMonth(),
+                    d.getDate(),
+                    0,
+                    0,
+                    0,
+                  );
+                  const end = new Date(
+                    d.getFullYear(),
+                    d.getMonth(),
+                    d.getDate(),
+                    23,
+                    59,
+                    59,
+                    999,
+                  );
+                  await onDateChange({ start, end }, value);
                 });
               }}
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: 1,
+                height: 1,
+                opacity: 0,
+              }}
+            />
+            <button
+              ref={calendarButtonRef}
+              onClick={(e) => {
+                e.stopPropagation();
+                const base = dateRange.start
+                  ? new Date(dateRange.start)
+                  : new Date();
+                setCalendarMonth(base.getMonth());
+                setCalendarYear(base.getFullYear());
+                setShowCalendar((v) => !v);
+              }}
+              className={`relative group h-[34px] md:h-[26px] w-[34px] md:w-[28px] flex items-center justify-center rounded-xl md:rounded-lg text-[13px] transition-all ${showCalendar || dateRange.start ? "bg-white text-black font-semibold shadow-lg" : "bg-white/5 border border-white/10 hover:bg-white/10 text-white/70"}`}
+              aria-label="Date"
             >
-              <svg
-                width="12"
-                height="12"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
+              <img
+                src="https://idr01.zata.ai/devstoragev1/public/icons/calendar-days.svg"
+                alt="Date"
+                className={`${showCalendar || dateRange.start ? "" : "invert md:opacity-100 opacity-70"} w-4 h-4`}
+              />
             </button>
-          )}
-          {mounted &&
-            typeof document !== "undefined" &&
-            isMobileDateFiltering &&
-            createPortal(
-              <div className="fixed top-[64px] left-0 right-0 bottom-0 z-[99990] flex items-center justify-center bg-black/55 backdrop-blur-sm pointer-events-none md:hidden">
-                <div className="flex flex-col items-center gap-4 px-4">
-                  <Image
-                    src="https://idr01.zata.ai/devstoragev1/public/styles/Logo.gif"
-                    alt="Filtering by date"
-                    width={72}
-                    height={72}
-                    className="object-contain"
-                    unoptimized
-                  />
-                  <div className="text-white text-lg text-center">
-                    Filtering generations...
+            {showCalendar &&
+              mounted &&
+              typeof document !== "undefined" &&
+              calendarPosition &&
+              createPortal(
+                <div
+                  ref={calendarRef}
+                  data-calendar-popup="true"
+                  className="fixed w-[280px] max-w-[calc(100vw-1rem)] select-none bg-black/90 backdrop-blur-3xl rounded-xl ring-1 ring-white/20 shadow-2xl p-3"
+                  onMouseDown={(e) => e.stopPropagation()}
+                  style={{
+                    top: `${calendarPosition.top}px`,
+                    right: `${calendarPosition.right}px`,
+                    zIndex: 99999,
+                  }}
+                >
+                  <div className="flex items-center justify-between mb-2 text-white">
+                    <button
+                      className="px-2 py-1 rounded hover:bg-white/10"
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        const prev = new Date(calendarYear, calendarMonth - 1, 1);
+                        setCalendarYear(prev.getFullYear());
+                        setCalendarMonth(prev.getMonth());
+                      }}
+                    >
+                      ‹
+                    </button>
+                    <div className="text-sm font-semibold">
+                      {new Date(calendarYear, calendarMonth, 1).toLocaleString(
+                        undefined,
+                        { month: "long", year: "numeric" },
+                      )}
+                    </div>
+                    <button
+                      className="px-2 py-1 rounded hover:bg-white/10"
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        const next = new Date(calendarYear, calendarMonth + 1, 1);
+                        setCalendarYear(next.getFullYear());
+                        setCalendarMonth(next.getMonth());
+                      }}
+                    >
+                      ›
+                    </button>
                   </div>
-                </div>
-              </div>,
-              document.body,
+                  <div className="grid grid-cols-7 text-[11px] text-white/70 mb-1">
+                    {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((d) => (
+                      <div key={d} className="text-center py-1">
+                        {d}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-7 gap-1">
+                    {Array.from({ length: calendarFirstWeekday }).map((_, i) => (
+                      <div key={`pad-${i}`} className="h-8" />
+                    ))}
+                    {Array.from({ length: calendarDaysInMonth }).map((_, i) => {
+                      const day = i + 1;
+                      const thisDate = new Date(calendarYear, calendarMonth, day);
+                      const isSelected =
+                        !!dateRange.start &&
+                        new Date(dateRange.start).toDateString() ===
+                          thisDate.toDateString();
+                      const isFuture =
+                        thisDate.getTime() >
+                        new Date().setHours(23, 59, 59, 999);
+                      const futureDateClass = emphasizeDisabledDatesOnMobile
+                        ? "cursor-not-allowed bg-white/[0.03] text-white/10 opacity-35 ring-1 ring-white/[0.04] md:bg-white/5 md:text-white/20 md:opacity-100 md:ring-0"
+                        : "text-white/20 cursor-not-allowed";
+                      const activeDateClass = isSelected
+                        ? "bg-white/25 ring-1 ring-white/40"
+                        : "bg-white/5";
+                      return (
+                        <button
+                          key={day}
+                          disabled={isFuture}
+                          aria-disabled={isFuture}
+                          className={`h-8 rounded text-sm text-center ${isFuture ? futureDateClass : `text-white hover:bg-white/15 ${activeDateClass}`}`}
+                          onMouseDown={(e) => e.stopPropagation()}
+                          onClick={async (e) => {
+                            if (isFuture) return;
+                            e.stopPropagation();
+                            e.preventDefault();
+                            const start = new Date(
+                              thisDate.getFullYear(),
+                              thisDate.getMonth(),
+                              thisDate.getDate(),
+                              0,
+                              0,
+                              0,
+                            );
+                            const end = new Date(
+                              thisDate.getFullYear(),
+                              thisDate.getMonth(),
+                              thisDate.getDate(),
+                              23,
+                              59,
+                              59,
+                              999,
+                            );
+                            const iso = thisDate.toISOString().slice(0, 10);
+                            setDateInput(iso);
+                            await runMobileDateFilterRefresh(async () => {
+                              await onDateChange({ start, end }, iso);
+                            });
+                            setShowCalendar(false);
+                          }}
+                        >
+                          {day}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="flex items-center justify-between mt-3">
+                    <button
+                      className="text-white/80 text-sm px-2 py-1 rounded hover:bg-white/10"
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        setDateInput("");
+                        await runMobileDateFilterRefresh(async () => {
+                          await onDateChange({ start: null, end: null }, "");
+                        });
+                        setShowCalendar(false);
+                      }}
+                    >
+                      Clear
+                    </button>
+                    <button
+                      className="text-white/90 text-sm px-2 py-1 rounded hover:bg-white/10"
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        const now = new Date();
+                        setCalendarMonth(now.getMonth());
+                        setCalendarYear(now.getFullYear());
+
+                        // Bug 60 fix: Selecting 'Today' should apply the filter
+                        const start = new Date(
+                          now.getFullYear(),
+                          now.getMonth(),
+                          now.getDate(),
+                          0,
+                          0,
+                          0,
+                        );
+                        const end = new Date(
+                          now.getFullYear(),
+                          now.getMonth(),
+                          now.getDate(),
+                          23,
+                          59,
+                          59,
+                          999,
+                        );
+                        const iso = now.toISOString().slice(0, 10);
+                        setDateInput(iso);
+                        await runMobileDateFilterRefresh(async () => {
+                          await onDateChange({ start, end }, iso);
+                        });
+                        setShowCalendar(false);
+                      }}
+                    >
+                      Today
+                    </button>
+                  </div>
+                </div>,
+                document.body,
+              )}
+            {dateRange.start && (
+              <button
+                className="px-1 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white text-md"
+                onClick={async () => {
+                  setDateInput("");
+                  await runMobileDateFilterRefresh(async () => {
+                    await onDateChange({ start: null, end: null }, "");
+                  });
+                }}
+              >
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
             )}
+            {mounted &&
+              typeof document !== "undefined" &&
+              isMobileDateFiltering &&
+              createPortal(
+                <div className="fixed top-[64px] left-0 right-0 bottom-0 z-[99990] flex items-center justify-center bg-black/55 backdrop-blur-sm pointer-events-none md:hidden">
+                  <div className="flex flex-col items-center gap-4 px-4">
+                    <Image
+                      src="https://idr01.zata.ai/devstoragev1/public/styles/Logo.gif"
+                      alt="Filtering by date"
+                      width={72}
+                      height={72}
+                      className="object-contain"
+                      unoptimized
+                    />
+                    <div className="text-white text-lg text-center">
+                      Filtering generations...
+                    </div>
+                  </div>
+                </div>,
+                document.body,
+              )}
+          </div>
+        )}
         </div>
       </div>
-    </div>
   );
 }

@@ -1,4 +1,5 @@
-import { CREATIVE_STYLE_IMAGE_BASE } from "@/constants/creativeStyleCdn";
+import { CREATIVE_STYLE_IMAGE_BASE, ZATA_INDIAN_STYLES_BASE } from "@/constants/creativeStyleCdn";
+import { INDIAN_STYLE_PREVIEWS } from "@/styles/indianStylePreviews";
 
 export type StyleItem = {
   id: string;
@@ -28,6 +29,14 @@ const inferStyleTypeId = (tag: string) =>
     .replace(/^-+|-+$/g, "");
 
 export { CREATIVE_STYLE_IMAGE_BASE };
+
+const toZataPathSegment = (text: string) =>
+  String(text)
+    .toLowerCase()
+    .trim()
+    .replace(/[\u2013\u2014]/g, "-")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 
 const rawStyles: RawStyleItem[] = [
   {
@@ -2453,7 +2462,19 @@ const rawStyles: RawStyleItem[] = [
 ];
 
 export const STYLES: StyleItem[] = rawStyles.map((style) => ({
-  ...style,
-  state: style.state ?? inferStyleState(style.name),
-  typeId: style.typeId ?? inferStyleTypeId(style.tag),
+  ...(() => {
+    const state = style.state ?? inferStyleState(style.name);
+    const typeId = style.typeId ?? inferStyleTypeId(style.tag);
+
+    const idKey = toZataPathSegment(style.id);
+    const preview = INDIAN_STYLE_PREVIEWS[idKey];
+
+    const image =
+      idKey === "maharashtra"
+        ? style.image
+        : preview?.v1 ??
+          `${ZATA_INDIAN_STYLES_BASE}/${toZataPathSegment(state)}/${toZataPathSegment(style.title || style.id)}/v1.avif`;
+
+    return { ...style, state, typeId, image };
+  })(),
 }));

@@ -5,13 +5,14 @@ import {
   Menu,
   Search,
   X,
-  SlidersHorizontal,
   CalendarDays,
   ImageIcon,
   SquarePen,
   Edit3,
+  SlidersHorizontal,
 } from "lucide-react";
 import HistoryControls from "@/app/view/Generation/VideoGeneration/TextToVideo/compo/HistoryControls";
+import HistoryFilterDropdown from "./HistoryFilterDropdown";
 
 export type InputBoxHistoryChromeProps = {
   pathname: string | null;
@@ -85,6 +86,20 @@ export function InputBoxHistoryChrome({
   calendarFirstWeekday,
   calendarDaysInMonth,
 }: InputBoxHistoryChromeProps) {
+  const [isFilterOpen, setIsFilterOpen] = React.useState(false);
+  const filterTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  const handleMouseEnter = () => {
+    if (filterTimeoutRef.current) clearTimeout(filterTimeoutRef.current);
+    setIsFilterOpen(true);
+  };
+
+  const handleMouseLeave = () => {
+    filterTimeoutRef.current = setTimeout(() => {
+      setIsFilterOpen(false);
+    }, 300);
+  };
+
   const hasUserData = Boolean(userData);
   return (
     <div className="fixed top-0 left-0 right-0 z-50 bg-[#0E0E12]/80 backdrop-blur-xl border-b border-white/5 shadow-xl transition-all duration-300 md:py-0 md:pl-20">
@@ -184,6 +199,33 @@ export function InputBoxHistoryChrome({
               <Edit3 size={14} className="text-white" />
               <span className="hidden md:block">Image editor</span>
             </button>
+
+            <div 
+              className="relative hidden md:block"
+              onMouseEnter={handleMouseEnter}
+              onMouseLeave={handleMouseLeave}
+            >
+              <button
+                onClick={() => setIsFilterOpen(!isFilterOpen)}
+                className={`flex h-6 shrink-0 items-center justify-center gap-1.5 rounded-md border px-2 py-1 text-[11px] transition-all whitespace-nowrap md:h-auto md:w-auto md:gap-1.5 md:px-2 md:py-1 md:text-xs ${isFilterOpen ? "bg-white text-black border-transparent font-medium" : "border-white/20 text-white/100 hover:bg-white/5"}`}
+                aria-label="Filters"
+              >
+                <SlidersHorizontal size={14} className={isFilterOpen ? "text-black" : "text-white"} />
+                <span className="hidden md:block">Filter</span>
+              </button>
+
+              <HistoryFilterDropdown 
+                isOpen={isFilterOpen} 
+                onClose={() => setIsFilterOpen(false)} 
+                sortOrder={sortOrder}
+                onSortChange={onSortChange}
+                dateRange={dateRange}
+                onDateRangeChange={async (nextRange) => {
+                  await refreshHistoryFromBackend({ dateRange: nextRange });
+                }}
+                isFutureMobileCalendarDate={isFutureMobileCalendarDate}
+              />
+            </div>
           </div>
 
           {/* Desktop: Search, Sort, and Date controls - positioned at right end of Image Generation text */}
@@ -278,12 +320,11 @@ export function InputBoxHistoryChrome({
 
                 <button
                   onClick={() => {
-                    setIsMobileFilterMenuOpen((prev) => !prev);
-                    setShowCalendar(false);
+                    setIsFilterOpen((prev) => !prev);
                   }}
-                  className={`relative flex h-6 w-6 items-center justify-center rounded-lg border transition ${isMobileFilterMenuOpen || sortOrder === "asc" || !!dateRange.start ? "border-white/20 bg-white text-black" : "border-white/10 bg-white/[0.04] text-white/75 hover:bg-white/[0.08]"}`}
+                  className={`relative flex h-6 w-6 items-center justify-center rounded-lg border transition ${isFilterOpen || sortOrder === "asc" || !!dateRange.start ? "border-white/20 bg-white text-black" : "border-white/10 bg-white/[0.04] text-white/75 hover:bg-white/[0.08]"}`}
                   aria-label="Open filters"
-                  aria-expanded={isMobileFilterMenuOpen}
+                  aria-expanded={isFilterOpen}
                 >
                   <SlidersHorizontal size={15} />
                   {(sortOrder === "asc" || !!dateRange.start) && (
@@ -291,229 +332,17 @@ export function InputBoxHistoryChrome({
                   )}
                 </button>
 
-                {isMobileFilterMenuOpen && (
-                  <div className="absolute right-0 top-full z-50 mt-2 w-48 rounded-2xl border border-white/10 bg-[#111117]/95 p-2 shadow-2xl backdrop-blur-xl">
-                    <button
-                      onClick={async () => {
-                        setIsMobileFilterMenuOpen(false);
-                        setShowCalendar(false);
-                        await onSortChange("desc");
-                      }}
-                      className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm transition ${sortOrder === "desc" ? "bg-white text-black" : "text-white/80 hover:bg-white/5 hover:text-white"}`}
-                    >
-                      <span>Newest</span>
-                      <img
-                        src="https://idr01.zata.ai/devstoragev1/public/icons/upload-square-2%20(1).svg"
-                        alt="Newest"
-                        className={`h-4 w-4 ${sortOrder === "desc" ? "" : "invert opacity-80"}`}
-                      />
-                    </button>
-
-                    <button
-                      onClick={async () => {
-                        setIsMobileFilterMenuOpen(false);
-                        setShowCalendar(false);
-                        await onSortChange("asc");
-                      }}
-                      className={`mt-1 flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm transition ${sortOrder === "asc" ? "bg-white text-black" : "text-white/80 hover:bg-white/5 hover:text-white"}`}
-                    >
-                      <span>Oldest</span>
-                      <img
-                        src="https://idr01.zata.ai/devstoragev1/public/icons/download-square-2.svg"
-                        alt="Oldest"
-                        className={`h-4 w-4 ${sortOrder === "asc" ? "" : "invert opacity-80"}`}
-                      />
-                    </button>
-
-                    <button
-                      onMouseDown={(e) => e.stopPropagation()}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const base = dateRange.start
-                          ? new Date(dateRange.start)
-                          : new Date();
-                        setCalendarMonth(base.getMonth());
-                        setCalendarYear(base.getFullYear());
-                        setShowCalendar((prev) => !prev);
-                      }}
-                      className={`mt-1 flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm transition ${showCalendar || !!dateRange.start ? "bg-white text-black" : "text-white/80 hover:bg-white/5 hover:text-white"}`}
-                    >
-                      <span>
-                        {dateRange.start ? "Change date" : "Pick date"}
-                      </span>
-                      <CalendarDays size={16} />
-                    </button>
-
-                    {showCalendar && (
-                      <div
-                        ref={calendarRef}
-                        className="mt-2 rounded-2xl border border-white/10 bg-black/20 p-3"
-                      >
-                        <div className="mb-2 flex items-center justify-between text-white">
-                          <button
-                            className="rounded-lg px-2 py-1 hover:bg-white/10"
-                            onMouseDown={(e) => e.stopPropagation()}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const prev = new Date(
-                                calendarYear,
-                                calendarMonth - 1,
-                                1,
-                              );
-                              setCalendarYear(prev.getFullYear());
-                              setCalendarMonth(prev.getMonth());
-                            }}
-                          >
-                            ‹
-                          </button>
-                          <div className="text-sm font-semibold">
-                            {new Date(
-                              calendarYear,
-                              calendarMonth,
-                              1,
-                            ).toLocaleString(undefined, {
-                              month: "long",
-                              year: "numeric",
-                            })}
-                          </div>
-                          <button
-                            className="rounded-lg px-2 py-1 hover:bg-white/10"
-                            onMouseDown={(e) => e.stopPropagation()}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const next = new Date(
-                                calendarYear,
-                                calendarMonth + 1,
-                                1,
-                              );
-                              setCalendarYear(next.getFullYear());
-                              setCalendarMonth(next.getMonth());
-                            }}
-                          >
-                            ›
-                          </button>
-                        </div>
-                        <div className="mb-1 grid grid-cols-7 text-[10px] text-white/45">
-                          {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map(
-                            (day) => (
-                              <div key={day} className="py-1 text-center">
-                                {day}
-                              </div>
-                            ),
-                          )}
-                        </div>
-                        <div className="grid grid-cols-7 gap-1">
-                          {Array.from({ length: calendarFirstWeekday }).map(
-                            (_, i) => (
-                              <div
-                                key={`mobile-pad-${i}`}
-                                className="h-8"
-                              />
-                            ),
-                          )}
-                          {Array.from({ length: calendarDaysInMonth }).map(
-                            (_, i) => {
-                              const day = i + 1;
-                              const thisDate = new Date(
-                                calendarYear,
-                                calendarMonth,
-                                day,
-                              );
-                              const isSelected =
-                                !!dateRange.start &&
-                                new Date(dateRange.start).toDateString() ===
-                                  thisDate.toDateString();
-                              const isFuture =
-                                isFutureMobileCalendarDate(thisDate);
-                              return (
-                                <button
-                                  key={day}
-                                  disabled={isFuture}
-                                  aria-disabled={isFuture}
-                                  className={`h-6 rounded-lg text-center text-xs transition ${
-                                    isFuture
-                                      ? "cursor-not-allowed bg-white/[0.03] text-white/10 opacity-35 ring-1 ring-white/[0.04]"
-                                      : isSelected
-                                        ? "bg-white text-black"
-                                        : "bg-white/5 text-white hover:bg-white/15"
-                                  }`}
-                                  onMouseDown={(e) => e.stopPropagation()}
-                                  onClick={async (e) => {
-                                    if (isFuture) return;
-                                    e.stopPropagation();
-                                    await runMobileDateFilterRefresh(
-                                      async () => {
-                                        const start = new Date(
-                                          thisDate.getFullYear(),
-                                          thisDate.getMonth(),
-                                          thisDate.getDate(),
-                                          0,
-                                          0,
-                                          0,
-                                        );
-                                        const end = new Date(
-                                          thisDate.getFullYear(),
-                                          thisDate.getMonth(),
-                                          thisDate.getDate(),
-                                          23,
-                                          59,
-                                          59,
-                                          999,
-                                        );
-                                        setDateInput(
-                                          thisDate
-                                            .toISOString()
-                                            .slice(0, 10),
-                                        );
-                                        await refreshHistoryFromBackend({
-                                          dateRange: { start, end },
-                                        });
-                                      },
-                                    );
-                                    setShowCalendar(false);
-                                    setIsMobileFilterMenuOpen(false);
-                                  }}
-                                >
-                                  {day}
-                                </button>
-                              );
-                            },
-                          )}
-                        </div>
-                        <div className="mt-3 flex items-center justify-between">
-                          <button
-                            className="rounded-lg px-2 py-1 text-xs text-white/75 hover:bg-white/10 hover:text-white"
-                            onClick={async () => {
-                              await runMobileDateFilterRefresh(async () => {
-                                setDateInput("");
-                                await refreshHistoryFromBackend({
-                                  dateRange: {
-                                    start: null,
-                                    end: null,
-                                  },
-                                });
-                              });
-                              setShowCalendar(false);
-                              setIsMobileFilterMenuOpen(false);
-                            }}
-                          >
-                            Clear
-                          </button>
-                          <button
-                            className="rounded-lg px-2 py-1 text-xs text-white/75 hover:bg-white/10 hover:text-white"
-                            onClick={() => {
-                              const now = new Date();
-                              setCalendarMonth(now.getMonth());
-                              setCalendarYear(now.getFullYear());
-                            }}
-                          >
-                            Today
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
+                <HistoryFilterDropdown 
+                  isOpen={isFilterOpen} 
+                  onClose={() => setIsFilterOpen(false)} 
+                  sortOrder={sortOrder}
+                  onSortChange={onSortChange}
+                  dateRange={dateRange}
+                  onDateRangeChange={async (nextRange) => {
+                    await refreshHistoryFromBackend({ dateRange: nextRange });
+                  }}
+                  isFutureMobileCalendarDate={isFutureMobileCalendarDate}
+                />
               </div>
             </div>
           </div>

@@ -20,12 +20,12 @@ export function PromptPreview({ prompt }: PromptPreviewProps) {
   };
 
   return (
-    <div className="overflow-hidden rounded-xl border border-white/10 bg-transparent">
-      <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-2.5">
+    <div className="">
+      <div className="flex items-center justify-start gap-3 px-4 py-2.5">
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className="text-[10px] font-semibold uppercase tracking-[0.07em] text-white/25 transition hover:text-white/45"
+          className="text-[10px] font-semibold uppercase tracking-[0.07em] text-white/80 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] transition hover:text-white"
         >
           Prompt
         </button>
@@ -33,23 +33,20 @@ export function PromptPreview({ prompt }: PromptPreviewProps) {
           <button
             type="button"
             onClick={handleCopy}
-            className="flex items-center gap-1 rounded-lg border border-white/10 bg-transparent px-2 py-1 text-[10px] font-medium text-white/30 transition hover:border-white/20 hover:text-white/60"
+            className="p-1 text-white/80 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] transition hover:text-white hover:scale-110"
+            title="Copy Prompt"
           >
             {copied ? (
-              <>
-                <Check className="h-3 w-3 text-green-400" /> Copied
-              </>
+              <Check className="h-4 w-4 text-green-400" />
             ) : (
-              <>
-                <Copy className="h-3 w-3" /> Copy
-              </>
+              <Copy className="h-4 w-4" />
             )}
           </button>
         </div>
       </div>
       {open ? (
         <div className="max-h-[160px] overflow-y-auto px-4 py-3 [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-white/[0.06] [&::-webkit-scrollbar]:w-1">
-          <pre className="whitespace-pre-wrap font-mono text-[11px] leading-[1.7] text-white/25">
+          <pre className="whitespace-pre-wrap font-mono text-[11px] leading-[1.7] text-white/90 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
             {prompt}
           </pre>
         </div>

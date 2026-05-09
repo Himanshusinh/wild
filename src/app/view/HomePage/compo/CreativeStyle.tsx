@@ -2,19 +2,133 @@
 
 import { Fragment, useEffect, useRef, useState, type MouseEvent, type WheelEvent as ReactWheelEvent } from "react";
 import Link from "next/link";
-import { CREATIVE_STYLE_IMAGE_BASE } from "@/constants/creativeStyleCdn";
+import { CREATIVE_STYLE_IMAGE_BASE, ZATA_INDIAN_STYLES_BASE } from "@/constants/creativeStyleCdn";
 import { STYLES } from "@/styles/creativeStyleCatalog";
 import type { StyleItem } from "@/styles/creativeStyleCatalog";
+import { INDIAN_STYLE_PREVIEWS, type IndianStylePreviewTriple } from "@/styles/indianStylePreviews";
 export { STYLES } from "@/styles/creativeStyleCatalog";
+
+function toIndianStyleKey(id: string): string {
+  return String(id)
+    .toLowerCase()
+    .trim()
+    .replace(/[\u2013\u2014]/g, "-")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function toZataPathSegment(text: string): string {
+  return String(text)
+    .toLowerCase()
+    .trim()
+    .replace(/[\u2013\u2014]/g, "-")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function inferIndianStyleTriple(style: StyleItem): IndianStylePreviewTriple {
+  const stateSeg = toZataPathSegment(style.state);
+  const styleSeg = toZataPathSegment(style.title || style.id);
+  const base = `${ZATA_INDIAN_STYLES_BASE}/${stateSeg}/${styleSeg}`;
+  return {
+    v1: `${base}/v1.avif`,
+    v2: `${base}/v2.avif`,
+    v3: `${base}/v3.avif`,
+  };
+}
+
+function IndianTripleStyleCard({
+  style,
+  onClick,
+  triple,
+}: {
+  style: StyleItem;
+  onClick: (e: any) => void;
+  triple: IndianStylePreviewTriple;
+}) {
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const images = [triple.v1, triple.v2, triple.v3];
+  const objectPositions: React.CSSProperties["objectPosition"][] = [
+    "left center",
+    "center center",
+    "right center",
+  ];
+
+  return (
+    <Link
+      href={style.href}
+      onClick={onClick}
+      className="w-full shrink-0 snap-start md:w-full md:shrink"
+    >
+      <div className="mb-2 overflow-hidden rounded-xl border border-white/10 bg-[#18181f] sm:mb-3">
+        <div
+          className="group relative flex h-[190px] overflow-hidden sm:h-[220px]"
+          onMouseLeave={() => setHoveredIndex(null)}
+        >
+          {images.map((imgSrc, idx) => {
+            let width = "33.3333%";
+            if (hoveredIndex !== null) {
+              width = hoveredIndex === idx ? "80%" : "10%";
+            }
+            return (
+              <div
+                key={imgSrc}
+                className="relative h-full overflow-hidden transition-[width] duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] cursor-pointer"
+                style={{ width, willChange: "width" }}
+                onMouseEnter={() => setHoveredIndex(idx)}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={imgSrc}
+                  alt={`${style.name} v${idx + 1}`}
+                  className={`h-full w-full object-cover transition-transform duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${hoveredIndex === idx ? "scale-[1.05]" : "scale-100"}`}
+                  style={{
+                    filter: style.imageFilter,
+                    objectPosition: objectPositions[idx],
+                  }}
+                />
+              </div>
+            );
+          })}
+
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,transparent_38%,rgba(0,0,0,0.72)_100%)]" />
+          <div className="pointer-events-none absolute left-3 top-3 rounded-full border border-white/15 bg-black/45 px-2.5 py-1 text-[8px] font-bold uppercase tracking-[0.08em] text-white/80 backdrop-blur-[6px] sm:left-4 sm:top-4 sm:px-3 sm:text-[9px]">
+            {style.tag}
+          </div>
+          <div className="pointer-events-none absolute bottom-3 left-3 sm:bottom-4 sm:left-4">
+            <div
+              className="text-[30px] uppercase leading-none tracking-[0.06em] sm:text-[34px]"
+              style={{
+                color: style.titleColor,
+                fontFamily: "var(--font-bebas-neue), 'Bebas Neue', sans-serif",
+                textShadow: "0 2px 12px rgba(0,0,0,0.5)",
+              }}
+            >
+              {style.title}
+            </div>
+            <div className="mt-1 text-[11px] font-semibold tracking-wide text-white/85 sm:text-[12px]">
+              {style.name}
+            </div>
+            <div className="mt-1 max-w-[280px] text-[10px] leading-snug text-white/60 line-clamp-2 sm:max-w-[300px]">
+              {style.desc}
+            </div>
+          </div>
+        </div>
+      </div>
+    </Link>
+  );
+}
 
 function WarliStyleCard({ style, onClick }: { style: StyleItem; onClick: (e: any) => void }) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
-  const v1Image = `${CREATIVE_STYLE_IMAGE_BASE}warlistyles/warliv1.jpg`;
-  const v2Image = `${CREATIVE_STYLE_IMAGE_BASE}warlistyles/warliv2.jpg`;
-  const v3Image = `${CREATIVE_STYLE_IMAGE_BASE}warlistyles/warliv3.jpg`;
-  const defaultImage = style.image;
-  const images = [v1Image, v2Image, v3Image];
+  const warliTriple =
+    INDIAN_STYLE_PREVIEWS["maharashtra"] ?? {
+      v1: `${ZATA_INDIAN_STYLES_BASE}/maharashtra/warli/v1.avif`,
+      v2: `${ZATA_INDIAN_STYLES_BASE}/maharashtra/warli/v2.avif`,
+      v3: `${ZATA_INDIAN_STYLES_BASE}/maharashtra/warli/v3.avif`,
+    };
+  const images = [warliTriple.v1, warliTriple.v2, warliTriple.v3];
 
   return (
     <Link
@@ -54,7 +168,7 @@ function WarliStyleCard({ style, onClick }: { style: StyleItem; onClick: (e: any
 
           {/* Outer Thumbnail Overlay */}
           <img
-            src={style.image}
+            src={images[0] || style.image}
             alt={style.name}
             className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-500 pointer-events-none ${
               hoveredIndex !== null ? "opacity-0" : "opacity-100"
@@ -2010,54 +2124,15 @@ export default function CreativeStyle({
                   style={style}
                   onClick={(event) => handleStyleClick(event, style)}
                 />
-              ) : style.id.toLowerCase() === "shellcraft" ? (
-                <ShellCraftStyleCard
+              ) : (
+                <IndianTripleStyleCard
                   style={style}
+                  triple={
+                    INDIAN_STYLE_PREVIEWS[toIndianStyleKey(style.id)] ??
+                    inferIndianStyleTriple(style)
+                  }
                   onClick={(event) => handleStyleClick(event, style)}
                 />
-              ) : (
-                <Link
-                  href={style.href}
-                  onClick={(event) => handleStyleClick(event, style)}
-                  className="w-full md:w-[340px] shrink-0 snap-start"
-                >
-                  <div className="mb-2 overflow-hidden rounded-xl border border-white/10 bg-[#18181f] sm:mb-3">
-                    <div className="group relative h-[190px] sm:h-[220px]">
-                      <img
-                        src={style.image}
-                        alt={style.name}
-                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
-                        style={{ filter: style.imageFilter }}
-                      />
-                      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,transparent_40%,rgba(0,0,0,0.72)_100%)]" />
-                      <div className="absolute left-3 top-3 rounded-full border border-white/15 bg-black/45 px-2.5 py-1 text-[8px] font-bold uppercase tracking-[0.08em] text-white/80 backdrop-blur-[6px] sm:left-4 sm:top-4 sm:px-3 sm:text-[9px]">
-                        {style.tag}
-                      </div>
-                      <div className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4">
-                        <div
-                          className="text-[30px] uppercase leading-none tracking-[0.06em] sm:text-[34px]"
-                          style={{
-                            color: style.titleColor,
-                            fontFamily: "var(--font-bebas-neue), 'Bebas Neue', sans-serif",
-                            textShadow: "0 2px 12px rgba(0,0,0,0.5)",
-                          }}
-                        >
-                          {style.title}
-                        </div>
-                        <div className="mt-1 text-[11px] font-semibold tracking-wide text-white/85 sm:text-[12px]">
-                          {style.name}
-                        </div>
-                        <div className="mt-1 max-w-[280px] text-[10px] leading-snug text-white/60 line-clamp-2 sm:max-w-[300px]">
-                          {style.desc}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="sr-only">
-                    <div>{style.name}</div>
-                    <p>{style.desc}</p>
-                  </div>
-                </Link>
               )}
             </Fragment>
           ))}
@@ -2080,50 +2155,15 @@ export default function CreativeStyle({
                       style={style}
                       onClick={(event) => handleStyleClick(event, style)}
                     />
-                  ) : style.id.toLowerCase() === "shellcraft" ? (
-                    <ShellCraftStyleCard
+                  ) : (
+                    <IndianTripleStyleCard
                       style={style}
+                      triple={
+                        INDIAN_STYLE_PREVIEWS[toIndianStyleKey(style.id)] ??
+                        inferIndianStyleTriple(style)
+                      }
                       onClick={(event) => handleStyleClick(event, style)}
                     />
-                  ) : (
-                    <Link
-                      href={style.href}
-                      onClick={(event) => handleStyleClick(event, style)}
-                      className="w-full"
-                    >
-                      <div className="mb-2 overflow-hidden rounded-xl border border-white/10 bg-[#18181f] sm:mb-3">
-                        <div className="group relative h-[190px] sm:h-[220px]">
-                          <img
-                            src={style.image}
-                            alt={style.name}
-                            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
-                            style={{ filter: style.imageFilter }}
-                          />
-                          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,transparent_40%,rgba(0,0,0,0.72)_100%)]" />
-                          <div className="absolute left-3 top-3 rounded-full border border-white/15 bg-black/45 px-2.5 py-1 text-[8px] font-bold uppercase tracking-[0.08em] text-white/80 backdrop-blur-[6px] sm:left-4 sm:top-4 sm:px-3 sm:text-[9px]">
-                            {style.tag}
-                          </div>
-                          <div className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4">
-                            <div
-                              className="text-[30px] uppercase leading-none tracking-[0.06em] sm:text-[34px]"
-                              style={{
-                                color: style.titleColor,
-                                fontFamily: "var(--font-bebas-neue), 'Bebas Neue', sans-serif",
-                                textShadow: "0 2px 12px rgba(0,0,0,0.5)",
-                              }}
-                            >
-                              {style.title}
-                            </div>
-                            <div className="mt-1 text-[11px] font-semibold tracking-wide text-white/85 sm:text-[12px]">
-                              {style.name}
-                            </div>
-                            <div className="mt-1 max-w-[280px] text-[10px] leading-snug text-white/60 line-clamp-2 sm:max-w-[300px]">
-                              {style.desc}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </Link>
                   )}
                 </div>
               ))}
@@ -2171,50 +2211,15 @@ export default function CreativeStyle({
                       style={style}
                       onClick={(event) => handleStyleClick(event, style)}
                     />
-                  ) : style.id.toLowerCase() === "shellcraft" ? (
-                    <ShellCraftStyleCard
+                  ) : (
+                    <IndianTripleStyleCard
                       style={style}
+                      triple={
+                        INDIAN_STYLE_PREVIEWS[toIndianStyleKey(style.id)] ??
+                        inferIndianStyleTriple(style)
+                      }
                       onClick={(event) => handleStyleClick(event, style)}
                     />
-                  ) : (
-                    <Link
-                      href={style.href}
-                      onClick={(event) => handleStyleClick(event, style)}
-                      className="w-full"
-                    >
-                      <div className="mb-2 overflow-hidden rounded-xl border border-white/10 bg-[#18181f] sm:mb-3">
-                        <div className="group relative h-[190px] sm:h-[220px]">
-                          <img
-                            src={style.image}
-                            alt={style.name}
-                            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
-                            style={{ filter: style.imageFilter }}
-                          />
-                          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,transparent_40%,rgba(0,0,0,0.72)_100%)]" />
-                          <div className="absolute left-3 top-3 rounded-full border border-white/15 bg-black/45 px-2.5 py-1 text-[8px] font-bold uppercase tracking-[0.08em] text-white/80 backdrop-blur-[6px] sm:left-4 sm:top-4 sm:px-3 sm:text-[9px]">
-                            {style.tag}
-                          </div>
-                          <div className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4">
-                            <div
-                              className="text-[30px] uppercase leading-none tracking-[0.06em] sm:text-[34px]"
-                              style={{
-                                color: style.titleColor,
-                                fontFamily: "var(--font-bebas-neue), 'Bebas Neue', sans-serif",
-                                textShadow: "0 2px 12px rgba(0,0,0,0.5)",
-                              }}
-                            >
-                              {style.title}
-                            </div>
-                            <div className="mt-1 text-[11px] font-semibold tracking-wide text-white/85 sm:text-[12px]">
-                              {style.name}
-                            </div>
-                            <div className="mt-1 max-w-[280px] text-[10px] leading-snug text-white/60 line-clamp-2 sm:max-w-[300px]">
-                              {style.desc}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </Link>
                   )}
                 </div>
               ))}

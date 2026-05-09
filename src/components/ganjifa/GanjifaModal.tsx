@@ -403,7 +403,7 @@ export function GanjifaModal({ isOpen, onClose }: { isOpen: boolean; onClose: ()
               ) : null}
             </div>
 
-            <div className="flex flex-1 flex-col overflow-y-auto [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-white/[0.06] [&::-webkit-scrollbar]:w-1">
+            <div className="flex flex-1 flex-col overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {state.panelState === "empty" ? (
                 <div className="p-5">
                   <div className="flex flex-1 flex-col items-center justify-center gap-2 p-10 text-center">
@@ -418,32 +418,24 @@ export function GanjifaModal({ isOpen, onClose }: { isOpen: boolean; onClose: ()
               {state.panelState === "loading" ? (
                 <div className="p-5">
                   <div className="flex flex-1 flex-col items-center justify-center gap-6 p-6">
-                  <div
-                    className={`grid w-full gap-3 ${
-                      state.imageCount === 1 ? "grid-cols-1 max-w-lg" : "grid-cols-2"
-                    }`}
-                  >
-                    {Array.from({ length: state.imageCount }).map((_, i) => (
-                      <div
-                        key={i}
-                        className="relative flex aspect-square items-center justify-center overflow-hidden rounded-xl bg-transparent"
-                      >
-                        <img
-                          src="https://idr01.zata.ai/devstoragev1/public/styles/Logo.gif"
-                          alt="Generating..."
-                          className="h-16 w-16 object-contain opacity-40"
-                          draggable={false}
-                        />
-                      </div>
-                    ))}
-                  </div>
+                  <div className="grid w-full gap-3 grid-cols-1 max-w-lg">
+                                      <div className="relative flex aspect-square items-center justify-center overflow-hidden rounded-xl bg-transparent">
+                                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                                        <img
+                                          src="https://idr01.zata.ai/devstoragev1/public/styles/Logo.gif"
+                                          alt="Generating..."
+                                          className="h-16 w-16 object-contain opacity-40"
+                                          draggable={false}
+                                        />
+                                      </div>
+                                    </div>
                 </div>
               </div>
             ) : null}
 
               {state.panelState === "results" ? (
-                <div className="flex flex-col gap-0">
-                  <OutputGrid
+                <div className="flex flex-col gap-0 h-full flex-1">
+                  <OutputGrid prompt={assembledPrompt}
                     images={state.generatedImages}
                     count={state.imageCount} ratio={state.ratio}
                     onSaveImage={(i) => void handleSaveImage(i)}
@@ -453,9 +445,6 @@ export function GanjifaModal({ isOpen, onClose }: { isOpen: boolean; onClose: ()
                       setFullscreenUrl(url);
                     }}
                   />
-                  <div className="px-5 py-5">
-                    <PromptPreview prompt={assembledPrompt} />
-                  </div>
                 </div>
               ) : null}
             </div>

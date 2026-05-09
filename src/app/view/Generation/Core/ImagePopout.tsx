@@ -33,14 +33,14 @@ const FeatureItem = ({ href, icon: Icon, title, desc, onClick, isSoon }: any) =>
             
             <div className="relative flex min-w-0 flex-1 flex-col gap-0 z-10">
                 <div className="flex items-center gap-0">
-                    <div className="text-sm font-semibold text-white/90 group-hover/item:text-white transition-colors tracking-wide">{title}</div>
+                    <div className="text-xs font-semibold text-white/90 group-hover/item:text-white transition-colors tracking-wide">{title}</div>
                     {isSoon && (
                         <div className="px-2 py-0.5 text-[9px] font-bold tracking-widest uppercase bg-gradient-to-r from-white/10 to-white/5 text-white/90 rounded-full leading-none border border-white/10 shadow-[0_2px_8px_rgba(0,0,0,0.2)] backdrop-blur-sm">
                             SOON
                         </div>
                     )}
                 </div>
-                <div className="text-[11px] font-medium text-white/40 group-hover/item:text-white/60 transition-colors leading-snug">{desc}</div>
+                <div className="text-[10px] font-medium text-white/40 group-hover/item:text-white/60 transition-colors leading-snug">{desc}</div>
             </div>
         </Element>
     );
@@ -60,14 +60,14 @@ const ModelItem = ({ href, tag, name, desc, onClick, icon: Icon }: any) => (
         
         <div className="relative flex min-w-0 flex-1 flex-col gap-0 z-10">
             <div className="flex items-center gap-2">
-                <div className="text-sm font-semibold text-white/90 group-hover/item:text-white transition-colors tracking-wide">{name}</div>
+                <div className="text-xs font-semibold text-white/90 group-hover/item:text-white transition-colors tracking-wide">{name}</div>
                 {tag && (
                     <div className="px-2 py-0.5 text-[9px] font-bold tracking-widest uppercase bg-gradient-to-r from-white/10 to-white/5 text-white/90 rounded-full leading-none border border-white/10 shadow-[0_2px_8px_rgba(0,0,0,0.2)] backdrop-blur-sm">
                         {tag}
                     </div>
                 )}
             </div>
-            <div className="text-[11px] font-medium text-white/40 group-hover/item:text-white/60 transition-colors leading-snug">{desc}</div>
+            <div className="text-[10px] font-medium text-white/40 group-hover/item:text-white/60 transition-colors leading-snug">{desc}</div>
         </div>
     </Link>
 );
