@@ -1,0 +1,17 @@
+{
+	"folders": [
+		{
+			"path": "../../../../../../../../../workflows/wildworkflows"
+		},
+		{
+			"path": "../../../../../../../../api-gateway-services-wildmind"
+		},
+		{
+			"path": "../../../../../../.."
+		},
+		{
+			"path": "../../../../../../../../credit-service"
+		}
+	],
+	"settings": {}
+}
