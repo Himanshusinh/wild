@@ -539,10 +539,16 @@ export default function HistoryFilterDropdown({
                       key={t}
                       type="button"
                       onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => {
+                      onClick={async () => {
                         setSelectedTool(t);
                         setToolQuery("");
                         setIsToolOpen(false);
+                        await runBackendRefreshWithAdvancedFilters({
+                          tool: t,
+                          style: selectedStyle,
+                          aspect: selectedAspect,
+                          model: selectedModel,
+                        });
                       }}
                       className="w-full text-left px-2 py-1.5 rounded-lg text-[10px] text-white/80 hover:bg-white/5"
                     >
@@ -610,10 +616,16 @@ export default function HistoryFilterDropdown({
                       key={s}
                       type="button"
                       onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => {
+                      onClick={async () => {
                         setSelectedStyle(s);
                         setStyleQuery("");
                         setIsStyleOpen(false);
+                        await runBackendRefreshWithAdvancedFilters({
+                          tool: selectedTool,
+                          style: s,
+                          aspect: selectedAspect,
+                          model: selectedModel,
+                        });
                       }}
                       className="w-full text-left px-2 py-1.5 rounded-lg text-[10px] text-white/80 hover:bg-white/5"
                     >
@@ -766,10 +778,16 @@ export default function HistoryFilterDropdown({
                     key={m}
                     type="button"
                     onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => {
+                    onClick={async () => {
                       setSelectedModel(m);
                       setModelQuery("");
                       setIsModelOpen(false);
+                      await runBackendRefreshWithAdvancedFilters({
+                        tool: selectedTool,
+                        style: selectedStyle,
+                        aspect: selectedAspect,
+                        model: m,
+                      });
                     }}
                     className="w-full text-left px-2 py-1.5 rounded-lg text-[10px] text-white/80 hover:bg-white/5"
                   >
