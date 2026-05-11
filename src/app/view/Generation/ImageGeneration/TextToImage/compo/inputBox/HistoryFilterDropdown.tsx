@@ -60,16 +60,13 @@ export default function HistoryFilterDropdown({
   const [isModelOpen, setIsModelOpen] = React.useState(false);
   const [isAspectOpen, setIsAspectOpen] = React.useState(false);
 
-  const QUICK_TOOLS = ["Upscale", "Retouch", "Mockup"];
+  const QUICK_TOOLS = ["Upscale", "Remove BG", "Erase / Replace"];
   const ALL_TOOLS = [
     "Upscale",
-    "Retouch",
-    "Mockup",
     "Remove BG",
     "Erase / Replace",
     "Expand",
     "Vectorize",
-    "Chat to Edit",
   ];
   const QUICK_STYLES = ["Photo", "Anime", "3D"];
   const ALL_STYLES = ["Photo", "Anime", "3D", "Cinematic", "Illustration"];
@@ -86,7 +83,32 @@ export default function HistoryFilterDropdown({
     "Nano Banana Pro",
     "z-image-turbo",
     "GPT Image 1.5",
+    "Clarity Upscaler",
+    "Real-ESRGAN",
+    "Crystal Upscaler",
+    "Topaz Upscaler",
+    "SeedVR Upscaler",
+    "851 Labs Remove BG",
+    "Lucataco Remove BG",
+    "Bria GenFill",
+    "Bria Expand",
+    "Recraft Vectorize",
+    "Image2SVG",
   ];
+
+  const TOOL_MODELS_MAP: Record<string, string[]> = {
+    Upscale: [
+      "Clarity Upscaler",
+      "Real-ESRGAN",
+      "Crystal Upscaler",
+      "Topaz Upscaler",
+      "SeedVR Upscaler",
+    ],
+    "Remove BG": ["851 Labs Remove BG", "Lucataco Remove BG"],
+    "Erase / Replace": ["Bria GenFill", "Seedream 5 Lite"],
+    Expand: ["Bria Expand"],
+    Vectorize: ["Recraft Vectorize", "Image2SVG"],
+  };
 
   const runBackendRefreshWithAdvancedFilters = React.useCallback(
     async (next: {
@@ -95,12 +117,14 @@ export default function HistoryFilterDropdown({
       aspect?: string;
       model?: string | null;
     }) => {
+      const modelToUse = next.model || (next.tool && TOOL_MODELS_MAP[next.tool] ? TOOL_MODELS_MAP[next.tool] : null);
+
       const nextFilters: any = {
         ...(currentHistoryFilters || {}),
         mode: "image",
         sortOrder,
         ...(dateRange.start && dateRange.end ? { dateRange } : {}),
-        ...(next.model ? { model: next.model } : {}),
+        ...(modelToUse ? { model: modelToUse } : {}),
         ...(next.style ? { style: next.style } : {}),
         ...(next.aspect && next.aspect !== "Any" ? { frameSize: next.aspect } : {}),
       };
@@ -109,13 +133,11 @@ export default function HistoryFilterDropdown({
       const toolToGenerationType: Record<string, string> = {
         Upscale: "image-upscale",
         Vectorize: "image-to-svg",
-        "Chat to Edit": "image-edit",
         "Remove BG": "image-edit",
         "Erase / Replace": "image-edit",
         Expand: "image-edit",
-        Retouch: "image-edit",
-        Mockup: "mockup-generation",
       };
+      
       const mappedGenType = next.tool ? toolToGenerationType[next.tool] : undefined;
       if (mappedGenType) {
         nextFilters.generationType = mappedGenType;
@@ -123,9 +145,11 @@ export default function HistoryFilterDropdown({
         // If tool cleared, remove generationType only if it was one of our tool-mapped values.
         const existing = String(nextFilters.generationType || "");
         if (
-          ["image-upscale", "image-to-svg", "image-edit", "mockup-generation"].includes(
-            existing,
-          )
+          [
+            "image-upscale",
+            "image-to-svg",
+            "image-edit",
+          ].includes(existing)
         ) {
           delete nextFilters.generationType;
         }
@@ -539,10 +563,24 @@ export default function HistoryFilterDropdown({
                       key={t}
                       type="button"
                       onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => {
+                      onClick={async () => {
                         setSelectedTool(t);
                         setToolQuery("");
                         setIsToolOpen(false);
+
+                        // If selected model is not supported by the new tool, clear it
+                        let nextModel = selectedModel;
+                        if (t && TOOL_MODELS_MAP[t] && selectedModel && !TOOL_MODELS_MAP[t].includes(selectedModel)) {
+                          nextModel = null;
+                          setSelectedModel(null);
+                        }
+
+                        await runBackendRefreshWithAdvancedFilters({
+                          tool: t,
+                          style: selectedStyle,
+                          aspect: selectedAspect,
+                          model: nextModel,
+                        });
                       }}
                       className="w-full text-left px-2 py-1.5 rounded-lg text-[10px] text-white/80 hover:bg-white/5"
                     >
@@ -560,11 +598,19 @@ export default function HistoryFilterDropdown({
                 onClick={async () => {
                   const nextTool = selectedTool === t ? null : t;
                   setSelectedTool(nextTool);
+
+                  // If selected model is not supported by the new tool, clear it
+                  let nextModel = selectedModel;
+                  if (nextTool && TOOL_MODELS_MAP[nextTool] && selectedModel && !TOOL_MODELS_MAP[nextTool].includes(selectedModel)) {
+                    nextModel = null;
+                    setSelectedModel(null);
+                  }
+
                   await runBackendRefreshWithAdvancedFilters({
                     tool: nextTool,
                     style: selectedStyle,
                     aspect: selectedAspect,
-                    model: selectedModel,
+                    model: nextModel,
                   });
                 }}
                 className={`h-6 px-1.5 rounded-lg text-[9px] transition-all ${
@@ -610,10 +656,16 @@ export default function HistoryFilterDropdown({
                       key={s}
                       type="button"
                       onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => {
+                      onClick={async () => {
                         setSelectedStyle(s);
                         setStyleQuery("");
                         setIsStyleOpen(false);
+                        await runBackendRefreshWithAdvancedFilters({
+                          tool: selectedTool,
+                          style: s,
+                          aspect: selectedAspect,
+                          model: selectedModel,
+                        });
                       }}
                       className="w-full text-left px-2 py-1.5 rounded-lg text-[10px] text-white/80 hover:bg-white/5"
                     >
@@ -759,17 +811,25 @@ export default function HistoryFilterDropdown({
             />
             {isModelOpen && (modelQuery.trim().length > 0 || true) && (
               <div className="absolute left-0 top-full mt-1 w-[220px] rounded-xl border border-white/10 bg-[#0E0E11] shadow-2xl p-1 z-[140] max-h-16 overflow-y-auto">
-                {ALL_MODELS.filter((m) =>
-                  m.toLowerCase().includes(modelQuery.trim().toLowerCase()),
-                ).slice(0, 30).map((m) => (
+                {ALL_MODELS.filter((m) => {
+                  const matchesQuery = m.toLowerCase().includes(modelQuery.trim().toLowerCase());
+                  if (!selectedTool || !TOOL_MODELS_MAP[selectedTool]) return matchesQuery;
+                  return matchesQuery && TOOL_MODELS_MAP[selectedTool].includes(m);
+                }).slice(0, 30).map((m) => (
                   <button
                     key={m}
                     type="button"
                     onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => {
+                    onClick={async () => {
                       setSelectedModel(m);
                       setModelQuery("");
                       setIsModelOpen(false);
+                      await runBackendRefreshWithAdvancedFilters({
+                        tool: selectedTool,
+                        style: selectedStyle,
+                        aspect: selectedAspect,
+                        model: m,
+                      });
                     }}
                     className="w-full text-left px-2 py-1.5 rounded-lg text-[10px] text-white/80 hover:bg-white/5"
                   >
@@ -780,7 +840,10 @@ export default function HistoryFilterDropdown({
             )}
           </div>
 
-          {QUICK_MODELS.map((m) => (
+          {QUICK_MODELS.filter((m) => {
+            if (!selectedTool || !TOOL_MODELS_MAP[selectedTool]) return true;
+            return TOOL_MODELS_MAP[selectedTool].includes(m);
+          }).map((m) => (
             <button
               key={m}
               type="button"
