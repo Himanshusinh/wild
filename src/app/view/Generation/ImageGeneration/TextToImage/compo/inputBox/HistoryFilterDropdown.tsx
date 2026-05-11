@@ -40,6 +40,10 @@ export default function HistoryFilterDropdown({
   const startBtnRef = React.useRef<HTMLButtonElement | null>(null);
   const endBtnRef = React.useRef<HTMLButtonElement | null>(null);
   const sideBtnRef = React.useRef<HTMLButtonElement | null>(null);
+  const toolBoxRef = React.useRef<HTMLDivElement | null>(null);
+  const styleBoxRef = React.useRef<HTMLDivElement | null>(null);
+  const modelBoxRef = React.useRef<HTMLDivElement | null>(null);
+  const aspectBoxRef = React.useRef<HTMLDivElement | null>(null);
   const [isCalendarOpen, setIsCalendarOpen] = React.useState(false);
   const [calendarAnchor, setCalendarAnchor] = React.useState<CalendarAnchor>("side");
   const [rangePicking, setRangePicking] = React.useState<"start" | "end">("start");
@@ -186,6 +190,28 @@ export default function HistoryFilterDropdown({
     return () => document.removeEventListener("mousedown", onDocDown);
   }, [isCalendarOpen]);
 
+  React.useEffect(() => {
+    if (!isToolOpen && !isStyleOpen && !isModelOpen && !isAspectOpen) return;
+    const onDocDown = (e: MouseEvent) => {
+      const target = e.target as Node;
+
+      if (isToolOpen && toolBoxRef.current && !toolBoxRef.current.contains(target)) {
+        setIsToolOpen(false);
+      }
+      if (isStyleOpen && styleBoxRef.current && !styleBoxRef.current.contains(target)) {
+        setIsStyleOpen(false);
+      }
+      if (isModelOpen && modelBoxRef.current && !modelBoxRef.current.contains(target)) {
+        setIsModelOpen(false);
+      }
+      if (isAspectOpen && aspectBoxRef.current && !aspectBoxRef.current.contains(target)) {
+        setIsAspectOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onDocDown);
+    return () => document.removeEventListener("mousedown", onDocDown);
+  }, [isToolOpen, isStyleOpen, isModelOpen, isAspectOpen]);
+
   const formatChipDate = (d: Date | null) => {
     if (!d) return "";
     const dd = String(d.getDate()).padStart(2, "0");
@@ -278,17 +304,17 @@ export default function HistoryFilterDropdown({
         </button>
       </div>
 
-      <div className="grid grid-cols-7 text-[11px] text-white/60 mb-1">
+      <div className="grid grid-cols-7 text-[9px] text-white/60 mb-1">
         {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((d) => (
-          <div key={d} className="text-center py-1">
+          <div key={d} className="text-center py-0.5">
             {d}
           </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-7 gap-1">
+      <div className="grid grid-cols-7 gap-0.5">
         {Array.from({ length: calendarFirstWeekday }).map((_, i) => (
-          <div key={`pad-${i}`} className="h-8" />
+          <div key={`pad-${i}`} className="h-6" />
         ))}
         {Array.from({ length: calendarDaysInMonth }).map((_, i) => {
           const day = i + 1;
@@ -315,7 +341,7 @@ export default function HistoryFilterDropdown({
             !!dateRange.start &&
             new Date(dateRange.start).toDateString() === thisDate.toDateString();
 
-          const baseCls = "h-8 rounded text-sm text-center transition";
+          const baseCls = "h-6 rounded text-[11px] text-center transition";
           const futureCls =
             "cursor-not-allowed bg-white/[0.03] text-white/15 opacity-40 ring-1 ring-white/[0.04]";
           const selectedCls = "bg-white text-black font-semibold";
@@ -341,7 +367,7 @@ export default function HistoryFilterDropdown({
       <div className="flex items-center justify-between mt-3">
         <button
           type="button"
-          className="text-white/80 text-sm px-2 py-1 rounded hover:bg-white/10"
+          className="text-white/80 text-[11px] px-2 py-1 rounded hover:bg-white/10"
           onClick={async () => {
             await onDateRangeChange({ start: null, end: null });
             setRangePicking("start");
@@ -351,7 +377,7 @@ export default function HistoryFilterDropdown({
         </button>
         <button
           type="button"
-          className="text-white/90 text-sm px-2 py-1 rounded hover:bg-white/10"
+          className="text-white/90 text-[11px] px-2 py-1 rounded hover:bg-white/10"
           onClick={async () => {
             const now = new Date();
             const start = new Date(
@@ -434,7 +460,13 @@ export default function HistoryFilterDropdown({
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => openCalendar("start", "start")}
+              onClick={() => {
+                if (isCalendarOpen && calendarAnchor === "start") {
+                  setIsCalendarOpen(false);
+                  return;
+                }
+                openCalendar("start", "start");
+              }}
               ref={startBtnRef}
               className="relative flex-1 w-full h-7 bg-white/[0.03] border border-white/5 rounded-lg px-2.5 pr-7 text-[10px] text-white/90 text-left outline-none hover:bg-white/[0.06] focus:border-white/10 transition-colors"
               aria-label="Start date"
@@ -447,7 +479,13 @@ export default function HistoryFilterDropdown({
             <ArrowRight size={10} className="text-white/20" />
             <button
               type="button"
-              onClick={() => openCalendar("end", "end")}
+              onClick={() => {
+                if (isCalendarOpen && calendarAnchor === "end") {
+                  setIsCalendarOpen(false);
+                  return;
+                }
+                openCalendar("end", "end");
+              }}
               ref={endBtnRef}
               className="relative flex-1 w-full h-7 bg-white/[0.03] border border-white/5 rounded-lg px-2.5 pr-7 text-[10px] text-white/90 text-left outline-none hover:bg-white/[0.06] focus:border-white/10 transition-colors"
               aria-label="End date"
@@ -462,7 +500,7 @@ export default function HistoryFilterDropdown({
           {/* Date-range calendar (opens below Date Range row) */}
           {isCalendarOpen && (calendarAnchor === "start" || calendarAnchor === "end") && (
             <div ref={calendarPanelRef}>
-              <CalendarPanel className="absolute left-0 top-full mt-2 w-[320px] max-w-[calc(100vw-32px)] select-none bg-[#0E0E11] border border-white/10 rounded-xl shadow-2xl p-3 z-[120]" />
+              <CalendarPanel className="absolute left-0 top-full mt-2 w-[210px] max-w-[calc(100vw-32px)] select-none bg-[#0E0E11] border border-white/10 rounded-xl shadow-2xl p-2 z-[120]" />
             </div>
           )}
         </div>
@@ -473,7 +511,7 @@ export default function HistoryFilterDropdown({
         <div className="space-y-1.5">
           <h3 className="text-[9px] font-bold text-white/30 tracking-wider uppercase">Tool</h3>
           <div className="flex flex-wrap gap-1">
-            <div className="relative w-full mb-1">
+            <div className="relative w-full mb-1" ref={toolBoxRef}>
               <Search size={10} className="absolute left-2 top-1/2 -translate-y-1/2 text-white/30" />
               <input
                 type="text"
@@ -483,6 +521,11 @@ export default function HistoryFilterDropdown({
                   setIsToolOpen(true);
                 }}
                 onFocus={() => setIsToolOpen(true)}
+                onMouseDown={(e) => {
+                  if (!isToolOpen) return;
+                  e.preventDefault();
+                  setIsToolOpen(false);
+                }}
                 placeholder="Tools..."
                 className="w-full h-6.5 bg-white/[0.03] border border-white/5 rounded-lg pl-6 pr-2 text-[10px] text-white outline-none focus:border-white/10 transition-colors"
               />
@@ -540,7 +583,7 @@ export default function HistoryFilterDropdown({
         <div className="space-y-1.5">
           <h3 className="text-[9px] font-bold text-white/30 tracking-wider uppercase">Style</h3>
           <div className="flex flex-wrap gap-1">
-            <div className="relative w-full mb-1">
+            <div className="relative w-full mb-1" ref={styleBoxRef}>
               <Search size={10} className="absolute left-2 top-1/2 -translate-y-1/2 text-white/30" />
               <input
                 type="text"
@@ -550,6 +593,11 @@ export default function HistoryFilterDropdown({
                   setIsStyleOpen(true);
                 }}
                 onFocus={() => setIsStyleOpen(true)}
+                onMouseDown={(e) => {
+                  if (!isStyleOpen) return;
+                  e.preventDefault();
+                  setIsStyleOpen(false);
+                }}
                 placeholder="Styles..."
                 className="w-full h-6.5 bg-white/[0.03] border border-white/5 rounded-lg pl-6 pr-2 text-[10px] text-white outline-none focus:border-white/10 transition-colors"
               />
@@ -630,7 +678,7 @@ export default function HistoryFilterDropdown({
               </button>
             ))}
 
-            <div className="relative">
+            <div className="relative" ref={aspectBoxRef}>
               <button
                 type="button"
                 onClick={() => setIsAspectOpen(!isAspectOpen)}
@@ -691,7 +739,7 @@ export default function HistoryFilterDropdown({
       <div className="space-y-1.5 mb-4.5">
         <h3 className="text-[9px] font-bold text-white/30 tracking-wider uppercase">Model</h3>
         <div className="flex flex-wrap gap-1">
-          <div className="relative w-28 h-6.5">
+          <div className="relative w-28 h-6.5" ref={modelBoxRef}>
             <Search size={10} className="absolute left-2 top-1/2 -translate-y-1/2 text-white/30" />
             <input
               type="text"
@@ -701,11 +749,16 @@ export default function HistoryFilterDropdown({
                 setIsModelOpen(true);
               }}
               onFocus={() => setIsModelOpen(true)}
+              onMouseDown={(e) => {
+                if (!isModelOpen) return;
+                e.preventDefault();
+                setIsModelOpen(false);
+              }}
               placeholder="Models..."
               className="w-full h-full bg-white/[0.03] border border-white/5 rounded-lg pl-6 pr-2 text-[10px] text-white outline-none focus:border-white/10 transition-colors"
             />
             {isModelOpen && (modelQuery.trim().length > 0 || true) && (
-              <div className="absolute left-0 top-full mt-1 w-[220px] rounded-xl border border-white/10 bg-[#0E0E11] shadow-2xl p-1 z-[140] max-h-48 overflow-y-auto">
+              <div className="absolute left-0 top-full mt-1 w-[220px] rounded-xl border border-white/10 bg-[#0E0E11] shadow-2xl p-1 z-[140] max-h-16 overflow-y-auto">
                 {ALL_MODELS.filter((m) =>
                   m.toLowerCase().includes(modelQuery.trim().toLowerCase()),
                 ).slice(0, 30).map((m) => (
@@ -793,7 +846,7 @@ export default function HistoryFilterDropdown({
       {/* Side calendar (opens to the right of popup) */}
       {isCalendarOpen && calendarAnchor === "side" && (
         <div ref={calendarPanelRef}>
-          <CalendarPanel className="hidden md:block absolute left-full top-0 ml-2 w-[280px] select-none bg-[#0E0E11] border border-white/10 rounded-xl shadow-2xl p-3" />
+          <CalendarPanel className="hidden md:block absolute left-full top-0 ml-2 w-[210px] select-none bg-[#0E0E11] border border-white/10 rounded-xl shadow-2xl p-2" />
         </div>
       )}
     </div>
