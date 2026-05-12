@@ -208,10 +208,10 @@ export default function MusicGenerationPage() {
                     </div>
 
                     {/* Content area: flexbox for main content + history */}
-                    <div className="flex flex-col lg:flex-row items-start flex-1 min-h-0 overflow-hidden">
+                    <div className="flex flex-col lg:flex-row items-stretch flex-1 min-h-0 overflow-y-auto lg:overflow-hidden">
                         {/* Left Column: Input Box (scrollable) */}
-                        <div className="w-full lg:w-[350px] xl:w-[400px] flex-shrink-0 h-full flex flex-col lg:border-r lg:border-white/10 lg:pr-6">
-                            <div className="flex-1 overflow-y-visible input-scrollbar px-2 pt-7">
+                        <div className="w-full lg:w-[350px] xl:w-[400px] flex-shrink-0 lg:h-full flex flex-col lg:border-r lg:border-white/10 lg:pr-6">
+                            <div className="flex-1 overflow-y-auto input-scrollbar px-2 pt-7">
                                 <div className="space-y-6 pb-32">
                                     {activeFeature === 'Music' && <MusicGenerationInputBox selectedModel={modelParam} />}
                                     {activeFeature === 'Voice (TTS)' && <TextToSpeechInputBox selectedModel={modelParam} />}
@@ -223,7 +223,7 @@ export default function MusicGenerationPage() {
                         </div>
 
                         {/* Right Column: History (scrollable) */}
-                        <div className="flex-1 min-w-0 h-full history-scrollbar py-4 lg:pl-6">
+                        <div className="flex-1 min-w-0 lg:h-full lg:overflow-y-auto history-scrollbar pt-0 pb-4 lg:pl-6">
                             <div className="pb-20">
                                 {activeFeature === 'Music' && (
                                     <MusicGenerationInputBox key={`m-hist-${activeFeature}`} showHistoryOnly={true} />
