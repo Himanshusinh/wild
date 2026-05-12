@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import Image from 'next/image';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import {
   setStyle,
@@ -15,34 +14,9 @@ import { ALL_INDIAN_STYLES } from '@/styles/indianStyles';
 import { X, Plus } from 'lucide-react';
 import { CUSTOM_STYLE_FROM_IMAGE_ID } from '@/constants/customStyleFromImage';
 import StyleFiltersBar, { type StyleFilterOption } from '@/components/ui/StyleFiltersBar';
-
-// Wrapper component for style preview images with error handling
-const StylePreviewImage = ({ src, alt }: { src: string; alt: string }) => {
-  const [imgSrc, setImgSrc] = useState(src);
-  const [hasError, setHasError] = useState(false);
-
-  useEffect(() => {
-    setImgSrc(src);
-    setHasError(false);
-  }, [src]);
-
-  return (
-    <Image 
-      src={imgSrc} 
-      alt={alt} 
-      fill 
-      sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 20vw" 
-      className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-      unoptimized
-      onError={() => {
-        if (!hasError) {
-          setHasError(true);
-          setImgSrc('https://idr01.zata.ai/devstoragev1/public/styles/Logo.gif');
-        }
-      }}
-    />
-  );
-};
+import { styleGridRowFallbackPrompt } from '@/utils/stylePreviewFallback';
+import { StyleThumbnailImage } from '@/components/style/StyleThumbnailImage';
+import { zataPublicStyleThumbnailAvifUrl } from '@/lib/zataStyleUrls';
 
 interface StylePopupProps {
   isOpen: boolean;
@@ -559,14 +533,26 @@ const StylePopup = ({ isOpen, onClose, onBusyChange }: StylePopupProps) => {
               </div>
             ) : (
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
-              {allStyles.map((style) => (
+              {allStyles.map((style) => {
+                const thumbSrc =
+                  activeCategory === 'indian'
+                    ? style.image
+                    : zataPublicStyleThumbnailAvifUrl(style.value);
+                return (
                 <button
                   key={style.value}
                   onClick={() => handleStyleSelect(style.value)}
                   className="group flex flex-col text-left transition-all hover:-translate-y-1"
                 >
                   <div className={`relative aspect-[4/3] w-full overflow-hidden rounded-2xl border ${currentStyle === style.value ? 'border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.5)]' : 'border-white/10'} bg-[#18181f] transition-all group-hover:border-white/20`}>
-                    <StylePreviewImage src={style.image} alt={style.name} />
+                    <StyleThumbnailImage
+                      src={thumbSrc}
+                      alt={style.name}
+                      fallbackPrompt={styleGridRowFallbackPrompt(style)}
+                      instanceKey={style.value}
+                      eager
+                      className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                    />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-80" />
                     
                     <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between">
@@ -597,7 +583,8 @@ const StylePopup = ({ isOpen, onClose, onBusyChange }: StylePopupProps) => {
                     </div>
                   </div>
                 </button>
-              ))}
+              );
+              })}
             </div>
             )}
           </div>

@@ -1,17 +1,22 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
   hydrateCustomStylePersistence,
   loadPersistedCustomStyleState,
   setIndianStyleVersion,
+  type SavedCustomStyleFromImage,
 } from "@/store/slices/generationSlice";
 import StylePopup from "@/app/view/Generation/ImageGeneration/TextToImage/compo/StylePopup";
 import { ChevronUp } from "lucide-react";
 import { ALL_INDIAN_STYLES } from "@/styles/indianStyles";
 import { CUSTOM_STYLE_FROM_IMAGE_ID } from "@/constants/customStyleFromImage";
+import { getStyleByValue } from "@/styles/stylesCatalog";
+import { styleGridRowFallbackPrompt } from "@/utils/stylePreviewFallback";
+import { StyleThumbnailImage } from "@/components/style/StyleThumbnailImage";
+import { zataPublicStyleThumbnailAvifUrl } from "@/lib/zataStyleUrls";
 
 const INDIAN_STYLE_VERSION_OPTIONS: Array<{
   value: "V1" | "V2" | "V3";
@@ -49,6 +54,9 @@ const StyleSelector = () => {
   const customStyleFromImage = useAppSelector(
     (state: any) => state.generation?.customStyleFromImage ?? null,
   );
+  const savedCustomStylesFromImage = useAppSelector(
+    (state: any) => state.generation?.savedCustomStylesFromImage ?? [],
+  );
   const isIndianStyleSelected = ALL_INDIAN_STYLES.some((s) => s.id === style);
   const styleButtonLabel =
     style === "none"
@@ -56,6 +64,50 @@ const StyleSelector = () => {
       : style === CUSTOM_STYLE_FROM_IMAGE_ID
         ? customStyleFromImage?.label || "Custom style"
         : style;
+
+  const styleTriggerThumb = useMemo(() => {
+    if (style === "none") return null;
+    if (style === CUSTOM_STYLE_FROM_IMAGE_ID) {
+      const id = customStyleFromImage?.id;
+      if (id) {
+        const saved = savedCustomStylesFromImage.find(
+          (entry: SavedCustomStyleFromImage) => entry.id === id,
+        );
+        if (saved?.previewDataUrl) {
+          return {
+            src: saved.previewDataUrl,
+            alt: saved.label,
+            fallback: undefined as string | undefined,
+          };
+        }
+      }
+      return null;
+    }
+    const indian = ALL_INDIAN_STYLES.find((s) => s.id === style);
+    if (indian) {
+      return {
+        src: indian.image,
+        alt: indian.title,
+        fallback: styleGridRowFallbackPrompt({
+          name: indian.title,
+          description: indian.desc,
+        }),
+      };
+    }
+    const cat = getStyleByValue(style);
+    if (cat) {
+      return {
+        src: zataPublicStyleThumbnailAvifUrl(style),
+        alt: cat.name,
+        fallback: styleGridRowFallbackPrompt({
+          name: cat.name,
+          description: cat.description,
+          prompt: cat.prompt,
+        }),
+      };
+    }
+    return null;
+  }, [style, customStyleFromImage, savedCustomStylesFromImage]);
 
   // Icons removed: display only text
 
@@ -140,6 +192,18 @@ const StyleSelector = () => {
               : "bg-transparent text-white/90 hover:bg-white/5"
           }`}
         >
+          {styleTriggerThumb ? (
+            <span className="relative h-4 w-4 shrink-0 overflow-hidden rounded-sm ring-1 ring-white/15 md:h-5 md:w-5">
+              <StyleThumbnailImage
+                src={styleTriggerThumb.src}
+                alt={styleTriggerThumb.alt}
+                fallbackPrompt={styleTriggerThumb.fallback}
+                instanceKey={`style-trigger-${style}`}
+                eager
+                className="h-full w-full object-cover"
+              />
+            </span>
+          ) : null}
           <span className="capitalize line-clamp-1 max-w-[140px] md:max-w-[200px]">
             {styleButtonLabel}
           </span>

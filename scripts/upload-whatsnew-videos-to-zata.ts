@@ -54,7 +54,8 @@ function buildClient() {
 /** local file under public/ -> object key under public/ (no leading slash in key body) */
 const UPLOADS: { file: string; objectRel: string }[] = [
   { file: "veo 3.1 lite.mp4", objectRel: "homepage/whatsnew/veo-3.1-lite.mp4" },
-  { file: "pixverse.mp4", objectRel: "homepage/whatsnew/pixverse.mp4" },
+  // Source filename includes `_new`; published URL stays .../pixverse.mp4 (WhatsNew adds ?v= for cache bust).
+  { file: "pixverse_new.mp4", objectRel: "homepage/whatsnew/pixverse.mp4" },
 ];
 
 async function main() {

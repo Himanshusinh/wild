@@ -191,6 +191,22 @@ export const useHistoryLoader = ({
       return;
     }
 
+    const rawModel = (currentFilters as any)?.model;
+    const hasModelFilter =
+      rawModel != null &&
+      rawModel !== "" &&
+      (Array.isArray(rawModel)
+        ? rawModel.some((m: unknown) => String(m ?? "").trim())
+        : String(rawModel).trim() !== "");
+    const hasStyleOrAspect =
+      !!(currentFilters as any)?.style || !!(currentFilters as any)?.frameSize;
+    if ((hasModelFilter || hasStyleOrAspect) && !forceInitial) {
+      console.log(
+        "[useHistoryLoader] Model/style/aspect filters active, skipping auto-reload (filter UI owns fetch)",
+      );
+      return;
+    }
+
     // If a history request is already loading, do not dispatch a second request.
     // This is especially important when other UI (e.g. HistoryControls) clears entries and
     // immediately triggers loadHistory; without this guard, the hook may fire an extra request.

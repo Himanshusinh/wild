@@ -220,7 +220,7 @@ export const EditImageExpandFrame: React.FC<EditImageExpandFrameProps> = ({
     const fitFrameToScreen = useCallback(() => {
         if (!containerSize) return;
 
-        const padding = 40;
+        const padding = 0;
         const availableWidth = containerSize.width - (padding * 2);
         const availableHeight = containerSize.height - (padding * 2);
 
@@ -333,7 +333,7 @@ export const EditImageExpandFrame: React.FC<EditImageExpandFrameProps> = ({
             style={{
                 width: '100%',
                 height: '100%',
-                backgroundColor: '#121212',
+                backgroundColor: 'transparent',
                 overflow: 'hidden',
             }}
             onClick={(e) => e.stopPropagation()}
@@ -491,7 +491,7 @@ export const EditImageExpandFrame: React.FC<EditImageExpandFrameProps> = ({
                         y={0}
                         width={5000}
                         height={5000}
-                        fill="#121212"
+                        fill="transparent"
                     />
 
                     {/* White Frame (only show before result is generated) */}

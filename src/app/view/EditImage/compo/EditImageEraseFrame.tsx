@@ -269,7 +269,7 @@ export const EditImageEraseFrame: React.FC<EditImageEraseFrameProps> = ({
     return (
         <div
             ref={containerRef}
-            className="relative w-full h-full flex items-center justify-center bg-black/50 select-none"
+            className="relative w-full h-full flex items-center justify-center bg-transparent select-none"
             style={{ touchAction: 'none' }}
             onMouseEnter={() => setIsHovering(true)}
             onMouseLeave={() => {
