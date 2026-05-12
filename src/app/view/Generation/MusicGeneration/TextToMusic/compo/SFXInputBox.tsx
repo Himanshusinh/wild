@@ -11,6 +11,7 @@ import SFXHistory from './SFXHistory';
 import CustomAudioPlayer from './CustomAudioPlayer';
 import { useHistoryLoader } from '@/hooks/useHistoryLoader';
 import MusicInputBox from './MusicInputBox';
+import GlobalBottomAudioPlayer from './GlobalBottomAudioPlayer';
 
 const SFX_GENERATION_TYPES = ['sfx', 'sound-effect', 'sound_effect', 'sound-effects', 'sound_effects'];
 
@@ -248,14 +249,9 @@ const SFXInputBox = ({ showHistoryOnly = false, selectedModel }: { showHistoryOn
 
       {/* State-of-the-art Audio Player Bottom Bar */}
       {selectedAudio && (
-        <CustomAudioPlayer
-          audioUrl={typeof selectedAudio.audio === 'string' ? selectedAudio.audio : (selectedAudio.audio?.url || selectedAudio.audio?.firebaseUrl || selectedAudio.audio?.originalUrl || selectedAudio.entry?.audio || '')}
-          prompt={selectedAudio.entry.lyrics || selectedAudio.entry.prompt}
-          model={selectedAudio.entry.model}
-          lyrics={selectedAudio.entry.lyrics}
-          generationType={selectedAudio.entry.generationType}
-          autoPlay={true}
-          onClose={() => setSelectedAudio(null)}
+        <GlobalBottomAudioPlayer 
+          selectedAudio={selectedAudio} 
+          onClose={() => setSelectedAudio(null)} 
         />
       )}
     </>

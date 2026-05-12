@@ -11,6 +11,7 @@ import TTSHistory from './TTSHistory';
 import CustomAudioPlayer from './CustomAudioPlayer';
 import { useHistoryLoader } from '@/hooks/useHistoryLoader';
 import MusicInputBox from './MusicInputBox';
+import GlobalBottomAudioPlayer from './GlobalBottomAudioPlayer';
 
 interface TextToSpeechInputBoxProps {
   showHistoryOnly?: boolean;
@@ -395,14 +396,9 @@ const TextToSpeechInputBox = ({ showHistoryOnly = false, selectedModel }: { show
 
       {/* State-of-the-art Audio Player Bottom Bar */}
       {selectedAudio && (
-        <CustomAudioPlayer
-          audioUrl={typeof selectedAudio.audio === 'string' ? selectedAudio.audio : (selectedAudio.audio?.url || selectedAudio.audio?.firebaseUrl || selectedAudio.audio?.originalUrl || selectedAudio.entry?.audio || '')}
-          prompt={selectedAudio.entry.lyrics || selectedAudio.entry.prompt}
-          model={selectedAudio.entry.model}
-          lyrics={selectedAudio.entry.lyrics}
-          generationType={selectedAudio.entry.generationType}
-          autoPlay={true}
-          onClose={() => setSelectedAudio(null)}
+        <GlobalBottomAudioPlayer 
+          selectedAudio={selectedAudio} 
+          onClose={() => setSelectedAudio(null)} 
         />
       )}
     </>
