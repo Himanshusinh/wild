@@ -248,7 +248,7 @@ export default function MasonrySection({ mode = "image", onModeChange }: Masonry
               }
             }}
             placeholder="Describe your idea, scene, style, or visual goal. "
-            className="min-w-0 flex-1 bg-transparent px-1 py-1.5 text-[13px] text-[#111] outline-none placeholder:text-[#9da2ae] selection:bg-transparent sm:py-2 sm:text-[15px]"
+            className="min-w-0 flex-1 bg-transparent px-1 py-1.5 text-[13px] text-[#111] outline-none placeholder:text-black/90 selection:bg-transparent sm:py-2 sm:text-[15px]"
             style={{
               backgroundColor: "transparent",
               WebkitBoxShadow: "0 0 0 1000px transparent inset",
