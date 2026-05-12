@@ -182,38 +182,40 @@ const MusicHistory: React.FC<MusicHistoryProps> = ({
 
   return (
     <div className="no-scrollbar scrollbar-hide">
-      <div className="pl-0 pr-6 pb-32">
-        {/* Header Section */}
-        <div className="flex flex-col gap-6 mb-8 mt-2">
-          <div className="flex items-center justify-between">
-            <h2 className="text-[28px] text-white font-satoshi font-black tracking-tight">Your studio</h2>
-            <div className="flex items-center gap-4 text-[10px] font-mono font-bold tracking-widest text-white/30 uppercase">
-              <span>{currentDate}</span>
-              <span className="w-1.5 h-1.5 rounded-full bg-white/10" />
-              <span className="bg-white/5 px-2 py-0.5 rounded-[4px] border border-white/5">{historyEntries.length} tracks</span>
+      <div className="pl-0 pr-6  pb-32">
+        {/* Sticky Header Section */}
+        <div className="sticky top-0 z-20 bg-[#0E0E12]  py-4  border-b border-white/[0.05]">
+          <div className="flex flex-col gap-6 mt-2">
+            <div className="flex items-center justify-between">
+              <h2 className="text-[28px] text-white font-satoshi font-black tracking-tight">Your studio</h2>
+              <div className="flex items-center gap-4 text-[10px] font-mono font-bold tracking-widest text-white/30 uppercase">
+                <span>{currentDate}</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-white/10" />
+                <span className="bg-white/5 px-2 py-0.5 rounded-[4px] border border-white/5">{historyEntries.length} tracks</span>
+              </div>
             </div>
-          </div>
 
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              {['All', 'Today', 'Favourites', 'Downloaded'].map(filter => (
-                <button
-                  key={filter}
-                  onClick={() => setActiveFilter(filter)}
-                  className={`px-4 py-1.5 rounded-full text-[11px] font-bold transition-all duration-300 border ${
-                    activeFilter === filter 
-                      ? "bg-white/10 text-white border-white/20" 
-                      : "text-white/30 border-transparent hover:text-white/60"
-                  }`}
-                >
-                  {filter}
-                </button>
-              ))}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {['All', 'Today', 'Favourites', 'Downloaded'].map(filter => (
+                  <button
+                    key={filter}
+                    onClick={() => setActiveFilter(filter)}
+                    className={`px-4 py-1.5 rounded-full text-[11px] font-bold transition-all duration-300 border ${
+                      activeFilter === filter 
+                        ? "bg-white/10 text-white border-white/20" 
+                        : "text-white/30 border-transparent hover:text-white/60"
+                    }`}
+                  >
+                    {filter}
+                  </button>
+                ))}
+              </div>
+              <button className="flex items-center gap-2 text-[11px] font-bold text-white/50 hover:text-white transition-colors bg-white/5 px-3 py-1.5 rounded-lg border border-white/5">
+                <ListFilter size={14} />
+                Newest
+              </button>
             </div>
-            <button className="flex items-center gap-2 text-[11px] font-bold text-white/50 hover:text-white transition-colors bg-white/5 px-3 py-1.5 rounded-lg border border-white/5">
-              <ListFilter size={14} />
-              Newest
-            </button>
           </div>
         </div>
 

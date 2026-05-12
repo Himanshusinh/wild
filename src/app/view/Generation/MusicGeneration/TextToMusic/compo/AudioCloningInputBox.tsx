@@ -4,9 +4,11 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useAppDispatch } from '@/store/hooks';
 import { addHistoryEntry, updateHistoryEntry, removeHistoryEntry } from '@/store/slices/historySlice';
 import MusicHistory from './MusicHistory';
+import VoiceCloningHistory from './VoiceCloningHistory';
 import CustomAudioPlayer from './CustomAudioPlayer';
+import GlobalBottomAudioPlayer from './GlobalBottomAudioPlayer';
 import { useHistoryLoader } from '@/hooks/useHistoryLoader';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Music4 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const MAX_FILE_SIZE = 15 * 1024 * 1024;
@@ -248,94 +250,19 @@ const AudioCloningInputBox = ({ showHistoryOnly = false, selectedModel }: { show
   if (showHistoryOnly) {
     return (
       <>
-        {/* User Input Audio Library */}
-        {Array.isArray(userAudioFiles) && userAudioFiles.length > 0 ? (
-          <div className="space-y-4 mb-8">
-            <div className="flex items-center gap-3 ml-1">
-              <div className="w-6 h-6 bg-[#1f1f23] rounded-full flex items-center justify-center flex-shrink-0">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-white/60">
-                  <path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z" />
-                </svg>
-              </div>
-              <h3 className="text-sm font-medium text-white/70">Your Input Audio</h3>
-            </div>
-            <div className="flex flex-wrap gap-3 ml-9">
-              {userAudioFiles.map((file: any) => {
-                const displayName = getDisplayAudioName(file.fileName);
-                return (
-                  <div key={file.id || file.storagePath || file.url} className="flex flex-col items-center">
-                    <div
-                      className={`relative w-48 h-48 rounded-2xl overflow-hidden bg-gradient-to-br from-indigo-600/60 via-blue-600/60 to-purple-600/60 ring-1 ring-white/10 hover:ring-white/30 flex-shrink-0 shadow-[0_30px_45px_-25px_rgba(15,23,42,0.95)] transition-all duration-500 cursor-pointer group hover:-translate-y-1 hover:scale-[1.02] opacity-60`}
-                      onClick={() => setSelectedAudio({ entry: { model: 'voicecloning', prompt: displayName, generationType: 'voicecloning' }, audio: { url: file.url, originalUrl: file.url, firebaseUrl: file.url, fileName: displayName } })}
-                    >
-                      <div className="absolute inset-0 opacity-70 group-hover:opacity-90 transition-opacity duration-500">
-                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.55),_transparent_60%)]" />
-                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom,_rgba(0,0,0,0.25),_transparent_65%)]" />
-                      </div>
-                      <div className="w-full h-full flex items-center justify-center relative overflow-hidden">
-                        <div className="absolute inset-0 bg-gradient-to-b from-white/20 via-white/5 to-transparent opacity-30 group-hover:opacity-50 transition-opacity duration-500" />
-                        <div className="absolute inset-0 bg-[radial-gradient(circle,_rgba(255,255,255,0.35)_0%,_rgba(255,255,255,0)_55%)]" />
-                        <div className="relative z-10 w-20 h-20 bg-white/30 backdrop-blur-2xl rounded-full flex items-center justify-center shadow-[0_15px_35px_-15px_rgba(15,23,42,0.95)] ring-1 ring-white/60">
-                          <div className="absolute inset-2 rounded-full bg-white/40 blur-xl opacity-70" />
-                          <svg width="40" height="40" viewBox="0 0 24 24" fill="currentColor" className="text-white">
-                            <path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z" />
-                          </svg>
-                        </div>
-                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/15 transition-colors duration-500" />
-                        {/* Delete button on hover */}
-                        <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
-                          <button
-                            aria-label="Delete audio file"
-                            className="pointer-events-auto p-1.5 rounded-lg bg-red-500/60 hover:bg-red-500/90 text-white backdrop-blur-3xl"
-                            onClick={(e) => handleDeleteAudioFile(e, file)}
-                            onMouseDown={(e) => e.stopPropagation()}
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                    {/* Name below tile */}
-                    <div className="mt-2 text-xs text-white/80 max-w-[12rem] truncate" title={displayName}>{displayName}</div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        ) : null}
-        <MusicHistory
-          generationType={['voicecloning', 'voice-cloning']}
-          allowedTypes={['voicecloning', 'voice-cloning']}
+        <VoiceCloningHistory
           onAudioSelect={setSelectedAudio}
           selectedAudio={selectedAudio}
           localPreview={localMusicPreview}
-          suppressEmptyState={Array.isArray(userAudioFiles) && userAudioFiles.length > 0}
+          userAudioFiles={userAudioFiles}
+          onDeleteUserFile={handleDeleteAudioFile}
         />
 
         {selectedAudio && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center p-6">
-            <div className="bg-black/90 backdrop-blur-xl rounded-2xl p-6 max-w-md w-full ring-1 ring-white/20">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-white text-lg font-semibold">Cloned Audio</h3>
-                <button
-                  onClick={() => setSelectedAudio(null)}
-                  className="text-white/60 hover:text-white transition-colors"
-                >
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M18 6L6 18M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-              <CustomAudioPlayer
-                audioUrl={selectedAudio.audio.url || selectedAudio.audio.firebaseUrl || selectedAudio.audio.originalUrl}
-                prompt={selectedAudio.entry.lyrics || selectedAudio.entry.prompt}
-                model={selectedAudio.entry.model}
-                lyrics={selectedAudio.entry.lyrics}
-                generationType={selectedAudio.entry.generationType}
-                autoPlay={true}
-              />
-            </div>
-          </div>
+          <GlobalBottomAudioPlayer 
+            selectedAudio={selectedAudio} 
+            onClose={() => setSelectedAudio(null)} 
+          />
         )}
       </>
     );
@@ -417,6 +344,104 @@ const AudioCloningInputBox = ({ showHistoryOnly = false, selectedModel }: { show
         </div>
       </div>
     </>
+  );
+};
+
+// Sub-component for individual input audio row
+const InputAudioRow = ({ file, index = 0, onSelect, onDelete, isPlaying = false }: any) => {
+  const displayName = file.fileName ? (file.fileName.split('/').pop()?.replace(/\.[^/.]+$/, '') || file.fileName) : 'Voice Sample';
+  
+  // Helper function to get color theme based on file
+  const seed = file?.id || file?.fileName || index || 0;
+  const hash = String(seed).split('').reduce((acc: number, char: string) => {
+    return char.charCodeAt(0) + ((acc << 5) - acc);
+  }, 0);
+  const themes = [
+    'from-indigo-600 to-blue-500',
+    'from-purple-600 to-indigo-500',
+    'from-blue-600 to-cyan-500',
+    'from-violet-600 to-purple-500',
+    'from-cyan-600 to-blue-500',
+    'from-blue-500 to-indigo-600',
+    'from-indigo-500 to-purple-600',
+    'from-sky-500 to-indigo-500',
+    'from-teal-500 to-blue-500',
+    'from-emerald-500 to-teal-500',
+  ];
+  const colorTheme = themes[Math.abs(hash) % themes.length];
+
+  return (
+    <div 
+      onClick={() => onSelect?.()}
+      className={`group bg-[#16161C]/40 hover:bg-[#16161C] border ${isPlaying ? 'border-[#2F6BFF]/40 bg-[#2F6BFF]/5' : 'border-white/[0.04] hover:border-white/10'} rounded-[14px] p-3 flex items-center gap-5 transition-all duration-300 cursor-pointer relative overflow-hidden`}
+    >
+      {/* Thumbnail */}
+      <div className={`w-14 h-14 rounded-[10px] bg-gradient-to-br ${colorTheme} flex items-center justify-center flex-shrink-0 relative overflow-hidden ring-1 ring-white/10`}>
+        <div className="absolute inset-0 bg-white/10 opacity-30 group-hover:opacity-50 transition-opacity" />
+        <div className="w-7 h-7 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center ring-1 ring-white/30">
+          <Music4 size={14} className="text-white drop-shadow-md" />
+        </div>
+      </div>
+
+      {/* Info & Waveform */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-between mb-1">
+          <h4 className="text-[13px] font-bold text-white/90 truncate">{displayName}</h4>
+          {isPlaying ? (
+            <span className="text-[9px] font-bold text-[#2F6BFF] uppercase bg-[#2F6BFF]/10 px-1.5 py-0.5 rounded border border-[#2F6BFF]/20 animate-pulse">Now playing</span>
+          ) : (
+            <span className="text-[10px] font-mono text-white/40">Sample</span>
+          )}
+        </div>
+        
+        {/* Simple Waveform Placeholder */}
+        <div className="flex items-center gap-[1.5px] h-3 mb-2">
+          <style>
+            {`
+              @keyframes soundWave {
+                0%, 100% { transform: scaleY(1); }
+                50% { transform: scaleY(2.2); }
+              }
+              .wave-bar {
+                animation: none;
+              }
+              .group:hover .wave-bar, .is-active-wave .wave-bar {
+                animation: soundWave var(--dur) ease-in-out infinite var(--del);
+              }
+            `}
+          </style>
+          {[...Array(32)].map((_, i) => {
+            const baseHeight = 30 + Math.abs(Math.sin(i * 0.5) * 40);
+            return (
+              <div 
+                key={i} 
+                className={`wave-bar w-[1.5px] rounded-full transition-all duration-500 ${isPlaying ? 'bg-[#2F6BFF] is-active-wave' : 'bg-white/20'}`} 
+                style={{ 
+                  height: `${baseHeight}%`,
+                  '--del': `${i * 0.03}s`,
+                  '--dur': `${0.6 + Math.random() * 0.4}s`,
+                  transformOrigin: 'bottom'
+                } as any} 
+              />
+            );
+          })}
+        </div>
+
+        <div className="text-[10px] text-white/30 uppercase tracking-wider font-bold truncate">
+          Uploaded Audio · Voice Sample
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div className="flex items-center gap-2 pl-4 pr-1">
+        <button 
+          onClick={(e) => onDelete?.(e, file)}
+          className="p-2 text-white/40 hover:text-red-500 transition-colors bg-white/5 hover:bg-red-500/10 rounded-lg border border-white/5 hover:border-red-500/20"
+        >
+          <Trash2 size={14} />
+        </button>
+      </div>
+    </div>
   );
 };
 

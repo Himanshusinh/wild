@@ -11,6 +11,7 @@ import SFXHistory from './SFXHistory';
 import CustomAudioPlayer from './CustomAudioPlayer';
 import { useHistoryLoader } from '@/hooks/useHistoryLoader';
 import MusicInputBox from './MusicInputBox';
+import GlobalBottomAudioPlayer from './GlobalBottomAudioPlayer';
 
 const SFX_GENERATION_TYPES = ['sfx', 'sound-effect', 'sound_effect', 'sound-effects', 'sound_effects'];
 
@@ -248,29 +249,10 @@ const SFXInputBox = ({ showHistoryOnly = false, selectedModel }: { showHistoryOn
 
       {/* Audio Player Modal - Rendered for both history and input views */}
       {selectedAudio && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center p-6">
-          <div className="bg-black/90 backdrop-blur-xl rounded-2xl p-6 max-w-md w-full ring-1 ring-white/20">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-white text-lg font-semibold">Sound Effect</h3>
-              <button
-                onClick={() => setSelectedAudio(null)}
-                className="text-white/60 hover:text-white transition-colors"
-              >
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M18 6L6 18M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            <CustomAudioPlayer
-              audioUrl={selectedAudio.audio.url || selectedAudio.audio.firebaseUrl || selectedAudio.audio.originalUrl}
-              prompt={selectedAudio.entry.lyrics || selectedAudio.entry.prompt}
-              model={selectedAudio.entry.model}
-              lyrics={selectedAudio.entry.lyrics}
-              generationType={selectedAudio.entry.generationType}
-              autoPlay={true}
-            />
-          </div>
-        </div>
+        <GlobalBottomAudioPlayer 
+          selectedAudio={selectedAudio} 
+          onClose={() => setSelectedAudio(null)} 
+        />
       )}
     </>
   );

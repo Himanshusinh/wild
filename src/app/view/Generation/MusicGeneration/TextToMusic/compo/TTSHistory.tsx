@@ -1,34 +1,33 @@
 'use client';
 
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { useBottomScrollPagination } from '@/hooks/useBottomScrollPagination';
 import { loadMoreHistory, loadHistory, setFilters, removeHistoryEntry } from '@/store/slices/historySlice';
 import type { HistoryFilters } from '@/types/history';
-import { Music4, Trash2 } from 'lucide-react';
+import { Music4, Trash2, Download, Share2, Zap, ListFilter } from 'lucide-react';
 import WildMindLogoGenerating from '@/app/components/WildMindLogoGenerating';
 import axiosInstance from '@/lib/axiosInstance';
 import toast from 'react-hot-toast';
 
 // Helper function to get color theme based on entry
 const getColorTheme = (entry: any, index: number = 0): string => {
-  // Use a combination of entry ID, model, and index to get consistent colors
   const seed = entry?.id || entry?.model || index || 0;
   const hash = String(seed).split('').reduce((acc: number, char: string) => {
     return char.charCodeAt(0) + ((acc << 5) - acc);
   }, 0);
   
   const themes = [
-    'from-sky-500/60 via-blue-600/60 to-indigo-600/60',
-    'from-cyan-500/60 via-sky-600/60 to-blue-700/60',
-    'from-blue-500/60 via-indigo-600/60 to-purple-600/60',
-    'from-indigo-600/60 via-violet-600/60 to-fuchsia-600/60',
-    'from-blue-600/60 via-purple-600/60 to-sky-500/60',
-    'from-indigo-700/60 via-blue-600/60 to-cyan-600/60',
-    'from-purple-700/60 via-indigo-600/60 to-blue-600/60',
-    'from-blue-500/60 via-cyan-500/60 to-teal-500/60',
-    'from-sky-600/60 via-indigo-600/60 to-purple-700/60',
-    'from-cyan-600/60 via-blue-700/60 to-indigo-800/60',
+    'from-indigo-600 to-blue-500',
+    'from-purple-600 to-indigo-500',
+    'from-blue-600 to-cyan-500',
+    'from-violet-600 to-purple-500',
+    'from-cyan-600 to-blue-500',
+    'from-blue-500 to-indigo-600',
+    'from-indigo-500 to-purple-600',
+    'from-sky-500 to-indigo-500',
+    'from-teal-500 to-blue-500',
+    'from-emerald-500 to-teal-500',
   ];
   
   return themes[Math.abs(hash) % themes.length];
@@ -45,7 +44,8 @@ const normalize = (v: any) => String(v || '').toLowerCase().replace(/[_-]/g, '-'
 const TTSHistory: React.FC<Props> = ({ onAudioSelect, selectedAudio, localPreview }) => {
   const dispatch = useAppDispatch();
   const sentinelRef = useRef<HTMLDivElement | null>(null);
-  const [page, setPage] = React.useState(1);
+  const [page, setPage] = useState(1);
+  const [activeFilter, setActiveFilter] = useState('All');
 
   // Delete handler - same logic as ImagePreviewModal
   const handleDeleteAudio = async (e: React.MouseEvent, entry: any) => {
@@ -55,7 +55,6 @@ const TTSHistory: React.FC<Props> = ({ onAudioSelect, selectedAudio, localPrevie
       if (!window.confirm('Delete this generation permanently? This cannot be undone.')) return;
       await axiosInstance.delete(`/api/generations/${entry.id}`);
       try { dispatch(removeHistoryEntry(entry.id)); } catch {}
-      // Clear/reset document title when audio is deleted
       if (typeof document !== 'undefined') {
         document.title = 'WildMind';
       }
@@ -73,9 +72,7 @@ const TTSHistory: React.FC<Props> = ({ onAudioSelect, selectedAudio, localPrevie
       const genType = normalize(entry.generationType);
       const model = normalize(entry.model);
       const backendModel = normalize(entry.backendModel || entry.apiModel || entry.providerModel);
-      // Primary check by generationType
       if (['text-to-speech', 'tts'].includes(genType)) return true;
-      // Secondary check by model names (covers mis-labeled entries)
       if (
         model.includes('elevenlabs-tts') ||
         model.includes('chatterbox') ||
@@ -90,9 +87,7 @@ const TTSHistory: React.FC<Props> = ({ onAudioSelect, selectedAudio, localPrevie
 
   const hasMore = useAppSelector((s: any) => s.history?.hasMore || false);
   const loading = useAppSelector((s: any) => s.history?.loading || false);
-  // Initial fetch on mount with correct filters - always fetch when component mounts
-  // Also refetch when component remounts (e.g., when switching tabs)
-  // BUT: Don't clear existing entries - merge with what's already in Redux
+
   React.useEffect(() => {
     const fetchTTSHistory = async () => {
       try {
@@ -100,20 +95,16 @@ const TTSHistory: React.FC<Props> = ({ onAudioSelect, selectedAudio, localPrevie
           generationType: ['text-to-speech', 'text_to_speech', 'tts'] as unknown as HistoryFilters['generationType'],
         };
         setPage(1);
-        // Set filters first (for client-side filtering) - this doesn't clear entries
         (dispatch as any)(setFilters(genFilter));
-        // Load history with generationType filter - backend should support it
-        // Use merge mode to preserve existing entries (especially generating ones)
         await (dispatch as any)(loadHistory({
           filters: genFilter,
-          backendFilters: genFilter, // Ensure backend receives the filter
+          backendFilters: genFilter,
           paginationParams: { limit: 50 },
           requestOrigin: 'page',
           expectedType: 'text-to-speech',
           debugTag: `tts-history:init:${Date.now()}`,
-          forceRefresh: false, // Don't force refresh - merge with existing
+          forceRefresh: false,
         })).unwrap();
-        console.log('[TTSHistory] Loaded history with filter:', genFilter);
       } catch (err) {
         console.error('[TTSHistory] Failed to load history:', err);
       }
@@ -121,30 +112,6 @@ const TTSHistory: React.FC<Props> = ({ onAudioSelect, selectedAudio, localPrevie
     fetchTTSHistory();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const grouped = historyEntries.reduce((groups: any, e: any) => {
-    const key = new Date(e.timestamp || e.createdAt || e.updatedAt).toDateString();
-    (groups[key] ||= []).push(e);
-    return groups;
-  }, {} as Record<string, any[]>);
-  
-  // Sort entries within each date group: generating first (so they appear at top), then completed, then by timestamp (newest first)
-  Object.keys(grouped).forEach(dateKey => {
-    grouped[dateKey].sort((a: any, b: any) => {
-      // Generating entries first (so they appear at the top)
-      if (a.status === 'generating' && b.status !== 'generating') return -1;
-      if (b.status === 'generating' && a.status !== 'generating') return 1;
-      // Completed entries next
-      if (a.status === 'completed' && b.status !== 'completed') return -1;
-      if (b.status === 'completed' && a.status !== 'completed') return 1;
-      // Within same status, sort by timestamp (newest first)
-      const timeA = new Date(a.timestamp || a.createdAt || a.updatedAt).getTime();
-      const timeB = new Date(b.timestamp || b.createdAt || b.updatedAt).getTime();
-      return timeB - timeA;
-    });
-  });
-  const sortedDates = Object.keys(grouped).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
-  const todayKey = new Date().toDateString();
 
   useBottomScrollPagination({
     containerRef: undefined,
@@ -160,284 +127,259 @@ const TTSHistory: React.FC<Props> = ({ onAudioSelect, selectedAudio, localPrevie
       };
       await (dispatch as any)(loadMoreHistory({
         filters: genFilter,
-        backendFilters: genFilter, // Ensure backend receives the filter
+        backendFilters: genFilter,
         paginationParams: { limit: 10 }
       } as any)).unwrap().catch(() => {});
     }
   });
 
+  const currentDate = new Date().toLocaleDateString('en-US', { 
+    weekday: 'short', 
+    month: 'short', 
+    day: 'numeric', 
+    year: 'numeric' 
+  }).toUpperCase().replace(/,/g, ' ·');
+
+  // Check if there's a matching entry in Redux for the local preview
+  const hasMatchingReduxEntry = localPreview && historyEntries.some((entry: any) => {
+    const idMatches = entry.id === localPreview.id;
+    const promptMatches = entry.prompt === localPreview.prompt && entry.model === localPreview.model;
+    const timeMatches = Math.abs(new Date(entry.createdAt || entry.timestamp).getTime() - new Date(localPreview.createdAt || localPreview.timestamp).getTime()) < 5000;
+    return idMatches || (promptMatches && timeMatches && entry.generationType === localPreview.generationType);
+  });
+
+  // Decide whether to display localPreview
+  const shouldShowLocalPreview = localPreview && (localPreview.status === 'generating' || !hasMatchingReduxEntry);
+
+  // Filter out Redux entries that are fully covered by localPreview if localPreview is being shown to avoid duplicates
+  const displayEntries = historyEntries.filter((entry: any) => {
+    if (shouldShowLocalPreview) {
+      const idMatches = entry.id === localPreview.id;
+      const promptMatches = entry.prompt === localPreview.prompt && entry.model === localPreview.model;
+      const timeMatches = Math.abs(new Date(entry.createdAt || entry.timestamp).getTime() - new Date(localPreview.createdAt || localPreview.timestamp).getTime()) < 5000;
+      const typeMatches = entry.generationType === localPreview.generationType;
+      if (idMatches || (promptMatches && timeMatches && typeMatches)) {
+        return false;
+      }
+    }
+    if (entry.status === 'generating') {
+      const hasCompleted = historyEntries.some((other: any) => other.id === entry.id && other.status === 'completed');
+      if (hasCompleted) return false;
+    }
+    return true;
+  });
+
   return (
     <div className="no-scrollbar scrollbar-hide">
       <div className="pl-0 pr-6 pb-32">
+        {/* Sticky Header Section */}
+        <div className="sticky top-0 z-20 bg-[#0E0E12] pt-2 pb-4 mb-4 border-b border-white/[0.05]">
+          <div className="flex flex-col gap-6 mt-2">
+            <div className="flex items-center justify-between">
+              <h2 className="text-[28px] text-white font-satoshi font-black tracking-tight">Your studio</h2>
+              <div className="flex items-center gap-4 text-[10px] font-mono font-bold tracking-widest text-white/30 uppercase">
+                <span>{currentDate}</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-white/10" />
+                <span className="bg-white/5 px-2 py-0.5 rounded-[4px] border border-white/5">{displayEntries.length + (shouldShowLocalPreview ? 1 : 0)} tracks</span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {['All', 'Today', 'Favourites', 'Downloaded'].map(filter => (
+                  <button
+                    key={filter}
+                    onClick={() => setActiveFilter(filter)}
+                    className={`px-4 py-1.5 rounded-full text-[11px] font-bold transition-all duration-300 border ${
+                      activeFilter === filter 
+                        ? "bg-white/10 text-white border-white/20" 
+                        : "text-white/30 border-transparent hover:text-white/60"
+                    }`}
+                  >
+                    {filter}
+                  </button>
+                ))}
+              </div>
+              <button className="flex items-center gap-2 text-[11px] font-bold text-white/50 hover:text-white transition-colors bg-white/5 px-3 py-1.5 rounded-lg border border-white/5">
+                <ListFilter size={14} />
+                Newest
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Main Loader */}
         {loading && historyEntries.length === 0 && (
-          <div className="flex items-center justify-center h-screen">
-            <div className="flex flex-col items-center gap-4">
-              <WildMindLogoGenerating running={true} size="lg" speedMs={1600} className="mx-auto" />
-              <div className="text-white text-lg text-center">Loading your generation history...</div>
+          <div className="flex items-center justify-center py-20">
+            <WildMindLogoGenerating running={true} size="lg" />
+          </div>
+        )}
+
+        {/* Empty State */}
+        {!loading && historyEntries.length === 0 && !shouldShowLocalPreview && (
+          <div className="flex flex-col items-center gap-4 py-20 text-center opacity-40">
+            <Music4 size={48} />
+            <p className="text-lg font-serif">No tracks in your studio yet</p>
+          </div>
+        )}
+
+        {/* Studio List */}
+        <div className="space-y-3">
+          {shouldShowLocalPreview && <MusicRow entry={localPreview} onSelect={onAudioSelect} isLocalPreview />}
+          {displayEntries.map((entry: any, index: number) => (
+            <MusicRow 
+              key={entry.id} 
+              entry={entry} 
+              index={index} 
+              onSelect={onAudioSelect} 
+              onDelete={handleDeleteAudio} 
+              isPlaying={selectedAudio?.entry?.id === entry.id}
+            />
+          ))}
+        </div>
+
+        {/* Upgrade Banner */}
+        <div className="mt-8 p-5 bg-gradient-to-r from-[#16161C] to-[#0E0E12] rounded-[16px] border border-[#2F6BFF]/20 flex items-center justify-between group cursor-pointer hover:border-[#2F6BFF]/40 transition-all">
+          <div className="flex items-center gap-5">
+            <div className="w-11 h-11 bg-[#2F6BFF]/10 rounded-full flex items-center justify-center text-[#2F6BFF] ring-1 ring-[#2F6BFF]/30">
+              <Zap size={20} fill="currentColor" />
+            </div>
+            <div>
+              <h4 className="text-[14px] font-satoshi font-black text-white/90">Upgrade to Studio Pro</h4>
+              <p className="text-[11px] font-satoshi font-medium text-white/30 uppercase tracking-widest mt-0.5">Unlimited generations · 5-min tracks · WAV export · priority queue</p>
             </div>
           </div>
-        )}
+          <button className="bg-[#2F6BFF]/10 hover:bg-[#2F6BFF]/20 text-[#2F6BFF] text-[11px] font-bold px-4 py-2 rounded-[8px] transition-all flex items-center gap-2 border border-[#2F6BFF]/30">
+            Upgrade
+            <Zap size={12} fill="currentColor" />
+          </button>
+        </div>
 
-        {!loading && historyEntries.length === 0 && (
-          <div className="flex items-center justify-center py-12">
-            <div className="flex flex-col items-center gap-4 text-center">
-              <div className="w-16 h-16 bg-white/10 rounded-lg flex items-center justify-center">
-                <Music4 className="w-8 h-8 text-white/60" />
-              </div>
-              <div className="text-white text-lg">No generations yet</div>
-              <div className="text-white/60 text-sm max-w-md">Create your first piece of AI-generated audio using the interface below</div>
-            </div>
+        {/* Scroll Loading */}
+        {hasMore && loading && (
+          <div className="py-8 flex justify-center">
+            <WildMindLogoGenerating running={true} size="md" />
           </div>
         )}
-
-        {localPreview && !grouped[todayKey] && (
-          <DateRow dateKey={todayKey}>
-            <AudioTileGenerating preview={localPreview} />
-          </DateRow>
-        )}
-
-        {historyEntries.length > 0 && (
-          <div className="space-y-8">
-            {sortedDates.map((date) => {
-              // Check if there's a completed Redux entry that matches the localPreview
-              // If so, we should clear localPreview and show only the Redux entry
-              const hasMatchingCompletedReduxEntry = localPreview && localPreview.status === 'completed' && grouped[date].some((entry: any) => {
-                if (entry.status !== 'completed') return false;
-                const idMatches = entry.id === localPreview.id;
-                const promptMatches = entry.prompt === localPreview.prompt && entry.model === localPreview.model;
-                const timeMatches = Math.abs(new Date(entry.createdAt || entry.timestamp).getTime() - new Date(localPreview.createdAt || localPreview.timestamp).getTime()) < 5000;
-                return idMatches || (promptMatches && timeMatches && entry.generationType === localPreview.generationType);
-              });
-              
-              // Only show localPreview if it's generating, or if it's completed but there's no matching Redux entry yet
-              const shouldShowLocalPreview = date === todayKey && localPreview && 
-                (localPreview.status === 'generating' || (localPreview.status === 'completed' && !hasMatchingCompletedReduxEntry));
-              
-              return (
-                <DateRow key={date} dateKey={date}>
-                  {/* Show localPreview only if generating, or completed but no matching Redux entry yet */}
-                  {shouldShowLocalPreview && (
-                    <AudioTileGenerating preview={localPreview} />
-                  )}
-                  {grouped[date].flatMap((entry: any) => {
-                  // Skip if this entry matches the localPreview (to avoid duplicates)
-                  if (localPreview) {
-                    const idMatches = entry.id === localPreview.id;
-                    // Also match by prompt, model, and timestamp to handle ID changes after Firebase sync
-                    const promptMatches = entry.prompt === localPreview.prompt && entry.model === localPreview.model;
-                    const timeMatches = Math.abs(new Date(entry.createdAt || entry.timestamp).getTime() - new Date(localPreview.createdAt || localPreview.timestamp).getTime()) < 5000; // Within 5 seconds
-                    const typeMatches = entry.generationType === localPreview.generationType;
-                    const isSameGeneration = idMatches || (promptMatches && timeMatches && typeMatches);
-                    
-                    // If localPreview exists and matches this entry, skip the Redux entry to avoid duplicates
-                    if (isSameGeneration) {
-                      return []; // Skip this Redux entry, localPreview will be shown instead
-                    }
-                  }
-                  
-                  // Also check for duplicate entries with same ID but different status
-                  // If there's a completed entry and a generating entry with same ID, show only the completed one
-                  if (entry.status === 'generating') {
-                    const hasCompletedVersion = grouped[date].some((otherEntry: any) => {
-                      return otherEntry.id === entry.id && otherEntry.status === 'completed';
-                    });
-                    if (hasCompletedVersion) {
-                      return []; // Skip generating entry if completed version exists
-                    }
-                  }
-                  // Check if this generating entry has a matching completed entry in the same date group
-                  // If so, skip the generating entry (it's been replaced)
-                  if (entry.status === 'generating') {
-                    // First check if there's a completed entry with the same ID (direct match - most common case)
-                    const hasMatchingCompletedById = grouped[date].some((otherEntry: any) => {
-                      return otherEntry.id === entry.id && otherEntry.status === 'completed';
-                    });
-                    
-                    // Also check for matching by prompt, model, and timestamp (for cases where ID changed)
-                    const hasMatchingCompleted = grouped[date].some((otherEntry: any) => {
-                      if (otherEntry.id === entry.id || otherEntry.status !== 'completed') return false;
-                      const promptMatch = otherEntry.prompt === entry.prompt && otherEntry.model === entry.model;
-                      const timeMatch = Math.abs(
-                        new Date(otherEntry.createdAt || otherEntry.timestamp).getTime() - 
-                        new Date(entry.createdAt || entry.timestamp).getTime()
-                      ) < 5000; // Within 5 seconds
-                      return promptMatch && timeMatch && otherEntry.generationType === entry.generationType;
-                    });
-                    
-                    // Skip generating entry if there's a matching completed entry (by ID or by content)
-                    if (hasMatchingCompletedById || hasMatchingCompleted) {
-                      return [];
-                    }
-                    
-                    return [(
-                      <div
-                        key={`${entry.id}-generating`}
-                        className="relative w-48 h-48 rounded-2xl overflow-hidden bg-gradient-to-br from-sky-500/60 via-blue-600/60 to-indigo-600/60 ring-1 ring-white/10 flex-shrink-0 shadow-[0_30px_45px_-25px_rgba(15,23,42,0.95)] opacity-60"
-                      >
-                        <StaticAudioTile status="generating" entry={entry} index={0} />
-                      </div>
-                    )];
-                  }
-                  
-                  const rawSources = [ ...(entry.audios||[]), ...(entry.images||[]), ...(entry.audio?[entry.audio]:[]) ].filter(Boolean);
-                  // Deduplicate by resolved URL to avoid triple copies
-                  const dedupMap = new Map<string, any>();
-                  rawSources.forEach((a: any) => {
-                    const url = a?.url || a?.firebaseUrl || a?.originalUrl;
-                    if (!url) return;
-                    if (!dedupMap.has(url)) dedupMap.set(url, a);
-                  });
-                  const media = Array.from(dedupMap.values());
-                  if (media.length === 0) return [];
-                  return media.map((audio: any, i: number) => {
-                    const colorTheme = getColorTheme(entry, i);
-                    return (
-                      <div
-                        key={`${entry.id}-${audio.id || i}`}
-                        onClick={() => onAudioSelect?.({ entry, audio })}
-                        className={`relative w-48 h-48 rounded-2xl overflow-hidden bg-gradient-to-br ${colorTheme} ring-1 ring-white/10 hover:ring-white/30 transition-all duration-500 cursor-pointer group flex-shrink-0 shadow-[0_30px_45px_-25px_rgba(15,23,42,0.95)] hover:-translate-y-1 hover:scale-[1.02]`}
-                      >
-                        <div className="absolute inset-0 opacity-70 group-hover:opacity-90 transition-opacity duration-500">
-                          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.55),_transparent_60%)]" />
-                          <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom,_rgba(0,0,0,0.25),_transparent_65%)]`" />
-                        </div>
-                        <StaticAudioTile status={entry.status} entry={entry} index={i} />
-                        {entry?.fileName && (
-                          <div className="absolute bottom-2 left-2 bg-black/70 backdrop-blur-sm text-white text-xs px-2 py-0.5 rounded-md ring-1 ring-white/10">
-                            {entry.fileName}
-                          </div>
-                        )}
-                        {/* Delete button on hover */}
-                        {entry.status !== 'generating' && entry.status !== 'failed' && (
-                          <div className="pointer-events-none absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
-                            <button
-                              aria-label="Delete audio"
-                              className="pointer-events-auto p-1.5 rounded-lg bg-red-500/60 hover:bg-red-500/90 text-white backdrop-blur-3xl"
-                              onClick={(e) => handleDeleteAudio(e, entry)}
-                              onMouseDown={(e) => e.stopPropagation()}
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  });
-                  })}
-                </DateRow>
-              );
-            })}
-            {hasMore && loading && (
-              <div className="flex items-center justify-center py-8">
-                <div className="flex flex-col items-center gap-3">
-                  <WildMindLogoGenerating running={loading} size="md" speedMs={1600} className="mx-auto" />
-                  <div className="text-sm text-white/60">Loading more generations...</div>
-                </div>
-              </div>
-            )}
-            <div ref={sentinelRef} style={{ height: 1 }} />
-          </div>
-        )}
+        <div ref={sentinelRef} style={{ height: 1 }} />
       </div>
     </div>
   );
 };
 
-const DateRow: React.FC<{ dateKey: string; children: React.ReactNode }> = ({ dateKey, children }) => (
-  <div className="space-y-4">
-    <div className="flex items-center gap-3">
-      <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center flex-shrink-0">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-white/60"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/></svg>
-      </div>
-      <h3 className="text-sm font-medium text-white/70">{new Date(dateKey).toLocaleDateString('en-US',{weekday:'short',year:'numeric',month:'short',day:'numeric'})}</h3>
-    </div>
-    <div className="flex flex-wrap gap-3 ml-9">{children}</div>
-  </div>
-);
+// Sub-component for individual track row
+const MusicRow = ({ entry, index = 0, onSelect, onDelete, isLocalPreview = false, isPlaying = false }: any) => {
+  const colorTheme = getColorTheme(entry, index);
+  const mediaItems = [
+    ...((entry.audios || []) as any[]),
+    ...(entry.audio ? [entry.audio] : []),
+    ...((entry.images || []) as any[])
+  ].filter(Boolean);
 
-const StaticAudioTile: React.FC<{ status: string; entry?: any; index?: number }> = ({ status, entry, index = 0 }) => {
-  const colorTheme = entry ? getColorTheme(entry, index) : 'from-purple-900/30 via-purple-800/20 to-pink-900/30';
-  const fileName = entry?.fileName || entry?.name || '';
-  
-  return status === 'generating' ? (
-    <div className="w-full h-full flex items-center justify-center bg-black/90">
-      <div className="flex flex-col items-center gap-2">
-        <WildMindLogoGenerating running size="md" speedMs={1600} className="mx-auto" />
-        <div className="text-xs text-white/60 text-center">Composing...</div>
-      </div>
-    </div>
-  ) : status === 'failed' ? (
-    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-900/30 to-red-800/30 ring-1 ring-red-500/20">
-      <div className="flex flex-col items-center gap-2">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-red-400"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
-        <div className="text-xs text-red-400">Failed</div>
-      </div>
-    </div>
-  ) : (
-    <div className={`w-full h-full flex flex-col items-center justify-center relative overflow-hidden`}>
-      <div className="absolute inset-0 bg-gradient-to-b from-white/20 via-white/5 to-transparent opacity-30 group-hover:opacity-50 transition-opacity duration-500" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle,_rgba(255,255,255,0.35)_0%,_rgba(255,255,255,0)_55%)]" />
-      <div className="relative z-10 w-20 h-20 bg-white/30 backdrop-blur-2xl rounded-full flex items-center justify-center shadow-[0_15px_35px_-15px_rgba(15,23,42,0.95)] ring-1 ring-white/60">
-        <div className="absolute inset-2 rounded-full bg-white/40 blur-xl opacity-70" />
-        <Music4 className="w-10 h-10 text-white drop-shadow-md relative z-10" />
-      </div>
-      {fileName && (
-        <div className="absolute bottom-2 left-2 bg-black/70 backdrop-blur-sm text-white text-xs px-2 py-0.5 rounded-md ring-1 ring-white/10">
-          {fileName}
-        </div>
-      )}
-      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/15 transition-colors duration-500" />
-    </div>
-  );
-};
+  const audio = mediaItems[0] || (entry.status === 'generating' || entry.status === 'failed' 
+    ? { id: entry.id || 'placeholder', url: '', originalUrl: '', type: 'audio' } 
+    : null);
 
-const AudioTileGenerating = ({ preview }: { preview?: any }) => {
-  const colorTheme = preview ? getColorTheme(preview, 0) : 'from-purple-900/30 via-purple-800/20 to-pink-900/30';
-  const fileName = preview?.fileName || preview?.name || '';
-  const status = preview?.status || 'generating';
-  
-  // If preview is completed or failed, show it as a regular tile (not generating)
-  if (status === 'completed' || status === 'failed') {
-    const rawSources = [...(preview.audios || []), ...(preview.images || []), ...(preview.audio ? [preview.audio] : [])].filter(Boolean);
-    const dedupMap = new Map<string, any>();
-    rawSources.forEach((a: any) => {
-      const url = a?.url || a?.firebaseUrl || a?.originalUrl;
-      if (!url) return;
-      if (!dedupMap.has(url)) dedupMap.set(url, a);
-    });
-    const media = Array.from(dedupMap.values());
-    
-    if (media.length === 0) return null;
-    
-    return media.map((audio: any, i: number) => {
-      const audioColorTheme = getColorTheme(preview, i);
-      return (
-        <div
-          key={`${preview.id || 'preview'}-${audio.id || i}`}
-          onClick={() => {}}
-          className={`relative w-48 h-48 rounded-2xl overflow-hidden bg-gradient-to-br ${audioColorTheme} ring-1 ring-white/10 hover:ring-white/30 transition-all duration-500 cursor-pointer group flex-shrink-0 shadow-[0_30px_45px_-25px_rgba(15,23,42,0.95)] hover:-translate-y-1 hover:scale-[1.02]`}
-        >
-          <div className="absolute inset-0 opacity-70 group-hover:opacity-90 transition-opacity duration-500">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.55),_transparent_60%)]" />
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom,_rgba(0,0,0,0.25),_transparent_65%)]" />
-          </div>
-          <StaticAudioTile status={status} entry={preview} index={i} />
-        </div>
-      );
-    });
-  }
-  
-  // Show generating state
+  if (!audio) return null;
+
+  const isGenerating = entry.status === 'generating';
+  const isFailed = entry.status === 'failed';
+  const trackName = entry.fileName || (entry.prompt ? (entry.prompt.length > 30 ? entry.prompt.substring(0, 30) + '...' : entry.prompt) : 'Untitled Track');
+  const metadata = `${entry.model || 'ElevenLabs'} · ${entry.generationType || 'Speech'} · 0:00`;
+
   return (
-    <div className={`relative w-48 h-48 rounded-2xl overflow-hidden bg-gradient-to-br ${colorTheme} ring-1 ring-white/10 hover:ring-white/30 flex-shrink-0 shadow-[0_20px_35px_-20px_rgba(15,23,42,0.9)] transition-all duration-300 cursor-pointer group opacity-60`}>
-      <StaticAudioTile status="generating" entry={preview} />
-      {fileName ? (
-        <div className="absolute bottom-2 left-2 bg-black/70 backdrop-blur-sm text-white text-xs px-2 py-0.5 rounded-md ring-1 ring-white/10">
-          {fileName}
+    <div 
+      onClick={() => !isGenerating && !isFailed && onSelect?.({ entry, audio })}
+      className={`group bg-[#16161C]/40 hover:bg-[#16161C] border ${isPlaying ? 'border-[#2F6BFF]/40 bg-[#2F6BFF]/5' : 'border-white/[0.04] hover:border-white/10'} rounded-[14px] p-3 flex items-center gap-5 transition-all duration-300 cursor-pointer relative overflow-hidden`}
+    >
+      {/* Thumbnail */}
+      <div className={`w-14 h-14 rounded-[10px] bg-gradient-to-br ${colorTheme} flex items-center justify-center flex-shrink-0 relative overflow-hidden ring-1 ring-white/10`}>
+        <div className="absolute inset-0 bg-white/10 opacity-30 group-hover:opacity-50 transition-opacity" />
+        <div className="w-7 h-7 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center ring-1 ring-white/30">
+          <Music4 size={14} className="text-white drop-shadow-md" />
         </div>
-      ) : (
-        <div className="absolute bottom-2 left-2 bg-black/70 backdrop-blur-sm text-white text-xs px-2 py-0.5 rounded-md ring-1 ring-white/10">Audio</div>
-      )}
+        {isGenerating && (
+          <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+            <WildMindLogoGenerating running={true} size="sm" />
+          </div>
+        )}
+      </div>
+
+      {/* Info & Waveform */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-between mb-1">
+          <h4 className="text-[13px] font-bold text-white/90 truncate">{trackName}</h4>
+          {isPlaying ? (
+            <span className="text-[9px] font-bold text-[#2F6BFF] uppercase bg-[#2F6BFF]/10 px-1.5 py-0.5 rounded border border-[#2F6BFF]/20 animate-pulse">Now playing</span>
+          ) : (
+            entry.status === 'completed' && <span className="text-[10px] font-mono text-white/40">3:52</span>
+          )}
+        </div>
+        
+        {/* Simple Waveform Placeholder */}
+        <div className="flex items-center gap-[1.5px] h-3 mb-2">
+          <style>
+            {`
+              @keyframes soundWave {
+                0%, 100% { transform: scaleY(1); }
+                50% { transform: scaleY(2.2); }
+              }
+              .wave-bar {
+                animation: none;
+              }
+              .group:hover .wave-bar, .is-active-wave .wave-bar {
+                animation: soundWave var(--dur) ease-in-out infinite var(--del);
+              }
+            `}
+          </style>
+          {[...Array(32)].map((_, i) => {
+            const baseHeight = 30 + Math.abs(Math.sin(i * 0.5) * 40);
+            return (
+              <div 
+                key={i} 
+                className={`wave-bar w-[1.5px] rounded-full transition-all duration-500 ${(isPlaying || isGenerating) ? 'bg-[#2F6BFF] is-active-wave' : 'bg-white/20'}`} 
+                style={{ 
+                  height: `${baseHeight}%`,
+                  '--del': `${i * 0.03}s`,
+                  '--dur': `${0.6 + Math.random() * 0.4}s`,
+                  transformOrigin: 'bottom'
+                } as any} 
+              />
+            );
+          })}
+        </div>
+
+        <div className="text-[10px] text-white/30 uppercase tracking-wider font-bold truncate">
+          {metadata}
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div className="flex items-center gap-2 pl-4 pr-1">
+        {entry.status === 'completed' ? (
+          <>
+             <button className="p-2 text-white/40 hover:text-white transition-colors bg-white/5 hover:bg-white/10 rounded-lg border border-white/5">
+                <Download size={14} />
+             </button>
+             <button className="p-2 text-white/40 hover:text-white transition-colors bg-white/5 hover:bg-white/10 rounded-lg border border-white/5">
+                <Share2 size={14} />
+             </button>
+          </>
+        ) : isGenerating ? (
+          <span className="text-[10px] font-bold text-[#2F6BFF] uppercase tracking-widest px-2 py-1 bg-[#2F6BFF]/10 rounded-md border border-[#2F6BFF]/20 animate-pulse">Composing</span>
+        ) : isFailed ? (
+          <span className="text-[10px] font-bold text-red-500 uppercase tracking-widest px-2 py-1 bg-red-500/10 rounded-md border border-red-500/20">Failed</span>
+        ) : null}
+        
+        {!isLocalPreview && (
+          <button 
+            onClick={(e) => onDelete?.(e, entry)}
+            className="p-2 text-white/40 hover:text-red-500 transition-colors bg-white/5 hover:bg-red-500/10 rounded-lg border border-white/5 hover:border-red-500/20"
+          >
+            <Trash2 size={14} />
+          </button>
+        )}
+      </div>
     </div>
   );
 };
