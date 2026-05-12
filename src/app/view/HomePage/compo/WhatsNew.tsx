@@ -198,15 +198,6 @@ export default function WhatsNew() {
           </h2>
         </div>
 
-        <Link
-          href="/text-to-image"
-          className="hidden items-center gap-1 rounded-full border border-white/10 px-4 py-2 text-[11px] font-semibold text-white/55 transition-colors hover:border-[#3B82F6]/40 hover:text-[#3B82F6] md:inline-flex"
-        >
-          <span>Explore now</span>
-          <svg width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-            <path d="M2.5 6h7M6 2.5L9.5 6 6 9.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </Link>
       </div>
 
       <div className="relative">
