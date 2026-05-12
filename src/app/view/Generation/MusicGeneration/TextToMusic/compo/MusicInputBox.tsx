@@ -313,17 +313,17 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
     if (isDialogueModel) return true; // Dialogue uses inputs array, not single text
     // Chatterbox Multilingual: 300 character provider limit
     const maxLength = isChatterboxModel ? 300 : 5000;
-    return n >= 10 && n <= maxLength;
+    return n >= 1 && n <= maxLength;
   };
 
   const isPromptValid = (s: string) => {
     const n = s.trim().length;
-    return n >= 10 && n <= 1000; // 10-1000 characters for prompt
+    return n === 0 || (n >= 1 && n <= 1000);
   };
 
   const isLyricsPromptValid = (s: string) => {
     const n = s.trim().length;
-    return n >= 10 && n <= 5000; // 10-1000 characters for lyrics_prompt
+    return n === 0 || (n >= 1 && n <= 5000);
   };
 
   // Get active generations count for parallel generation support
@@ -331,9 +331,9 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
   const runningGenerationsCount = activeGenerations.filter(g => g.status === 'pending' || g.status === 'generating').length;
 
   const canGenerate = isDialogueModel
-    ? dialogueInputs.some(input => input.text.trim().length > 0) && runningGenerationsCount < 4
+    ? runningGenerationsCount < 4
     : model === 'minimax-music-2'
-      ? isPromptValid(prompt) && isLyricsPromptValid(lyricsPrompt) && runningGenerationsCount < 4
+      ? (prompt.trim().length > 0 || lyricsPrompt.trim().length > 0) && isPromptValid(prompt) && isLyricsPromptValid(lyricsPrompt) && runningGenerationsCount < 4
       : isLyricsValid(lyrics) && runningGenerationsCount < 4;
 
   const clearVoiceLibrarySelection = useCallback(() => {

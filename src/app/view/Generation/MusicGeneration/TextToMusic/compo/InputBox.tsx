@@ -148,9 +148,9 @@ const MusicGenerationInputBox = ({ showHistoryOnly = false, selectedModel }: { s
 
   const handleGenerate = async (payload: any) => {
     const isTtsModel = typeof payload?.model === 'string' && payload.model.toLowerCase().includes('eleven');
-    const primaryText = (isTtsModel ? payload?.text : payload?.lyrics) || payload?.prompt || '';
+    const primaryText = (isTtsModel ? payload?.text : payload?.lyrics) || payload?.lyrics_prompt || payload?.prompt || '';
     if (!primaryText.trim()) {
-      setErrorMessage(isTtsModel ? 'Please provide text' : 'Please provide lyrics');
+      setErrorMessage(isTtsModel ? 'Please provide text' : 'Please provide lyrics or style prompt');
       return;
     }
 
@@ -665,31 +665,17 @@ const MusicGenerationInputBox = ({ showHistoryOnly = false, selectedModel }: { s
         </>
       )}
 
-      {/* Audio Player Modal - Rendered for both history and input views */}
+      {/* State-of-the-art Audio Player Bottom Bar */}
       {selectedAudio && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center p-6">
-          <div className="bg-white/5 backdrop-blur-3xl rounded-2xl p-6 max-w-4xl w-full ring-1 ring-white/20">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-white text-lg font-semibold">Music Track</h3>
-              <button
-                onClick={() => setSelectedAudio(null)}
-                className="text-white/60 hover:text-white transition-colors"
-              >
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M18 6L6 18M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            <CustomAudioPlayer
-              audioUrl={selectedAudio.audio.url || selectedAudio.audio.firebaseUrl || selectedAudio.audio.originalUrl}
-              prompt={selectedAudio.entry.prompt}
-              model={selectedAudio.entry.model}
-              lyrics={selectedAudio.entry.lyrics}
-              generationType={selectedAudio.entry.generationType || 'text-to-music'}
-              autoPlay={true}
-            />
-          </div>
-        </div>
+        <CustomAudioPlayer
+          audioUrl={typeof selectedAudio.audio === 'string' ? selectedAudio.audio : (selectedAudio.audio?.url || selectedAudio.audio?.firebaseUrl || selectedAudio.audio?.originalUrl || selectedAudio.entry?.audio || '')}
+          prompt={selectedAudio.entry.prompt}
+          model={selectedAudio.entry.model}
+          lyrics={selectedAudio.entry.lyrics}
+          generationType={selectedAudio.entry.generationType || 'text-to-music'}
+          autoPlay={true}
+          onClose={() => setSelectedAudio(null)}
+        />
       )}
     </>
   );

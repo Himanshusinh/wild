@@ -312,30 +312,17 @@ const AudioCloningInputBox = ({ showHistoryOnly = false, selectedModel }: { show
           suppressEmptyState={Array.isArray(userAudioFiles) && userAudioFiles.length > 0}
         />
 
+        {/* State-of-the-art Audio Player Bottom Bar */}
         {selectedAudio && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center p-6">
-            <div className="bg-black/90 backdrop-blur-xl rounded-2xl p-6 max-w-md w-full ring-1 ring-white/20">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-white text-lg font-semibold">Cloned Audio</h3>
-                <button
-                  onClick={() => setSelectedAudio(null)}
-                  className="text-white/60 hover:text-white transition-colors"
-                >
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M18 6L6 18M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-              <CustomAudioPlayer
-                audioUrl={selectedAudio.audio.url || selectedAudio.audio.firebaseUrl || selectedAudio.audio.originalUrl}
-                prompt={selectedAudio.entry.lyrics || selectedAudio.entry.prompt}
-                model={selectedAudio.entry.model}
-                lyrics={selectedAudio.entry.lyrics}
-                generationType={selectedAudio.entry.generationType}
-                autoPlay={true}
-              />
-            </div>
-          </div>
+          <CustomAudioPlayer
+            audioUrl={typeof selectedAudio.audio === 'string' ? selectedAudio.audio : (selectedAudio.audio?.url || selectedAudio.audio?.firebaseUrl || selectedAudio.audio?.originalUrl || selectedAudio.entry?.audio || '')}
+            prompt={selectedAudio.entry.lyrics || selectedAudio.entry.prompt}
+            model={selectedAudio.entry.model}
+            lyrics={selectedAudio.entry.lyrics}
+            generationType={selectedAudio.entry.generationType}
+            autoPlay={true}
+            onClose={() => setSelectedAudio(null)}
+          />
         )}
       </>
     );
@@ -406,8 +393,8 @@ const AudioCloningInputBox = ({ showHistoryOnly = false, selectedModel }: { show
 
           <button
             onClick={handleCloneAudio}
-            disabled={isCloning || !audioFileName.trim() || !selectedFile}
-            className={`w-full py-3 mt-2 rounded-[12px] text-[13px] font-satoshi font-black tracking-wide transition-all active:scale-[0.98] shadow-lg ${isCloning || !audioFileName.trim() || !selectedFile
+            disabled={isCloning || !audioFileName.trim()}
+            className={`w-full py-3 mt-2 rounded-[12px] text-[13px] font-satoshi font-black tracking-wide transition-all active:scale-[0.98] shadow-lg ${isCloning || !audioFileName.trim()
               ? 'bg-white/10 text-white/30 cursor-not-allowed border border-white/5'
               : 'bg-[#2F6BFF] text-white hover:opacity-90 shadow-[0_6px_20px_rgba(47,107,255,0.3)]'
               }`}

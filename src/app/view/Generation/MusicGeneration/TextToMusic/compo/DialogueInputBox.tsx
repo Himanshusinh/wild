@@ -228,31 +228,17 @@ const DialogueInputBox = ({ showHistoryOnly = false, selectedModel }: { showHist
         </>
       )}
 
-      {/* Audio Player Modal - Rendered for both history and input views */}
+      {/* State-of-the-art Audio Player Bottom Bar */}
       {selectedAudio && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center p-6">
-          <div className="bg-black/90 backdrop-blur-xl rounded-2xl p-6 max-w-md w-full ring-1 ring-white/20">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-white text-lg font-semibold">Dialogue</h3>
-              <button
-                onClick={() => setSelectedAudio(null)}
-                className="text-white/60 hover:text-white transition-colors"
-              >
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M18 6L6 18M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            <CustomAudioPlayer
-              audioUrl={selectedAudio.audio.url || selectedAudio.audio.firebaseUrl || selectedAudio.audio.originalUrl}
-              prompt={selectedAudio.entry.lyrics || selectedAudio.entry.prompt}
-              model={selectedAudio.entry.model}
-              lyrics={selectedAudio.entry.lyrics}
-              generationType={selectedAudio.entry.generationType}
-              autoPlay={true}
-            />
-          </div>
-        </div>
+        <CustomAudioPlayer
+          audioUrl={typeof selectedAudio.audio === 'string' ? selectedAudio.audio : (selectedAudio.audio?.url || selectedAudio.audio?.firebaseUrl || selectedAudio.audio?.originalUrl || selectedAudio.entry?.audio || '')}
+          prompt={selectedAudio.entry.lyrics || selectedAudio.entry.prompt}
+          model={selectedAudio.entry.model}
+          lyrics={selectedAudio.entry.lyrics}
+          generationType={selectedAudio.entry.generationType}
+          autoPlay={true}
+          onClose={() => setSelectedAudio(null)}
+        />
       )}
     </>
   );

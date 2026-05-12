@@ -223,7 +223,7 @@ export default function MusicGenerationPage() {
                         </div>
 
                         {/* Right Column: History (scrollable) */}
-                        <div className="flex-1 min-w-0 h-full overflow-y-auto history-scrollbar py-4 lg:pl-6">
+                        <div className="flex-1 min-w-0 h-full history-scrollbar py-4 lg:pl-6">
                             <div className="pb-20">
                                 {activeFeature === 'Music' && (
                                     <MusicGenerationInputBox key={`m-hist-${activeFeature}`} showHistoryOnly={true} />
