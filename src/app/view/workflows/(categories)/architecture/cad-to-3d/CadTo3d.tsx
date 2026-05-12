@@ -11,6 +11,7 @@ import { useCredits } from '@/hooks/useCredits';
 import { downloadFileWithNaming } from '@/utils/downloadUtils';
 import { WORKFLOWS_DATA } from '@/app/view/workflows/components/data';
 import { getSignInUrl } from '@/routes/routes';
+import WorkflowUploadArea from '@/app/view/workflows/components/WorkflowUploadArea';
 
 export default function CadTo3d() {
   const router = useRouter();
@@ -100,8 +101,8 @@ export default function CadTo3d() {
     description: "Transform 2D CAD drawings and floor plans into photorealistic 3D interior or exterior renders.",
     model: "Seadream4/ Nano Banana/ Qwen",
     cost: 90,
-    sampleBefore: "/workflow-samples/cad-to-3d-before.jpg",
-    sampleAfter: "/workflow-samples/cad-to-3d-after.jpg"
+    sampleBefore: "https://idr01.zata.ai/devstoragev1/public/workflow-samples/cad-to-3d-before.avif",
+    sampleAfter: "https://idr01.zata.ai/devstoragev1/public/workflow-samples/cad-to-3d-after.avif"
   };
 
   const CREDIT_COST = 90;
@@ -214,36 +215,19 @@ export default function CadTo3d() {
                 <div className="text-xs text-slate-500 mb-6">Model: {workflowData.model}</div>
 
                 <div className="mb-8">
-                  <div className="border border-dashed border-white/15 rounded-xl bg-black/20 h-48 flex flex-col items-center justify-center gap-4 cursor-pointer hover:bg-[#60a5fa]/5 transition-colors relative overflow-hidden group"
-                    onClick={() => setIsUploadModalOpen(true)}>
-                    {originalImage ? (
-                      <>
-                        {originalImage.startsWith('data:application/pdf') || originalImage.toLowerCase().endsWith('.pdf') ? (
-                          <div className="absolute inset-0 w-full h-full flex flex-col items-center justify-center bg-red-900/20 text-red-200">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-12 h-12 mb-2">
-                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                              <path d="M14 2v6h6" />
-                              <text x="8" y="18" fontSize="6" fill="currentColor" fontWeight="bold">PDF</text>
-                            </svg>
-                            <span className="text-xs font-medium">PDF Document</span>
-                          </div>
-                        ) : (
-                          <img src={originalImage} className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:opacity-30 transition-opacity" alt="Original" />
-                        )}
-                        <div className="relative z-10 flex flex-col items-center gap-2">
-                          <span className="text-white font-medium bg-black/50 px-3 py-1 rounded-full backdrop-blur">Change Plan</span>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="w-12 h-12 rounded-full bg-[#111] flex items-center justify-center text-slate-400"><Camera size={24} /></div>
-                        <div className="text-center">
-                          <span className="text-sm text-slate-300 block font-medium">Upload CAD Plan</span>
-                          <span className="text-xs text-slate-500">PDF, PNG, JPG up to 25MB</span>
-                        </div>
-                      </>
-                    )}
-                  </div>
+                  <WorkflowUploadArea
+                    placeholderLabel="Upload CAD Plan"
+                    placeholderSublabel="PDF, PNG, JPG up to 25MB"
+                    currentImage={originalImage}
+                    changeLabel="Change Plan"
+                    onImageSelect={(url) => {
+                      setOriginalImage(url);
+                      setGeneratedImage(null);
+                    }}
+                    openModal={() => setIsUploadModalOpen(true)}
+                    className="h-48"
+                    icon={<Camera size={24} />}
+                  />
                 </div>
 
               </div>

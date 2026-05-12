@@ -51,7 +51,7 @@ export async function openRazorpayOrderCheckout(
     currency: "INR",
     name: "WildMind AI",
     description: `Additional credits: ${packName}`,
-    image: "/icons/icon-512x512.png",
+    image: "https://idr01.zata.ai/devstoragev1/public/core/logosquare.avif",
     handler: (response: {
       razorpay_order_id: string;
       razorpay_payment_id: string;

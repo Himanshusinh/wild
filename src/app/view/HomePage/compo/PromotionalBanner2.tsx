@@ -297,7 +297,7 @@ export default function PromotionalBanner2() {
                   <div className="flex items-center justify-between px-5 pt-5 pb-2">
                     <div className="flex items-center gap-2">
                       <div className="p-0.5 rounded-lg">
-                        <Image src="/core/logosquare.png" alt="WildMind AI" width={22} height={22} className="object-contain" unoptimized />
+                        <Image src="https://idr01.zata.ai/devstoragev1/public/core/logosquare.avif" alt="WildMind AI" width={22} height={22} className="object-contain" unoptimized />
                       </div>
                       <span className="text-[11px] font-bold text-blue-400 uppercase tracking-[0.15em]">WildMind AI</span>
                     </div>
@@ -329,7 +329,7 @@ export default function PromotionalBanner2() {
                           >
                             {msg.role === 'assistant' && (
                               <div className="shrink-0 w-6 h-6 flex items-center justify-center mt-0.5">
-                                <Image src="/core/logosquare.png" alt="AI" width={20} height={20} className="object-contain" unoptimized />
+                                <Image src="https://idr01.zata.ai/devstoragev1/public/core/logosquare.avif" alt="AI" width={20} height={20} className="object-contain" unoptimized />
                               </div>
                             )}
                             <div className="flex flex-col gap-1.5 max-w-[78%]">
@@ -382,7 +382,7 @@ export default function PromotionalBanner2() {
                           <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
                             className="flex gap-2.5 justify-start">
                             <div className="w-6 h-6 flex items-center justify-center">
-                              <Image src="/core/logosquare.png" alt="AI" width={20} height={20} className="object-contain" unoptimized />
+                              <Image src="https://idr01.zata.ai/devstoragev1/public/core/logosquare.avif" alt="AI" width={20} height={20} className="object-contain" unoptimized />
                             </div>
                             <div className="bg-white/[0.06] border border-white/10 rounded-2xl rounded-bl-sm px-4 py-3 flex gap-1.5">
                               <span className="w-1.5 h-1.5 bg-zinc-400 rounded-full animate-bounce [animation-delay:-0.3s]" />

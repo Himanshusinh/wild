@@ -5,7 +5,6 @@ import dynamic from "next/dynamic";
 import Image from "next/image";
 import { Trash2, ImageIcon } from "lucide-react";
 import type { HistoryEntry } from "@/types/history";
-import { Masonry } from "@/components/masonry";
 import ImageGenerationGuide from "../ImageGenerationGuide";
 import { GifLoader } from "./GifLoader";
 import {
@@ -22,6 +21,7 @@ const EditImageInterface = dynamic(
 
 export type InputBoxHistoryScrollBodyProps = {
   isInlineEditImagePage: boolean;
+  page: number;
   sentinelRef: React.RefObject<HTMLDivElement | null>;
   authLoading: boolean;
   userData: unknown;
@@ -61,6 +61,7 @@ export type InputBoxHistoryScrollBodyProps = {
 export function InputBoxHistoryScrollBody(props: InputBoxHistoryScrollBodyProps) {
   const {
     isInlineEditImagePage,
+    page,
     sentinelRef,
     authLoading,
     userData,
@@ -88,14 +89,17 @@ export function InputBoxHistoryScrollBody(props: InputBoxHistoryScrollBodyProps)
     handleDeleteImage,
     formatDate,
   } = props;
-  const masonryConfig = React.useMemo(
-    () => ({
-      columns: [2, 5, 6] as const,
-      gap: [4, 12, 4] as const,
-      media: [768, 1024] as const,
-    }),
-    [],
+  // Keep this conservative to avoid Chrome "Aw, Snap! / Out of Memory" crashes
+  // when a user has many high-res generations.
+  // This page is more CPU/memory sensitive than the global history pages, so keep it tighter.
+  // IMPORTANT: This limit must grow as we paginate, otherwise "load more" succeeds
+  // but the user never sees additional tiles.
+  const PAGE_RENDERED_GALLERY_CELLS = 48;
+  const MAX_RENDERED_GALLERY_CELLS = Math.min(
+    PAGE_RENDERED_GALLERY_CELLS * Math.max(1, Number(page) || 1),
+    288, // hard ceiling to stay memory-safe
   );
+  const MAX_TRACKED_LOADED_IMAGES = 320;
 
   return (
     <div>
@@ -161,7 +165,10 @@ export function InputBoxHistoryScrollBody(props: InputBoxHistoryScrollBodyProps)
           {/* History Entries - Grouped by Date */}
           {userData && sortedDatesWithVisibleTiles.length > 0 && (
             <div className="mt-18 space-y-4 px-2 md:mt-16 md:px-0">
-              {sortedDatesWithVisibleTiles.map((date) => {
+              {(() => {
+                let remainingCells = MAX_RENDERED_GALLERY_CELLS;
+                return sortedDatesWithVisibleTiles.map((date) => {
+                  if (remainingCells <= 0) return null;
                 const entriesForDay = (
                   (
                     groupedByDate as {
@@ -210,7 +217,7 @@ export function InputBoxHistoryScrollBody(props: InputBoxHistoryScrollBodyProps)
                         key={uniqueImageKey}
                         data-image-id={uniqueImageId}
                         onClick={() => setPreview({ entry, image })}
-                        className={`image-item rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 cursor-pointer group ${
+                        className={`image-item break-inside-avoid mb-2 rounded-lg overflow-hidden bg-black/40 backdrop-blur-xl ring-1 ring-white/10 hover:ring-white/20 cursor-pointer group ${
                           isNewEntry ? "animate-fade-in-up" : ""
                         }`}
                         style={{
@@ -271,17 +278,29 @@ export function InputBoxHistoryScrollBody(props: InputBoxHistoryScrollBodyProps)
                         ) : (
                           <>
                             {hasImageUrl && (
-                              <div className="relative group">
+                              <div
+                                className="relative group w-full"
+                              >
                                 <img
                                   src={imageDisplaySrc}
                                   alt=""
                                   loading="lazy"
                                   decoding="async"
-                                  className="block w-full h-auto object-contain group-hover:scale-[1.01] transition-transform duration-200"
+                                  fetchPriority="low"
+                                  // Let the image define the tile height so masonry shows the TRUE aspect ratio.
+                                  // (We only use aspectRatio placeholders when there's no URL yet.)
+                                  className="block w-full h-auto group-hover:scale-[1.01] transition-transform duration-200"
                                   onLoad={() => {
-                                    setLoadedImages((prev) =>
-                                      new Set(prev).add(uniqueImageKey),
-                                    );
+                                    setLoadedImages((prev) => {
+                                      const next = new Set(prev);
+                                      next.add(uniqueImageKey);
+                                      if (next.size <= MAX_TRACKED_LOADED_IMAGES) {
+                                        return next;
+                                      }
+                                      return new Set(
+                                        Array.from(next).slice(-MAX_TRACKED_LOADED_IMAGES),
+                                      );
+                                    });
                                   }}
                                 />
                                 {!isImageLoaded && (
@@ -299,7 +318,7 @@ export function InputBoxHistoryScrollBody(props: InputBoxHistoryScrollBodyProps)
                                     }
                                   >
                                     <Image
-                                      src="/icons/recreate.svg"
+                                      src="https://idr01.zata.ai/devstoragev1/public/icons/recreate.svg"
                                       alt="Recreate"
                                       width={18}
                                       height={18}
@@ -381,6 +400,9 @@ export function InputBoxHistoryScrollBody(props: InputBoxHistoryScrollBodyProps)
                 });
 
                 if (cells.length === 0) return null;
+                const visibleCells = cells.slice(0, remainingCells);
+                remainingCells -= visibleCells.length;
+                if (visibleCells.length === 0) return null;
 
                 return (
                 <div key={date} className="space-y-2  md:mt-0">
@@ -402,16 +424,14 @@ export function InputBoxHistoryScrollBody(props: InputBoxHistoryScrollBodyProps)
                     </h3>
                   </div>
 
-                  {/* Row-wise masonry: distribute tiles left-to-right per row, then stack naturally */}
-                  <Masonry
-                    items={cells}
-                    config={masonryConfig}
-                    className="md:ml-9 ml-0"
-                    render={(cell) => cell}
-                  />
+                  {/* Masonry: CSS columns (stable, date-first, no row forcing) */}
+                  <div className="columns-2 md:columns-5 lg:columns-5 gap-2 md:ml-9 ml-0 [column-fill:_balance]">
+                    {visibleCells}
+                  </div>
                 </div>
                 );
-              })}
+                });
+              })()}
 
               {/* Scroll pagination loading indicator */}
               {loading && historyEntries.length > 0 && (

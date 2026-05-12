@@ -55,16 +55,15 @@ export const StyleFilterDropdown = ({
 
   useEffect(() => {
     if (!searchable) return;
-    if (!isOpen) setSearchQuery(selectedLabel);
+    // When closed, keep the input showing the selected value.
+    // When opened, start with an empty query so the full list is visible.
+    if (!isOpen) setSearchQuery('');
   }, [isOpen, searchable, selectedLabel]);
 
   useEffect(() => {
     if (!searchable || !isOpen) return;
     inputRef.current?.focus();
-    inputRef.current?.setSelectionRange(
-      inputRef.current.value.length,
-      inputRef.current.value.length,
-    );
+    inputRef.current?.setSelectionRange(0, 0);
   }, [isOpen, searchable]);
 
   const filteredOptions = useMemo(() => {
@@ -87,8 +86,8 @@ export const StyleFilterDropdown = ({
               aria-label={ariaLabel}
               aria-haspopup="listbox"
               aria-expanded={isOpen}
-              value={searchQuery}
-              placeholder={searchPlaceholder}
+              value={isOpen ? searchQuery : selectedLabel}
+              placeholder={isOpen ? searchPlaceholder : undefined}
               onFocus={() => setIsOpen(true)}
               onClick={() => setIsOpen(true)}
               onChange={(e) => {
@@ -136,6 +135,7 @@ export const StyleFilterDropdown = ({
                     aria-selected={isSelected}
                     onClick={() => {
                       onChange(option.value);
+                      setSearchQuery('');
                       setIsOpen(false);
                     }}
                     className={`flex w-full items-center rounded-lg px-4 py-2 text-left text-sm transition ${
@@ -199,14 +199,14 @@ export default function StyleFiltersBar({
   typeDropdownSearchable = false,
 }: StyleFiltersBarProps) {
   const normalizedStateOptions = useMemo(() => {
-    const withAll = stateOptions.some((option) => option.value === 'all')
+    const withAll = stateOptions.some((option) => option.value.toLowerCase() === 'all')
       ? stateOptions
       : [{ value: 'all', label: 'All States' }, ...stateOptions];
     return withAll;
   }, [stateOptions]);
 
   const normalizedTypeOptions = useMemo(() => {
-    const withAll = typeOptions.some((option) => option.value === 'all')
+    const withAll = typeOptions.some((option) => option.value.toLowerCase() === 'all')
       ? typeOptions
       : [{ value: 'all', label: 'All Types' }, ...typeOptions];
     return withAll;

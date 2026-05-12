@@ -83,7 +83,7 @@ function PromptDockEditorRowComponent(props: PromptDockEditorRowProps) {
                 className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12px] text-white/90 transition hover:bg-white/10"
               >
                 <Image
-                  src="/icons/character.svg"
+                  src="https://idr01.zata.ai/devstoragev1/public/icons/character.svg"
                   alt="Character"
                   width={14}
                   height={14}

@@ -11,6 +11,7 @@ import { downloadFileWithNaming } from '@/utils/downloadUtils';
 import ImageComparisonSlider from '@/app/view/workflows/components/ImageComparisonSlider';
 import { WORKFLOWS_DATA } from '@/app/view/workflows/components/data';
 import { getSignInUrl } from '@/routes/routes';
+import WorkflowUploadArea from '@/app/view/workflows/components/WorkflowUploadArea';
 
 const BACKGROUND_STYLES = [
   { id: 'urban', label: 'Modern City', icon: <Map size={14} /> },
@@ -57,8 +58,8 @@ export default function Automotive() {
     description: "Transform car photos with professional cinematic backgrounds, lighting, and motion effects.",
     model: "AutoRender AI",
     cost: 90,
-    sampleBefore: "/workflow-samples/automotive-before.png",
-    sampleAfter: "/workflow-samples/automotive-after.png"
+    sampleBefore: "https://idr01.zata.ai/devstoragev1/public/workflow-samples/automotive-before.avif",
+    sampleAfter: "https://idr01.zata.ai/devstoragev1/public/workflow-samples/automotive-after.avif"
   }) as any;
 
   const CREDIT_COST = 90;
@@ -158,25 +159,19 @@ export default function Automotive() {
                 {/* 1. Car Photo */}
                 <div className="flex flex-col gap-2">
                   <label className="text-[10px] font-bold uppercase text-slate-500 ml-1">1. Car Snapshot</label>
-                  <div className="border border-dashed border-white/15 rounded-xl bg-black/20 h-28 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-[#60a5fa]/5 transition-colors relative overflow-hidden group"
-                    onClick={() => setIsUploadModalOpen(true)}>
-                    {carImage ? (
-                      <>
-                        <img src={carImage} className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:opacity-30 transition-opacity" alt="Car" />
-                        <div className="relative z-10">
-                          <span className="text-xs text-white font-medium bg-black/50 px-3 py-1.5 rounded-full backdrop-blur text-center">Change Car</span>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="w-10 h-10 rounded-full bg-[#111] flex items-center justify-center text-slate-400"><Camera size={20} /></div>
-                        <div className="text-center">
-                          <span className="text-sm text-slate-300 block font-medium">Upload Car</span>
-                          <span className="text-[10px] text-slate-500">Subject to enhance</span>
-                        </div>
-                      </>
-                    )}
-                  </div>
+                  <WorkflowUploadArea
+                    placeholderLabel="Upload Car"
+                    placeholderSublabel="Subject to enhance"
+                    currentImage={carImage}
+                    changeLabel="Change Car"
+                    onImageSelect={(url) => {
+                      setCarImage(url);
+                      setGeneratedImage(null);
+                    }}
+                    openModal={() => setIsUploadModalOpen(true)}
+                    className="h-28"
+                    icon={<Camera size={20} />}
+                  />
                 </div>
 
                 {/* 2. Environment Style */}
@@ -294,7 +289,7 @@ export default function Automotive() {
                     <img src={carImage} className="w-full h-full object-contain" alt="Uploaded Car" />
                     {isGenerating && (
                       <div className="absolute inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-40 transition-all duration-500">
-                        <img src="/styles/Logo.gif" className="w-24 h-24" alt="Loading" />
+                        <img src="https://idr01.zata.ai/devstoragev1/public/styles/Logo.gif" className="w-24 h-24" alt="Loading" />
                       </div>
                     )}
                   </div>

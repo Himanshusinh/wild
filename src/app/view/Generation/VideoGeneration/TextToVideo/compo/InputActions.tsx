@@ -316,7 +316,7 @@ const InputActions: React.FC<InputActionsProps> = ({
               disabled={!canSwapFrames}
             >
               <Image
-                src="/icons/arrow-right-left.svg"
+                src="https://idr01.zata.ai/devstoragev1/public/icons/arrow-right-left.svg"
                 alt="Swap first and last frame"
                 width={14}
                 height={14}

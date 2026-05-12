@@ -12,6 +12,8 @@ import {
   getAutoResumeIntent,
   clearAutoResumeIntent,
 } from "@/lib/autoResume";
+import WorkflowUploadArea from "./WorkflowUploadArea";
+import { saveUpload } from "@/lib/libraryApi";
 
 const CAMERA_ANGLES = [
   "Eye-Level",
@@ -318,131 +320,106 @@ export default function WorkflowModal({ isOpen, onClose, workflowData }) {
               </p>
             )}
 
-            {/* Upload Area(s) */}
             {["pose-control", "product-photography"].includes(
               workflowData.id,
             ) ? (
               <div className="flex flex-col gap-6 mb-6">
-                <div className="flex flex-col gap-2">
-                  <label className="text-[10px] font-bold uppercase text-slate-500">
-                    {workflowData.id === "character-sheet"
-                      ? "Character Image"
-                      : "Model Image"}
-                  </label>
-                  <div
-                    onClick={() => {
-                      setActiveUploadType("model");
-                      document.getElementById("model-file-upload").click();
-                    }}
-                    className="border-2 border-dashed border-white/15 rounded-2xl bg-black/20 h-28 flex flex-col items-center justify-center text-center p-4 group hover:border-[#60a5fa]/50 hover:bg-[#60a5fa]/5 transition-all cursor-pointer relative overflow-hidden"
-                  >
-                    <input
-                      id="model-file-upload"
-                      type="file"
-                      className="hidden"
-                      onChange={(e) => handleImageUpload(e, "model")}
-                      accept="image/*"
-                    />
-                    {uploadedImage ? (
-                      <img
-                        src={uploadedImage}
-                        className="absolute inset-0 w-full h-full object-cover opacity-40 group-hover:opacity-60 transition-opacity"
-                        alt="Primary"
-                      />
-                    ) : (
-                      <div className="w-10 h-10 mb-2 rounded-full bg-[#111] border border-white/10 flex items-center justify-center text-slate-500 group-hover:text-[#60a5fa] group-hover:scale-110 transition-all relative z-10">
-                        <Plus size={20} />
-                      </div>
-                    )}
-                    <div className="relative z-10 text-center">
-                      <p className="text-white text-sm font-medium">
-                        {uploadedImage
-                          ? "Change"
-                          : workflowData.id === "character-sheet"
-                            ? "Character"
-                            : workflowData.id === "product-photography"
-                              ? "Product Image"
-                              : workflowData.id === "dynamic-camera-angle"
-                                ? "Product Image"
-                                : workflowData.id === "interior-product"
-                                  ? "Product Image"
-                                  : "Model"}
-                      </p>
-                      {[
-                        "product-photography",
-                        "dynamic-camera-angle",
-                        "interior-product",
-                      ].includes(workflowData.id) &&
-                        !uploadedImage && (
-                          <p className="text-[10px] text-slate-500 mt-0.5">
-                            Upload your product snapshot
-                          </p>
-                        )}
-                    </div>
-                  </div>
-                </div>
+                <WorkflowUploadArea
+                  label={workflowData.id === "character-sheet" ? "Character Image" : "Model Image"}
+                  placeholderLabel={
+                    workflowData.id === "character-sheet"
+                      ? "Character"
+                      : workflowData.id === "product-photography"
+                        ? "Product Image"
+                        : "Model"
+                  }
+                  placeholderSublabel={
+                    ["product-photography", "dynamic-camera-angle", "interior-product"].includes(workflowData.id)
+                      ? "Upload your product snapshot"
+                      : ""
+                  }
+                  currentImage={uploadedImage}
+                  changeLabel="Change"
+                  onImageSelect={(url) => setUploadedImage(url)}
+                  openModal={() => {
+                    setActiveUploadType("model");
+                    document.getElementById("model-file-upload").click();
+                  }}
+                  className="h-28"
+                  icon={<Plus size={20} />}
+                />
+                <input
+                  id="model-file-upload"
+                  type="file"
+                  className="hidden"
+                  onChange={(e) => handleImageUpload(e, "model")}
+                  accept="image/*"
+                />
 
-                <div className="flex flex-col gap-2">
-                  <label className="text-[10px] font-bold uppercase text-slate-500">
-                    {workflowData.id === "character-sheet"
+                <WorkflowUploadArea
+                  label={
+                    workflowData.id === "character-sheet"
                       ? "Reference Style"
                       : workflowData.id === "product-photography"
                         ? "Atmosphere Reference"
-                        : "Pose Guide"}
-                  </label>
-                  <div
-                    onClick={() => {
-                      setActiveUploadType("pose");
-                      document.getElementById("pose-file-upload").click();
-                    }}
-                    className="border-2 border-dashed border-white/15 rounded-2xl bg-black/20 h-28 flex flex-col items-center justify-center text-center p-4 group hover:border-[#60a5fa]/50 hover:bg-[#60a5fa]/5 transition-all cursor-pointer relative overflow-hidden"
-                  >
-                    <input
-                      id="pose-file-upload"
-                      type="file"
-                      className="hidden"
-                      onChange={(e) => handleImageUpload(e, "pose")}
-                      accept="image/*"
-                    />
-                    {poseReferenceImage ? (
-                      <img
-                        src={poseReferenceImage}
-                        className="absolute inset-0 w-full h-full object-cover opacity-40 group-hover:opacity-60 transition-opacity"
-                        alt="Reference"
-                      />
-                    ) : (
-                      <div className="w-10 h-10 mb-2 rounded-full bg-[#111] border border-white/10 flex items-center justify-center text-slate-500 group-hover:text-[#60a5fa] group-hover:scale-110 transition-all relative z-10">
-                        <Plus size={20} />
-                      </div>
-                    )}
-                    <div className="relative z-10 text-center">
-                      <p className="text-white text-sm font-medium">
-                        {poseReferenceImage
-                          ? "Change"
-                          : workflowData.id === "product-photography"
-                            ? "Reference Image"
-                            : "Pose Reference"}
-                      </p>
-                      {!poseReferenceImage && (
-                        <p className="text-[10px] text-slate-500 mt-0.5">
-                          {workflowData.id === "product-photography"
-                            ? "Upload atmosphere or model reference"
-                            : workflowData.id === "character-sheet"
-                              ? "Style or outfit guide"
-                              : "Target pose image"}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                        : "Pose Guide"
+                  }
+                  placeholderLabel={
+                    workflowData.id === "product-photography" ? "Reference Image" : "Pose Reference"
+                  }
+                  placeholderSublabel={
+                    workflowData.id === "product-photography"
+                      ? "Upload atmosphere or model reference"
+                      : workflowData.id === "character-sheet"
+                        ? "Style or outfit guide"
+                        : "Target pose image"
+                  }
+                  currentImage={poseReferenceImage}
+                  changeLabel="Change"
+                  onImageSelect={(url) => setPoseReferenceImage(url)}
+                  openModal={() => {
+                    setActiveUploadType("pose");
+                    document.getElementById("pose-file-upload").click();
+                  }}
+                  className="h-28"
+                  icon={<Plus size={20} />}
+                />
+                <input
+                  id="pose-file-upload"
+                  type="file"
+                  className="hidden"
+                  onChange={(e) => handleImageUpload(e, "pose")}
+                  accept="image/*"
+                />
               </div>
             ) : !["business-card", "id-card"].includes(workflowData.id) ? (
-              <div
-                onClick={() =>
-                  document.getElementById("workflow-file-upload").click()
-                }
-                className="border-2 border-dashed border-white/15 rounded-2xl bg-black/20 h-28 flex flex-col items-center justify-center text-center p-4 group hover:border-[#60a5fa]/50 hover:bg-[#60a5fa]/5 transition-all cursor-pointer relative overflow-hidden mb-6"
-              >
+              <div className="mb-6">
+                <WorkflowUploadArea
+                  placeholderLabel={
+                    workflowData.id === "character-sheet"
+                      ? "Upload Character Image"
+                      : workflowData.id === "expression-sheet"
+                        ? "Upload Character Image"
+                        : workflowData.id === "product-photography"
+                          ? "Upload Product Image"
+                          : "Upload Image"
+                  }
+                  placeholderSublabel={
+                    workflowData.id === "character-sheet"
+                      ? "Full body suggested"
+                      : workflowData.id === "expression-sheet"
+                        ? "Portrait suggested"
+                        : workflowData.id === "product-photography"
+                          ? "Clear product shot suggested"
+                          : "JPG, PNG, WebP up to 25MB"
+                  }
+                  currentImage={uploadedImage}
+                  changeLabel="Change Image"
+                  onImageSelect={(url) => setUploadedImage(url)}
+                  openModal={() => document.getElementById("workflow-file-upload").click()}
+                  className="h-28"
+                  icon={<Plus size={20} />}
+                />
                 <input
                   id="workflow-file-upload"
                   type="file"
@@ -450,38 +427,6 @@ export default function WorkflowModal({ isOpen, onClose, workflowData }) {
                   onChange={handleImageUpload}
                   accept="image/*"
                 />
-                <div className="absolute inset-0 bg-gradient-to-br from-[#60a5fa]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                {uploadedImage ? (
-                  <img
-                    src={uploadedImage}
-                    className="absolute inset-0 w-full h-full object-cover opacity-40 group-hover:opacity-60 transition-opacity"
-                    alt="Uploaded"
-                  />
-                ) : (
-                  <div className="w-12 h-12 mb-3 rounded-full bg-[#111] border border-white/10 flex items-center justify-center text-slate-500 group-hover:text-[#60a5fa] group-hover:scale-110 transition-all relative z-10">
-                    <Plus size={20} />
-                  </div>
-                )}
-                <p className="text-white font-medium mb-1 relative z-10">
-                  {uploadedImage
-                    ? "Change Image"
-                    : workflowData.id === "character-sheet"
-                      ? "Upload Character Image"
-                      : workflowData.id === "expression-sheet"
-                        ? "Upload Character Image"
-                        : workflowData.id === "product-photography"
-                          ? "Upload Product Image"
-                          : "Upload Image"}
-                </p>
-                <p className="text-xs text-slate-500 relative z-10">
-                  {workflowData.id === "character-sheet"
-                    ? "Full body suggested"
-                    : workflowData.id === "expression-sheet"
-                      ? "Portrait suggested"
-                      : workflowData.id === "product-photography"
-                        ? "Clear product shot suggested"
-                        : "JPG, PNG, WebP up to 25MB"}
-                </p>
               </div>
             ) : null}
 
@@ -605,39 +550,24 @@ export default function WorkflowModal({ isOpen, onClose, workflowData }) {
                   </div>
                 </div>
                 <div className="mb-6">
-                  <label className="block text-[10px] font-bold uppercase text-slate-500 mb-3">
-                    Upload Logo
-                  </label>
-                  <div
-                    onClick={() => {
-                      document.getElementById("logo-file-upload").click();
-                    }}
-                    className="border-2 border-dashed border-white/15 rounded-2xl bg-black/20 h-24 flex flex-col items-center justify-center text-center p-4 group hover:border-[#60a5fa]/50 hover:bg-[#60a5fa]/5 transition-all cursor-pointer relative overflow-hidden"
-                  >
-                    <input
-                      id="logo-file-upload"
-                      type="file"
-                      className="hidden"
-                      onChange={(e) => handleImageUpload(e, "logo")}
-                      accept="image/*"
-                    />
-                    {logoImage ? (
-                      <img
-                        src={logoImage}
-                        className="absolute inset-0 w-full h-full object-contain opacity-40 group-hover:opacity-60 transition-opacity"
-                        alt="Logo"
-                      />
-                    ) : (
-                      <div className="w-8 h-8 rounded-full bg-[#111] border border-white/10 flex items-center justify-center text-slate-500 group-hover:text-[#60a5fa] group-hover:scale-110 transition-all relative z-10">
-                        <Plus size={16} />
-                      </div>
-                    )}
-                    <div className="relative z-10">
-                      <span className="text-[10px] text-white/50 block font-medium group-hover:text-white transition-colors">
-                        {logoImage ? "Change Logo" : "Choose Logo (Required)"}
-                      </span>
-                    </div>
-                  </div>
+                  <WorkflowUploadArea
+                    label="Upload Logo"
+                    placeholderLabel={logoImage ? "Change Logo" : "Choose Logo (Required)"}
+                    currentImage={logoImage}
+                    changeLabel="Change Logo"
+                    onImageSelect={(url) => setLogoImage(url)}
+                    openModal={() => document.getElementById("logo-file-upload").click()}
+                    className="h-24"
+                    icon={<Plus size={16} />}
+                    objectFit="contain"
+                  />
+                  <input
+                    id="logo-file-upload"
+                    type="file"
+                    className="hidden"
+                    onChange={(e) => handleImageUpload(e, "logo")}
+                    accept="image/*"
+                  />
                 </div>
 
                 <div className="mb-6">
@@ -726,41 +656,24 @@ export default function WorkflowModal({ isOpen, onClose, workflowData }) {
             ) : workflowData.id === "id-card" ? (
               <>
                 <div className="mb-6">
-                  <label className="block text-[10px] font-bold uppercase text-slate-500 mb-3 tracking-wider">
-                    Passort Size Photo
-                  </label>
-                  <div
-                    onClick={() => {
-                      document.getElementById("person-file-upload").click();
-                    }}
-                    className="border-2 border-dashed border-white/15 rounded-2xl bg-black/20 h-24 flex flex-col items-center justify-center text-center p-4 group hover:border-[#60a5fa]/50 hover:bg-[#60a5fa]/5 transition-all cursor-pointer relative overflow-hidden"
-                  >
-                    <input
-                      id="person-file-upload"
-                      type="file"
-                      className="hidden"
-                      onChange={(e) => handleImageUpload(e, "person")}
-                      accept="image/*"
-                    />
-                    {personPhoto ? (
-                      <img
-                        src={personPhoto}
-                        className="absolute inset-0 w-full h-full object-contain opacity-40 group-hover:opacity-60 transition-opacity"
-                        alt="Photo"
-                      />
-                    ) : (
-                      <div className="w-8 h-8 rounded-full bg-[#111] border border-white/10 flex items-center justify-center text-slate-500 group-hover:text-[#60a5fa] group-hover:scale-110 transition-all relative z-10">
-                        <Camera size={16} />
-                      </div>
-                    )}
-                    <div className="relative z-10">
-                      <span className="text-[10px] text-white/50 block font-medium group-hover:text-white transition-colors">
-                        {personPhoto
-                          ? "Change Photo"
-                          : "Choose Photo (Required)"}
-                      </span>
-                    </div>
-                  </div>
+                  <WorkflowUploadArea
+                    label="Passort Size Photo"
+                    placeholderLabel={personPhoto ? "Change Photo" : "Choose Photo (Required)"}
+                    currentImage={personPhoto}
+                    changeLabel="Change Photo"
+                    onImageSelect={(url) => setPersonPhoto(url)}
+                    openModal={() => document.getElementById("person-file-upload").click()}
+                    className="h-24"
+                    icon={<Camera size={16} />}
+                    objectFit="contain"
+                  />
+                  <input
+                    id="person-file-upload"
+                    type="file"
+                    className="hidden"
+                    onChange={(e) => handleImageUpload(e, "person")}
+                    accept="image/*"
+                  />
                 </div>
 
                 <div className="mb-6">

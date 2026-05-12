@@ -6,6 +6,8 @@ import Image from "next/image";
 import { X } from "lucide-react";
 import { STYLES } from "./CreativeStyle";
 import StyleFiltersBar from "@/components/ui/StyleFiltersBar";
+import { INDIAN_STYLE_PREVIEWS } from "@/styles/indianStylePreviews";
+import { ZATA_INDIAN_STYLES_BASE } from "@/constants/creativeStyleCdn";
 
 interface AllStylesModalProps {
   isOpen: boolean;
@@ -21,13 +23,36 @@ const StyleCard = ({
   onClick: () => void;
 }) => {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
-  const isShellCraft = style.id.toLowerCase() === "shellcraft";
-  const shellImages = [
-    "/HomePage/creativeStyle/shell_art/v1.jpg",
-    "/HomePage/creativeStyle/shell_art/v2.jpg",
-    "/HomePage/creativeStyle/shell_art/v3.jpg",
+  const toSeg = (text: string) =>
+    String(text)
+      .toLowerCase()
+      .trim()
+      .replace(/[\u2013\u2014]/g, "-")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+
+  const styleKey = toSeg(style.id);
+  const triple =
+    INDIAN_STYLE_PREVIEWS[styleKey] ??
+    (() => {
+      const stateSeg = toSeg(style.state);
+      const styleSeg = toSeg(style.title || style.id);
+      const base = `${ZATA_INDIAN_STYLES_BASE}/${stateSeg}/${styleSeg}`;
+      return {
+        v1: `${base}/v1.avif`,
+        v2: `${base}/v2.avif`,
+        v3: `${base}/v3.avif`,
+      };
+    })();
+  const tripleImages = triple
+    ? [triple.v1, triple.v2, triple.v3]
+    : // Fallback: still show the 3-layer UI even if a style doesn't have v1/v2/v3 yet
+      [style.image, style.image, style.image];
+  const tripleObjectPositions: React.CSSProperties["objectPosition"][] = [
+    "left center",
+    "center center",
+    "right center",
   ];
-  const shellObjectPositions: React.CSSProperties["objectPosition"][] = ["left center", "center center", "right center"];
 
   return (
     <button
@@ -38,11 +63,13 @@ const StyleCard = ({
         className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl border border-white/10 bg-[#18181f] transition-colors group-hover:border-white/20"
         onMouseLeave={() => setHoveredIndex(null)}
       >
-        {isShellCraft ? (
+        {tripleImages ? (
           <div className="flex h-full w-full overflow-hidden">
-            {shellImages.map((src, idx) => {
+            {tripleImages.map((src, idx) => {
               let width = "33.3333%";
-              if (hoveredIndex !== null) width = hoveredIndex === idx ? "80%" : "10%";
+              if (hoveredIndex !== null) {
+                width = hoveredIndex === idx ? "80%" : "10%";
+              }
               return (
                 <div
                   key={src}
@@ -60,7 +87,7 @@ const StyleCard = ({
                     className={`h-full w-full object-cover transition-transform duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${hoveredIndex === idx ? "scale-105" : "scale-100"}`}
                     style={{
                       filter: style.imageFilter as React.CSSProperties["filter"],
-                      objectPosition: shellObjectPositions[idx],
+                      objectPosition: tripleObjectPositions[idx],
                     }}
                   />
                 </div>

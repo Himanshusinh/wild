@@ -30,7 +30,7 @@ const ImageGenerationGuide = () => {
 
             {/* --- Ambient Background (Matches WildCanvas) --- */}
             {/* <div className="absolute inset-0 pointer-events-none">
-                <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-[0.03] mix-blend-overlay"></div> */}
+                <div className="absolute inset-0 bg-[url('https://idr01.zata.ai/devstoragev1/public/noise.svg')] opacity-[0.03] mix-blend-overlay"></div> */}
             {/* Abstract Grid */}
             {/* <div className="absolute inset-0" style={{
                     backgroundImage: 'linear-gradient(rgba(96, 165, 250, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(96, 165, 250, 0.03) 1px, transparent 1px)',

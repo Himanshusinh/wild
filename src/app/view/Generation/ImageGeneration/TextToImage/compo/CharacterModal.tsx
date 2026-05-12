@@ -136,7 +136,7 @@ const CharacterModal: React.FC<CharacterModalProps> = ({
     // For generation purposes, prefer original JPG/PNG URL over AVIF thumbnails
     // AVIF thumbnails should only be used for display, not for generation
     // Priority: rawUrl (original) > firebaseUrl > thumbnailUrl > avifUrl (fallback for display only)
-    let frontImageUrl = rawUrl || firebaseUrl || thumbnailUrl || avifUrl || '/styles/Logo.gif';
+    let frontImageUrl = rawUrl || firebaseUrl || thumbnailUrl || avifUrl || 'https://idr01.zata.ai/devstoragev1/public/styles/Logo.gif';
     
     // If the URL contains _thumb.avif, try to convert it back to the original JPG/PNG format
     // This handles cases where the backend stored AVIF thumbnails instead of originals
@@ -351,7 +351,7 @@ const CharacterModal: React.FC<CharacterModalProps> = ({
                 <div>
                   {loading ? (
                     <div className="flex flex-col items-center justify-center md:h-[50vh] h-[30vh] text-white/60">
-                      <img src="/styles/Logo.gif" alt="Loading..." className="w-24 h-24 opacity-80 md:mb-4 mb-2" />
+                      <img src="https://idr01.zata.ai/devstoragev1/public/styles/Logo.gif" alt="Loading..." className="w-24 h-24 opacity-80 md:mb-4 mb-2" />
                       <div className="md:text-lg text-[11px]">Loading characters...</div>
                     </div>
                   ) : characters.length === 0 ? (
@@ -392,12 +392,12 @@ const CharacterModal: React.FC<CharacterModalProps> = ({
                                 } bg-black/50 flex`}
                               >
                                 <img
-                                  src={character.frontImageUrl || '/styles/Logo.gif'}
+                                  src={character.frontImageUrl || 'https://idr01.zata.ai/devstoragev1/public/styles/Logo.gif'}
                                   alt={character.name}
                                   className="absolute inset-0 w-full h-full object-cover select-none"
                                   loading="lazy"
                                   onError={(e) => {
-                                    try { (e.currentTarget as HTMLImageElement).src = '/styles/Logo.gif'; } catch {}
+                                    try { (e.currentTarget as HTMLImageElement).src = 'https://idr01.zata.ai/devstoragev1/public/styles/Logo.gif'; } catch {}
                                   }}
                                 />
                                 {/* Checkbox indicator for selected characters */}

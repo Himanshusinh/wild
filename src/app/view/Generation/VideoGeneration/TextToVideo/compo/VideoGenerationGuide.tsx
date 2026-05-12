@@ -34,7 +34,7 @@ const VideoGenerationGuide = () => {
 
             {/* --- Ambient Background --- */}
             {/* <div className="absolute inset-0 pointer-events-none">
-                <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-[0.03] mix-blend-overlay"></div>
+                <div className="absolute inset-0 bg-[url('https://idr01.zata.ai/devstoragev1/public/noise.svg')] opacity-[0.03] mix-blend-overlay"></div>
                 <div className="hidden md:block absolute top-1/2 left-[10%] right-[10%] h-px bg-gradient-to-r from-transparent via-[#60a5fa]/20 to-transparent blur-sm"></div>
             </div> */}
 
@@ -368,7 +368,7 @@ function SimulatedGenerateProcess() {
                 {/* Result Video (Revealed on State 4) */}
                 <div className={`absolute inset-0 z-10 transition-opacity duration-1000 ${genState === 4 ? 'opacity-100' : 'opacity-0'}`}>
                     <img 
-                        src="/core/cyberpunk.gif" 
+                        src="https://idr01.zata.ai/devstoragev1/public/core/cyberpunk.gif" 
                         alt="Generated video" 
                         className="w-full h-full object-cover"
                     />

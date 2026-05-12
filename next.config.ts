@@ -145,11 +145,17 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: process.cwd(),
   },
-  webpack: (config) => {
+  webpack: (config, { dev }) => {
     config.resolve.alias["@image-edit"] = path.join(
       process.cwd(),
       "src/image_edit",
     );
+    // Webpack's filesystem pack cache can become corrupted on Windows (antivirus,
+    // sync tools, interrupted writes), which surfaces as PackFileCacheStrategy
+    // "incorrect data check" spam. Using in-memory cache keeps rebuilds fast without relying on flaky disk pack files.
+    if (dev) {
+      config.cache = { type: "memory" };
+    }
     return config;
   },
 };

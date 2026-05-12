@@ -35,12 +35,20 @@ export default function ActivePlanCard({
   const router = useRouter();
   const statusUpper = String(subscription.status || "").toUpperCase();
   const isFreePlan = String(subscription.planCode || "").toUpperCase() === "FREE";
+  const subscriptionSetupPending = [
+    "INCOMPLETE",
+    "CREATED",
+    "PENDING",
+    "AUTHENTICATED",
+  ].includes(statusUpper);
   const statusText =
     statusUpper === "PAST_DUE"
       ? null
       : isFreePlan
         ? "Free plan"
-        : "Active subscription";
+        : subscriptionSetupPending
+          ? "Paid plan — billing setup still finishing (your credits and quota already apply)"
+          : "Active subscription";
 
   const storageUsedGB = credits.storageUsed / 1024 / 1024 / 1024;
   const storageQuotaGB = credits.storageQuota / 1024 / 1024 / 1024;

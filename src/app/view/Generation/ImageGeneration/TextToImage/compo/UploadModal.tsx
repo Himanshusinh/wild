@@ -108,6 +108,7 @@ const UploadModal: React.FC<UploadModalProps> = ({
   const [selection, setSelection] = React.useState<Set<string>>(new Set());
   const [localUploads, setLocalUploads] = React.useState<string[]>([]);
   const [isSavingLocalUploads, setIsSavingLocalUploads] = React.useState(false);
+  const [isDragging, setIsDragging] = React.useState(false);
   const [cameraActive, setCameraActive] = React.useState(false);
   const [cameraError, setCameraError] = React.useState<string | null>(null);
   const videoRef = React.useRef<HTMLVideoElement | null>(null);
@@ -218,6 +219,28 @@ const UploadModal: React.FC<UploadModalProps> = ({
 
     setLocalUploads((prev) => [...prev, ...urls].slice(0, remainingSlots));
   }, [isSupportedImageFile, localUploads.length, persistLocalDeviceUploads, remainingSlots, tab]);
+
+  const handleDragOver = React.useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = React.useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  }, []);
+
+  const handleDrop = React.useCallback(async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    const files = Array.from(e.dataTransfer.files || []);
+    if (files.length > 0) {
+      await addFilesToLocalUploads(files);
+    }
+  }, [addFilesToLocalUploads]);
 
   const stopCamera = React.useCallback(() => {
     try {
@@ -561,6 +584,7 @@ const UploadModal: React.FC<UploadModalProps> = ({
       // Reset load flags so data reloads when modal opens again
       hasLoadedLibraryRef.current = false;
       hasLoadedUploadsRef.current = false;
+      setIsDragging(false);
     }
   }, [isOpen]);
 
@@ -754,8 +778,9 @@ const UploadModal: React.FC<UploadModalProps> = ({
         <div className="w-full max-w-3xl bg-black/70 backdrop-blur-xl ring-1 ring-white/20 rounded-lg overflow-hidden shadow-2xl">
           <div className="flex items-center justify-between md:px-4 px-3 gap-2 md:py-3 py-2 border-b border-white/10">
             <div className="flex items-center gap-2">
+              <button className={`md:px-3 px-2 md:py-1.5 py-0.5 rounded-lg md:text-sm text-[11px] ${tab === 'library' ? 'bg-white text-black' : 'bg-white/10 text-white/90'}`} onClick={() => setTab('library')}>Your Library</button>
               <button className={`md:px-3 px-2 md:py-1.5 py-0.5 rounded-lg md:text-sm text-[11px] ${tab === 'uploads' ? 'bg-white text-black' : 'bg-white/10 text-white/90'}`} onClick={() => setTab('uploads')}>Your Uploads</button>
-              <button className={`md:px-3 px-2 md:py-1.5 py-0.5 rounded-lg md:text-sm text-[11px] ${tab === 'library' ? 'bg-white text-black' : 'bg-white/10 text-white/90'}`} onClick={() => setTab('library')}>Generated Images</button>
+              <button className={`md:px-3 px-2 md:py-1.5 py-0.5 rounded-lg md:text-sm text-[11px] ${tab === 'computer' ? 'bg-white text-black' : 'bg-white/10 text-white/90'}`} onClick={() => setTab('computer')}>Upload from Device</button>
             </div>
             <button className="text-white/80 hover:text-white" onClick={onClose}>✕</button>
           </div>
@@ -765,7 +790,7 @@ const UploadModal: React.FC<UploadModalProps> = ({
               <div>
                 {loading && displayItems.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-[50vh] text-white/60">
-                    <img src="/styles/Logo.gif" alt="Loading..." className="w-24 h-24 opacity-80 mb-4" />
+                    <img src="https://idr01.zata.ai/devstoragev1/public/styles/Logo.gif" alt="Loading..." className="w-24 h-24 opacity-80 mb-4" />
                     <div className="text-lg">
                       {tab === 'uploads' ? 'Loading uploads...' : 'Loading library...'}
                     </div>
@@ -774,8 +799,8 @@ const UploadModal: React.FC<UploadModalProps> = ({
                   <>
                     <div className="text-white/70 md:text-sm text-[11px] md:mb-3 mb-1 ">
                       {tab === 'uploads'
-                        ? `Select up to ${remainingSlots} image${remainingSlots === 1 ? '' : 's'} from your uploads (or add from device)`
-                        : `Select up to ${remainingSlots} image${remainingSlots === 1 ? '' : 's'} from your previously generated results`
+                        ? `Select up to ${remainingSlots} image${remainingSlots === 1 ? '' : 's'} from your uploads`
+                        : `Select up to ${remainingSlots} image${remainingSlots === 1 ? '' : 's'} from your library`
                       }
                     </div>
                     {tab === 'uploads' && isSavingLocalUploads && (
@@ -927,34 +952,21 @@ const UploadModal: React.FC<UploadModalProps> = ({
                           }
                         }
                       }}
-                      className="grid grid-cols-3 md:grid-cols-5 md:gap-3 gap-2 md:h-[50vh] h-[40vh] p-1 md:p-2 pt-1 md:pt-0 overflow-y-auto custom-scrollbar pr-1"
+                      onDragOver={handleDragOver}
+                      onDragLeave={handleDragLeave}
+                      onDrop={handleDrop}
+                      className={`grid grid-cols-3 md:grid-cols-5 md:gap-3 gap-2 md:h-[50vh] h-[40vh] p-1 md:p-2 pt-1 md:pt-0 overflow-y-auto custom-scrollbar pr-1 transition-all duration-200 ${
+                        isDragging && tab === 'uploads' 
+                          ? 'bg-white/10 ring-2 ring-white/20 ring-inset' 
+                          : ''
+                      }`}
                     >
-                      {displayItems.length === 0 && !(tab === 'uploads' && localUploads.length > 0) ? (
+                      {displayItems.length === 0 ? (
                         <div className="col-span-full flex items-center justify-center md:h-32 h-24 text-white/60">
                           No items found
                         </div>
                       ) : (
                         <>
-                        {tab === 'uploads' && (
-                          <button
-                            type="button"
-                            onClick={() => localUploadInputRef.current?.click()}
-                            disabled={isSavingLocalUploads}
-                            className={`relative w-full md:h-32 h-24 rounded-lg overflow-hidden ring-1 ring-white/20 bg-black/30 border-2 border-dashed border-white/25 transition-colors flex flex-col items-center justify-center ${
-                              isSavingLocalUploads
-                                ? 'cursor-not-allowed opacity-60 text-white/50'
-                                : 'hover:border-white/50 text-white/70 hover:text-white'
-                            }`}
-                          >
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                              <path d="M12 5v14" />
-                              <path d="M5 12h14" />
-                            </svg>
-                            <div className="mt-1 text-[10px] md:text-xs font-medium">
-                              {isSavingLocalUploads ? 'Uploading...' : 'Upload'}
-                            </div>
-                          </button>
-                        )}
                         {tab === 'uploads' && localUploads.map((url, idx) => {
                           const selected = selection.has(url);
                           return (
@@ -1042,7 +1054,7 @@ const UploadModal: React.FC<UploadModalProps> = ({
                     {/* Debug info for uploads tab */}
                     {tab === 'uploads' && process.env.NODE_ENV === 'development' && (
                       <div className="flex items-center justify-center pt-1 text-white/30 text-[10px]">
-                        Debug: hasMore={String(uploadHasMore)}, loading={String(uploadLoading)}, cursor={uploadNextCursor ? 'yes' : 'no'}, items={uploadItems.length}
+                        
                       </div>
                     )}
                     <div className="flex justify-end mt-0 gap-2">
@@ -1113,13 +1125,14 @@ const UploadModal: React.FC<UploadModalProps> = ({
 
                 <div
                   ref={dropRef}
-                  onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                  onDrop={async (e) => {
-                    e.preventDefault();
-                    const files = Array.from(e.dataTransfer.files || []);
-                    await addFilesToLocalUploads(files);
-                  }}
-                  className={`border-2 border-dashed border-white/30 rounded-lg h-[51.75vh] flex cursor-pointer hover:border-white/60 overflow-y-auto custom-scrollbar ${localUploads.length > 0 ? 'items-start justify-start p-3' : 'items-center justify-center'}`}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  className={`border-2 border-dashed rounded-lg h-[51.75vh] flex cursor-pointer transition-all duration-200 overflow-y-auto custom-scrollbar ${
+                    isDragging 
+                      ? 'border-white bg-white/10 scale-[0.99] ring-4 ring-white/10' 
+                      : 'border-white/30 bg-black/20 hover:border-white/60 hover:bg-black/30'
+                  } ${localUploads.length > 0 ? 'items-start justify-start p-3' : 'items-center justify-center'}`}
                   onClick={() => {
                     const input = document.createElement('input');
                     input.type = 'file';

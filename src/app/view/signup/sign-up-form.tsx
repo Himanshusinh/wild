@@ -1527,7 +1527,7 @@ export default function SignInForm() {
             >
               <div className="w-12 h-12 flex items-center justify-center">
                 <img
-                  src="/core/logosquare.png"
+                  src="https://idr01.zata.ai/devstoragev1/public/core/logosquare.avif"
                   alt="WildMind Logo"
                   width={32}
                   height={32}

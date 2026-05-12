@@ -130,14 +130,14 @@ export const imageRoutes: FolderImageRoutes = {
 
     // Workflow images
     workflow: {
-        designing: '/catagoryimages/designer.jpg',
-        filmMaking: '/catagoryimages/film.jpg',
-        printing: '/catagoryimages/printing.jpg',
-        branding: '/catagoryimages/branding.jpg',
-        contentCreation: '/catagoryimages/content.jpg',
-        artDirection: '/catagoryimages/art.jpg',
-        marketing: '/catagoryimages/marketing.jpg',
-        photography: '/catagoryimages/photography.jpg'
+        designing: 'https://idr01.zata.ai/devstoragev1/public/catagoryimages/designer.avif',
+        filmMaking: 'https://idr01.zata.ai/devstoragev1/public/catagoryimages/film.avif',
+        printing: 'https://idr01.zata.ai/devstoragev1/public/catagoryimages/printing.avif',
+        branding: 'https://idr01.zata.ai/devstoragev1/public/catagoryimages/branding.avif',
+        contentCreation: 'https://idr01.zata.ai/devstoragev1/public/catagoryimages/content.avif',
+        artDirection: 'https://idr01.zata.ai/devstoragev1/public/catagoryimages/art.avif',
+        marketing: 'https://idr01.zata.ai/devstoragev1/public/catagoryimages/marketing.avif',
+        photography: 'https://idr01.zata.ai/devstoragev1/public/catagoryimages/photography.avif'
     },
 
     // Feature category images

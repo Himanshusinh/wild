@@ -699,7 +699,7 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
                   title={isPublicFlag ? 'Public' : 'Private'}
                 >
                   <Image 
-                    src={isPublicFlag ? "/icons/eye.svg" : "/icons/eye-disabled.svg"} 
+                    src={isPublicFlag ? "https://idr01.zata.ai/devstoragev1/public/icons/eye.svg" : "https://idr01.zata.ai/devstoragev1/public/icons/eye-disabled.svg"} 
                     alt={isPublicFlag ? "Public" : "Private"} 
                     width={16} 
                     height={16} 

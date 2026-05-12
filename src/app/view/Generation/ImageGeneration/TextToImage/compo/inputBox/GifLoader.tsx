@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState } from "react";
-import Image from "next/image";
 import LoadingSpinner from "@/components/LoadingSpinner";
 
 export const GifLoader: React.FC<{
@@ -23,13 +22,14 @@ export const GifLoader: React.FC<{
   }
 
   return (
-    <Image
-      src="/styles/Logo.gif"
+    <img
+      src="https://idr01.zata.ai/devstoragev1/public/styles/Logo.gif"
       alt={alt}
       width={size}
       height={size}
       className={className || "mx-auto"}
-      unoptimized
+      loading="eager"
+      decoding="async"
       onError={() => setFailed(true)}
     />
   );

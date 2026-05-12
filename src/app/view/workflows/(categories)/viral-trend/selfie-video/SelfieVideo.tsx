@@ -12,6 +12,7 @@ import {
   ImageIcon,
   Download
 } from 'lucide-react';
+import WorkflowUploadArea from '@/app/view/workflows/components/WorkflowUploadArea';
 import UploadModal from '@/app/view/Generation/ImageGeneration/TextToImage/compo/UploadModal';
 import { getAuthToken } from '@/lib/authHelper';
 import { useCredits } from '@/hooks/useCredits';
@@ -1405,46 +1406,48 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
                 <p className="text-slate-400 text-lg mb-8">Upload your photo and friend photos to start.</p>
 
                 <div className="mb-4">
-                  <label className="text-xs font-bold uppercase text-slate-500 mb-2 block">1. Your Photo</label>
-                  {selfiePhoto ? (
-                    <div className="relative w-20 h-20 rounded-xl overflow-hidden border border-white/10 group">
-                      <img src={selfiePhoto} className="w-full h-full object-cover" alt="selfie" />
-                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" onClick={() => openUploadModal('selfie')}>
-                        {/* <span className="text-white text-xs font-medium">Change Photo</span> */}
-                      </div>
-                    </div>
-
-
-                  ) : (
-                    <div onClick={() => openUploadModal('selfie')} className="border border-dashed border-white/15 rounded-xl bg-black/20 h-24 flex items-center justify-center gap-3 cursor-pointer hover:bg-[#60a5fa]/5 transition-colors">
-                      <div className="w-8 h-8 rounded-full bg-[#111] flex items-center justify-center text-slate-400"><Camera size={16} /></div>
-                      <span className="text-sm text-slate-400">Upload your selfie</span>
-                    </div>
-                  )}
+                  <WorkflowUploadArea
+                    label="1. Your Photo"
+                    placeholderLabel="Upload your selfie"
+                    currentImage={selfiePhoto}
+                    changeLabel="Change Photo"
+                    onImageSelect={(url) => setSelfiePhoto(url)}
+                    openModal={() => openUploadModal('selfie')}
+                    className="h-24"
+                    objectFit="cover"
+                  />
                 </div>
 
                 <div className="mb-4">
-                  <label className="text-xs font-bold uppercase text-slate-500 mb-2 block">2. Friend Photos</label>
                   {friendPhotos.length === 0 ? (
-                    <div onClick={() => openUploadModal('friends')} className="border border-dashed border-white/15 rounded-xl bg-black/20 h-24 flex items-center justify-center gap-3 cursor-pointer hover:bg-[#60a5fa]/5 transition-colors group">
-                      <div className="w-8 h-8 rounded-full bg-[#111] flex items-center justify-center text-slate-400 group-hover:text-white group-hover:bg-[#60a5fa]/20 transition-all"><Plus size={16} /></div>
-                      <span className="text-sm text-slate-400 group-hover:text-white">Upload friend photos</span>
-                    </div>
+                    <WorkflowUploadArea
+                      label="2. Friend Photos"
+                      placeholderLabel="Upload friend photos"
+                      currentImage={null}
+                      changeLabel="Add Friends"
+                      onImageSelect={(url) => setFriendPhotos(prev => [...prev, url])}
+                      openModal={() => openUploadModal('friends')}
+                      className="h-24"
+                      icon={<Plus size={16} />}
+                    />
                   ) : (
-                    <div className="flex flex-wrap gap-3">
-                      {friendPhotos.map((photo, i) => (
-                        <div key={i} className="relative w-20 h-20 rounded-xl overflow-hidden border border-white/10 group">
-                          <img src={photo} className="w-full h-full object-cover" alt="friend" />
-                          <button
-                            onClick={() => setFriendPhotos(friendPhotos.filter((_, idx) => idx !== i))}
-                            className="absolute top-1 right-1 w-5 h-5 bg-black/60 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            <X size={12} />
-                          </button>
-                        </div>
-                      ))}
-                      <button onClick={() => openUploadModal('friends')} className="w-20 h-20 rounded-xl border border-dashed border-white/20 bg-white/5 flex flex-col items-center justify-center hover:text-[#60a5fa] transition-all"><Plus size={20} /></button>
-                    </div>
+                    <>
+                      <label className="text-xs font-bold uppercase text-slate-500 mb-2 block">2. Friend Photos</label>
+                      <div className="flex flex-wrap gap-3">
+                        {friendPhotos.map((photo, i) => (
+                          <div key={i} className="relative w-20 h-20 rounded-xl overflow-hidden border border-white/10 group">
+                            <img src={photo} className="w-full h-full object-cover" alt="friend" />
+                            <button
+                              onClick={() => setFriendPhotos(friendPhotos.filter((_, idx) => idx !== i))}
+                              className="absolute top-1 right-1 w-5 h-5 bg-black/60 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <X size={12} />
+                            </button>
+                          </div>
+                        ))}
+                        <button onClick={() => openUploadModal('friends')} className="w-20 h-20 rounded-xl border border-dashed border-white/20 bg-white/5 flex flex-col items-center justify-center hover:text-[#60a5fa] transition-all"><Plus size={20} /></button>
+                      </div>
+                    </>
                   )}
                 </div>
 
@@ -1618,7 +1621,7 @@ export default function SelfieVideoModal({ isOpen, onClose, workflowData }: Self
                                 className={`px-3 py-1.5 text-xs font-bold rounded-md bg-[#60a5fa] text-black hover:bg-[#4f8edb] transition-colors ${(isGenerating || !selfiePhoto) ? 'opacity-50 cursor-not-allowed' : ''}`}
                               >
                                 {showLogoGifForCreate ? (
-                                  <img src="/logo.gif" alt="loading" className="w-6 h-6 object-contain" />
+                                  <img src="https://idr01.zata.ai/devstoragev1/public/styles/Logo.gif" alt="loading" className="w-6 h-6 object-contain" />
                                 ) : (
                                   'Create'
                                 )}

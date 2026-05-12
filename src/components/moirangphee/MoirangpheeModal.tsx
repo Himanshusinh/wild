@@ -295,24 +295,24 @@ export function MoirangpheeModal({ isOpen, onClose }: { isOpen: boolean; onClose
         <MoirangpheeHeader
  style={state.style}
           onStyleChange={(s) => dispatchLocal({ type: "SET_STYLE", payload: s })}
-          onClose={onClose} disabled={state.panelState !== "empty"} />
+          onClose={onClose} disabled={state.panelState === "loading"} />
         <div className="grid min-h-0 flex-1 overflow-hidden lg:[grid-template-columns:420px_1fr]">
           <aside className="flex flex-col overflow-hidden border-r border-white/10 bg-[#0E0E12]">
             <div className="flex flex-1 flex-col gap-5 overflow-y-auto px-5 py-5 [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-white/[0.06] [&::-webkit-scrollbar]:w-1">
               <div className="flex flex-col gap-2">
                 <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-white/25">Input</span>
-                <ModeToggle disabled={state.panelState !== "empty"} mode={state.inputMode} onChange={(v) => dispatchLocal({ type: "SET_MODE", payload: v })} />
+                <ModeToggle disabled={state.panelState === "loading"} mode={state.inputMode} onChange={(v) => dispatchLocal({ type: "SET_MODE", payload: v })} />
               </div>
 
               {state.inputMode === "text" ? (
-                <SceneInput disabled={state.panelState !== "empty"} value={state.sceneText} onChange={(v) => dispatchLocal({ type: "SET_SCENE_TEXT", payload: v })} />
+                <SceneInput disabled={state.panelState === "loading"} value={state.sceneText} onChange={(v) => dispatchLocal({ type: "SET_SCENE_TEXT", payload: v })} />
               ) : (
                 <div className="flex flex-col gap-3">
-                  <UploadZone disabled={state.panelState !== "empty"}
+                  <UploadZone disabled={state.panelState === "loading"}
                     uploadedImage={state.uploadedImage}
                     onUpload={(v) => dispatchLocal({ type: "SET_UPLOADED_IMAGE", payload: v })}
                   />
-                  <textarea disabled={state.panelState !== "empty"}
+                  <textarea disabled={state.panelState === "loading"}
                     value={state.imageNote}
                     onChange={(e) => dispatchLocal({ type: "SET_IMAGE_NOTE", payload: e.target.value })}
                     rows={3}
@@ -324,10 +324,10 @@ export function MoirangpheeModal({ isOpen, onClose }: { isOpen: boolean; onClose
 
               <div className="flex flex-col gap-2">
                 <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-white/25">Model</span>
-                <ModelSelector disabled={state.panelState !== "empty"} value={state.model} onChange={(v) => dispatchLocal({ type: "SET_MODEL", payload: v })} />
+                <ModelSelector disabled={state.panelState === "loading"} value={state.model} onChange={(v) => dispatchLocal({ type: "SET_MODEL", payload: v })} />
               </div>
 
-              <SettingsPanel disabled={state.panelState !== "empty"}
+              <SettingsPanel disabled={state.panelState === "loading"}
                 model={state.model}
                 resolution={state.resolution}
                 imageCount={state.imageCount}
@@ -348,7 +348,7 @@ export function MoirangpheeModal({ isOpen, onClose }: { isOpen: boolean; onClose
               <button
                 type="button"
                 onClick={() => void handleGenerate()}
-                disabled={state.panelState !== "empty"}
+                disabled={state.panelState === "loading"}
                 className="w-full rounded-lg bg-[#2F6BFF] py-2.5 text-[12px] font-semibold text-white transition hover:bg-[#2F6BFF]/90 disabled:opacity-50"
               >
                 Generate MOIRANG PHEE
@@ -388,7 +388,7 @@ export function MoirangpheeModal({ isOpen, onClose }: { isOpen: boolean; onClose
               ) : null}
             </div>
 
-            <div className="flex flex-1 flex-col overflow-y-auto [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-white/[0.06] [&::-webkit-scrollbar]:w-1">
+            <div className="flex flex-1 flex-col overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {state.panelState === "empty" ? (
                 <div className="p-5">
                   <div className="flex flex-1 flex-col items-center justify-center gap-2 p-10 text-center">
@@ -403,32 +403,24 @@ export function MoirangpheeModal({ isOpen, onClose }: { isOpen: boolean; onClose
               {state.panelState === "loading" ? (
                 <div className="p-5">
                   <div className="flex flex-1 flex-col items-center justify-center gap-6 p-6">
-                  <div
-                    className={`grid w-full gap-3 ${
-                      state.imageCount === 1 ? "grid-cols-1 max-w-lg" : "grid-cols-2"
-                    }`}
-                  >
-                    {Array.from({ length: state.imageCount }).map((_, i) => (
-                      <div
-                        key={i}
-                        className="relative flex aspect-square items-center justify-center overflow-hidden rounded-xl bg-transparent"
-                      >
-                        <img
-                          src="/styles/Logo.gif"
-                          alt="Generating..."
-                          className="h-16 w-16 object-contain opacity-40"
-                          draggable={false}
-                        />
-                      </div>
-                    ))}
-                  </div>
+                  <div className="grid w-full gap-3 grid-cols-1 max-w-lg">
+                                      <div className="relative flex aspect-square items-center justify-center overflow-hidden rounded-xl bg-transparent">
+                                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                                        <img
+                                          src="https://idr01.zata.ai/devstoragev1/public/styles/Logo.gif"
+                                          alt="Generating..."
+                                          className="h-16 w-16 object-contain opacity-40"
+                                          draggable={false}
+                                        />
+                                      </div>
+                                    </div>
                 </div>
               </div>
             ) : null}
 
               {state.panelState === "results" ? (
-                <div className="flex flex-col gap-0">
-                  <OutputGrid
+                <div className="flex flex-col gap-0 h-full flex-1">
+                  <OutputGrid prompt={assembledPrompt}
                     images={state.generatedImages}
                     count={state.imageCount} ratio={state.ratio}
                     onSaveImage={(i) => void handleSaveImage(i)}
@@ -438,9 +430,6 @@ export function MoirangpheeModal({ isOpen, onClose }: { isOpen: boolean; onClose
                       setFullscreenUrl(url);
                     }}
                   />
-                  <div className="px-5 py-5">
-                    <PromptPreview prompt={assembledPrompt} />
-                  </div>
                 </div>
               ) : null}
             </div>

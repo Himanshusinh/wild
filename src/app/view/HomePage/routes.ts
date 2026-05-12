@@ -9,20 +9,20 @@ interface FolderImageRoutes {
 export const imageRoutes: FolderImageRoutes = {
     // Core icons and logos
     core: {
-        logo: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/core%2FAsset%203wildmind%20logo%20text.svg?alt=media&token=16944401-2132-474c-9411-68e8afe550e6',
-        home: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/core%2FHomewhite.svg?alt=media&token=cce25f4f-d4dd-4e40-a7c2-31615e9e87f3',
-        imageGeneration: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/core%2Fimagegenerationwhite.svg?alt=media&token=7ef18713-070a-4261-b4c3-cddd6ca6bc67',
-        videoGeneration: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/core%2FvideoGenerationiconwhite.svg?alt=media&token=07922486-908a-4c07-b918-df6374e85e7f',
-        musicGeneration: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/core%2Fmusicgenerationwhite.svg?alt=media&token=449b33af-b969-46f1-98c7-71a4bd5c5737',
-        canvas: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/core%2Fcanvaswhite.svg?alt=media&token=3ebb704f-65ce-4dd0-8f2a-8dbcfb7e1c3e',
-        brandingKit: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/core%2Fbrandingkitwhite.svg?alt=media&token=7fe54afc-52e2-4ab4-a8a3-058d5b99326e',
-        templates: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/core%2Ftemplateswhite.svg?alt=media&token=01a9c1b7-010f-4ffd-92c9-d379de89cf34',
-        pricing: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/core%2Fpricingwhite.svg?alt=media&token=7273f8fb-401a-44e3-9abd-8c6a2b7dc1c5',
-        history: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/core%2Fhistorywhite.svg?alt=media&token=1c18431e-7fc7-4a61-ac3f-ee5c56864ee',
-        bookmarks: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/core%2FBookmarkwhite.svg?alt=media&token=51e004a4-b728-4c1d-a0d5-0a2b92d29120',
-        search: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/core%2Fsearchwhite.svg?alt=media&token=b9d2c586-c0f7-4c0b-b68e-05f710cbdc81',
-        coins: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/core%2Fcoinswhite.svg?alt=media&token=e40891a5-2a07-41b3-8ff0-7f8f95e0928f',
-        profile: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/core%2Fperson.svg?alt=media&token=58a9efa1-08d4-4a39-902c-96791d896715'
+        logo: 'https://idr01.zata.ai/devstoragev1/public/core/wildmind_text.svg',
+        home: 'https://idr01.zata.ai/devstoragev1/public/icons/Homewhite.svg',
+        imageGeneration: 'https://idr01.zata.ai/devstoragev1/public/core/imagegenerationwhite.svg',
+        videoGeneration: 'https://idr01.zata.ai/devstoragev1/public/core/videoGenerationiconwhite.svg',
+        musicGeneration: 'https://idr01.zata.ai/devstoragev1/public/core/musicgenerationwhite.svg',
+        canvas: 'https://idr01.zata.ai/devstoragev1/public/core/canvaswhite.svg',
+        brandingKit: 'https://idr01.zata.ai/devstoragev1/public/core/brandingkitwhite.svg',
+        templates: 'https://idr01.zata.ai/devstoragev1/public/core/templateswhite.svg',
+        pricing: 'https://idr01.zata.ai/devstoragev1/public/core/pricingwhite.svg',
+        history: 'https://idr01.zata.ai/devstoragev1/public/core/historywhite.svg',
+        bookmarks: 'https://idr01.zata.ai/devstoragev1/public/core/Bookmarkwhite.svg',
+        search: 'https://idr01.zata.ai/devstoragev1/public/core/searchwhite.svg',
+        coins: 'https://idr01.zata.ai/devstoragev1/public/core/coinswhite.svg',
+        profile: 'https://idr01.zata.ai/devstoragev1/public/core/person.svg'
     },
 
     // Workflow images
@@ -80,28 +80,28 @@ export const imageRoutes: FolderImageRoutes = {
         balloonPlane: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/vyom_static_landigpage%2Fpricing%2F20250829_1658_Balloon%20Plane%20in%20Sky_remix_01k3ts72pyf3vrzfpp48y7yy5q%20(1).png?alt=media&token=c7c7464e-b808-405b-8929-c9a1235054ed'
     },
     icons: {
-        home: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/public%2Ficons%2FHomewhite.svg?alt=media&token=4d1fbd0f-27ea-4cef-bbb0-56485e658e83',
-        imageGeneration: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/public%2Ficons%2Fimagegeneration.svg?alt=media&token=99ef06c2-e0ad-4d7f-87c9-9591aa7e05cc',
-        videoGeneration: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/public%2Ficons%2FvideoGenerationiconwhite.svg?alt=media&token=98497b2a-df56-4149-a2b6-a5b202848eae',
-        videoEdit: '/icons/gear-video dark.svg',
-        musicGeneration: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/public%2Ficons%2Fmusicgenerationwhite.svg?alt=media&token=c7224305-5f55-4927-9c56-1f049eca3772',
-        canvas: '/core/ws_solid.svg',
-        brandingKit: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/public%2Ficons%2Fbrandingkitwhite.svg?alt=media&token=878c5af2-d78c-4e16-bbbb-6f2f1cb2a6b4',
-        templates: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/public%2Ficons%2Ftemplateswhite.svg?alt=media&token=e60e552a-b7d6-465e-bdd6-f286461e3d2f',
-        pricing: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/public%2Ficons%2Fpricingwhite.svg?alt=media&token=6771e848-bdb0-4462-ba8b-4db855467a23',
-        history: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/public%2Ficons%2Fhistorywhite.svg?alt=media&token=efd29d83-39b9-4c6b-8ddd-c7e446d7f84e',
-        bookmarks: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/public%2Ficons%2FBookmarkwhite.svg?alt=media&token=8d3970d7-2f86-4380-a724-2d2bbe52b044',
-        search: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/public%2Ficons%2Fsearchwhite.svg?alt=media&token=9905cf6c-ab94-4b7c-8004-455c0caef4f8',
-        coins: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/public%2Ficons%2Fcoinswhite.svg?alt=media&token=a3f67c5a-f16b-416d-a24b-1b3a1c977962',
-        profile: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/public%2Ficons%2Fperson.svg?alt=media&token=23811069-4a7b-455d-bfbc-635c088ff9d0',
-        editImage: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/public%2Ficons%2Fedit_image.svg?alt=media&token=1c3cf10c-a167-4610-be92-e447ab085354',
-        wildmindskit: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/public%2Ficons%2Fyy666.png?alt=media&token=8c3408e7-6e86-47e7-9bf3-1601bfc713ae',
-        artStation: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/public%2Ficons%2Fartstation.svg?alt=media&token=9be89cd6-49ad-4b62-a085-1d8e86905fa8'
+        home: 'https://idr01.zata.ai/devstoragev1/public/icons/Homewhite.svg',
+        imageGeneration: 'https://idr01.zata.ai/devstoragev1/public/icons/imagegeneration.svg',
+        videoGeneration: 'https://idr01.zata.ai/devstoragev1/public/icons/videoGenerationiconwhite.svg',
+        videoEdit: 'https://idr01.zata.ai/devstoragev1/public/icons/gear-video%20dark.svg',
+        musicGeneration: 'https://idr01.zata.ai/devstoragev1/public/icons/musicgenerationwhite.svg',
+        canvas: 'https://idr01.zata.ai/devstoragev1/public/core/ws_solid.svg',
+        brandingKit: 'https://idr01.zata.ai/devstoragev1/public/icons/brandingkitwhite.svg',
+        templates: 'https://idr01.zata.ai/devstoragev1/public/icons/templateswhite.svg',
+        pricing: 'https://idr01.zata.ai/devstoragev1/public/icons/pricingwhite.svg',
+        history: 'https://idr01.zata.ai/devstoragev1/public/icons/historywhite.svg',
+        bookmarks: 'https://idr01.zata.ai/devstoragev1/public/icons/Bookmarkwhite.svg',
+        search: 'https://idr01.zata.ai/devstoragev1/public/icons/searchwhite.svg',
+        coins: 'https://idr01.zata.ai/devstoragev1/public/icons/coinswhite.svg',
+        profile: 'https://idr01.zata.ai/devstoragev1/public/icons/person.svg',
+        editImage: 'https://idr01.zata.ai/devstoragev1/public/icons/edit_image.svg',
+        wildmindskit: 'https://idr01.zata.ai/devstoragev1/public/icons/yy666.avif',
+        artStation: 'https://idr01.zata.ai/devstoragev1/public/icons/artstation.svg'
     },
 
     // Home page images
     home: {
-        banner: 'https://firebasestorage.googleapis.com/v0/b/wild-mind-ai.firebasestorage.app/o/core%2Fbanner-1.jpg?alt=media&token=fb4a23e1-235f-4411-880b-b5dabae95db6'
+        banner: 'https://idr01.zata.ai/devstoragev1/public/core/banner-1.jpg'
     }
 };
 

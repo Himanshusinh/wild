@@ -199,7 +199,8 @@ export function useInputBoxHistory(userData: unknown) {
               : {}),
             ...(s.trim() ? { search: s.trim() } : {}),
           } as any,
-          paginationParams: { limit: 60 },
+          // Keep initial payload small to avoid UI freezes / Chrome OOM on large accounts.
+          paginationParams: { limit: 20 },
           requestOrigin: "page",
           expectedType: "text-to-image",
           skipBackendGenerationFilter: true,
@@ -349,15 +350,11 @@ export function useInputBoxHistory(userData: unknown) {
       return [];
     }
 
-    const getTs = (x: any) => {
-      const raw = x?.updatedAt || x?.createdAt || x?.timestamp;
-      if (!raw) return 0;
-      const t = typeof raw === "string" ? raw : raw?.toString?.() || "";
-      const ms = Date.parse(t);
-      return Number.isNaN(ms) ? 0 : ms;
-    };
-
-    return filtered.slice().sort((a: any, b: any) => getTs(b) - getTs(a));
+    // IMPORTANT: do NOT re-sort client-side here.
+    // The backend already returns entries in the desired order (Recent/Oldest),
+    // and re-sorting by timestamp causes items within the same date bucket to
+    // reshuffle as pagination loads (making masonry feel "time-priority").
+    return filtered;
   }, shallowEqual);
 
   useEffect(() => {
@@ -451,7 +448,7 @@ export function useInputBoxHistory(userData: unknown) {
         loadHistory({
           filters,
           backendFilters: { ...filters } as any,
-          paginationParams: { limit: 60 },
+          paginationParams: { limit: 20 },
           requestOrigin: "page",
           expectedType: "text-to-image",
           skipBackendGenerationFilter: true,

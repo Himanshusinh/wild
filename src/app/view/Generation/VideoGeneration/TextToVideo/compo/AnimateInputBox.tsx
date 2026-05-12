@@ -2354,7 +2354,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                       <div className="w-full h-full flex items-center justify-center bg-black/90">
                         <div className="flex flex-col items-center gap-2">
                           <Image
-                            src="/styles/Logo.gif"
+                            src="https://idr01.zata.ai/devstoragev1/public/styles/Logo.gif"
                             alt="Generating"
                             width={56}
                             height={56}
@@ -2433,7 +2433,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                           <div className="w-full h-full flex items-center justify-center bg-black/90">
                             <div className="flex flex-col items-center gap-2">
                               <Image
-                                src="/styles/Logo.gif"
+                                src="https://idr01.zata.ai/devstoragev1/public/styles/Logo.gif"
                                 alt="Generating"
                                 width={56}
                                 height={56}
@@ -2508,7 +2508,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                               <div className="w-full h-full flex items-center justify-center bg-black/90">
                                 <div className="flex flex-col items-center gap-2">
                                   <Image
-                                    src="/styles/Logo.gif"
+                                    src="https://idr01.zata.ai/devstoragev1/public/styles/Logo.gif"
                                     alt="Generating"
                                     width={56}
                                     height={56}
@@ -2580,7 +2580,7 @@ const AnimateInputBox = (props: AnimateInputBoxProps = {}) => {
                               <div className="w-full h-full flex items-center justify-center bg-black/90">
                                 <div className="flex flex-col items-center gap-2">
                                   <Image
-                                    src="/styles/Logo.gif"
+                                    src="https://idr01.zata.ai/devstoragev1/public/styles/Logo.gif"
                                     alt="Generating"
                                     width={56}
                                     height={56}

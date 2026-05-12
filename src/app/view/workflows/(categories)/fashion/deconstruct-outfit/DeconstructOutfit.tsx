@@ -10,6 +10,7 @@ import ImageComparisonSlider from '@/app/view/workflows/components/ImageComparis
 import { downloadFileWithNaming } from '@/utils/downloadUtils';
 import { useCredits } from '@/hooks/useCredits';
 import { getSignInUrl } from '@/routes/routes';
+import WorkflowUploadArea from '@/app/view/workflows/components/WorkflowUploadArea';
 
 export default function DeconstructOutfit() {
   const router = useRouter();
@@ -146,25 +147,19 @@ export default function DeconstructOutfit() {
                 <p className="text-slate-400 text-lg mb-8 leading-relaxed">{workflowData.description}</p>
 
                 <div className="mb-8">
-                  <div className="border border-dashed border-white/15 rounded-xl bg-black/20 h-48 flex flex-col items-center justify-center gap-4 cursor-pointer hover:bg-[#60a5fa]/5 transition-colors relative overflow-hidden group"
-                    onClick={() => openUploadModal()}>
-                    {uploadedImage ? (
-                      <>
-                        <img src={uploadedImage} className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:opacity-30 transition-opacity" alt="Uploaded" />
-                        <div className="relative z-10 flex flex-col items-center gap-2">
-                          <span className="text-white font-medium bg-black/50 px-3 py-1 rounded-full backdrop-blur">Change Image</span>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="w-12 h-12 rounded-full bg-[#111] flex items-center justify-center text-slate-400"><Camera size={24} /></div>
-                        <div className="text-center">
-                          <span className="text-sm text-slate-300 block font-medium">Upload Full Outfit Photo</span>
-                          <span className="text-xs text-slate-500">JPG, PNG, WebP up to 25MB</span>
-                        </div>
-                      </>
-                    )}
-                  </div>
+                  <WorkflowUploadArea
+                    placeholderLabel="Upload Full Outfit Photo"
+                    placeholderSublabel="JPG, PNG, WebP up to 25MB"
+                    currentImage={uploadedImage}
+                    changeLabel="Change Image"
+                    onImageSelect={(url) => {
+                      setUploadedImage(url);
+                      setGeneratedImage(null);
+                    }}
+                    openModal={() => openUploadModal()}
+                    className="h-48"
+                    icon={<Camera size={24} />}
+                  />
                 </div>
 
                 <div className="mb-8">
@@ -257,8 +252,8 @@ export default function DeconstructOutfit() {
               ) : (
                 <div className="relative w-full h-full flex items-center justify-center p-8">
                   <ImageComparisonSlider
-                    beforeImage="/workflow-samples/deconstruct-outfit-before.jpg"
-                    afterImage="/workflow-samples/deconstruct-outfit-after.jpg"
+                    beforeImage="https://idr01.zata.ai/devstoragev1/public/workflow-samples/deconstruct-outfit-before.avif"
+                    afterImage="https://idr01.zata.ai/devstoragev1/public/workflow-samples/deconstruct-outfit-after.avif"
                     beforeLabel="Before"
                     afterLabel="Result"
                     imageFit="object-cover"

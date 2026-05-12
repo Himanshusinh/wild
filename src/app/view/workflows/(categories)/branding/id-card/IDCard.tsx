@@ -11,6 +11,7 @@ import { downloadFileWithNaming } from '@/utils/downloadUtils';
 import { WORKFLOWS_DATA } from '@/app/view/workflows/components/data';
 import { getSignInUrl } from '@/routes/routes';
 import ImageComparisonSlider from '@/app/view/workflows/components/ImageComparisonSlider';
+import WorkflowUploadArea from '@/app/view/workflows/components/WorkflowUploadArea';
 
 export default function IDCard() {
   const router = useRouter();
@@ -57,8 +58,8 @@ export default function IDCard() {
     description: "Generate professional corporate ID cards and employee badges.",
     model: "Branding AI",
     cost: 90,
-    sampleBefore: "/workflow-samples/id-card-after.png",
-    sampleAfter: "/workflow-samples/id-card-after.png"
+    sampleBefore: "https://idr01.zata.ai/devstoragev1/public/workflow-samples/id-card-after.avif",
+    sampleAfter: "https://idr01.zata.ai/devstoragev1/public/workflow-samples/id-card-after.avif"
   };
 
   const CREDIT_COST = 90;
@@ -154,30 +155,19 @@ export default function IDCard() {
                 <div className="text-xs text-slate-500 mb-6">Model: {workflowData.model}</div>
 
                 <div className="mb-8">
-                  <label className="block text-xs font-bold uppercase text-slate-500 mb-4 tracking-wider">Passort Size Photo</label>
-                  <div
-                    onClick={() => {
-                      setIsUploadModalOpen(true);
+                  <WorkflowUploadArea
+                    placeholderLabel="Upload Photo"
+                    placeholderSublabel="Passport Size Suggested"
+                    currentImage={personPhoto}
+                    changeLabel="Change Photo"
+                    onImageSelect={(url) => {
+                      setPersonPhoto(url);
+                      setGeneratedImage(null);
                     }}
-                    className="border border-dashed border-white/15 rounded-xl bg-black/20 h-32 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-[#60a5fa]/5 transition-colors relative overflow-hidden group"
-                  >
-                    {personPhoto ? (
-                      <>
-                        <img src={personPhoto} className="absolute inset-0 w-full h-full object-contain opacity-50 group-hover:opacity-30 transition-opacity" alt="Photo" />
-                        <div className="relative z-10 flex flex-col items-center gap-2">
-                          <span className="text-white font-medium bg-black/50 px-3 py-1 rounded-full backdrop-blur">Change Photo</span>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="w-8 h-8 rounded-full bg-[#111] flex items-center justify-center text-slate-400 group-hover:text-[#60a5fa] transition-colors"><User size={16} /></div>
-                        <div className="text-center">
-                          <span className="text-xs text-slate-300 block font-medium">Click to upload photo</span>
-                          <span className="text-[10px] text-slate-500 uppercase font-bold tracking-tighter">Required</span>
-                        </div>
-                      </>
-                    )}
-                  </div>
+                    openModal={() => setIsUploadModalOpen(true)}
+                    className="h-32"
+                    icon={<User size={16} />}
+                  />
                 </div>
 
                 <div className="mb-6">

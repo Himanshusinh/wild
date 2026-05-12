@@ -64,16 +64,15 @@ const featureDisplayName: Record<EditFeature, string> = {
 };
 
 const featurePreviewGif: Record<EditFeature, string> = {
-  upscale: "/editimage/upscale_banner.jpg",
-  "remove-bg": "/editimage/RemoveBG_banner.jpg",
-  resize: "/editimage/resize_banner.jpg",
-  fill: "/editimage/replace_banner.jpg",
-  vectorize: "/editimage/vector_banner.jpg",
-  erase: "/editimage/replace_banner.jpg",
-  expand: "/editimage/replace_banner.jpg",
-  reimagine: "/editimage/replace_banner.jpg",
-  "live-chat": "/editimage/replace_banner.jpg",
-  "style-combination": "/editimage/replace_banner.jpg",
+  upscale: "https://idr01.zata.ai/devstoragev1/public/editimage/upscale-banner.avif",
+  "remove-bg": "https://idr01.zata.ai/devstoragev1/public/editimage/removebg-banner.avif",
+  resize: "https://idr01.zata.ai/devstoragev1/public/editimage/resize-banner.avif",
+  fill: "https://idr01.zata.ai/devstoragev1/public/editimage/replace-banner.avif",
+  vectorize: "https://idr01.zata.ai/devstoragev1/public/editimage/vector-banner.avif",
+  erase: "https://idr01.zata.ai/devstoragev1/public/editimage/replace-banner.avif",
+  expand: "https://idr01.zata.ai/devstoragev1/public/editimage/replace-banner.avif",
+  reimagine: "https://idr01.zata.ai/devstoragev1/public/editimage/replace-banner.avif",
+  "live-chat": "https://idr01.zata.ai/devstoragev1/public/editimage/replace-banner.avif",
 };
 
 // Normalize any Next.js optimized image URL back to the original Zata (or source) URL.
@@ -82,6 +81,18 @@ const normalizeEditImageUrl = (raw: string | null | undefined): string => {
   if (!raw) return "";
   let url = raw;
   try {
+    // If the URL is a direct Zata storage URL, route it through our media proxy.
+    // This avoids cross-origin/auth edge cases (esp. for SVG outputs).
+    if (url.includes("idr01.zata.ai/devstoragev1/")) {
+      const idx = url.indexOf("idr01.zata.ai/devstoragev1/");
+      if (idx !== -1) {
+        const after = url.substring(idx + "idr01.zata.ai/devstoragev1/".length);
+        if (after && !url.startsWith("/api/proxy/media/")) {
+          return `/api/proxy/media/${encodeURIComponent(after)}`;
+        }
+      }
+    }
+
     if (url.includes("/_next/image")) {
       // Support both absolute and relative URLs
       const base =
@@ -98,6 +109,27 @@ const normalizeEditImageUrl = (raw: string | null | undefined): string => {
     // Fall through to returning the original URL
   }
   return url;
+};
+
+// Detect SVG outputs (vectorize feature). next/image with `fill` + `unoptimized`
+// can fail to display SVGs that lack intrinsic width/height, so we fall back to
+// a plain <img> element for these outputs.
+const isSvgUrl = (raw: string | null | undefined): boolean => {
+  if (!raw) return false;
+  try {
+    const lower = String(raw).toLowerCase();
+    if (lower.startsWith("data:image/svg")) return true;
+    const path = lower.split("?")[0].split("#")[0];
+    return path.endsWith(".svg");
+  } catch {
+    return false;
+  }
+};
+
+const isInlineImageUrl = (raw: string | null | undefined): boolean => {
+  if (!raw) return false;
+  const v = String(raw);
+  return v.startsWith("data:image/") || v.startsWith("blob:");
 };
 
 const aspectPresets: Record<
@@ -601,7 +633,7 @@ const EditImageInterface: React.FC = () => {
   >("");
   // Live Chat dropdown keys
   const [liveActiveDropdown, setLiveActiveDropdown] = useState<
-    "liveModel" | "liveFrame" | "liveResolution" | ""
+    "liveModel" | "liveFrame" | "liveResolution" | "liveQuality" | ""
   >("");
   // Vectorize controls
   const [vectorizeModel, setVectorizeModel] = useState<
@@ -639,6 +671,7 @@ const EditImageInterface: React.FC = () => {
   const [liveModel, setLiveModel] = useState<
     | "google/nano-banana-pro"
     | "google/nano-banana-2"
+    | "openai/gpt-image-2"
     | "seedream-v4.5"
     | "seedream-5-lite"
     | "qwen/qwen-image-2-pro"
@@ -648,8 +681,11 @@ const EditImageInterface: React.FC = () => {
     "1:1" | "3:4" | "4:3" | "16:9" | "9:16"
   >("1:1");
   const [liveResolution, setLiveResolution] = useState<
-    "1K" | "2K" | "3K" | "4K"
+    "1K" | "2K" | "3K" | "4K" | "auto"
   >("1K");
+  const [liveQuality, setLiveQuality] = useState<
+    "low" | "medium" | "high" | "auto"
+  >("auto");
   const [livePrompt, setLivePrompt] = useState<string>("");
   const [liveChatMessages, setLiveChatMessages] = useState<
     Array<{
@@ -691,27 +727,32 @@ const EditImageInterface: React.FC = () => {
   const liveAllowedModels: Array<{
     label: string;
     value:
-    | "google/nano-banana-pro"
-    | "google/nano-banana-2"
-    | "seedream-v4.5"
-    | "seedream-5-lite"
-    | "qwen/qwen-image-2-pro"
-    | "qwen-image-edit-2511";
+      | "google/nano-banana-pro"
+      | "google/nano-banana-2"
+      | "openai/gpt-image-2"
+      | "seedream-v4.5"
+      | "seedream-5-lite"
+      | "qwen/qwen-image-2-pro"
+      | "qwen-image-edit-2511";
   }> = [
-      { label: "Nano Banana 2", value: "google/nano-banana-2" },
-      { label: "Nano Banana Pro", value: "google/nano-banana-pro" },
-      { label: "Qwen Image 2 Pro", value: "qwen/qwen-image-2-pro" },
-      { label: "Seedream v4.5", value: "seedream-v4.5" },
-      { label: "Seedream 5 Lite", value: "seedream-5-lite" },
-      { label: "Qwen Image Edit 2511", value: "qwen-image-edit-2511" },
-    ];
+    { label: "Nano Banana 2", value: "google/nano-banana-2" },
+    { label: "Nano Banana Pro", value: "google/nano-banana-pro" },
+    { label: "GPT Image 2", value: "openai/gpt-image-2" },
+    { label: "Qwen Image 2 Pro", value: "qwen/qwen-image-2-pro" },
+    { label: "Seedream v4.5", value: "seedream-v4.5" },
+    { label: "Seedream 5 Lite", value: "seedream-5-lite" },
+    { label: "Qwen Image Edit 2511", value: "qwen-image-edit-2511" },
+  ];
 
   const liveResolutionOptionsByModel: Record<
     (typeof liveAllowedModels)[number]["value"],
-    Array<"1K" | "2K" | "3K" | "4K">
+    Array<"1K" | "2K" | "3K" | "4K" | "auto">
   > = {
     "google/nano-banana-pro": ["1K", "2K", "4K"],
     "google/nano-banana-2": ["1K", "2K", "4K"],
+    // GPT Image 2 does not support "resolution" (1K/2K/4K) — it uses image_size + quality.
+    // Keep the existing dropdown UI but lock it to a single supported value.
+    "openai/gpt-image-2": ["auto"],
     "seedream-v4.5": ["1K", "2K", "4K"],
     "seedream-5-lite": ["2K", "3K"],
     "qwen/qwen-image-2-pro": ["1K", "2K"],
@@ -734,21 +775,25 @@ const EditImageInterface: React.FC = () => {
     value:
       | "google/nano-banana-pro"
       | "google/nano-banana-2"
+      | "openai/gpt-image-2"
       | "seedream-v4.5"
       | "seedream-5-lite"
       | "qwen/qwen-image-2-pro"
       | "qwen-image-edit-2511",
     resolution?: string,
+    quality?: "low" | "medium" | "high" | "auto",
   ) => {
     const mapped = value;
-    const quality = undefined;
+    const resolvedQuality =
+      mapped === "openai/gpt-image-2" ? quality || "auto" : undefined;
     const credits = getCreditsForModel(
       mapped,
       undefined,
-      resolution,
+      // GPT Image 2 isn't priced by "resolution" in our table.
+      mapped === "openai/gpt-image-2" ? undefined : resolution,
       undefined,
       undefined,
-      quality,
+      resolvedQuality,
     );
     if (credits != null) return credits;
     // Fallback defaults
@@ -761,6 +806,11 @@ const EditImageInterface: React.FC = () => {
       if (resolution === "2K") return 222;
       return 154;
     }
+    if (mapped === "openai/gpt-image-2") {
+      if (resolvedQuality === "low") return 10;
+      if (resolvedQuality === "medium") return 38;
+      return 102; // high/auto
+    }
     if (mapped === "seedream-v4.5") return 100;
     if (mapped === "seedream-5-lite") return 90;
     if (mapped === "qwen/qwen-image-2-pro") return 170;
@@ -769,8 +819,8 @@ const EditImageInterface: React.FC = () => {
   };
 
   const liveCredits = useMemo(
-    () => getLiveModelCredits(liveModel, liveResolution),
-    [liveModel, liveResolution],
+    () => getLiveModelCredits(liveModel, liveResolution, liveQuality),
+    [liveModel, liveResolution, liveQuality],
   );
 
   const availableModels = useMemo(() => {
@@ -822,6 +872,20 @@ const EditImageInterface: React.FC = () => {
   ): Promise<string | null> => {
     if (!url) return null;
     const normalized = normalizeEditImageUrl(url);
+    const ZATA_PREFIX = "https://idr01.zata.ai/devstoragev1/";
+
+    // If normalizeEditImageUrl() rewrote a Zata URL to our local proxy path,
+    // convert it back to an absolute Zata URL for provider APIs (Replicate/FAL/etc),
+    // which require a fully-qualified public URI.
+    try {
+      if (normalized.startsWith("/api/proxy/media/")) {
+        const encoded = normalized.substring("/api/proxy/media/".length);
+        const decoded = decodeURIComponent(encoded);
+        if (decoded) return `${ZATA_PREFIX}${decoded}`;
+      }
+    } catch {
+      // fall through
+    }
 
     // If it's already a Zata URL or HTTP URL, use it directly
     if (normalized.startsWith("http://") || normalized.startsWith("https://")) {
@@ -1038,6 +1102,23 @@ const EditImageInterface: React.FC = () => {
           isPublic: true,
         };
         res = await axiosInstance.post("/api/replicate/generate", payload);
+        out = parseOutputUrl(res);
+      } else if (liveModel === "openai/gpt-image-2") {
+        const payload: any = {
+          prompt: livePrompt,
+          model: "openai/gpt-image-2",
+          // Backend handler supports: prompt, image_urls (edit), image_size, quality, output_format.
+          quality: liveQuality,
+          output_format: "jpeg",
+          uploadedImages: [imageUrl],
+          aspect_ratio: liveFrameSize,
+          // Let backend map aspect_ratio -> image_size (square_hd / portrait_4_3 / etc).
+          // Do NOT send "resolution" here; GPT Image 2 doesn't support it.
+          num_images: 1,
+          generationType: "live-chat",
+          isPublic: true,
+        };
+        res = await axiosInstance.post("/api/fal/generate", payload);
         out = parseOutputUrl(res);
       } else if (liveModel === "seedream-5-lite") {
         const payload: any = {
@@ -2000,19 +2081,18 @@ const EditImageInterface: React.FC = () => {
 
   // Feature preview assets and display labels
   const featurePreviewGif: Record<EditFeature, string> = {
-    upscale: "/editimage/upscale_banner.jpg",
-    "remove-bg": "/editimage/RemoveBG_banner.jpg",
+    upscale: "https://idr01.zata.ai/devstoragev1/public/editimage/upscale-banner.avif",
+    "remove-bg": "https://idr01.zata.ai/devstoragev1/public/editimage/removebg-banner.avif",
     fill:
       eraseActionMode === "erase"
-        ? "/editimage/erase_banner.jpg"
-        : "/editimage/replace_banner.jpg",
-    erase: "/editimage/erase_banner.jpg",
-    expand: "/editimage/resize_banner.jpg",
-    resize: "/editimage/resize_banner.jpg",
-    vectorize: "/editimage/vector_banner.jpg",
-    reimagine: "/editimage/replace_banner.jpg",
-    "live-chat": "/editimage/resize_banner.jpg",
-    "style-combination": "/editimage/replace_banner.jpg",
+        ? "https://idr01.zata.ai/devstoragev1/public/editimage/erase-banner.avif"
+        : "https://idr01.zata.ai/devstoragev1/public/editimage/replace-banner.avif",
+    erase: "https://idr01.zata.ai/devstoragev1/public/editimage/erase-banner.avif",
+    expand: "https://idr01.zata.ai/devstoragev1/public/editimage/resize-banner.avif",
+    resize: "https://idr01.zata.ai/devstoragev1/public/editimage/resize-banner.avif",
+    vectorize: "https://idr01.zata.ai/devstoragev1/public/editimage/vector-banner.avif",
+    reimagine: "https://idr01.zata.ai/devstoragev1/public/editimage/replace-banner.avif",
+    "live-chat": "https://idr01.zata.ai/devstoragev1/public/editimage/resize-banner.avif",
   };
   const featureDisplayName: Record<EditFeature, string> = {
     upscale: "Upscale",
@@ -3085,7 +3165,7 @@ const EditImageInterface: React.FC = () => {
             const seedreamImageUrl = await ensureZataUrl(imageInput);
             const seedreamPayload: any = {
               prompt: "convert into 2D vector image",
-              model: "bytedance/seedream-4",
+              model: "bytedance/seedream-5-lite",
               size: "2K",
               image_input: [seedreamImageUrl],
               sequential_image_generation: "disabled",
@@ -3136,7 +3216,10 @@ const EditImageInterface: React.FC = () => {
           const body: any = { isPublic };
           if (String(vectorizeInput).startsWith("data:"))
             body.image = vectorizeInput;
-          else body.image_url = vectorizeInputUrl;
+          else {
+            // Provider APIs require a fully-qualified HTTPS URL (not our local proxy path)
+            body.image_url = await ensureZataUrl(vectorizeInputUrl);
+          }
           const res = await axiosInstance.post(
             "/api/fal/recraft/vectorize",
             body,
@@ -3186,7 +3269,10 @@ const EditImageInterface: React.FC = () => {
           };
           if (String(vectorizeInput).startsWith("data:"))
             body.image = vectorizeInput;
-          else body.image_url = vectorizeInputUrl;
+          else {
+            // Provider APIs require a fully-qualified HTTPS URL (not our local proxy path)
+            body.image_url = await ensureZataUrl(vectorizeInputUrl);
+          }
           const res = await axiosInstance.post("/api/fal/image2svg", body);
           const out =
             res?.data?.data?.images?.[0]?.url ||
@@ -5729,136 +5815,215 @@ const EditImageInterface: React.FC = () => {
                                         const nextResolutionOptions =
                                           liveResolutionOptionsByModel[
                                           opt.value
-                                          ] || ["1K", "2K", "4K"];
-                                        if (
-                                          !nextResolutionOptions.includes(
-                                            liveResolution,
-                                          )
-                                        ) {
-                                          setLiveResolution(
-                                            nextResolutionOptions[0],
-                                          );
-                                        }
-                                        setLiveActiveDropdown("");
-                                      }}
-                                      className={`w-full px-4 py-2.5 text-left text-[13px] flex items-center gap-2 ${liveModel === opt.value ? "bg-white/10 text-white font-medium" : "text-white/75 hover:bg-white/8 hover:text-white"}`}
-                                    >
-                                      {liveModel === opt.value && (
-                                        <span className="w-1.5 h-1.5 rounded-full bg-[#2F6BFF] shrink-0" />
-                                      )}
-                                      <span className="truncate flex-1">
-                                        {opt.label}
-                                      </span>
-                                      <span className="text-[11px] text-white/45">
-                                        {getLiveModelCredits(
-                                          opt.value,
+                                        ] || ["1K", "2K", "4K"];
+                                      if (
+                                        !nextResolutionOptions.includes(
                                           liveResolution,
-                                        )}{" "}
-                                        credits
-                                      </span>
-                                    </button>
-                                  ))}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                        {/* Frame size */}
-                        <div>
-                          <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">
-                            Frame Size
-                          </label>
-                          <div className="relative edit-dropdown">
-                            <button
-                              onClick={() =>
-                                setLiveActiveDropdown(
-                                  liveActiveDropdown === "liveFrame"
-                                    ? ""
-                                    : "liveFrame",
-                                )
-                              }
-                              className="h-[38px] w-full px-4 rounded-xl text-[13px] font-medium border border-white/12 hover:bg-white/3 transition flex items-center justify-between bg-transparent text-white/90"
-                            >
-                              <span className="truncate">
-                                {liveFrameSizes.find(
-                                  (s) => s.value === liveFrameSize,
-                                )?.name || liveFrameSize}
-                              </span>
-                              <ChevronUp
-                                className={`w-4 h-4 ml-2 shrink-0 transition-transform duration-200 ${liveActiveDropdown === "liveFrame" ? "" : "rotate-180"}`}
-                              />
-                            </button>
-                            {liveActiveDropdown === "liveFrame" && (
-                              <div className="absolute top-full z-100 left-0 w-full bg-black backdrop-blur-xl rounded-xl mt-1 ring-1 ring-white/15 max-h-64 overflow-y-auto dropdown-scrollbar">
-                                {liveFrameSizes.map((opt) => (
-                                  <button
-                                    key={opt.value}
-                                    onClick={() => {
-                                      setLiveFrameSize(opt.value as any);
+                                        )
+                                      ) {
+                                        setLiveResolution(
+                                          nextResolutionOptions[0],
+                                        );
+                                      }
                                       setLiveActiveDropdown("");
                                     }}
-                                    className={`w-full px-4 py-2.5 text-left text-[13px] flex items-center gap-2 ${liveFrameSize === opt.value ? "bg-white/10 text-white font-medium" : "text-white/75 hover:bg-white/8 hover:text-white"}`}
+                                    className={`w-full px-4 py-2.5 text-left text-[13px] flex items-center gap-2 ${liveModel === opt.value ? "bg-white/10 text-white font-medium" : "text-white/75 hover:bg-white/8 hover:text-white"}`}
                                   >
-                                    {liveFrameSize === opt.value && (
+                                    {liveModel === opt.value && (
                                       <span className="w-1.5 h-1.5 rounded-full bg-[#2F6BFF] shrink-0" />
                                     )}
                                     <span className="truncate flex-1">
-                                      {opt.name}
+                                      {opt.label}
                                     </span>
                                     <span className="text-[11px] text-white/45">
-                                      {opt.value}
+                                      {getLiveModelCredits(
+                                        opt.value,
+                                        liveResolution,
+                                        opt.value === "openai/gpt-image-2"
+                                          ? liveQuality
+                                          : undefined,
+                                      )}{" "}
+                                      credits
                                     </span>
                                   </button>
                                 ))}
-                              </div>
-                            )}
-                          </div>
+                            </div>
+                          )}
                         </div>
                       </div>
+                      {/* Frame size */}
+                      <div>
+                        <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">
+                          Frame Size
+                        </label>
+                        <div className="relative edit-dropdown">
+                          <button
+                            onClick={() =>
+                              setLiveActiveDropdown(
+                                liveActiveDropdown === "liveFrame"
+                                  ? ""
+                                  : "liveFrame",
+                              )
+                            }
+                            className="h-[38px] w-full px-4 rounded-xl text-[13px] font-medium border border-white/12 hover:bg-white/3 transition flex items-center justify-between bg-transparent text-white/90"
+                          >
+                            <span className="truncate">
+                              {liveFrameSizes.find(
+                                (s) => s.value === liveFrameSize,
+                              )?.name || liveFrameSize}
+                            </span>
+                            <ChevronUp
+                              className={`w-4 h-4 ml-2 shrink-0 transition-transform duration-200 ${liveActiveDropdown === "liveFrame" ? "" : "rotate-180"}`}
+                            />
+                          </button>
+                          {liveActiveDropdown === "liveFrame" && (
+                            <div className="absolute top-full z-100 left-0 w-full bg-black backdrop-blur-xl rounded-xl mt-1 ring-1 ring-white/15 max-h-64 overflow-y-auto dropdown-scrollbar">
+                              {liveFrameSizes.map((opt) => (
+                                <button
+                                  key={opt.value}
+                                  onClick={() => {
+                                    setLiveFrameSize(opt.value as any);
+                                    setLiveActiveDropdown("");
+                                  }}
+                                  className={`w-full px-4 py-2.5 text-left text-[13px] flex items-center gap-2 ${liveFrameSize === opt.value ? "bg-white/10 text-white font-medium" : "text-white/75 hover:bg-white/8 hover:text-white"}`}
+                                >
+                                  {liveFrameSize === opt.value && (
+                                    <span className="w-1.5 h-1.5 rounded-full bg-[#2F6BFF] shrink-0" />
+                                  )}
+                                  <span className="truncate flex-1">
+                                    {opt.name}
+                                  </span>
+                                  <span className="text-[11px] text-white/45">
+                                    {opt.value}
+                                  </span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
 
-                      {/* Resolution shown when supported by selected model */}
-                      {liveResolutionOptions.length > 0 && (
-                        <div>
-                          <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">
-                            Resolution
-                          </label>
-                          <div className="relative edit-dropdown">
-                            <button
-                              onClick={() =>
-                                setLiveActiveDropdown(
-                                  liveActiveDropdown === "liveResolution"
-                                    ? ""
-                                    : "liveResolution",
-                                )
-                              }
-                              className="h-[38px] w-64 px-4 rounded-xl text-[13px] font-medium border border-white/12 hover:bg-white/3 transition flex items-center justify-between bg-transparent text-white/90"
-                            >
-                              <span className="truncate">{liveResolution}</span>
-                              <ChevronUp
-                                className={`w-4 h-4 ml-2 shrink-0 transition-transform duration-200 ${liveActiveDropdown === "liveResolution" ? "" : "rotate-180"}`}
-                              />
-                            </button>
-                            {liveActiveDropdown === "liveResolution" && (
-                              <div className="absolute top-full z-100 left-0 w-full bg-black backdrop-blur-xl rounded-xl mt-1 ring-1 ring-white/15">
-                                {liveResolutionOptions.map((r) => (
+                    {/* Resolution shown when supported by selected model (not for GPT Image 2) */}
+                    {liveModel !== "openai/gpt-image-2" &&
+                      liveResolutionOptions.length > 0 && (
+                      <div>
+                        <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">
+                          Resolution
+                        </label>
+                        <div className="relative edit-dropdown">
+                          <button
+                            onClick={() =>
+                              setLiveActiveDropdown(
+                                liveActiveDropdown === "liveResolution"
+                                  ? ""
+                                  : "liveResolution",
+                              )
+                            }
+                            className="h-[38px] w-64 px-4 rounded-xl text-[13px] font-medium border border-white/12 hover:bg-white/3 transition flex items-center justify-between bg-transparent text-white/90"
+                          >
+                            <span className="truncate">{liveResolution}</span>
+                            <ChevronUp
+                              className={`w-4 h-4 ml-2 shrink-0 transition-transform duration-200 ${liveActiveDropdown === "liveResolution" ? "" : "rotate-180"}`}
+                            />
+                          </button>
+                          {liveActiveDropdown === "liveResolution" && (
+                            <div className="absolute top-full z-100 left-0 w-full bg-black backdrop-blur-xl rounded-xl mt-1 ring-1 ring-white/15">
+                              {liveResolutionOptions.map((r) => (
+                                <button
+                                  key={r}
+                                  onClick={() => {
+                                    setLiveResolution(r);
+                                    setLiveActiveDropdown("");
+                                  }}
+                                  className={`w-full px-4 py-2.5 text-left text-[13px] flex items-center gap-2 ${liveResolution === r ? "bg-white/10 text-white font-medium" : "text-white/75 hover:bg-white/8 hover:text-white"}`}
+                                >
+                                  {liveResolution === r && (
+                                    <span className="w-1.5 h-1.5 rounded-full bg-[#2F6BFF] shrink-0" />
+                                  )}
+                                  <span className="truncate">{r}</span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* GPT Image 2 quality */}
+                    {liveModel === "openai/gpt-image-2" && (
+                      <div>
+                        <label className="block text-[10px] font-semibold tracking-widest text-white/40 uppercase mb-2">
+                          Quality
+                        </label>
+                        <div className="relative edit-dropdown">
+                          <button
+                            onClick={() =>
+                              setLiveActiveDropdown(
+                                liveActiveDropdown === "liveQuality"
+                                  ? ""
+                                  : "liveQuality",
+                              )
+                            }
+                            className="h-[38px] w-64 px-4 rounded-xl text-[13px] font-medium border border-white/12 hover:bg-white/3 transition flex items-center justify-between bg-transparent text-white/90"
+                          >
+                            <span className="truncate">
+                              {liveQuality === "auto"
+                                ? "Auto"
+                                : liveQuality === "low"
+                                  ? "Low"
+                                  : liveQuality === "medium"
+                                    ? "Medium"
+                                    : "High"}
+                            </span>
+                            <ChevronUp
+                              className={`w-4 h-4 ml-2 shrink-0 transition-transform duration-200 ${liveActiveDropdown === "liveQuality" ? "" : "rotate-180"}`}
+                            />
+                          </button>
+                          {liveActiveDropdown === "liveQuality" && (
+                            <div className="absolute top-full z-100 left-0 w-full bg-black backdrop-blur-xl rounded-xl mt-1 ring-1 ring-white/15">
+                              {(
+                                ["low", "medium", "high", "auto"] as const
+                              ).map((q) => {
+                                const label =
+                                  q === "auto"
+                                    ? "Auto"
+                                    : q === "low"
+                                      ? "Low"
+                                      : q === "medium"
+                                        ? "Medium"
+                                        : "High";
+                                const qCredits = getLiveModelCredits(
+                                  "openai/gpt-image-2",
+                                  undefined,
+                                  q,
+                                );
+                                return (
                                   <button
-                                    key={r}
+                                    key={q}
                                     onClick={() => {
-                                      setLiveResolution(r);
+                                      setLiveQuality(q);
                                       setLiveActiveDropdown("");
                                     }}
-                                    className={`w-full px-4 py-2.5 text-left text-[13px] flex items-center gap-2 ${liveResolution === r ? "bg-white/10 text-white font-medium" : "text-white/75 hover:bg-white/8 hover:text-white"}`}
+                                    className={`w-full px-4 py-2.5 text-left text-[13px] flex items-center gap-2 ${liveQuality === q ? "bg-white/10 text-white font-medium" : "text-white/75 hover:bg-white/8 hover:text-white"}`}
                                   >
-                                    {liveResolution === r && (
+                                    {liveQuality === q && (
                                       <span className="w-1.5 h-1.5 rounded-full bg-[#2F6BFF] shrink-0" />
                                     )}
-                                    <span className="truncate">{r}</span>
+                                    <span className="truncate flex-1">
+                                      {label}
+                                    </span>
+                                    <span className="text-[11px] text-white/45">
+                                      {qCredits} credits
+                                    </span>
                                   </button>
-                                ))}
-                              </div>
-                            )}
-                          </div>
+                                );
+                              })}
+                            </div>
+                          )}
                         </div>
-                      )}
+                      </div>
+                    )}
 
                       {/* Chat UI */}
                       <div className="mt-3 flex-1 min-h-0 flex flex-col">
@@ -7074,77 +7239,78 @@ const EditImageInterface: React.FC = () => {
             <div className="flex items-center w-full h-full gap-2">
               {/* Left: Breadcrumb */}
 
-              {/* Center: Feature tabs */}
-              <div
-                className="flex-1 flex items-center overflow-x-auto no-scrollbar h-full"
-                ref={featureTabsRef}
-                onScroll={handleFeatureTabsScroll}
-              >
-                <div className="flex items-center gap-[2px] h-full">
-                  {features.map((feature) => (
-                    <button
-                      key={feature.id}
-                      onClick={() => handleFeatureSelect(feature.id as EditFeature)}
-                      className={`relative flex items-center gap-[6px] px-[10px] h-full text-[12px] whitespace-nowrap transition-all duration-150 ${selectedFeature === feature.id
-                          ? "text-white font-medium after:absolute after:bottom-0 after:left-2 after:right-2 after:h-[2px] after:rounded-t-full after:bg-white/40"
-                          : "text-white/40 font-normal hover:text-white/70"
-                        }`}
+            {/* Center: Feature tabs */}
+            <div
+              className="flex-1 flex items-center overflow-x-auto no-scrollbar h-full"
+              ref={featureTabsRef}
+              onScroll={handleFeatureTabsScroll}
+            >
+              <div className="flex items-center gap-[2px] h-full">
+                {features.map((feature) => (
+                  <button
+                    key={feature.id}
+                    onClick={() => handleFeatureSelect(feature.id as EditFeature)}
+                    className={`relative flex items-center gap-[6px] px-[10px] h-full text-[12px] whitespace-nowrap transition-all duration-150 ${
+                      selectedFeature === feature.id
+                        ? "text-white font-medium after:absolute after:bottom-0 after:left-2 after:right-2 after:h-[2px] after:rounded-t-full after:bg-white/40"
+                        : "text-white/40 font-normal hover:text-white/70"
+                    }`}
+                  >
+                    <span
+                      className={`flex items-center justify-center w-[14px] h-[14px] shrink-0 transition-opacity ${selectedFeature === feature.id ? "opacity-80" : "opacity-40"}`}
                     >
-                      <span
-                        className={`flex items-center justify-center w-[14px] h-[14px] shrink-0 transition-opacity ${selectedFeature === feature.id ? "opacity-80" : "opacity-40"}`}
-                      >
-                        {feature.id === "upscale" && (
-                          <img
-                            src="/icons/scaling.svg"
-                            alt=""
-                            className="w-[14px] h-[14px]"
-                          />
-                        )}
-                        {feature.id === "remove-bg" && (
-                          <img
-                            src="/icons/image-minus.svg"
-                            alt=""
-                            className="w-[14px] h-[14px]"
-                          />
-                        )}
-                        {feature.id === "resize" && (
-                          <img
-                            src="/icons/resize.svg"
-                            alt=""
-                            className="w-[13px] h-[13px]"
-                          />
-                        )}
-                        {feature.id === "fill" && (
-                          <img
-                            src="/icons/inpaint.svg"
-                            alt=""
-                            className="w-[14px] h-[14px]"
-                          />
-                        )}
-                        {feature.id === "vectorize" && (
-                          <img
-                            src="/icons/vector.svg"
-                            alt=""
-                            className="w-[14px] h-[14px]"
-                          />
-                        )}
-                        {feature.id === "live-chat" && (
-                          <img
-                            src="/icons/chat.svg"
-                            alt=""
-                            className="w-[14px] h-[14px]"
-                          />
-                        )}
-                      </span>
-                      <span>
-                        {feature.id === "fill"
-                          ? "Erase / Replace"
-                          : feature.label}
-                      </span>
-                    </button>
-                  ))}
-                </div>
+                      {feature.id === "upscale" && (
+                        <img
+                          src="https://idr01.zata.ai/devstoragev1/public/icons/scaling.svg"
+                          alt=""
+                          className="w-[14px] h-[14px]"
+                        />
+                      )}
+                      {feature.id === "remove-bg" && (
+                        <img
+                          src="https://idr01.zata.ai/devstoragev1/public/icons/image-minus.svg"
+                          alt=""
+                          className="w-[14px] h-[14px]"
+                        />
+                      )}
+                      {feature.id === "resize" && (
+                        <img
+                          src="https://idr01.zata.ai/devstoragev1/public/icons/resize.svg"
+                          alt=""
+                          className="w-[13px] h-[13px]"
+                        />
+                      )}
+                      {feature.id === "fill" && (
+                        <img
+                          src="https://idr01.zata.ai/devstoragev1/public/icons/inpaint.svg"
+                          alt=""
+                          className="w-[14px] h-[14px]"
+                        />
+                      )}
+                      {feature.id === "vectorize" && (
+                        <img
+                          src="https://idr01.zata.ai/devstoragev1/public/icons/vector.svg"
+                          alt=""
+                          className="w-[14px] h-[14px]"
+                        />
+                      )}
+                      {feature.id === "live-chat" && (
+                        <img
+                          src="https://idr01.zata.ai/devstoragev1/public/icons/chat.svg"
+                          alt=""
+                          className="w-[14px] h-[14px]"
+                        />
+                      )}
+                    </span>
+                    <span>
+                      {feature.id === "fill"
+                        ? "Erase / Replace"
+                        : feature.label}
+                    </span>
+                  </button>
+                ))}
               </div>
+            </div>
 
               {/* Right: Action icons */}
               <div className="hidden md:flex items-center gap-1 shrink-0">
@@ -7398,50 +7564,50 @@ const EditImageInterface: React.FC = () => {
                     </div>
                   )}
 
-                  {/* Bottom-left controls: menu (if output) and upload (always when image present) */}
-                  {(outputs[selectedFeature] || inputs[selectedFeature]) && (
-                    <div className="absolute md:bottom-3 bottom-0 md:left-3 left-1 z-50 md:bottom-4 md:left-4 flex items-center md:gap-2 gap-1">
-                      {outputs[selectedFeature] && (
-                        <div className="relative">
-                          <button
-                            ref={menuButtonRef}
-                            className="md:p-2.5 p-0.5 bg-white/5 hover:bg-black/70 text-white rounded-xl transition-all duration-200 border border-white/10 md:p-2"
-                            aria-haspopup="menu"
-                            aria-expanded={showImageMenu}
-                            onClick={() => setShowImageMenu((v) => !v)}
+                {/* Bottom-left controls: menu (if output) and upload (always when image present) */}
+                {(outputs[selectedFeature] || inputs[selectedFeature]) && (
+                  <div className="absolute md:bottom-3 bottom-0 md:left-3 left-1 z-50 md:bottom-4 md:left-4 flex items-center md:gap-2 gap-1">
+                    {outputs[selectedFeature] && (
+                      <div className="relative">
+                        <button
+                          ref={menuButtonRef}
+                          className="md:p-2.5 p-0.5 bg-white/5 hover:bg-black/70 text-white rounded-xl transition-all duration-200 border border-white/10 md:p-2"
+                          aria-haspopup="menu"
+                          aria-expanded={showImageMenu}
+                          onClick={() => setShowImageMenu((v) => !v)}
+                        >
+                          <svg
+                            className="w-4 h-4 2xl:w-5 2xl:h-5"
+                            fill="currentColor"
+                            viewBox="0 0 24 24"
                           >
-                            <svg
-                              className="w-4 h-4 2xl:w-5 2xl:h-5"
-                              fill="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <circle cx="5" cy="12" r="2" />
-                              <circle cx="12" cy="12" r="2" />
-                              <circle cx="19" cy="12" r="2" />
-                            </svg>
-                          </button>
-                        </div>
-                      )}
-                      {/* Upload other button next to menu */}
-                      <button
-                        onClick={() => {
-                          // Do not clear existing image/output here. Only open the modal.
-                          // If user picks a new image, onAdd will replace the input.
-                          try {
-                            handleOpenUploadModal();
-                          } catch { }
-                        }}
-                        className="md:p-4 md:px-2 px-1.25 md:py-2 py-1 md:mt-0 -mt-1 bg-white/5 hover:bg-black/70 text-white rounded-xl transition-all duration-200 border border-white/10"
-                        title="Upload other"
-                      >
-                        <Image
-                          src="/icons/fileupload.svg"
-                          alt="Upload"
-                          width={16}
-                          height={16}
-                          className="md:w-6 md:h-6 w-3 h-3"
-                        />
-                      </button>
+                            <circle cx="5" cy="12" r="2" />
+                            <circle cx="12" cy="12" r="2" />
+                            <circle cx="19" cy="12" r="2" />
+                          </svg>
+                        </button>
+                      </div>
+                    )}
+                    {/* Upload other button next to menu */}
+                    <button
+                      onClick={() => {
+                        // Do not clear existing image/output here. Only open the modal.
+                        // If user picks a new image, onAdd will replace the input.
+                        try {
+                          handleOpenUploadModal();
+                        } catch {}
+                      }}
+                      className="md:p-4 md:px-2 px-1.25 md:py-2 py-1 md:mt-0 -mt-1 bg-white/5 hover:bg-black/70 text-white rounded-xl transition-all duration-200 border border-white/10"
+                      title="Upload other"
+                    >
+                      <Image
+                        src="https://idr01.zata.ai/devstoragev1/public/icons/fileupload.svg"
+                        alt="Upload"
+                        width={16}
+                        height={16}
+                        className="md:w-6 md:h-6 w-3 h-3"
+                      />
+                    </button>
 
                       {/* Themed dropdown menu */}
                       {outputs[selectedFeature] && showImageMenu && (
@@ -7648,18 +7814,29 @@ const EditImageInterface: React.FC = () => {
                               </div>
                             )}
 
-                          {selectedFeature !== "resize" &&
-                            selectedFeature !== "live-chat" &&
-                            upscaleViewMode === "comparison" ? (
-                            // Comparison slider mode: Original on left, Generated on right, no overlap
-                            <>
-                              {/* Original (left) */}
-                              <div
-                                className="absolute inset-0"
-                                style={{
-                                  clipPath: `inset(0 ${100 - sliderPosition}% 0 0)`,
-                                }}
-                              >
+                        {selectedFeature !== "resize" &&
+                        selectedFeature !== "live-chat" &&
+                        upscaleViewMode === "comparison" ? (
+                          // Comparison slider mode: Original on left, Generated on right, no overlap
+                          <>
+                            {/* Original (left) */}
+                            <div
+                              className="absolute inset-0"
+                              style={{
+                                clipPath: `inset(0 ${100 - sliderPosition}% 0 0)`,
+                              }}
+                            >
+                              {isInlineImageUrl(inputs[selectedFeature]) ||
+                              isSvgUrl(inputs[selectedFeature]) ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  src={normalizeEditImageUrl(
+                                    inputs[selectedFeature] as string,
+                                  )}
+                                  alt="Original"
+                                  className="absolute inset-0 w-full h-full object-contain object-center"
+                                />
+                              ) : (
                                 <Image
                                   src={normalizeEditImageUrl(
                                     inputs[selectedFeature] as string,
@@ -7669,15 +7846,46 @@ const EditImageInterface: React.FC = () => {
                                   unoptimized
                                   className="object-contain object-center"
                                 />
-                              </div>
+                              )}
+                            </div>
 
-                              {/* Generated (right) */}
-                              <div
-                                className="absolute inset-0"
-                                style={{
-                                  clipPath: `inset(0 0 0 ${sliderPosition}%)`,
-                                }}
-                              >
+                            {/* Generated (right) */}
+                            <div
+                              className="absolute inset-0"
+                              style={{
+                                clipPath: `inset(0 0 0 ${sliderPosition}%)`,
+                              }}
+                            >
+                              {isSvgUrl(outputs[selectedFeature]) ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  src={normalizeEditImageUrl(
+                                    outputs[selectedFeature] as string,
+                                  )}
+                                  alt="Generated"
+                                  className="absolute inset-0 w-full h-full object-contain object-center"
+                                  style={{ objectPosition: "center center" }}
+                                  onError={(e) => {
+                                    console.error(
+                                      "[EditImage] Output image failed to load:",
+                                      {
+                                        src: outputs[selectedFeature],
+                                        selectedFeature,
+                                        error: e,
+                                      },
+                                    );
+                                  }}
+                                  onLoad={() => {
+                                    console.log(
+                                      "[EditImage] Output image loaded successfully:",
+                                      {
+                                        src: outputs[selectedFeature],
+                                        selectedFeature,
+                                      },
+                                    );
+                                  }}
+                                />
+                              ) : (
                                 <Image
                                   src={normalizeEditImageUrl(
                                     outputs[selectedFeature] as string,
@@ -7707,7 +7915,8 @@ const EditImageInterface: React.FC = () => {
                                     );
                                   }}
                                 />
-                              </div>
+                              )}
+                            </div>
 
                               {/* Slider */}
                               <div className="absolute inset-0">
@@ -7727,26 +7936,72 @@ const EditImageInterface: React.FC = () => {
                                 />
                               </div>
 
-                              <div className="absolute md:top-5 top-0 md:right-4 right-1 z-30 2xl:top-6 2xl:right-6">
-                                <span className="text-[10px] font-medium text-white bg-white/5 border border-white/10 px-1.5 py-0.5 rounded-xl md:text-sm md:px-3 md:py-1.5">
-                                  Generated
-                                </span>
-                              </div>
-                            </>
-                          ) : (
-                            // Zoom mode (all features)
-                            <div
-                              ref={imageContainerRef}
-                              className={`w-full h-full relative cursor-move select-none min-h-[24rem] md:min-h-[28rem] lg:min-h-[28rem]`}
-                              onMouseDown={handleMouseDown}
-                              onMouseMove={handleMouseMove}
-                              onMouseUp={handleMouseUp}
-                              onMouseLeave={handleMouseUp}
-                              onWheel={handleWheel}
-                              onKeyDown={handleKeyDown}
-                              tabIndex={0}
-                              style={{ outline: "none" }}
-                            >
+                            <div className="absolute md:top-5 top-0 md:right-4 right-1 z-30 2xl:top-6 2xl:right-6">
+                              <span className="text-[10px] font-medium text-white bg-white/5 border border-white/10 px-1.5 py-0.5 rounded-xl md:text-sm md:px-3 md:py-1.5">
+                                Generated
+                              </span>
+                            </div>
+                          </>
+                        ) : (
+                          // Zoom mode (all features)
+                          <div
+                            ref={imageContainerRef}
+                            className={`w-full h-full relative cursor-move select-none min-h-[24rem] md:min-h-[28rem] lg:min-h-[28rem]`}
+                            onMouseDown={handleMouseDown}
+                            onMouseMove={handleMouseMove}
+                            onMouseUp={handleMouseUp}
+                            onMouseLeave={handleMouseUp}
+                            onWheel={handleWheel}
+                            onKeyDown={handleKeyDown}
+                            tabIndex={0}
+                            style={{ outline: "none" }}
+                          >
+                            {isSvgUrl(outputs[selectedFeature]) ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                ref={imageRef as any}
+                                src={normalizeEditImageUrl(
+                                  outputs[selectedFeature] as string,
+                                )}
+                                alt="Output"
+                                className="absolute inset-0 w-full h-full object-contain object-center"
+                                style={{
+                                  transform: `scale(${scale}) translate(${offset.x / scale}px, ${offset.y / scale}px)`,
+                                  transformOrigin: "center center",
+                                  objectPosition: "center center",
+                                }}
+                                onLoad={(e) => {
+                                  const img = e.target as HTMLImageElement;
+                                  setNaturalSize({
+                                    width: img.naturalWidth || img.width || 1024,
+                                    height:
+                                      img.naturalHeight || img.height || 1024,
+                                  });
+                                  console.log(
+                                    "[EditImage] Zoom mode output image loaded:",
+                                    {
+                                      src: outputs[selectedFeature],
+                                      selectedFeature,
+                                      dimensions: {
+                                        width: img.naturalWidth,
+                                        height: img.naturalHeight,
+                                      },
+                                    },
+                                  );
+                                }}
+                                onError={(e) => {
+                                  console.error(
+                                    "[EditImage] Zoom mode output image failed to load:",
+                                    {
+                                      src: outputs[selectedFeature],
+                                      selectedFeature,
+                                      error: e,
+                                    },
+                                  );
+                                }}
+                                onClick={handleImageClick}
+                              />
+                            ) : (
                               <Image
                                 ref={imageRef}
                                 src={normalizeEditImageUrl(
@@ -7791,60 +8046,107 @@ const EditImageInterface: React.FC = () => {
                                 }}
                                 onClick={handleImageClick}
                               />
+                            )}
 
-                              {/* Zoom Controls */}
-                              <div className="absolute md:bottom-3 bottom-1 md:right-3 right-1 z-30 2xl:bottom-4 2xl:right-4">
-                                <div className="flex items-center gap-1 2xl:gap-1.5 bg-white/5 backdrop-blur-md border border-white/10 rounded-xl md:p-1 p-0.5">
-                                  <button
-                                    onClick={() => {
-                                      const newScale = Math.max(0.1, scale - 0.1);
-                                      setScale(newScale);
-                                      setOffset(clampOffset(offset, newScale));
-                                    }}
-                                    disabled={scale <= 0.1}
-                                    className="md:w-5 md:h-5 w-4 h-4 bg-white/20 hover:bg-white/30 text-white text-xs rounded flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed 2xl:w-6 2xl:h-6"
-                                  >
-                                    −
-                                  </button>
-                                  <span className="text-white/80 text-xs px-1.5 2xl:text-sm 2xl:px-2">
-                                    {Math.round(scale * 100)}%
-                                  </span>
-                                  <button
-                                    onClick={() => {
-                                      const newScale = Math.min(6, scale + 0.1);
-                                      setScale(newScale);
-                                      setOffset(clampOffset(offset, newScale));
-                                    }}
-                                    disabled={scale >= 6}
-                                    className="md:w-5 md:h-5 w-4 h-4 bg-white/20 hover:bg-white/30 text-white text-xs rounded flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed 2xl:w-6 2xl:h-6"
-                                  >
-                                    +
-                                  </button>
-                                  <button
-                                    onClick={resetZoom}
-                                    className="md:w-5 md:h-5 w-4 h-4 bg-white/20 hover:bg-white/30 text-white text-xs rounded flex items-center justify-center 2xl:w-6 2xl:h-6"
-                                  >
-                                    ⌂
-                                  </button>
-                                </div>
+                            {/* Zoom Controls */}
+                            <div className="absolute md:bottom-3 bottom-1 md:right-3 right-1 z-30 2xl:bottom-4 2xl:right-4">
+                              <div className="flex items-center gap-1 2xl:gap-1.5 bg-white/5 backdrop-blur-md border border-white/10 rounded-xl md:p-1 p-0.5">
+                                <button
+                                  onClick={() => {
+                                    const newScale = Math.max(0.1, scale - 0.1);
+                                    setScale(newScale);
+                                    setOffset(clampOffset(offset, newScale));
+                                  }}
+                                  disabled={scale <= 0.1}
+                                  className="md:w-5 md:h-5 w-4 h-4 bg-white/20 hover:bg-white/30 text-white text-xs rounded flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed 2xl:w-6 2xl:h-6"
+                                >
+                                  −
+                                </button>
+                                <span className="text-white/80 text-xs px-1.5 2xl:text-sm 2xl:px-2">
+                                  {Math.round(scale * 100)}%
+                                </span>
+                                <button
+                                  onClick={() => {
+                                    const newScale = Math.min(6, scale + 0.1);
+                                    setScale(newScale);
+                                    setOffset(clampOffset(offset, newScale));
+                                  }}
+                                  disabled={scale >= 6}
+                                  className="md:w-5 md:h-5 w-4 h-4 bg-white/20 hover:bg-white/30 text-white text-xs rounded flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed 2xl:w-6 2xl:h-6"
+                                >
+                                  +
+                                </button>
+                                <button
+                                  onClick={resetZoom}
+                                  className="md:w-5 md:h-5 w-4 h-4 bg-white/20 hover:bg-white/30 text-white text-xs rounded flex items-center justify-center 2xl:w-6 2xl:h-6"
+                                >
+                                  ⌂
+                                </button>
                               </div>
                             </div>
-                          )}
-                        </div>
-                      ) : (
-                        // Regular image viewer with zoom controls
-                        <div
-                          ref={imageContainerRef}
-                          className={`w-full h-full relative cursor-move select-none min-h-[24rem] md:min-h-[28rem] lg:min-h-[28rem]`}
-                          onMouseDown={handleMouseDown}
-                          onMouseMove={handleMouseMove}
-                          onMouseUp={handleMouseUp}
-                          onMouseLeave={handleMouseUp}
-                          onWheel={handleWheel}
-                          onKeyDown={handleKeyDown}
-                          tabIndex={0}
-                          style={{ outline: "none" }}
-                        >
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      // Regular image viewer with zoom controls
+                      <div
+                        ref={imageContainerRef}
+                        className={`w-full h-full relative cursor-move select-none min-h-[24rem] md:min-h-[28rem] lg:min-h-[28rem]`}
+                        onMouseDown={handleMouseDown}
+                        onMouseMove={handleMouseMove}
+                        onMouseUp={handleMouseUp}
+                        onMouseLeave={handleMouseUp}
+                        onWheel={handleWheel}
+                        onKeyDown={handleKeyDown}
+                        tabIndex={0}
+                        style={{ outline: "none" }}
+                      >
+                        {isSvgUrl(outputs[selectedFeature]) ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            ref={imageRef as any}
+                            src={normalizeEditImageUrl(
+                              outputs[selectedFeature] as string,
+                            )}
+                            alt="Output"
+                            className="absolute inset-0 w-full h-full object-contain object-center"
+                            style={{
+                              transform: `scale(${scale}) translate(${offset.x / scale}px, ${offset.y / scale}px)`,
+                              transformOrigin: "center center",
+                              objectPosition: "center center",
+                            }}
+                            onLoad={(e) => {
+                              const img = e.target as HTMLImageElement;
+                              setNaturalSize({
+                                width: img.naturalWidth || img.width || 1024,
+                                height:
+                                  img.naturalHeight || img.height || 1024,
+                              });
+                              console.log(
+                                "[EditImage] No-input mode output image loaded:",
+                                {
+                                  src: outputs[selectedFeature],
+                                  selectedFeature,
+                                  dimensions: {
+                                    width: img.naturalWidth,
+                                    height: img.naturalHeight,
+                                  },
+                                },
+                              );
+                            }}
+                            onError={(e) => {
+                              console.error(
+                                "[EditImage] No-input mode output image failed to load:",
+                                {
+                                  src: outputs[selectedFeature],
+                                  selectedFeature,
+                                  error: e,
+                                },
+                              );
+                            }}
+                            onClick={handleImageClick}
+                          />
+                        ) : (
                           <Image
                             ref={imageRef}
                             src={normalizeEditImageUrl(
@@ -7889,104 +8191,138 @@ const EditImageInterface: React.FC = () => {
                             }}
                             onClick={handleImageClick}
                           />
+                        )}
 
-                          {/* Zoom Controls */}
-                          <div className="absolute md:bottom-3 bottom-1 md:right-3 right-1 z-30 2xl:bottom-4 2xl:right-4">
-                            <div className="flex items-center gap-1 2xl:gap-1.5 bg-white/5 backdrop-blur-md border border-white/10 rounded-xl md:p-1 p-0.5">
-                              <button
-                                onClick={() => {
-                                  const newScale = Math.max(0.1, scale - 0.1);
-                                  setScale(newScale);
-                                  setOffset(clampOffset(offset, newScale));
-                                }}
-                                disabled={scale <= 0.1}
-                                className="md:w-5 md:h-5 w-4 h-4 bg-white/20 hover:bg-white/30 text-white text-xs rounded flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed 2xl:w-6 2xl:h-6"
-                              >
-                                −
-                              </button>
-                              <span className="text-white/80 text-xs px-1.5 2xl:text-sm 2xl:px-2">
-                                {Math.round(scale * 100)}%
-                              </span>
-                              <button
-                                onClick={() => {
-                                  const newScale = Math.min(6, scale + 0.1);
-                                  setScale(newScale);
-                                  setOffset(clampOffset(offset, newScale));
-                                }}
-                                disabled={scale >= 6}
-                                className="md:w-5 md:h-5 w-4 h-4 bg-white/20 hover:bg-white/30 text-white text-xs rounded flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed 2xl:w-6 2xl:h-6"
-                              >
-                                +
-                              </button>
-                              <button
-                                onClick={resetZoom}
-                                className="md:w-5 md:h-5 w-4 h-4 bg-white/20 hover:bg-white/30 text-white text-xs rounded flex items-center justify-center 2xl:w-6 2xl:h-6"
-                              >
-                                ⌂
-                              </button>
-                            </div>
+                        {/* Zoom Controls */}
+                        <div className="absolute md:bottom-3 bottom-1 md:right-3 right-1 z-30 2xl:bottom-4 2xl:right-4">
+                          <div className="flex items-center gap-1 2xl:gap-1.5 bg-white/5 backdrop-blur-md border border-white/10 rounded-xl md:p-1 p-0.5">
+                            <button
+                              onClick={() => {
+                                const newScale = Math.max(0.1, scale - 0.1);
+                                setScale(newScale);
+                                setOffset(clampOffset(offset, newScale));
+                              }}
+                              disabled={scale <= 0.1}
+                              className="md:w-5 md:h-5 w-4 h-4 bg-white/20 hover:bg-white/30 text-white text-xs rounded flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed 2xl:w-6 2xl:h-6"
+                            >
+                              −
+                            </button>
+                            <span className="text-white/80 text-xs px-1.5 2xl:text-sm 2xl:px-2">
+                              {Math.round(scale * 100)}%
+                            </span>
+                            <button
+                              onClick={() => {
+                                const newScale = Math.min(6, scale + 0.1);
+                                setScale(newScale);
+                                setOffset(clampOffset(offset, newScale));
+                              }}
+                              disabled={scale >= 6}
+                              className="md:w-5 md:h-5 w-4 h-4 bg-white/20 hover:bg-white/30 text-white text-xs rounded flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed 2xl:w-6 2xl:h-6"
+                            >
+                              +
+                            </button>
+                            <button
+                              onClick={resetZoom}
+                              className="md:w-5 md:h-5 w-4 h-4 bg-white/20 hover:bg-white/30 text-white text-xs rounded flex items-center justify-center 2xl:w-6 2xl:h-6"
+                            >
+                              ⌂
+                            </button>
                           </div>
                         </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="w-full flex items-center justify-center min-h-[18rem] md:min-h-[28rem] lg:min-h-[28rem]">
-                      {inputs[selectedFeature] ? (
-                        <div className="absolute inset-0">
-                          {selectedFeature === "resize" ||
-                            selectedFeature === "fill" ? (
-                            selectedFeature === "resize" ? (
-                              <div className="absolute inset-0 z-10">
-                                <EditImageExpandFrame
-                                  sourceImageUrl={inputs.resize}
-                                  localExpandedImageUrl={null}
-                                  expandedImageUrl={null}
-                                  aspectPreset={resizeAspectRatio || "custom"}
-                                  aspectPresets={aspectPresets}
-                                  customWidth={Number(resizeCanvasW) || 1024}
-                                  customHeight={Number(resizeCanvasH) || 1024}
-                                  onFrameInfoChange={(info) => {
-                                    if (info) {
-                                      if (
-                                        info.canvasSize[0] !==
-                                        Number(resizeCanvasW)
-                                      )
-                                        setResizeCanvasW(info.canvasSize[0]);
-                                      if (
-                                        info.canvasSize[1] !==
-                                        Number(resizeCanvasH)
-                                      )
-                                        setResizeCanvasH(info.canvasSize[1]);
-                                      setResizeOrigX(
-                                        info.originalImageLocation[0],
-                                      );
-                                      setResizeOrigY(
-                                        info.originalImageLocation[1],
-                                      );
-                                    }
-                                  }}
-                                  onImageSizeChange={(size) => {
-                                    if (size) {
-                                      setResizeOrigW(size.width);
-                                      setResizeOrigH(size.height);
-                                    }
-                                  }}
-                                />
-                              </div>
-                            ) : (
-                              <div className="absolute inset-0 z-10">
-                                <EditImageEraseFrame
-                                  sourceImageUrl={inputs["fill"] as string}
-                                  brushSize={eraseBrushSize}
-                                  isDrawing={eraseIsDrawing}
-                                  setIsDrawing={setEraseIsDrawing}
-                                  onMaskChange={setEraseMaskData}
-                                  isAdjustingBrush={isAdjustingBrush}
-                                />
-                              </div>
-                            )
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="w-full flex items-center justify-center min-h-[18rem] md:min-h-[28rem] lg:min-h-[28rem]">
+                    {inputs[selectedFeature] ? (
+                      <div className="absolute inset-0">
+                        {selectedFeature === "resize" ||
+                        selectedFeature === "fill" ? (
+                          selectedFeature === "resize" ? (
+                            <div className="absolute inset-0 z-10">
+                              <EditImageExpandFrame
+                                sourceImageUrl={inputs.resize}
+                                localExpandedImageUrl={null}
+                                expandedImageUrl={null}
+                                aspectPreset={resizeAspectRatio || "custom"}
+                                aspectPresets={aspectPresets}
+                                customWidth={Number(resizeCanvasW) || 1024}
+                                customHeight={Number(resizeCanvasH) || 1024}
+                                onFrameInfoChange={(info) => {
+                                  if (info) {
+                                    if (
+                                      info.canvasSize[0] !==
+                                      Number(resizeCanvasW)
+                                    )
+                                      setResizeCanvasW(info.canvasSize[0]);
+                                    if (
+                                      info.canvasSize[1] !==
+                                      Number(resizeCanvasH)
+                                    )
+                                      setResizeCanvasH(info.canvasSize[1]);
+                                    setResizeOrigX(
+                                      info.originalImageLocation[0],
+                                    );
+                                    setResizeOrigY(
+                                      info.originalImageLocation[1],
+                                    );
+                                  }
+                                }}
+                                onImageSizeChange={(size) => {
+                                  if (size) {
+                                    setResizeOrigW(size.width);
+                                    setResizeOrigH(size.height);
+                                  }
+                                }}
+                              />
+                            </div>
                           ) : (
-                            <>
+                            <div className="absolute inset-0 z-10">
+                              <EditImageEraseFrame
+                                sourceImageUrl={inputs["fill"] as string}
+                                brushSize={eraseBrushSize}
+                                isDrawing={eraseIsDrawing}
+                                setIsDrawing={setEraseIsDrawing}
+                                onMaskChange={setEraseMaskData}
+                                isAdjustingBrush={isAdjustingBrush}
+                              />
+                            </div>
+                          )
+                        ) : (
+                          <>
+                            {isInlineImageUrl(inputs[selectedFeature]) ||
+                            isSvgUrl(inputs[selectedFeature]) ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={normalizeEditImageUrl(
+                                  inputs[selectedFeature] as string,
+                                )}
+                                alt="Input"
+                                className="absolute inset-0 w-full h-full object-contain object-center"
+                                onLoad={(e) => {
+                                  if (selectedFeature === "expand") {
+                                    const img = e.target as HTMLImageElement;
+                                    setExpandOriginalSize({
+                                      width: img.naturalWidth,
+                                      height: img.naturalHeight,
+                                    });
+                                    setInputNaturalSize({
+                                      width: img.naturalWidth,
+                                      height: img.naturalHeight,
+                                    });
+                                    setTimeout(() => {
+                                      drawExpandCanvas();
+                                    }, 100);
+                                  } else {
+                                    const img = e.target as HTMLImageElement;
+                                    setInputNaturalSize({
+                                      width: img.naturalWidth,
+                                      height: img.naturalHeight,
+                                    });
+                                  }
+                                }}
+                              />
+                            ) : (
                               <Image
                                 src={normalizeEditImageUrl(
                                   inputs[selectedFeature] as string,
@@ -8019,26 +8355,27 @@ const EditImageInterface: React.FC = () => {
                                   }
                                 }}
                               />
-                              {selectedFeature === "expand" &&
-                                expandOriginalSize.width > 0 && (
-                                  <div
-                                    ref={expandContainerRef}
-                                    className="absolute inset-0 z-10"
-                                  >
-                                    <canvas
-                                      ref={expandCanvasRef}
-                                      className="absolute inset-0 w-full h-full"
-                                      style={{
-                                        pointerEvents: "auto",
-                                        userSelect: "none",
-                                        cursor:
-                                          (expandResizing || expandHoverEdge) ===
-                                            "left" ||
-                                            (expandResizing || expandHoverEdge) ===
-                                            "right"
-                                            ? "ew-resize"
-                                            : (expandResizing ||
-                                              expandHoverEdge) === "top" ||
+                            )}
+                            {selectedFeature === "expand" &&
+                              expandOriginalSize.width > 0 && (
+                                <div
+                                  ref={expandContainerRef}
+                                  className="absolute inset-0 z-10"
+                                >
+                                  <canvas
+                                    ref={expandCanvasRef}
+                                    className="absolute inset-0 w-full h-full"
+                                    style={{
+                                      pointerEvents: "auto",
+                                      userSelect: "none",
+                                      cursor:
+                                        (expandResizing || expandHoverEdge) ===
+                                          "left" ||
+                                        (expandResizing || expandHoverEdge) ===
+                                          "right"
+                                          ? "ew-resize"
+                                          : (expandResizing ||
+                                                expandHoverEdge) === "top" ||
                                               (expandResizing ||
                                                 expandHoverEdge) === "bottom"
                                               ? "ns-resize"
@@ -8956,33 +9293,33 @@ const EditImageInterface: React.FC = () => {
                               from your computer
                             </p>
 
-                            <div className="flex flex-wrap items-center justify-center gap-2">
-                              {["PNG", "JPG", "up to 50MB"].map((label) => (
-                                <span
-                                  key={label}
-                                  className="px-3 py-1.5 text-[10px] font-semibold text-white/40 bg-[#171925] rounded-[10px] border border-white/8 tracking-[0.16em] uppercase"
-                                >
-                                  {label}
-                                </span>
-                              ))}
-                            </div>
+                          <div className="flex flex-wrap items-center justify-center gap-2">
+                            {["PNG", "JPG", "up to 50MB"].map((label) => (
+                              <span
+                                key={label}
+                                className="px-3 py-1.5 text-[10px] font-semibold text-white/40 bg-[#171925] rounded-[10px] border border-white/8 tracking-[0.16em] uppercase"
+                              >
+                                {label}
+                              </span>
+                            ))}
                           </div>
                         </div>
-                      )}
-                    </div>
-                  )}
-                  {/* Live Chat thumbnails moved to the right-side preview area (avoid duplicate thumbnails inside output container) */}
-                  {/* Fill mask overlay moved to input area */}
-                  {processing[selectedFeature] && (
-                    <div className="absolute inset-0 z-40 flex items-center justify-center bg-transparent backdrop-blur-sm">
-                      <img
-                        src="/styles/Logo.gif"
-                        alt="Generating..."
-                        className="w-32 h-32 md:w-48 md:h-48 opacity-90"
-                      />
-                    </div>
-                  )}
-                </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {/* Live Chat thumbnails moved to the right-side preview area (avoid duplicate thumbnails inside output container) */}
+                {/* Fill mask overlay moved to input area */}
+                {processing[selectedFeature] && (
+                  <div className="absolute inset-0 z-40 flex items-center justify-center bg-transparent backdrop-blur-sm">
+                    <img
+                      src="https://idr01.zata.ai/devstoragev1/public/styles/Logo.gif"
+                      alt="Generating..."
+                      className="w-32 h-32 md:w-48 md:h-48 opacity-90"
+                    />
+                  </div>
+                )}
+              </div>
 
                 {/* Live Chat: Thumbnail column (desktop right-side, mobile below output) */}
                 {selectedFeature === "live-chat" && liveHistory.length > 0 && (

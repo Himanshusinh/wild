@@ -31,7 +31,7 @@ interface NavItemDef {
 
 const LogoSvg = () => (
   <Image
-    src="/core/logosquare.png"
+    src="https://idr01.zata.ai/devstoragev1/public/core/logosquare.avif"
     alt="WildMind Logo"
     width={54}
     height={54}

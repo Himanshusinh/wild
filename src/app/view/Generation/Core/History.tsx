@@ -615,6 +615,14 @@ const History = () => {
       return;
     }
 
+    // Support Ctrl+Click (and Meta+Click for Mac) for starting multi-selection
+    if (e.ctrlKey || e.metaKey) {
+      e.stopPropagation();
+      e.preventDefault();
+      toggleImageSelection(entry.id, media.id || mediaIndex.toString());
+      return;
+    }
+
     // If no images are selected, open preview modal as normal (but not for user uploads)
     if (selectedImages.size === 0) {
       // Don't open preview for user uploads - they're just uploaded files
@@ -1190,7 +1198,7 @@ const History = () => {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="flex flex-col items-center gap-4">
-          <Image src="/styles/Logo.gif" alt="Generating" width={72} height={72} className="mx-auto" unoptimized />
+          <Image src="https://idr01.zata.ai/devstoragev1/public/styles/Logo.gif" alt="Generating" width={72} height={72} className="mx-auto" unoptimized />
           <div className="text-white text-lg text-center">Loading your generation history...</div>
         </div>
       </div>
@@ -1347,7 +1355,7 @@ const History = () => {
           </div>
           {pillLoading && (
             <div className="flex md:hidden items-center gap-2 text-[11px] text-white/70">
-              <Image src="/styles/Logo.gif" alt="Loading" width={18} height={18} className="rounded-full" unoptimized />
+              <Image src="https://idr01.zata.ai/devstoragev1/public/styles/Logo.gif" alt="Loading" width={18} height={18} className="rounded-full" unoptimized />
               <span>Updating history...</span>
             </div>
           )}
@@ -1392,7 +1400,7 @@ const History = () => {
                 aria-label="Recent"
               >
                 <div className="flex items-center gap-1">
-                  <img src="/icons/upload-square-2 (1).svg" alt="Recent" className={`${sortOrder === 'desc' ? '' : 'invert'} w-4 h-4`} />
+                  <img src="https://idr01.zata.ai/devstoragev1/public/icons/upload-square-2%20(1).svg" alt="Recent" className={`${sortOrder === 'desc' ? '' : 'invert'} w-4 h-4`} />
                   <span className="text-xs">Recent</span>
                 </div>
               </button>
@@ -1405,7 +1413,7 @@ const History = () => {
                 aria-label="Oldest"
               >
                 <div className="flex items-center gap-1">
-                  <img src="/icons/download-square-2.svg" alt="Oldest" className={`${sortOrder === 'asc' ? '' : 'invert'} w-4 h-4`} />
+                  <img src="https://idr01.zata.ai/devstoragev1/public/icons/download-square-2.svg" alt="Oldest" className={`${sortOrder === 'asc' ? '' : 'invert'} w-4 h-4`} />
                   <span className="text-xs">Oldest</span>
                 </div>
               </button>
@@ -1447,7 +1455,7 @@ const History = () => {
                 className={`relative group px-1 py-0.5 rounded-lg text-xs ${(showCalendar || dateRange.start) ? 'bg-white ring-1 ring-white/5 text-black' : 'bg-white/10 hover:bg-white/20 text-white/80'}`}
                 aria-label="Date"
               >
-                <img src="/icons/calendar-days.svg" alt="Date" className={`${(showCalendar || dateRange.start) ? '' : 'invert'} w-5 h-5`} />
+                <img src="https://idr01.zata.ai/devstoragev1/public/icons/calendar-days.svg" alt="Date" className={`${(showCalendar || dateRange.start) ? '' : 'invert'} w-5 h-5`} />
               </button>
 
 
@@ -1776,7 +1784,7 @@ const History = () => {
                               {entry.status === 'generating' ? (
                                 <div className="w-full h-full flex items-center justify-center bg-black/90">
                                   <div className="flex flex-col items-center gap-2">
-                                    <Image src="/styles/Logo.gif" alt="Generating" width={56} height={56} className="mx-auto" unoptimized />
+                                    <Image src="https://idr01.zata.ai/devstoragev1/public/styles/Logo.gif" alt="Generating" width={56} height={56} className="mx-auto" unoptimized />
                                     <div className="text-xs text-white/60">Generating...</div>
                                   </div>
                                 </div>
@@ -1874,7 +1882,7 @@ const History = () => {
                                   </div>
                                   <div className={`absolute bottom-2 right-2 transition-opacity ${playingVideos.has(`${entry.id}-${mediaIndex}`) ? 'opacity-0' : 'opacity-100 group-hover:opacity-0'}`}>
                                     <div className="bg-white/5 backdrop-blur-xl rounded-lg px-1 py-1">
-                                      <img src="/icons/videoGenerationiconwhite.svg" alt="Video" className="w-5 h-4" />
+                                      <img src="https://idr01.zata.ai/devstoragev1/public/icons/videoGenerationiconwhite.svg" alt="Video" className="w-5 h-4" />
                                     </div>
                                   </div>
                                   {playingVideos.has(`${entry.id}-${mediaIndex}`) && (
@@ -2062,7 +2070,7 @@ const History = () => {
               {hasMore && loading && (
                 <div className="flex items-center justify-center py-8 pb-24">
                   <div className="flex flex-col items-center gap-3">
-                    <Image src="/styles/Logo.gif" alt="Generating" width={68} height={68} className="mx-auto" />
+                    <Image src="https://idr01.zata.ai/devstoragev1/public/styles/Logo.gif" alt="Generating" width={68} height={68} className="mx-auto" />
                     <div className="text-sm md:text-lg text-white/60">Loading more generations...</div>
                   </div>
                 </div>

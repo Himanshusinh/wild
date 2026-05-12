@@ -66,7 +66,7 @@ export function openRazorpaySubscriptionCheckout(
     subscription_id: subscriptionId,
     name: "WildMind AI",
     description: `${planName} Plan`,
-    image: "/icons/icon-512x512.png",
+    image: "https://idr01.zata.ai/devstoragev1/public/core/logosquare.avif",
     handler: (response: RazorpaySubscriptionHandlerPayload) => {
       void Promise.resolve(
         onSuccess({

@@ -6,6 +6,7 @@ import { X, Camera, Zap, Download, Trash2, Plus } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import axiosInstance from '@/lib/axiosInstance';
 import UploadModal from '@/app/view/Generation/ImageGeneration/TextToImage/compo/UploadModal';
+import WorkflowUploadArea from '@/app/view/workflows/components/WorkflowUploadArea';
 
 import { useCredits } from '@/hooks/useCredits';
 import { downloadFileWithNaming } from '@/utils/downloadUtils';
@@ -60,8 +61,8 @@ export default function Storyboard() {
     description: "Generate a storyboard for your film or video project. Use the example to see a student life journey.",
     model: "Seadream4/ Nano Banana/ Qwen",
     cost: 90,
-    sampleBefore: "/workflow-samples/storyboard-student-journey.jpg",
-    sampleAfter: "/workflow-samples/storyboard-student-journey.jpg"
+    sampleBefore: "https://idr01.zata.ai/devstoragev1/public/workflow-samples/storyboard-student-journey.avif",
+    sampleAfter: "https://idr01.zata.ai/devstoragev1/public/workflow-samples/storyboard-student-journey.avif"
   };
 
   const CREDIT_COST = 90;
@@ -201,18 +202,16 @@ export default function Storyboard() {
 
                   {characterImages.length === 0 ? (
                     // Empty State - Big Upload Box
-                    <div
-                      className="border border-dashed border-white/15 rounded-xl bg-black/20 h-48 flex flex-col items-center justify-center gap-4 cursor-pointer hover:bg-[#60a5fa]/5 transition-colors relative overflow-hidden group"
-                      onClick={openUploadModal}
-                    >
-                      <div className="w-12 h-12 rounded-full bg-[#111] flex items-center justify-center text-slate-400">
-                        <Camera size={24} />
-                      </div>
-                      <div className="text-center">
-                        <span className="text-sm text-slate-300 block font-medium">Upload Characters</span>
-                        <span className="text-xs text-slate-500">JPG, PNG, WebP up to 25MB</span>
-                      </div>
-                    </div>
+                    <WorkflowUploadArea
+                      placeholderLabel="Upload Characters"
+                      placeholderSublabel="JPG, PNG, WebP up to 25MB"
+                      currentImage={null}
+                      changeLabel="Change"
+                      onImageSelect={(url) => handleAddImages([url])}
+                      openModal={openUploadModal}
+                      className="h-48"
+                      icon={<Camera size={24} />}
+                    />
                   ) : (
                     // List of Uploaded Characters
                     <div className="grid grid-cols-2 gap-3">
@@ -416,7 +415,7 @@ export default function Storyboard() {
 
                   {isGenerating && (
                     <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-10 transition-all duration-500">
-                      <img src="/styles/Logo.gif" alt="Loading" className="w-24 h-24 mb-4" />
+                      <img src="https://idr01.zata.ai/devstoragev1/public/styles/Logo.gif" alt="Loading" className="w-24 h-24 mb-4" />
                       <p className="text-white font-medium text-lg animate-pulse">Processing storyboard...</p>
                     </div>
                   )}

@@ -19,7 +19,7 @@ const ChikankariFullscreenWalkthrough: React.FC<ChikankariFullscreenWalkthroughP
       styleTitle={style?.title || "Chikankari"}
       styleName={style?.name || "India"}
       styleDesc={style?.desc || "Traditional Indian visual language."}
-      styleImage={style?.image || "/styles/Logo.gif"}
+      styleImage={style?.image || "https://idr01.zata.ai/devstoragev1/public/styles/Logo.gif"}
       styleTag={style?.tag || "Art"}
     />
   );

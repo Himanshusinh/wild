@@ -119,7 +119,7 @@ const extractUserPromptFromBackend = (text: string): string | null => {
       return l;
     })
     .filter(line => line.length > 0 && !line.includes("(none)"));
-    
+
   return lines.join("\n").trim() || null;
 };
 
@@ -1613,21 +1613,21 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
       {!isFsOpen && (
         <button
           aria-label="Close"
-        className="text-white/100 hover:text-white text-lg absolute md:top-8 top-0 md:right-10 right-0 z-[100]  hover:bg-black/70 rounded-full w-8 h-8 md:w-10 md:h-10 flex items-center justify-center transition-colors pointer-events-auto"
-        onClick={(e) => {
-          e.stopPropagation()
-          e.preventDefault()
-          console.log('[ImagePreviewModal] Close button clicked')
-          onClose()
-        }}
-        onMouseDown={(e) => {
-          e.stopPropagation()
-          e.preventDefault()
-        }}
-        onTouchStart={(e) => {
-          e.stopPropagation()
-        }}
-      >✕</button>
+          className="text-white/100 hover:text-white text-lg absolute md:top-8 top-0 md:right-10 right-0 z-[100]  hover:bg-black/70 rounded-full w-8 h-8 md:w-10 md:h-10 flex items-center justify-center transition-colors pointer-events-auto"
+          onClick={(e) => {
+            e.stopPropagation()
+            e.preventDefault()
+            console.log('[ImagePreviewModal] Close button clicked')
+            onClose()
+          }}
+          onMouseDown={(e) => {
+            e.stopPropagation()
+            e.preventDefault()
+          }}
+          onTouchStart={(e) => {
+            e.stopPropagation()
+          }}
+        >✕</button>
       )}
       <div
         className="relative  h-full   md:w-full md:max-w-6xl w-[90%] max-w-[90%] bg-transparent  md:border md:border-white/10 rounded-xl overflow-hidden shadow-3xl"
@@ -1642,7 +1642,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
           <button
             aria-label="Previous image"
             onClick={(e) => { e.stopPropagation(); goPrevImage(e); }}
-            className="fixed left-4 md:left-8 top-1/2 -translate-y-1/2 z-[75] w-12 h-12 md:w-16 md:h-16 rounded-full bg-black/50 hover:bg-black/80 text-white transition-all backdrop-blur-sm border border-white/20 hover:border-white/40 flex items-center justify-center pointer-events-auto"
+            className="fixed left-4 md:left-25 top-1/2 -translate-y-1/2 z-[75] w-12 h-12 md:w-16 md:h-16 rounded-full bg-black/50 hover:bg-black/80 text-white transition-all backdrop-blur-sm border border-white/20 hover:border-white/40 flex items-center justify-center pointer-events-auto"
             title="Previous image (←)"
           >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 md:w-8 md:h-8">
@@ -1752,7 +1752,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
                   title={isPublicFlag ? 'Public' : 'Private'}
                 >
                   <Image
-                    src={isPublicFlag ? "/icons/eye.svg" : "/icons/eye-disabled.svg"}
+                    src={isPublicFlag ? "https://idr01.zata.ai/devstoragev1/public/icons/eye.svg" : "https://idr01.zata.ai/devstoragev1/public/icons/eye-disabled.svg"}
                     alt={isPublicFlag ? "Public" : "Private"}
                     width={16}
                     height={16}
@@ -1775,45 +1775,45 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
 
             {/* Prompt (show only userPrompt if provided) */}
             {hasUserPrompt ? (
-            <div className="mb-4">
-              <div className="flex items-center justify-between text-white/60 text-xs uppercase tracking-wider mb-0">
-                <span>Prompt</span>
-                <button
-                  onClick={() => copyPrompt(cleanUserPrompt, `preview-${preview.entry.id}`)}
-                  className={`flex items-center gap-2 px-2 py-1.5 text-white/80 text-xs rounded-lg transition-colors ${copiedButtonId === `preview-${preview.entry.id}`
-                    ? 'bg-green-500/20 text-green-400'
-                    : 'bg-white/10 hover:bg-white/20'
-                    }`}
-                >
-                  {copiedButtonId === `preview-${preview.entry.id}` ? (
-                    <>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M20 6L9 17l-5-5" />
-                      </svg>
-                      Copied!
-                    </>
-                  ) : (
-                    <>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                      </svg>
-                    </>
-                  )}
-                </button>
+              <div className="mb-4">
+                <div className="flex items-center justify-between text-white/60 text-xs uppercase tracking-wider mb-0">
+                  <span>Prompt</span>
+                  <button
+                    onClick={() => copyPrompt(cleanUserPrompt, `preview-${preview.entry.id}`)}
+                    className={`flex items-center gap-2 px-2 py-1.5 text-white/80 text-xs rounded-lg transition-colors ${copiedButtonId === `preview-${preview.entry.id}`
+                      ? 'bg-green-500/20 text-green-400'
+                      : 'bg-white/10 hover:bg-white/20'
+                      }`}
+                  >
+                    {copiedButtonId === `preview-${preview.entry.id}` ? (
+                      <>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M20 6L9 17l-5-5" />
+                        </svg>
+                        Copied!
+                      </>
+                    ) : (
+                      <>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
+                      </>
+                    )}
+                  </button>
+                </div>
+                <div className={`text-white/90 text-xs leading-relaxed whitespace-pre-wrap break-words ${!isPromptExpanded && isLongPrompt ? 'line-clamp-4' : ''}`}>
+                  {cleanUserPrompt}
+                </div>
+                {isLongPrompt && (
+                  <button
+                    onClick={() => setIsPromptExpanded(!isPromptExpanded)}
+                    className="mt-2 text-xs text-white/70 hover:text-white underline"
+                  >
+                    Read {isPromptExpanded ? 'less' : 'more'}
+                  </button>
+                )}
               </div>
-              <div className={`text-white/90 text-xs leading-relaxed whitespace-pre-wrap break-words ${!isPromptExpanded && isLongPrompt ? 'line-clamp-4' : ''}`}>
-                {cleanUserPrompt}
-              </div>
-              {isLongPrompt && (
-                <button
-                  onClick={() => setIsPromptExpanded(!isPromptExpanded)}
-                  className="mt-2 text-xs text-white/70 hover:text-white underline"
-                >
-                  Read {isPromptExpanded ? 'less' : 'more'}
-                </button>
-              )}
-            </div>
             ) : null}
 
 

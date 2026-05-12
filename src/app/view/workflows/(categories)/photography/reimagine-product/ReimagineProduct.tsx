@@ -11,6 +11,7 @@ import { useCredits } from '@/hooks/useCredits';
 import { downloadFileWithNaming } from '@/utils/downloadUtils';
 import { WORKFLOWS_DATA } from '@/app/view/workflows/components/data';
 import { getSignInUrl } from '@/routes/routes';
+import WorkflowUploadArea from '@/app/view/workflows/components/WorkflowUploadArea';
 
 const STYLES = [
   'Minimalist', 'Nature', 'Luxury', 'Industrial',
@@ -43,8 +44,8 @@ export default function ReimagineProduct() {
     description: "Place your product in stunning new environments and artistic styles while keeping the product authentic.",
     model: "Seadream4/ Nano Banana/ Qwen",
     cost: 80,
-    sampleBefore: "/workflow-samples/reimagine-product-before-v2.png",
-    sampleAfter: "/workflow-samples/reimagine-product-after-v2.png",
+    sampleBefore: "https://idr01.zata.ai/devstoragev1/public/workflow-samples/reimagine-product-before-v2.avif",
+    sampleAfter: "https://idr01.zata.ai/devstoragev1/public/workflow-samples/reimagine-product-after-v2.avif",
   }) as any;
 
   const CREDIT_COST = 90;
@@ -154,25 +155,19 @@ export default function ReimagineProduct() {
                   {/* 1. Source Photo */}
                   <div className="flex flex-col gap-2">
                     <label className="text-[10px] font-bold uppercase text-slate-500 ml-1">1. Product Snapshot</label>
-                    <div className="border border-dashed border-white/15 rounded-xl bg-black/20 h-28 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-[#60a5fa]/5 transition-colors relative overflow-hidden group"
-                      onClick={() => setIsUploadModalOpen(true)}>
-                      {productImage ? (
-                        <>
-                          <img src={productImage} className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:opacity-30 transition-opacity" alt="Product" />
-                          <div className="relative z-10">
-                            <span className="text-xs text-white font-medium bg-black/50 px-3 py-1.5 rounded-full backdrop-blur text-center">Change Product Image</span>
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <div className="w-10 h-10 rounded-full bg-[#111] flex items-center justify-center text-slate-400"><Camera size={20} /></div>
-                          <div className="text-center">
-                            <span className="text-sm text-slate-300 block font-medium">Upload Product Image</span>
-                            <span className="text-[10px] text-slate-500">Center-faced snapshot best</span>
-                          </div>
-                        </>
-                      )}
-                    </div>
+                  <WorkflowUploadArea
+                    placeholderLabel="Upload Product Image"
+                    placeholderSublabel="Center-faced snapshot best"
+                    currentImage={productImage}
+                    changeLabel="Change Product Image"
+                    onImageSelect={(url) => {
+                      setProductImage(url);
+                      setGeneratedImage(null);
+                    }}
+                    openModal={() => setIsUploadModalOpen(true)}
+                    className="h-28"
+                    icon={<Camera size={20} />}
+                  />
                   </div>
 
                   <div className="mb-8">

@@ -25,6 +25,12 @@ async function walk(dir) {
         const fullPath = path.join(dir, file);
         const stat = fs.statSync(fullPath);
         
+        // Skip homepage/creativestyle to avoid processing and crashes
+        const relCheck = path.relative(PUBLIC_DIR, fullPath).replace(/\\/g, '/');
+        if (relCheck.toLowerCase().startsWith('homepage/creativestyle')) {
+            continue;
+        }
+
         if (stat.isDirectory()) {
             // Slugify directory names too if they have spaces or special chars
             const slugDirName = slugify(file);
@@ -32,8 +38,14 @@ async function walk(dir) {
             if (slugDirName !== file) {
                 const targetDirPath = path.join(dir, slugDirName);
                 console.log(`Renaming directory: ${file} -> ${slugDirName}`);
-                fs.renameSync(fullPath, targetDirPath);
-                nextPath = targetDirPath;
+                try {
+                    fs.renameSync(fullPath, targetDirPath);
+                    nextPath = targetDirPath;
+                } catch (renameErr) {
+                    console.error(`Failed to rename directory ${fullPath}:`, renameErr.message);
+                    // continue with old path
+                    nextPath = fullPath;
+                }
             }
             await walk(nextPath);
             continue;

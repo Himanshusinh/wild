@@ -8,7 +8,7 @@ export type IndianStyleLike = {
   image: string;
 };
 
-const PLACEHOLDER_IMAGE = "/styles/Logo.gif";
+const PLACEHOLDER_IMAGE = "https://idr01.zata.ai/devstoragev1/public/styles/Logo.gif";
 
 const EXTRA_INDIAN_STYLES: IndianStyleLike[] = [
   { id: "banarasibrocade", name: "Uttar Pradesh", title: "BANARASI BROCADE", desc: "Detailed woven brocade aesthetics with rich ornamental texture and luminous textile depth.", image: PLACEHOLDER_IMAGE },

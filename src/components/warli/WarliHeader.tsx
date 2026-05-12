@@ -69,8 +69,7 @@ export function WarliHeader({
                 type="button"
                 disabled={isLocked}
                 onClick={() => onStyleChange(f)}
-                onMouseEnter={() => onHoverStyleChange?.(f)}
-                onMouseLeave={() => onHoverStyleChange?.(null)}
+
                 className={`group flex items-center gap-2.5 rounded-[10px] px-3 py-1.5 transition-all duration-300 ${isActive
                     ? "bg-[#1c1c26] shadow-[0_4px_12px_-2px_rgba(0,0,0,0.4)] ring-1 ring-white/[0.08]"
                     : "hover:bg-white/[0.04]"

@@ -20,6 +20,7 @@ import ImageComparisonSlider from "@/app/view/workflows/components/ImageComparis
 import { downloadFileWithNaming } from "@/utils/downloadUtils";
 import { useCredits } from "@/hooks/useCredits";
 import { getSignInUrl } from "@/routes/routes";
+import WorkflowUploadArea from "@/app/view/workflows/components/WorkflowUploadArea";
 
 export default function PhotoToLineDrawing() {
   const router = useRouter();
@@ -207,39 +208,19 @@ export default function PhotoToLineDrawing() {
                 {/* <div className="text-xs text-slate-500 mb-6">Model: {workflowData.model}</div> */}
 
                 <div className="mb-8">
-                  <div
-                    className="border border-dashed border-white/15 rounded-xl bg-black/20 h-48 flex flex-col items-center justify-center gap-4 cursor-pointer hover:bg-[#60a5fa]/5 transition-colors relative overflow-hidden group"
-                    onClick={openUploadModal}
-                  >
-                    {originalImage ? (
-                      <>
-                        <img
-                          src={originalImage}
-                          className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:opacity-30 transition-opacity"
-                          alt="Original"
-                        />
-                        <div className="relative z-10 flex flex-col items-center gap-2">
-                          <span className="text-white font-medium bg-black/50 px-3 py-1 rounded-full backdrop-blur">
-                            Change Image
-                          </span>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="w-12 h-12 rounded-full bg-[#111] flex items-center justify-center text-slate-400">
-                          <Camera size={24} />
-                        </div>
-                        <div className="text-center">
-                          <span className="text-sm text-slate-300 block font-medium">
-                            Upload Image
-                          </span>
-                          <span className="text-xs text-slate-500">
-                            JPG, PNG, WebP up to 25MB
-                          </span>
-                        </div>
-                      </>
-                    )}
-                  </div>
+                  <WorkflowUploadArea
+                    placeholderLabel="Upload Image"
+                    placeholderSublabel="JPG, PNG, WebP up to 25MB"
+                    currentImage={originalImage}
+                    changeLabel="Change Image"
+                    onImageSelect={(url) => {
+                      setOriginalImage(url);
+                      setGeneratedImage(null);
+                    }}
+                    openModal={() => setIsUploadModalOpen(true)}
+                    className="h-48"
+                    icon={<Camera size={24} />}
+                  />
                 </div>
 
                 <div className="mb-4">
@@ -339,7 +320,7 @@ export default function PhotoToLineDrawing() {
                   {isGenerating && (
                     <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-10 transition-all duration-500">
                       <img
-                        src="/styles/Logo.gif"
+                        src="https://idr01.zata.ai/devstoragev1/public/styles/Logo.gif"
                         alt="Loading"
                         className="w-24 h-24 mb-4"
                       />
@@ -352,8 +333,8 @@ export default function PhotoToLineDrawing() {
               ) : (
                 <div className="relative w-full h-full flex items-center justify-center p-8">
                   <ImageComparisonSlider
-                    beforeImage="/workflow-samples/photo-to-line-before-v2.jpg"
-                    afterImage="/workflow-samples/photo-to-line-after-v2.jpg"
+                    beforeImage="https://idr01.zata.ai/devstoragev1/public/workflow-samples/photo-to-line-before-v2.avif"
+                    afterImage="https://idr01.zata.ai/devstoragev1/public/workflow-samples/photo-to-line-after-v2.avif"
                     beforeLabel="Before"
                     afterLabel="After"
                     imageFit="object-cover"
