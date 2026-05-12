@@ -119,107 +119,15 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
     }
     
     try {
-      // Try to detect video format from storagePath, originalUrl, or by checking Content-Type
-      let videoExtension = 'mp4'; // Default to mp4
-      
-      // Priority 1: Check video object's storagePath or originalUrl for extension
       const videoObj = preview.video as any;
       const storagePath = videoObj?.storagePath || '';
       const originalUrl = videoObj?.originalUrl || videoObj?.url || '';
-      
-      // Extract extension from storagePath (e.g., "users/vivek/video/video-123.mp4")
-      if (storagePath) {
-        const pathMatch = storagePath.match(/\.([a-zA-Z0-9]+)$/);
-        if (pathMatch) {
-          const ext = pathMatch[1].toLowerCase();
-          if (['mp4', 'webm', 'mov', 'avi', 'mkv'].includes(ext)) {
-            videoExtension = ext;
-            console.log('[VideoPreviewModal] Detected extension from storagePath:', videoExtension);
-          }
-        }
-      }
-      
-      // Priority 2: Extract extension from originalUrl if storagePath didn't work
-      if (videoExtension === 'mp4' && originalUrl) {
-        try {
-          const urlObj = new URL(originalUrl);
-          const pathMatch = urlObj.pathname.match(/\.([a-zA-Z0-9]+)$/);
-          if (pathMatch) {
-            const ext = pathMatch[1].toLowerCase();
-            if (['mp4', 'webm', 'mov', 'avi', 'mkv'].includes(ext)) {
-              videoExtension = ext;
-              console.log('[VideoPreviewModal] Detected extension from originalUrl:', videoExtension);
-            }
-          }
-        } catch {
-          // If originalUrl is not a valid URL, try pattern matching
-          if (originalUrl.includes('.webm')) videoExtension = 'webm';
-          else if (originalUrl.includes('.mov')) videoExtension = 'mov';
-          else if (originalUrl.includes('.avi')) videoExtension = 'avi';
-          else if (originalUrl.includes('.mp4')) videoExtension = 'mp4';
-        }
-      }
-      
-      // Priority 3: Check Content-Type header from the video URL
-      if (videoExtension === 'mp4') {
-        try {
-          const response = await fetch(url, { method: 'HEAD', credentials: 'include' });
-          const contentType = response.headers.get('content-type');
-          console.log('[VideoPreviewModal] Content-Type:', contentType);
-          
-          if (contentType) {
-            if (contentType.includes('video/mp4')) videoExtension = 'mp4';
-            else if (contentType.includes('video/webm')) videoExtension = 'webm';
-            else if (contentType.includes('video/quicktime')) videoExtension = 'mov';
-            else if (contentType.includes('video/x-msvideo')) videoExtension = 'avi';
-            else if (contentType.includes('video/x-matroska')) videoExtension = 'mkv';
-          }
-        } catch (e) {
-          console.warn('[VideoPreviewModal] Could not fetch Content-Type header:', e);
-        }
-      }
-      
-      // Priority 4: Check video element's source as fallback
-      if (videoExtension === 'mp4') {
-        const videoElement = document.querySelector('video');
-        if (videoElement && videoElement.src) {
-          if (videoElement.src.includes('webm')) videoExtension = 'webm';
-          else if (videoElement.src.includes('mov')) videoExtension = 'mov';
-          else if (videoElement.src.includes('avi')) videoExtension = 'avi';
-          else if (videoElement.src.includes('mp4')) videoExtension = 'mp4';
-        }
-      }
-      
-      // Priority 5: Check URL patterns as last resort
-      if (videoExtension === 'mp4' && url) {
-        if (url.includes('webm')) videoExtension = 'webm';
-        else if (url.includes('mov')) videoExtension = 'mov';
-        else if (url.includes('avi')) videoExtension = 'avi';
-        else if (url.includes('mp4')) videoExtension = 'mp4';
-      }
-      
-      console.log('[VideoPreviewModal] Final detected video extension:', videoExtension);
-      
-      // Use the resource proxy URL for download (original file, not media proxy)
       const videoPath = storagePath || originalUrl || url;
       const downloadUrl = toResourceProxy(videoPath) || url;
       
-      // Get username from user state or fallback to 'user'
-      const username = user?.username || user?.displayName || null;
-      
-      // Pass the extension explicitly to downloadFileWithNaming by appending it to URL
-      // This ensures downloadFileWithNaming uses the correct extension
-      let urlWithExtension = downloadUrl;
-      if (!downloadUrl.includes('.')) {
-        urlWithExtension = `${downloadUrl}.${videoExtension}`;
-      }
-      const absoluteUrl = urlWithExtension.startsWith('http')
-        ? urlWithExtension
-        : `${window.location.origin}${urlWithExtension}`;
-      
-      await downloadFileWithNaming(absoluteUrl, username, 'video');
+      window.open(downloadUrl, '_blank');
     } catch (e) {
-      console.error('Download failed:', e);
+      console.error('Open in new page failed:', e);
     }
   };
 

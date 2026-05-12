@@ -26,24 +26,28 @@ const generateTypeIcon = (type: GenerationMode, className = "h-3.5 w-3.5") => {
 
 const IMAGE_SUGGESTED_PROMPTS = [
   {
-    label: "Cinematic portrait",
+    label: "Cinematic Scenes",
     value: "Cinematic portrait, dramatic lighting",
   },
   {
-    label: "Neon cityscape",
-    value: "Neon cityscape at midnight, rain reflections",
+    label: "Characters",
+    value: "Characters in motion, funny situations",
   },
   {
-    label: "Abstract art",
-    value: "Abstract neon geometric art",
+    label: "Posters",
+    value: "Posters design for a movie, event, or brand",
   },
   {
-    label: "Vintage film",
-    value: "Vintage film photo, 35mm grain, warm tones",
+    label: "Product Visuals",
+    value: "Product photography showing a product in lifestyle or studio settings",
   },
   {
-    label: "Dreamy landscape",
-    value: "Dreamy misty landscape at sunrise",
+    label: "Social Media",
+    value: "Social media posts and stories for Instagram, Facebook, and Twitter",
+  },
+  {
+    label: "Book Covers",
+    value: "Book cover designs for fiction, non-fiction, and magazine covers",
   },
 ];
 
@@ -204,18 +208,18 @@ export default function MasonrySection({ mode = "image", onModeChange }: Masonry
         </div> */}
 
         <h1
-          className="mb-5 text-[42px] font-extrabold uppercase leading-[0.9] tracking-[0.02em] text-[#EAF1FF] [text-shadow:0_8px_20px_rgba(0,0,0,0.35)] sm:text-[78px] md:text-[80px] lg:text-[80px] xl:text-[80px] 2xl:text-[120px]"
+          className="mb-5 text-[42px] font-extrabold uppercase leading-[0.9] tracking-[0.02em] text-[#EAF1FF] [text-shadow:0_8px_20px_rgba(0,0,0,0.35)] sm:text-[78px] md:text-[80px] lg:text-[79px]"
           style={{
             fontFamily: "var(--font-bebas-neue), 'Bebas Neue', sans-serif",
           }}
         >
-          Your imagination our creation
+          imagination + control + professional visual result 
         </h1>
 
         <p className="mb-8 max-w-[560px] text-[13px] leading-[1.55] text-white/90 sm:text-[16px] sm:leading-[1.7]">
-          Turn your imagination into stunning visuals.
+          Create images, videos, and visual concepts with guided prompts,
           <br />
-          One prompt away from something extraordinary.
+          styles, and AI-powered creative workflows.
         </p>
 
         <div className="mb-2 flex w-full max-w-[920px] items-center gap-0.5 rounded-full border border-[#E5E4E0] bg-white p-1 pl-1 pr-1 shadow-[0_1px_4px_rgba(0,0,0,0.08)] sm:gap-1 sm:mb-3 sm:p-1.5 sm:pl-3">
@@ -243,8 +247,8 @@ export default function MasonrySection({ mode = "image", onModeChange }: Masonry
                 handleGenerate();
               }
             }}
-            placeholder="Describe what you want to create..."
-            className="min-w-0 flex-1 bg-transparent px-1 py-1.5 text-[13px] text-[#111] outline-none placeholder:text-[#9da2ae] selection:bg-transparent sm:py-2 sm:text-[15px]"
+            placeholder="Describe your idea, scene, style, or visual goal. "
+            className="min-w-0 flex-1 bg-transparent px-1 py-1.5 text-[13px] text-[#111] outline-none placeholder:text-black/90 selection:bg-transparent sm:py-2 sm:text-[15px]"
             style={{
               backgroundColor: "transparent",
               WebkitBoxShadow: "0 0 0 1000px transparent inset",

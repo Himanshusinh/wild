@@ -340,6 +340,62 @@ export default function BillingPage() {
       String(subscription?.status || "").toUpperCase(),
     );
 
+  /** Razorpay can stay INCOMPLETE while credits/planCode already reflect the paid tier — avoid scaring users with a raw gateway status. */
+  const billingStatusPresentation = useMemo(() => {
+    const raw = String(subscription?.status || "").trim();
+    const upper = raw.toUpperCase();
+    const paidPlan = !!(currentPlanCode && currentPlanCode !== "FREE");
+    const incompleteLike = new Set([
+      "INCOMPLETE",
+      "CREATED",
+      "PENDING",
+      "AUTHENTICATED",
+    ]);
+
+    if (upper === "ACTIVE" || upper === "TRIALING") {
+      return {
+        pillClass:
+          "border-emerald-500/35 bg-emerald-500/10 text-emerald-200",
+        label: upper === "TRIALING" ? "TRIALING" : "ACTIVE",
+        hint: null as string | null,
+      };
+    }
+    if (paidPlan && incompleteLike.has(upper)) {
+      return {
+        pillClass: "border-amber-500/35 bg-amber-500/10 text-amber-100",
+        label: "SETUP IN PROGRESS",
+        hint: "Your plan tier and credits are active; the subscription record is still finalizing with the payment provider. If this stays for days, open billing support or retry checkout.",
+      };
+    }
+    if (upper === "PAST_DUE" || upper === "HALTED") {
+      return {
+        pillClass: "border-red-500/35 bg-red-500/10 text-red-100",
+        label: upper,
+        hint: null as string | null,
+      };
+    }
+    if (!raw) {
+      if (paidPlan) {
+        return {
+          pillClass:
+            "border-emerald-500/35 bg-emerald-500/10 text-emerald-200",
+          label: "ACTIVE",
+          hint: null as string | null,
+        };
+      }
+      return {
+        pillClass: "border-white/[0.12] bg-white/[0.04] text-zinc-300",
+        label: "FREE",
+        hint: null as string | null,
+      };
+    }
+    return {
+      pillClass: "border-white/[0.12] bg-white/[0.04] text-zinc-300",
+      label: upper,
+      hint: null as string | null,
+    };
+  }, [subscription?.status, currentPlanCode]);
+
   useEffect(() => {
     const currentCode = currentPlanCode;
     const currentSku = findCatalogSkuByCode(catalog, currentCode);
@@ -1046,17 +1102,17 @@ export default function BillingPage() {
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 text-xs">
+          <div className="flex flex-col gap-2 text-xs sm:flex-row sm:flex-wrap sm:items-center">
             <span
-              className={`rounded-full border px-3 py-1.5 font-medium ${
-                String(subscription?.status || "").toUpperCase() === "ACTIVE"
-                  ? "border-emerald-500/35 bg-emerald-500/10 text-emerald-200"
-                  : "border-white/[0.12] bg-white/[0.04] text-zinc-300"
-              }`}
+              className={`rounded-full border px-3 py-1.5 font-medium ${billingStatusPresentation.pillClass}`}
             >
-              Current plan status:{" "}
-              {String(subscription?.status || "UNKNOWN").toUpperCase()}
+              Current plan status: {billingStatusPresentation.label}
             </span>
+            {billingStatusPresentation.hint ? (
+              <span className="max-w-2xl text-[11px] leading-snug text-zinc-500 sm:ml-1">
+                {billingStatusPresentation.hint}
+              </span>
+            ) : null}
             {subscription?.nextBillingDate ? (
               <span className="rounded-full border border-white/[0.12] bg-white/[0.04] px-3 py-1.5 font-medium text-zinc-300">
                 {nextBillingLabel}:{" "}
@@ -1109,7 +1165,9 @@ export default function BillingPage() {
               subscription={{
                 id: subscription?.id || "",
                 planCode: currentPlanCode || subscription?.planCode || "FREE",
-                status: subscription?.status || (currentPlanCode || "FREE"),
+                status:
+                  subscription?.status ??
+                  (currentPlanCode !== "FREE" ? "ACTIVE" : "FREE"),
                 nextBillingDate: subscription?.nextBillingDate,
               }}
               credits={{

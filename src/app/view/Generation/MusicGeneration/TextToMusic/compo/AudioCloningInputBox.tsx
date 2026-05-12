@@ -302,11 +302,7 @@ const AudioCloningInputBox = ({ showHistoryOnly = false, selectedModel }: { show
               })}
             </div>
           </div>
-        ) : (
-          <div className="flex items-center justify-center py-6">
-            <div className="text-white/60 text-sm">No input audio uploaded yet</div>
-          </div>
-        )}
+        ) : null}
         <MusicHistory
           generationType={['voicecloning', 'voice-cloning']}
           allowedTypes={['voicecloning', 'voice-cloning']}
@@ -362,24 +358,24 @@ const AudioCloningInputBox = ({ showHistoryOnly = false, selectedModel }: { show
         </div>
       )}
 
-      <div className="w-full -mt-6 bg-white/5 backdrop-blur-xl  rounded-2xl ">
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-4 space-y-4">
+      <div className="w-full space-y-4 p-6 bg-[#0E0E12] rounded-[12px] shadow-2xl">
+        <div className="space-y-4">
           <div>
-            <label className="block text-white/80 text-sm mb-1">
-              Audio Name <span className="text-red-400">*</span>
+            <label className="block text-white/30 text-[10px] font-satoshi font-bold uppercase tracking-widest mb-1.5 ml-1">
+              Audio Name <span className="text-red-400/50">*</span>
             </label>
             <input
               value={audioFileName}
               onChange={(e) => setAudioFileName(e.target.value)}
               placeholder="Enter audio file name..."
-              className="w-full bg-black/40 ring-1 ring-white/10 focus:ring-white/30 outline-none text-white placeholder-white/50 px-3 py-2 rounded-lg text-sm"
+              className="w-full bg-[#16161C] border border-white/10 rounded-[10px] outline-none text-[#F0EFF8] placeholder-[#3E3D52] px-4 py-2.5 text-[13px] font-satoshi transition-all focus:border-[#2F6BFF]/40"
               autoComplete="off"
             />
           </div>
 
           <div>
-            <label className="block text-white/80 text-sm mb-1">
-              Upload Audio File <span className="text-red-400">*</span>
+            <label className="block text-white/30 text-[10px] font-satoshi font-bold uppercase tracking-widest mb-1.5 ml-1">
+              Upload Audio File <span className="text-red-400/50">*</span>
             </label>
             <div className="flex flex-col gap-2">
               <input
@@ -392,7 +388,7 @@ const AudioCloningInputBox = ({ showHistoryOnly = false, selectedModel }: { show
               />
               <label
                 htmlFor="voice-clone-file-input"
-                className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm font-medium cursor-pointer transition"
+                className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-[10px] bg-white/5 border border-white/10 hover:bg-white/10 text-white/80 text-[12px] font-medium cursor-pointer transition-all"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
@@ -402,21 +398,21 @@ const AudioCloningInputBox = ({ showHistoryOnly = false, selectedModel }: { show
                 Choose Audio File
               </label>
               {selectedFile && (
-                <div className="text-xs text-white/70 truncate">{selectedFile.name}</div>
+                <div className="text-[11px] text-[#2F6BFF] font-medium ml-1 mt-1 font-satoshi italic">Selected: {selectedFile.name}</div>
               )}
-              <p className="text-xs text-white/50">Supports WAV/MP3 files up to 15MB.</p>
+              <p className="text-[10px] text-white/30 font-satoshi uppercase tracking-widest mt-1 ml-1">Supports WAV/MP3 files up to 15MB</p>
             </div>
           </div>
 
           <button
             onClick={handleCloneAudio}
             disabled={isCloning || !audioFileName.trim() || !selectedFile}
-            className={`w-full py-2 rounded-lg text-sm font-semibold transition ${isCloning || !audioFileName.trim() || !selectedFile
-              ? 'bg-white/20 text-white/60 cursor-not-allowed'
-              : 'bg-white text-black hover:bg-white/90'
+            className={`w-full py-3 mt-2 rounded-[12px] text-[13px] font-satoshi font-black tracking-wide transition-all active:scale-[0.98] shadow-lg ${isCloning || !audioFileName.trim() || !selectedFile
+              ? 'bg-white/10 text-white/30 cursor-not-allowed border border-white/5'
+              : 'bg-[#2F6BFF] text-white hover:opacity-90 shadow-[0_6px_20px_rgba(47,107,255,0.3)]'
               }`}
           >
-            {isCloning ? 'Cloning...' : 'Clone Audio'}
+            {isCloning ? 'Cloning...' : 'CLONE AUDIO'}
           </button>
         </div>
       </div>

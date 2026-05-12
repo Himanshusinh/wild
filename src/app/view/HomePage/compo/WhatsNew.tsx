@@ -4,6 +4,15 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Bot, Sparkles, Wand2 } from "lucide-react";
 
+/** Detect mp4/webm/mov from URL; ignores query/hash so cache-busters (?v=2) still use `<video>`. */
+function isRasterVideoUrl(src: string): boolean {
+  try {
+    return /\.(mp4|webm|mov)$/i.test(new URL(src).pathname);
+  } catch {
+    return /\.(mp4|webm|mov)$/i.test(src);
+  }
+}
+
 type NewItem = {
   id: string;
   eyebrow: string;
@@ -49,8 +58,8 @@ const NEW_ITEMS: NewItem[] = [
     Icon: Wand2,
     media: {
       kind: "video",
-      src: "https://idr01.zata.ai/devstoragev1/public/HomePage/whatsnew/veo-clouds.mp4",
-      alt: "Cinematic cloud motion video for Veo 3.1 Lite",
+      src: "https://idr01.zata.ai/devstoragev1/public/homepage/whatsnew/veo-3.1-lite.mp4",
+      alt: "Cinematic motion video for Veo 3.1 Lite",
       position: "center",
     },
   },
@@ -65,7 +74,7 @@ const NEW_ITEMS: NewItem[] = [
     Icon: Bot,
     media: {
       kind: "video",
-      src: "https://idr01.zata.ai/devstoragev1/public/HomePage/whatsnew/kling-run.mp4",
+      src: "https://idr01.zata.ai/devstoragev1/public/homepage/whatsnew/kling-run.mp4",
       alt: "Dynamic motion video for Kling 3.0 Pro",
       position: "center",
     },
@@ -81,7 +90,7 @@ const NEW_ITEMS: NewItem[] = [
     Icon: Bot,
     media: {
       kind: "video",
-      src: "https://idr01.zata.ai/devstoragev1/public/HomePage/whatsnew/veo-clouds.mp4",
+      src: "https://idr01.zata.ai/devstoragev1/public/homepage/whatsnew/pixverse.mp4?v=2",
       alt: "Atmospheric motion preview for PixVerse V6",
       position: "50% 35%",
     },
@@ -198,15 +207,6 @@ export default function WhatsNew() {
           </h2>
         </div>
 
-        <Link
-          href="/text-to-image"
-          className="hidden items-center gap-1 rounded-full border border-white/10 px-4 py-2 text-[11px] font-semibold text-white/55 transition-colors hover:border-[#3B82F6]/40 hover:text-[#3B82F6] md:inline-flex"
-        >
-          <span>Explore now</span>
-          <svg width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-            <path d="M2.5 6h7M6 2.5L9.5 6 6 9.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </Link>
       </div>
 
       <div className="relative">
@@ -216,8 +216,7 @@ export default function WhatsNew() {
         >
           {NEW_ITEMS.map((item) => {
             const isRealVideo =
-              item.media.kind === "video" &&
-              /\.(mp4|webm|mov)$/i.test(item.media.src);
+              item.media.kind === "video" && isRasterVideoUrl(item.media.src);
 
             return (
               <Link
