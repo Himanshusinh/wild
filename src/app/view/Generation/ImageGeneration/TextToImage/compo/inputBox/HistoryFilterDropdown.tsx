@@ -32,8 +32,6 @@ export default function HistoryFilterDropdown({
   onDateRangeChange,
   isFutureMobileCalendarDate,
 }: HistoryFilterDropdownProps) {
-  if (!isOpen) return null;
-
   const dispatch = useAppDispatch();
   const currentHistoryFilters = useAppSelector((s: any) => s?.history?.filters || {});
 
@@ -42,6 +40,10 @@ export default function HistoryFilterDropdown({
   const startBtnRef = React.useRef<HTMLButtonElement | null>(null);
   const endBtnRef = React.useRef<HTMLButtonElement | null>(null);
   const sideBtnRef = React.useRef<HTMLButtonElement | null>(null);
+  const toolBoxRef = React.useRef<HTMLDivElement | null>(null);
+  const styleBoxRef = React.useRef<HTMLDivElement | null>(null);
+  const modelBoxRef = React.useRef<HTMLDivElement | null>(null);
+  const aspectBoxRef = React.useRef<HTMLDivElement | null>(null);
   const [isCalendarOpen, setIsCalendarOpen] = React.useState(false);
   const [calendarAnchor, setCalendarAnchor] = React.useState<CalendarAnchor>("side");
   const [rangePicking, setRangePicking] = React.useState<"start" | "end">("start");
@@ -58,16 +60,13 @@ export default function HistoryFilterDropdown({
   const [isModelOpen, setIsModelOpen] = React.useState(false);
   const [isAspectOpen, setIsAspectOpen] = React.useState(false);
 
-  const QUICK_TOOLS = ["Upscale", "Retouch", "Mockup"];
+  const QUICK_TOOLS = ["Upscale", "Remove BG", "Erase / Replace"];
   const ALL_TOOLS = [
     "Upscale",
-    "Retouch",
-    "Mockup",
     "Remove BG",
     "Erase / Replace",
     "Expand",
     "Vectorize",
-    "Chat to Edit",
   ];
   const QUICK_STYLES = ["Photo", "Anime", "3D"];
   const ALL_STYLES = ["Photo", "Anime", "3D", "Cinematic", "Illustration"];
@@ -84,7 +83,32 @@ export default function HistoryFilterDropdown({
     "Nano Banana Pro",
     "z-image-turbo",
     "GPT Image 1.5",
+    "Clarity Upscaler",
+    "Real-ESRGAN",
+    "Crystal Upscaler",
+    "Topaz Upscaler",
+    "SeedVR Upscaler",
+    "851 Labs Remove BG",
+    "Lucataco Remove BG",
+    "Bria GenFill",
+    "Bria Expand",
+    "Recraft Vectorize",
+    "Image2SVG",
   ];
+
+  const TOOL_MODELS_MAP: Record<string, string[]> = {
+    Upscale: [
+      "Clarity Upscaler",
+      "Real-ESRGAN",
+      "Crystal Upscaler",
+      "Topaz Upscaler",
+      "SeedVR Upscaler",
+    ],
+    "Remove BG": ["851 Labs Remove BG", "Lucataco Remove BG"],
+    "Erase / Replace": ["Bria GenFill", "Seedream 5 Lite"],
+    Expand: ["Bria Expand"],
+    Vectorize: ["Recraft Vectorize", "Image2SVG"],
+  };
 
   const runBackendRefreshWithAdvancedFilters = React.useCallback(
     async (next: {
@@ -93,12 +117,14 @@ export default function HistoryFilterDropdown({
       aspect?: string;
       model?: string | null;
     }) => {
+      const modelToUse = next.model || (next.tool && TOOL_MODELS_MAP[next.tool] ? TOOL_MODELS_MAP[next.tool] : null);
+
       const nextFilters: any = {
         ...(currentHistoryFilters || {}),
         mode: "image",
         sortOrder,
         ...(dateRange.start && dateRange.end ? { dateRange } : {}),
-        ...(next.model ? { model: next.model } : {}),
+        ...(modelToUse ? { model: modelToUse } : {}),
         ...(next.style ? { style: next.style } : {}),
         ...(next.aspect && next.aspect !== "Any" ? { frameSize: next.aspect } : {}),
       };
@@ -107,13 +133,11 @@ export default function HistoryFilterDropdown({
       const toolToGenerationType: Record<string, string> = {
         Upscale: "image-upscale",
         Vectorize: "image-to-svg",
-        "Chat to Edit": "image-edit",
         "Remove BG": "image-edit",
         "Erase / Replace": "image-edit",
         Expand: "image-edit",
-        Retouch: "image-edit",
-        Mockup: "mockup-generation",
       };
+      
       const mappedGenType = next.tool ? toolToGenerationType[next.tool] : undefined;
       if (mappedGenType) {
         nextFilters.generationType = mappedGenType;
@@ -121,9 +145,11 @@ export default function HistoryFilterDropdown({
         // If tool cleared, remove generationType only if it was one of our tool-mapped values.
         const existing = String(nextFilters.generationType || "");
         if (
-          ["image-upscale", "image-to-svg", "image-edit", "mockup-generation"].includes(
-            existing,
-          )
+          [
+            "image-upscale",
+            "image-to-svg",
+            "image-edit",
+          ].includes(existing)
         ) {
           delete nextFilters.generationType;
         }
@@ -187,6 +213,28 @@ export default function HistoryFilterDropdown({
     document.addEventListener("mousedown", onDocDown);
     return () => document.removeEventListener("mousedown", onDocDown);
   }, [isCalendarOpen]);
+
+  React.useEffect(() => {
+    if (!isToolOpen && !isStyleOpen && !isModelOpen && !isAspectOpen) return;
+    const onDocDown = (e: MouseEvent) => {
+      const target = e.target as Node;
+
+      if (isToolOpen && toolBoxRef.current && !toolBoxRef.current.contains(target)) {
+        setIsToolOpen(false);
+      }
+      if (isStyleOpen && styleBoxRef.current && !styleBoxRef.current.contains(target)) {
+        setIsStyleOpen(false);
+      }
+      if (isModelOpen && modelBoxRef.current && !modelBoxRef.current.contains(target)) {
+        setIsModelOpen(false);
+      }
+      if (isAspectOpen && aspectBoxRef.current && !aspectBoxRef.current.contains(target)) {
+        setIsAspectOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onDocDown);
+    return () => document.removeEventListener("mousedown", onDocDown);
+  }, [isToolOpen, isStyleOpen, isModelOpen, isAspectOpen]);
 
   const formatChipDate = (d: Date | null) => {
     if (!d) return "";
@@ -280,17 +328,17 @@ export default function HistoryFilterDropdown({
         </button>
       </div>
 
-      <div className="grid grid-cols-7 text-[11px] text-white/60 mb-1">
+      <div className="grid grid-cols-7 text-[9px] text-white/60 mb-1">
         {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((d) => (
-          <div key={d} className="text-center py-1">
+          <div key={d} className="text-center py-0.5">
             {d}
           </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-7 gap-1">
+      <div className="grid grid-cols-7 gap-0.5">
         {Array.from({ length: calendarFirstWeekday }).map((_, i) => (
-          <div key={`pad-${i}`} className="h-8" />
+          <div key={`pad-${i}`} className="h-6" />
         ))}
         {Array.from({ length: calendarDaysInMonth }).map((_, i) => {
           const day = i + 1;
@@ -317,7 +365,7 @@ export default function HistoryFilterDropdown({
             !!dateRange.start &&
             new Date(dateRange.start).toDateString() === thisDate.toDateString();
 
-          const baseCls = "h-8 rounded text-sm text-center transition";
+          const baseCls = "h-6 rounded text-[11px] text-center transition";
           const futureCls =
             "cursor-not-allowed bg-white/[0.03] text-white/15 opacity-40 ring-1 ring-white/[0.04]";
           const selectedCls = "bg-white text-black font-semibold";
@@ -343,7 +391,7 @@ export default function HistoryFilterDropdown({
       <div className="flex items-center justify-between mt-3">
         <button
           type="button"
-          className="text-white/80 text-sm px-2 py-1 rounded hover:bg-white/10"
+          className="text-white/80 text-[11px] px-2 py-1 rounded hover:bg-white/10"
           onClick={async () => {
             await onDateRangeChange({ start: null, end: null });
             setRangePicking("start");
@@ -353,7 +401,7 @@ export default function HistoryFilterDropdown({
         </button>
         <button
           type="button"
-          className="text-white/90 text-sm px-2 py-1 rounded hover:bg-white/10"
+          className="text-white/90 text-[11px] px-2 py-1 rounded hover:bg-white/10"
           onClick={async () => {
             const now = new Date();
             const start = new Date(
@@ -382,6 +430,8 @@ export default function HistoryFilterDropdown({
       </div>
     </div>
   );
+
+  if (!isOpen) return null;
 
   return (
     <div ref={wrapperRef} className="absolute top-full right-0 mt-1.5 z-[100]">
@@ -434,7 +484,13 @@ export default function HistoryFilterDropdown({
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => openCalendar("start", "start")}
+              onClick={() => {
+                if (isCalendarOpen && calendarAnchor === "start") {
+                  setIsCalendarOpen(false);
+                  return;
+                }
+                openCalendar("start", "start");
+              }}
               ref={startBtnRef}
               className="relative flex-1 w-full h-7 bg-white/[0.03] border border-white/5 rounded-lg px-2.5 pr-7 text-[10px] text-white/90 text-left outline-none hover:bg-white/[0.06] focus:border-white/10 transition-colors"
               aria-label="Start date"
@@ -447,7 +503,13 @@ export default function HistoryFilterDropdown({
             <ArrowRight size={10} className="text-white/20" />
             <button
               type="button"
-              onClick={() => openCalendar("end", "end")}
+              onClick={() => {
+                if (isCalendarOpen && calendarAnchor === "end") {
+                  setIsCalendarOpen(false);
+                  return;
+                }
+                openCalendar("end", "end");
+              }}
               ref={endBtnRef}
               className="relative flex-1 w-full h-7 bg-white/[0.03] border border-white/5 rounded-lg px-2.5 pr-7 text-[10px] text-white/90 text-left outline-none hover:bg-white/[0.06] focus:border-white/10 transition-colors"
               aria-label="End date"
@@ -462,7 +524,7 @@ export default function HistoryFilterDropdown({
           {/* Date-range calendar (opens below Date Range row) */}
           {isCalendarOpen && (calendarAnchor === "start" || calendarAnchor === "end") && (
             <div ref={calendarPanelRef}>
-              <CalendarPanel className="absolute left-0 top-full mt-2 w-[320px] max-w-[calc(100vw-32px)] select-none bg-[#0E0E11] border border-white/10 rounded-xl shadow-2xl p-3 z-[120]" />
+              <CalendarPanel className="absolute left-0 top-full mt-2 w-[210px] max-w-[calc(100vw-32px)] select-none bg-[#0E0E11] border border-white/10 rounded-xl shadow-2xl p-2 z-[120]" />
             </div>
           )}
         </div>
@@ -473,7 +535,7 @@ export default function HistoryFilterDropdown({
         <div className="space-y-1.5">
           <h3 className="text-[9px] font-bold text-white/30 tracking-wider uppercase">Tool</h3>
           <div className="flex flex-wrap gap-1">
-            <div className="relative w-full mb-1">
+            <div className="relative w-full mb-1" ref={toolBoxRef}>
               <Search size={10} className="absolute left-2 top-1/2 -translate-y-1/2 text-white/30" />
               <input
                 type="text"
@@ -483,6 +545,11 @@ export default function HistoryFilterDropdown({
                   setIsToolOpen(true);
                 }}
                 onFocus={() => setIsToolOpen(true)}
+                onMouseDown={(e) => {
+                  if (!isToolOpen) return;
+                  e.preventDefault();
+                  setIsToolOpen(false);
+                }}
                 placeholder="Tools..."
                 className="w-full h-6.5 bg-white/[0.03] border border-white/5 rounded-lg pl-6 pr-2 text-[10px] text-white outline-none focus:border-white/10 transition-colors"
               />
@@ -496,10 +563,24 @@ export default function HistoryFilterDropdown({
                       key={t}
                       type="button"
                       onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => {
+                      onClick={async () => {
                         setSelectedTool(t);
                         setToolQuery("");
                         setIsToolOpen(false);
+
+                        // If selected model is not supported by the new tool, clear it
+                        let nextModel = selectedModel;
+                        if (t && TOOL_MODELS_MAP[t] && selectedModel && !TOOL_MODELS_MAP[t].includes(selectedModel)) {
+                          nextModel = null;
+                          setSelectedModel(null);
+                        }
+
+                        await runBackendRefreshWithAdvancedFilters({
+                          tool: t,
+                          style: selectedStyle,
+                          aspect: selectedAspect,
+                          model: nextModel,
+                        });
                       }}
                       className="w-full text-left px-2 py-1.5 rounded-lg text-[10px] text-white/80 hover:bg-white/5"
                     >
@@ -517,11 +598,19 @@ export default function HistoryFilterDropdown({
                 onClick={async () => {
                   const nextTool = selectedTool === t ? null : t;
                   setSelectedTool(nextTool);
+
+                  // If selected model is not supported by the new tool, clear it
+                  let nextModel = selectedModel;
+                  if (nextTool && TOOL_MODELS_MAP[nextTool] && selectedModel && !TOOL_MODELS_MAP[nextTool].includes(selectedModel)) {
+                    nextModel = null;
+                    setSelectedModel(null);
+                  }
+
                   await runBackendRefreshWithAdvancedFilters({
                     tool: nextTool,
                     style: selectedStyle,
                     aspect: selectedAspect,
-                    model: selectedModel,
+                    model: nextModel,
                   });
                 }}
                 className={`h-6 px-1.5 rounded-lg text-[9px] transition-all ${
@@ -540,7 +629,7 @@ export default function HistoryFilterDropdown({
         <div className="space-y-1.5">
           <h3 className="text-[9px] font-bold text-white/30 tracking-wider uppercase">Style</h3>
           <div className="flex flex-wrap gap-1">
-            <div className="relative w-full mb-1">
+            <div className="relative w-full mb-1" ref={styleBoxRef}>
               <Search size={10} className="absolute left-2 top-1/2 -translate-y-1/2 text-white/30" />
               <input
                 type="text"
@@ -550,6 +639,11 @@ export default function HistoryFilterDropdown({
                   setIsStyleOpen(true);
                 }}
                 onFocus={() => setIsStyleOpen(true)}
+                onMouseDown={(e) => {
+                  if (!isStyleOpen) return;
+                  e.preventDefault();
+                  setIsStyleOpen(false);
+                }}
                 placeholder="Styles..."
                 className="w-full h-6.5 bg-white/[0.03] border border-white/5 rounded-lg pl-6 pr-2 text-[10px] text-white outline-none focus:border-white/10 transition-colors"
               />
@@ -562,10 +656,16 @@ export default function HistoryFilterDropdown({
                       key={s}
                       type="button"
                       onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => {
+                      onClick={async () => {
                         setSelectedStyle(s);
                         setStyleQuery("");
                         setIsStyleOpen(false);
+                        await runBackendRefreshWithAdvancedFilters({
+                          tool: selectedTool,
+                          style: s,
+                          aspect: selectedAspect,
+                          model: selectedModel,
+                        });
                       }}
                       className="w-full text-left px-2 py-1.5 rounded-lg text-[10px] text-white/80 hover:bg-white/5"
                     >
@@ -630,7 +730,7 @@ export default function HistoryFilterDropdown({
               </button>
             ))}
 
-            <div className="relative">
+            <div className="relative" ref={aspectBoxRef}>
               <button
                 type="button"
                 onClick={() => setIsAspectOpen(!isAspectOpen)}
@@ -691,7 +791,7 @@ export default function HistoryFilterDropdown({
       <div className="space-y-1.5 mb-4.5">
         <h3 className="text-[9px] font-bold text-white/30 tracking-wider uppercase">Model</h3>
         <div className="flex flex-wrap gap-1">
-          <div className="relative w-28 h-6.5">
+          <div className="relative w-28 h-6.5" ref={modelBoxRef}>
             <Search size={10} className="absolute left-2 top-1/2 -translate-y-1/2 text-white/30" />
             <input
               type="text"
@@ -701,22 +801,35 @@ export default function HistoryFilterDropdown({
                 setIsModelOpen(true);
               }}
               onFocus={() => setIsModelOpen(true)}
+              onMouseDown={(e) => {
+                if (!isModelOpen) return;
+                e.preventDefault();
+                setIsModelOpen(false);
+              }}
               placeholder="Models..."
               className="w-full h-full bg-white/[0.03] border border-white/5 rounded-lg pl-6 pr-2 text-[10px] text-white outline-none focus:border-white/10 transition-colors"
             />
             {isModelOpen && (modelQuery.trim().length > 0 || true) && (
-              <div className="absolute left-0 top-full mt-1 w-[220px] rounded-xl border border-white/10 bg-[#0E0E11] shadow-2xl p-1 z-[140] max-h-48 overflow-y-auto">
-                {ALL_MODELS.filter((m) =>
-                  m.toLowerCase().includes(modelQuery.trim().toLowerCase()),
-                ).slice(0, 30).map((m) => (
+              <div className="absolute left-0 top-full mt-1 w-[220px] rounded-xl border border-white/10 bg-[#0E0E11] shadow-2xl p-1 z-[140] max-h-16 overflow-y-auto">
+                {ALL_MODELS.filter((m) => {
+                  const matchesQuery = m.toLowerCase().includes(modelQuery.trim().toLowerCase());
+                  if (!selectedTool || !TOOL_MODELS_MAP[selectedTool]) return matchesQuery;
+                  return matchesQuery && TOOL_MODELS_MAP[selectedTool].includes(m);
+                }).slice(0, 30).map((m) => (
                   <button
                     key={m}
                     type="button"
                     onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => {
+                    onClick={async () => {
                       setSelectedModel(m);
                       setModelQuery("");
                       setIsModelOpen(false);
+                      await runBackendRefreshWithAdvancedFilters({
+                        tool: selectedTool,
+                        style: selectedStyle,
+                        aspect: selectedAspect,
+                        model: m,
+                      });
                     }}
                     className="w-full text-left px-2 py-1.5 rounded-lg text-[10px] text-white/80 hover:bg-white/5"
                   >
@@ -727,7 +840,10 @@ export default function HistoryFilterDropdown({
             )}
           </div>
 
-          {QUICK_MODELS.map((m) => (
+          {QUICK_MODELS.filter((m) => {
+            if (!selectedTool || !TOOL_MODELS_MAP[selectedTool]) return true;
+            return TOOL_MODELS_MAP[selectedTool].includes(m);
+          }).map((m) => (
             <button
               key={m}
               type="button"
@@ -793,7 +909,7 @@ export default function HistoryFilterDropdown({
       {/* Side calendar (opens to the right of popup) */}
       {isCalendarOpen && calendarAnchor === "side" && (
         <div ref={calendarPanelRef}>
-          <CalendarPanel className="hidden md:block absolute left-full top-0 ml-2 w-[280px] select-none bg-[#0E0E11] border border-white/10 rounded-xl shadow-2xl p-3" />
+          <CalendarPanel className="hidden md:block absolute left-full top-0 ml-2 w-[210px] select-none bg-[#0E0E11] border border-white/10 rounded-xl shadow-2xl p-2" />
         </div>
       )}
     </div>

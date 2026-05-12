@@ -1,6 +1,6 @@
 import api from "@/lib/axiosInstance";
 
-const CATALOG_STORAGE_KEY = "wm_subscription_catalog_v1";
+const CATALOG_STORAGE_KEY = "wm_subscription_catalog_v2";
 const CATALOG_TTL_MS = 24 * 60 * 60 * 1000;
 
 function loadCatalogCache(): { data: SubscriptionCatalog; fetchedAt: number } | null {

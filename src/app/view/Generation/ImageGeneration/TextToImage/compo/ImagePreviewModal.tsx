@@ -1643,7 +1643,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
           <button
             aria-label="Previous image"
             onClick={(e) => { e.stopPropagation(); goPrevImage(e); }}
-            className="fixed left-4 md:left-8 top-1/2 -translate-y-1/2 z-[75] w-12 h-12 md:w-16 md:h-16 rounded-full bg-black/50 hover:bg-black/80 text-white transition-all backdrop-blur-sm border border-white/20 hover:border-white/40 flex items-center justify-center pointer-events-auto"
+            className="fixed left-4 md:left-25 top-1/2 -translate-y-1/2 z-[75] w-12 h-12 md:w-16 md:h-16 rounded-full bg-black/50 hover:bg-black/80 text-white transition-all backdrop-blur-sm border border-white/20 hover:border-white/40 flex items-center justify-center pointer-events-auto"
             title="Previous image (←)"
           >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 md:w-8 md:h-8">

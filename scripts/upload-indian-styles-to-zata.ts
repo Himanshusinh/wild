@@ -99,11 +99,18 @@ async function main() {
     throw new Error(`Missing folder: ${INDIAN_STYLES_DIR}`);
   }
 
+  // Optional CLI filters:
+  //   npx tsx scripts/upload-indian-styles-to-zata.ts himachal-pradesh telangana
+  // If provided, we only upload files under these state folders.
+  const stateFilters = process.argv.slice(2).map((s) => s.trim()).filter(Boolean);
+  const stateFilterSet = new Set(stateFilters);
+
   const { client: s3, bucket, endpoint } = buildClient();
   const endpointNorm = normalizeEndpoint(endpoint);
   const zataPublicBase = `${endpointNorm}/${bucket}/public`;
 
   console.log("[zata] uploading from:", INDIAN_STYLES_DIR);
+  if (stateFilters.length) console.log("[zata] state filters:", stateFilters.join(", "));
   console.log("[zata] bucket:", bucket);
   console.log("[zata] endpoint:", endpointNorm);
   console.log("[zata] public base:", zataPublicBase);
@@ -113,6 +120,14 @@ async function main() {
     const rel = path.relative(PUBLIC_DIR, fullPath).replace(/\\/g, "/");
     const ext = path.extname(rel).toLowerCase();
     if (ext !== ".avif") return;
+
+    if (stateFilterSet.size) {
+      // rel looks like: homepage/creativeStyle/indian-styles/<state>/...
+      const parts = rel.split("/").filter(Boolean);
+      const stateIdx = parts.indexOf("indian-styles") + 1;
+      const stateSeg = stateIdx > 0 ? parts[stateIdx] : "";
+      if (!stateSeg || !stateFilterSet.has(stateSeg)) return;
+    }
 
     const key = `public/${rel}`;
     const body = fs.readFileSync(fullPath);

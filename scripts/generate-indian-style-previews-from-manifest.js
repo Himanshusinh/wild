@@ -100,16 +100,25 @@ function buildTriplesFromLocal() {
     // - .../<style>/v1.avif
     // - .../<style>/v1/v1.avif
     const isDirect = ["v1.avif", "v2.avif", "v3.avif"].includes(file);
+    // Some folders have 1.avif/2.avif/3.avif instead of v1/v2/v3
+    const isDirectNumeric = ["1.avif", "2.avif", "3.avif"].includes(file);
     const isNested = ["v1", "v2", "v3"].includes(parent) && file === `${parent}.avif`;
-    if (!isDirect && !isNested) return;
+    const isNestedNumeric = ["1", "2", "3"].includes(parent) && file === `${parent}.avif`;
+    if (!isDirect && !isDirectNumeric && !isNested && !isNestedNumeric) return;
 
-    const vn = isNested ? parent : file.slice(0, 2); // "v1" | "v2" | "v3"
+    const vn = (() => {
+      if (isNested) return parent; // v1/v2/v3
+      if (isNestedNumeric) return `v${parent}`; // 1/2/3 -> v1/v2/v3
+      if (isDirect) return file.slice(0, 2); // v1/v2/v3
+      // direct numeric
+      return `v${file[0]}`; // 1.avif -> v1
+    })();
     const relDir = fullPath
       .slice(LOCAL_ROOT.length)
       .replace(/\\/g, "/")
       .replace(/^\/+/, "")
       .split("/")
-      .slice(0, isNested ? -2 : -1)
+      .slice(0, isNested || isNestedNumeric ? -2 : -1)
       .join("/");
     if (!relDir) return;
 
@@ -123,7 +132,7 @@ function buildTriplesFromLocal() {
 
     const cur =
       triples.get(relDir) || { relDir, stateSeg, styleSeg, v1: "", v2: "", v3: "" };
-    const url = `${ZATA_PUBLIC_BASE}/${relDir}/${isNested ? `${vn}/${file}` : file}`;
+    const url = `${ZATA_PUBLIC_BASE}/${relDir}/${isNested || isNestedNumeric ? `${vn}/${file}` : file}`;
     cur[vn] = url.replace(/\/+/g, "/").replace("https:/", "https://");
     triples.set(relDir, cur);
   });
