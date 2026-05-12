@@ -13,6 +13,8 @@ interface EditImageEraseFrameProps {
     setIsDrawing: (isDrawing: boolean) => void;
     onPreview?: () => void; // Toggle comparison
     isAdjustingBrush?: boolean;
+    /** Increment (e.g. from parent state) to clear mask + overlay without remounting the image URL. */
+    maskResetNonce?: number;
 }
 
 export const EditImageEraseFrame: React.FC<EditImageEraseFrameProps> = ({
@@ -24,6 +26,7 @@ export const EditImageEraseFrame: React.FC<EditImageEraseFrameProps> = ({
     setIsDrawing,
     onPreview,
     isAdjustingBrush = false,
+    maskResetNonce = 0,
 }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const maskCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -34,6 +37,8 @@ export const EditImageEraseFrame: React.FC<EditImageEraseFrameProps> = ({
     const [imageSize, setImageSize] = useState<{ width: number; height: number } | null>(null);
     const [isHovering, setIsHovering] = useState(false);
     const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    /** Last `maskResetNonce` we successfully applied (cleared mask + notified parent). */
+    const processedMaskResetNonceRef = useRef(0);
 
     // Helper to hide cursor if not active
     const checkHide = useCallback(() => {
@@ -64,6 +69,29 @@ export const EditImageEraseFrame: React.FC<EditImageEraseFrameProps> = ({
             if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
         };
     }, [isAdjustingBrush, brushSize, checkHide]);
+
+    // Clear mask when parent requests (e.g. "Clear brush" in Style Combination / Fill).
+    useEffect(() => {
+        if (maskResetNonce <= 0) return;
+        if (maskResetNonce === processedMaskResetNonceRef.current) return;
+
+        const mask = maskCanvasRef.current;
+        const overlay = canvasRef.current;
+        const sz = imageSize;
+        if (!mask || !overlay || !sz) return;
+
+        const mctx = mask.getContext("2d");
+        if (mctx) {
+            mctx.fillStyle = "black";
+            mctx.fillRect(0, 0, sz.width, sz.height);
+        }
+        const octx = overlay.getContext("2d");
+        if (octx) {
+            octx.clearRect(0, 0, overlay.width, overlay.height);
+        }
+        processedMaskResetNonceRef.current = maskResetNonce;
+        onMaskChange?.(mask.toDataURL());
+    }, [maskResetNonce, imageSize, onMaskChange]);
 
     // Check hide when state changes
     useEffect(() => {
@@ -97,6 +125,10 @@ export const EditImageEraseFrame: React.FC<EditImageEraseFrameProps> = ({
         if (canvasRef.current && containerRef.current) {
             canvasRef.current.width = containerRef.current.clientWidth;
             canvasRef.current.height = containerRef.current.clientHeight;
+        }
+
+        if (onMaskChange && maskCanvasRef.current) {
+            onMaskChange(maskCanvasRef.current.toDataURL());
         }
     };
 

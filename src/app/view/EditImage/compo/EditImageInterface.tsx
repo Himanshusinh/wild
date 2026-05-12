@@ -37,6 +37,92 @@ import {
   getAutoResumeIntent,
   clearAutoResumeIntent,
 } from "@/lib/autoResume";
+import { STYLE_CATALOG } from "@/styles/stylesCatalog";
+import { ALL_INDIAN_STYLES } from "@/styles/indianStyles";
+import {
+  INDIAN_STYLE_LOOKUP,
+  getIndianBasePrompt,
+} from "@/app/view/Generation/ImageGeneration/TextToImage/compo/inputBox/indianStylePrompts";
+
+/** General catalog styles shown in Edit → Style Combination (aligned with image gen Style popup). */
+const STYLE_COMBO_GENERAL_IDS = new Set([
+  "neutral_studio",
+  "realistic",
+  "minimalist",
+  "watercolor",
+  "oil_painting",
+  "abstract",
+  "cyberpunk",
+  "neon_noir",
+  "isometric",
+  "vintage_poster",
+  "vaporwave",
+  "pixel_art",
+  "cartoon",
+  "pencil_sketch",
+  "claymation",
+  "fantasy",
+  "sci_fi",
+  "steampunk",
+  "abstract_geometry",
+  "surrealism",
+  "3d_cartoon",
+  "ukiyoe",
+  "graffiti",
+  "renaissance",
+  "pop_art",
+]);
+
+const STYLE_COMBO_MAX_SELECTIONS = 12;
+
+/** True if mask has bright (painted) pixels; EraseFrame uses white on black. */
+async function maskDataUrlHasPaintedRegion(dataUrl: string): Promise<boolean> {
+  if (!dataUrl || !String(dataUrl).startsWith("data:")) return false;
+  return new Promise((resolve) => {
+    const img = new window.Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      try {
+        const w = Math.min(Math.max(1, img.naturalWidth), 512);
+        const h = Math.min(Math.max(1, img.naturalHeight), 512);
+        const c = document.createElement("canvas");
+        c.width = w;
+        c.height = h;
+        const ctx = c.getContext("2d");
+        if (!ctx) {
+          resolve(false);
+          return;
+        }
+        ctx.drawImage(img, 0, 0, w, h);
+        const { data } = ctx.getImageData(0, 0, w, h);
+        for (let i = 0; i < data.length; i += 16) {
+          const r = data[i] ?? 0;
+          const g = data[i + 1] ?? 0;
+          const b = data[i + 2] ?? 0;
+          const a = data[i + 3] ?? 0;
+          if (a > 12 && r + g + b > 380) {
+            resolve(true);
+            return;
+          }
+        }
+        resolve(false);
+      } catch {
+        resolve(false);
+      }
+    };
+    img.onerror = () => resolve(false);
+    img.src = dataUrl;
+  });
+}
+
+/** Base image models for Edit → Style Combination (image-to-image). */
+const STYLE_COMBO_BASE_MODELS: Array<{
+  label: string;
+  value: "google/nano-banana-pro" | "google/nano-banana-2";
+}> = [
+  { label: "Nano Banana Pro", value: "google/nano-banana-pro" },
+  { label: "Nano Banana 2", value: "google/nano-banana-2" },
+];
 
 type EditFeature =
   | "upscale"
@@ -73,6 +159,8 @@ const featurePreviewGif: Record<EditFeature, string> = {
   expand: "https://idr01.zata.ai/devstoragev1/public/editimage/replace-banner.avif",
   reimagine: "https://idr01.zata.ai/devstoragev1/public/editimage/replace-banner.avif",
   "live-chat": "https://idr01.zata.ai/devstoragev1/public/editimage/replace-banner.avif",
+  "style-combination":
+    "https://idr01.zata.ai/devstoragev1/public/editimage/resize-banner.avif",
 };
 
 // Normalize any Next.js optimized image URL back to the original Zata (or source) URL.
@@ -228,6 +316,9 @@ const EditImageInterface: React.FC = () => {
     "replace",
   );
   const [isAdjustingBrush, setIsAdjustingBrush] = useState<boolean>(false);
+  /** Bumped to clear `EditImageEraseFrame` mask (fill + style combination). */
+  const [eraseFrameMaskResetNonce, setEraseFrameMaskResetNonce] = useState(0);
+  const [styleComboMaskPainted, setStyleComboMaskPainted] = useState(false);
   const eraseCredits = useMemo(
     () => getCreditsForModel("seedream-5-lite") ?? 90,
     [],
@@ -245,6 +336,63 @@ const EditImageInterface: React.FC = () => {
     [],
   );
   const vectorizeArtExtraCredits = 80; // Additional credits when Art Vector (super mode) is selected
+
+  const [styleComboTab, setStyleComboTab] = useState<"general" | "indian">(
+    "general",
+  );
+  const [styleComboSelectedIds, setStyleComboSelectedIds] = useState<string[]>(
+    [],
+  );
+  const [styleComboIndianVersion, setStyleComboIndianVersion] = useState<
+    "V1" | "V2" | "V3"
+  >("V1");
+  const [styleComboIndianSearch, setStyleComboIndianSearch] =
+    useState<string>("");
+  const [styleComboExtraPrompt, setStyleComboExtraPrompt] =
+    useState<string>("");
+  const [styleComboModel, setStyleComboModel] = useState<
+    "google/nano-banana-pro" | "google/nano-banana-2"
+  >("google/nano-banana-pro");
+  const [styleComboFrameSize, setStyleComboFrameSize] = useState<
+    "1:1" | "3:4" | "4:3" | "16:9" | "9:16"
+  >("1:1");
+  const [styleComboResolution, setStyleComboResolution] = useState<
+    "1K" | "2K" | "4K"
+  >("2K");
+  const [styleComboDropdown, setStyleComboDropdown] = useState<
+    "model" | "resolution" | "frame" | ""
+  >("");
+
+  const styleComboGeneralStyles = useMemo(
+    () => STYLE_CATALOG.filter((s) => STYLE_COMBO_GENERAL_IDS.has(s.value)),
+    [],
+  );
+  const styleComboIndianRows = useMemo(() => {
+    const q = styleComboIndianSearch.trim().toLowerCase();
+    return ALL_INDIAN_STYLES.filter((row) => {
+      if (!q) return true;
+      const hay = `${row.title} ${row.name} ${row.desc} ${row.id}`
+        .toLowerCase()
+        .replace(/\s+/g, " ");
+      return hay.includes(q);
+    }).sort((a, b) =>
+      a.title.localeCompare(b.title, undefined, { sensitivity: "base" }),
+    );
+  }, [styleComboIndianSearch]);
+
+  const toggleStyleComboId = useCallback((id: string) => {
+    setStyleComboSelectedIds((prev) => {
+      if (prev.includes(id)) return prev.filter((x) => x !== id);
+      if (prev.length >= STYLE_COMBO_MAX_SELECTIONS) {
+        toast.error(
+          `You can select at most ${STYLE_COMBO_MAX_SELECTIONS} styles.`,
+        );
+        return prev;
+      }
+      return [...prev, id];
+    });
+  }, []);
+
   const {
     deductCreditsOptimisticForGeneration,
     rollbackOptimisticDeduction,
@@ -328,6 +476,27 @@ const EditImageInterface: React.FC = () => {
   const [isMasking, setIsMasking] = useState(false);
   const [hasMask, setHasMask] = useState(false);
   const [brushSize, setBrushSize] = useState(18);
+
+  useEffect(() => {
+    if (selectedFeature !== "style-combination") {
+      setStyleComboMaskPainted(false);
+      return;
+    }
+    if (!eraseMaskData) {
+      setStyleComboMaskPainted(false);
+      return;
+    }
+    let cancelled = false;
+    const t = window.setTimeout(async () => {
+      const ok = await maskDataUrlHasPaintedRegion(eraseMaskData);
+      if (!cancelled) setStyleComboMaskPainted(ok);
+    }, 200);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(t);
+    };
+  }, [selectedFeature, eraseMaskData]);
+
   const [eraseMode, setEraseMode] = useState(false);
   // Reimagine: Selection confirmation and floating prompt
   const [reimagineSelectionConfirmed, setReimagineSelectionConfirmed] =
@@ -822,6 +991,20 @@ const EditImageInterface: React.FC = () => {
     () => getLiveModelCredits(liveModel, liveResolution, liveQuality),
     [liveModel, liveResolution, liveQuality],
   );
+
+  const styleComboCredits = useMemo(
+    () => getLiveModelCredits(styleComboModel, styleComboResolution, "auto"),
+    [styleComboModel, styleComboResolution],
+  );
+
+  useEffect(() => {
+    const opts =
+      liveResolutionOptionsByModel[styleComboModel] ||
+      (["1K", "2K", "4K"] as const);
+    if (!opts.includes(styleComboResolution as (typeof opts)[number])) {
+      setStyleComboResolution(opts[0] as "1K" | "2K" | "4K");
+    }
+  }, [styleComboModel, styleComboResolution]);
 
   const availableModels = useMemo(() => {
     if (selectedFeature === "remove-bg") {
@@ -1682,6 +1865,18 @@ const EditImageInterface: React.FC = () => {
       if (data.liveModel) setLiveModel(data.liveModel);
       if (data.liveFrameSize) setLiveFrameSize(data.liveFrameSize);
       if (data.liveResolution) setLiveResolution(data.liveResolution);
+      if (data.styleComboModel) setStyleComboModel(data.styleComboModel);
+      if (data.styleComboFrameSize)
+        setStyleComboFrameSize(data.styleComboFrameSize);
+      if (data.styleComboResolution)
+        setStyleComboResolution(data.styleComboResolution);
+      if (Array.isArray(data.styleComboSelectedIds))
+        setStyleComboSelectedIds(data.styleComboSelectedIds);
+      if (typeof data.styleComboExtraPrompt === "string")
+        setStyleComboExtraPrompt(data.styleComboExtraPrompt);
+      if (data.styleComboTab) setStyleComboTab(data.styleComboTab);
+      if (data.styleComboIndianVersion)
+        setStyleComboIndianVersion(data.styleComboIndianVersion);
 
       clearAutoResumeIntent();
     }
@@ -2015,16 +2210,22 @@ const EditImageInterface: React.FC = () => {
           setActiveDropdown("");
         }
       }
+      if (styleComboDropdown) {
+        const el = event.target as HTMLElement | null;
+        if (!(el && el.closest(".edit-dropdown"))) {
+          setStyleComboDropdown("");
+        }
+      }
     };
 
-    if (showImageMenu || activeDropdown) {
+    if (showImageMenu || activeDropdown || styleComboDropdown) {
       document.addEventListener("mousedown", handleClickOutside);
     }
 
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [showImageMenu, activeDropdown]);
+  }, [showImageMenu, activeDropdown, styleComboDropdown]);
 
   // Debug menu state
   useEffect(() => {
@@ -2093,6 +2294,8 @@ const EditImageInterface: React.FC = () => {
     vectorize: "https://idr01.zata.ai/devstoragev1/public/editimage/vector-banner.avif",
     reimagine: "https://idr01.zata.ai/devstoragev1/public/editimage/replace-banner.avif",
     "live-chat": "https://idr01.zata.ai/devstoragev1/public/editimage/resize-banner.avif",
+    "style-combination":
+      "https://idr01.zata.ai/devstoragev1/public/editimage/resize-banner.avif",
   };
   const featureDisplayName: Record<EditFeature, string> = {
     upscale: "Upscale",
@@ -3014,6 +3217,13 @@ const EditImageInterface: React.FC = () => {
         topazUpscaleFactor,
         seedvrUpscaleFactor,
         resizeAspectRatio,
+        styleComboModel,
+        styleComboFrameSize,
+        styleComboResolution,
+        styleComboSelectedIds,
+        styleComboExtraPrompt,
+        styleComboTab,
+        styleComboIndianVersion,
       });
       router.push(getSignInUrl("/text-to-image/edit-image"));
       return;
@@ -3105,6 +3315,13 @@ const EditImageInterface: React.FC = () => {
     const currentInputRaw = inputs[selectedFeature];
     const currentInput = toAbsoluteProxyUrl(currentInputRaw) as any;
     if (!currentInput) return;
+    if (
+      selectedFeature === "style-combination" &&
+      styleComboSelectedIds.length === 0
+    ) {
+      setErrorMsg("Select at least one style to combine.");
+      return;
+    }
     setErrorMsg("");
     setOutputs((prev) => ({ ...prev, [selectedFeature]: null }));
     setProcessing((prev) => ({ ...prev, [selectedFeature]: true }));
@@ -3142,6 +3359,16 @@ const EditImageInterface: React.FC = () => {
           try {
             deductCreditsOptimisticForGeneration(eraseCredits);
             optimisticDebit = eraseCredits;
+          } catch {
+            /* ignore */
+          }
+        } else if (
+          selectedFeature === "style-combination" &&
+          styleComboCredits > 0
+        ) {
+          try {
+            deductCreditsOptimisticForGeneration(styleComboCredits);
+            optimisticDebit = styleComboCredits;
           } catch {
             /* ignore */
           }
@@ -3444,6 +3671,212 @@ const EditImageInterface: React.FC = () => {
         try {
           await refreshCredits();
         } catch { }
+        return;
+      }
+      if (selectedFeature === "style-combination") {
+        const img = inputs["style-combination"];
+        if (!img) throw new Error("Please upload an image for style combination");
+
+        if (!eraseMaskData) {
+          setErrorMsg("Paint the area to restyle with the brush.");
+          setProcessing((prev) => ({ ...prev, ["style-combination"]: false }));
+          return;
+        }
+        if (!(await maskDataUrlHasPaintedRegion(eraseMaskData))) {
+          setErrorMsg("Paint the area to restyle with the brush.");
+          setProcessing((prev) => ({ ...prev, ["style-combination"]: false }));
+          return;
+        }
+        let maskDataUrl = eraseMaskData;
+
+        try {
+          const sanityOff = document.createElement("canvas");
+          const natW = Math.max(
+            1,
+            Math.floor(inputNaturalSize.width || 1),
+          );
+          const natH = Math.max(
+            1,
+            Math.floor(inputNaturalSize.height || 1),
+          );
+          sanityOff.width = natW;
+          sanityOff.height = natH;
+          const sctx = sanityOff.getContext("2d");
+          if (sctx) {
+            const maskImg = new window.Image();
+            await new Promise<void>((resolve) => {
+              maskImg.onload = () => {
+                try {
+                  sctx.drawImage(maskImg, 0, 0, natW, natH);
+                } catch { }
+                resolve();
+              };
+              maskImg.onerror = () => resolve();
+              maskImg.src = maskDataUrl;
+            });
+            try {
+              const data = sctx.getImageData(0, 0, natW, natH).data;
+              let hasBright = false;
+              for (let i = 0; i < data.length; i += 4) {
+                if (
+                  data[i + 3] > 12 &&
+                  data[i] + data[i + 1] + data[i + 2] > 380
+                ) {
+                  hasBright = true;
+                  break;
+                }
+              }
+              if (!hasBright) {
+                setErrorMsg(
+                  "Mask appears empty. Paint the region to restyle with the brush.",
+                );
+                setProcessing((prev) => ({
+                  ...prev,
+                  ["style-combination"]: false,
+                }));
+                return;
+              }
+            } catch { }
+          }
+        } catch { }
+
+        const styleSourceImage = String(normalizedInput).startsWith("data:")
+          ? normalizedInput
+          : currentInput;
+        if (!String(styleSourceImage).startsWith("data:")) {
+          try {
+            const probeImg = new window.Image();
+            probeImg.crossOrigin = "anonymous";
+            const imgUrl = currentInput as string;
+            await new Promise<void>((resolve) => {
+              probeImg.onload = () => resolve();
+              probeImg.onerror = () => resolve();
+              probeImg.src = imgUrl;
+            });
+            const imgW = Math.max(
+              1,
+              Math.floor((probeImg as any).naturalWidth || 0),
+            );
+            const imgH = Math.max(
+              1,
+              Math.floor((probeImg as any).naturalHeight || 0),
+            );
+            if (imgW && imgH) {
+              const maskImg = new window.Image();
+              maskImg.crossOrigin = "anonymous";
+              await new Promise<void>((resolve) => {
+                maskImg.onload = () => {
+                  try {
+                    const final = document.createElement("canvas");
+                    final.width = imgW;
+                    final.height = imgH;
+                    const fctx = final.getContext("2d");
+                    if (fctx) fctx.drawImage(maskImg, 0, 0, imgW, imgH);
+                    maskDataUrl = final.toDataURL("image/png");
+                  } catch { }
+                  resolve();
+                };
+                maskImg.onerror = () => resolve();
+                maskImg.src = maskDataUrl;
+              });
+            }
+          } catch (e) {
+            console.warn(
+              "[Style combination] mask rescale probe failed",
+              e,
+            );
+          }
+        }
+
+        const styleBlocks: string[] = [];
+        for (const sid of styleComboSelectedIds) {
+          if (INDIAN_STYLE_LOOKUP.has(sid)) {
+            const bp = await getIndianBasePrompt(
+              sid,
+              styleComboIndianVersion,
+            );
+            if (bp && bp.trim()) {
+              const row = ALL_INDIAN_STYLES.find((r) => r.id === sid);
+              const label = row?.title || sid;
+              styleBlocks.push(`[${label}]: ${bp.trim()}`);
+            }
+          } else {
+            const def = STYLE_CATALOG.find((s) => s.value === sid);
+            if (def && def.value !== "none" && def.prompt?.trim()) {
+              styleBlocks.push(`[${def.name}]: ${def.prompt.trim()}`);
+            }
+          }
+        }
+
+        if (styleBlocks.length === 0) {
+          throw new Error(
+            "Could not load style descriptions. Try different styles or Indian version.",
+          );
+        }
+
+        const extra = styleComboExtraPrompt.trim();
+        const maskDirective =
+          "A separate mask image is provided (mask_url). WHITE / bright areas in the mask mark where you MUST apply the combined style edits. BLACK areas must stay visually unchanged (preserve original pixels, texture, lighting, and geometry). Only the masked region should receive the new style treatment; keep a seamless blend at the boundary.";
+        const finalPrompt = [
+          maskDirective,
+          "Restyle the input image by applying ALL of the following style directions together in one coherent result, limited to the masked region as described above.",
+          "Preserve the main subject, pose, and composition in unmasked areas.",
+          "Blend lighting, color, texture, and line quality in the edited region so the combined look feels intentional, not like a collage pasted on top.",
+          "--- Combined style directions ---",
+          styleBlocks.join("\n\n"),
+          extra ? `--- Additional instructions ---\n${extra}` : "",
+        ]
+          .filter(Boolean)
+          .join("\n\n");
+
+        const imageInput = String(normalizedInput).startsWith("data:")
+          ? normalizedInput
+          : await ensureZataUrl(String(currentInputRaw));
+
+        const res = await axiosInstance.post("/api/fal/generate", {
+          prompt: finalPrompt,
+          model: styleComboModel,
+          n: 1,
+          num_images: 1,
+          uploadedImages: [imageInput],
+          mask_url: maskDataUrl,
+          output_format: "jpeg",
+          frameSize: styleComboFrameSize,
+          aspect_ratio: styleComboFrameSize,
+          size: styleComboResolution,
+          resolution: styleComboResolution,
+          generationType: "style-combination",
+          isPublic,
+        });
+        const out =
+          res?.data?.images?.[0]?.url ||
+          res?.data?.data?.images?.[0]?.url ||
+          res?.data?.data?.url ||
+          res?.data?.url ||
+          "";
+        if (out) {
+          setOutputs((prev) => ({ ...prev, ["style-combination"]: out }));
+          try {
+            setCurrentHistoryId(
+              res?.data?.data?.historyId || res?.data?.historyId || null,
+            );
+          } catch { }
+          try {
+            await refreshCredits();
+          } catch { }
+          try {
+            await (dispatch as any)(
+              loadHistory({
+                paginationParams: { limit: 60 },
+                requestOrigin: "page",
+                debugTag: `refresh-after-style-combination:${Date.now()}`,
+              }),
+            );
+          } catch { }
+          toast.success("Style combination complete");
+        } else {
+          throw new Error("No image returned from style combination");
+        }
         return;
       }
       if (selectedFeature === "fill" || selectedFeature === "erase") {
@@ -4969,6 +5402,17 @@ const EditImageInterface: React.FC = () => {
     setFillSyncMode(false);
     setIsMasking(false);
     setHasMask(false);
+    setStyleComboSelectedIds([]);
+    setStyleComboExtraPrompt("");
+    setStyleComboIndianSearch("");
+    setStyleComboTab("general");
+    setStyleComboIndianVersion("V1");
+    setStyleComboModel("google/nano-banana-pro");
+    setStyleComboFrameSize("1:1");
+    setStyleComboResolution("2K");
+    setStyleComboDropdown("");
+    setEraseFrameMaskResetNonce((n) => n + 1);
+    setStyleComboMaskPainted(false);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -5377,11 +5821,384 @@ const EditImageInterface: React.FC = () => {
               {/* Style Combination model & parameters */}
               {selectedFeature === "style-combination" && (
                 <div className="px-1 md:px-4">
-                  <div className="space-y-4">
-                    <p className="text-[12px] text-white/70">
-                      Style combination controls will be added here.
-                    </p>
+                  <p className="mb-3 text-[11px] leading-snug text-white/55 md:text-xs">
+                    Paint over the region you want to restyle (brush on the
+                    image). White marks where styles apply; the rest of the image
+                    stays as-is. Then pick one or more styles (General and/or
+                    Indian); they merge into one prompt with the base model below.
+                  </p>
+                  <div className="mb-4 space-y-2 rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-white/40">
+                        Brush size
+                      </span>
+                      <span className="text-[10px] font-semibold text-white/50">
+                        {eraseBrushSize}px
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setEraseBrushSize((s) => Math.max(5, s - 5))
+                        }
+                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[#2a2a34] bg-[#1c1c22] text-xs text-white/80 transition hover:bg-white/5 active:scale-95"
+                      >
+                        −
+                      </button>
+                      <input
+                        type="range"
+                        min={5}
+                        max={200}
+                        value={eraseBrushSize}
+                        onChange={(e) =>
+                          setEraseBrushSize(Number(e.target.value))
+                        }
+                        onMouseDown={() => setIsAdjustingBrush(true)}
+                        onMouseUp={() => setIsAdjustingBrush(false)}
+                        onTouchStart={() => setIsAdjustingBrush(true)}
+                        onTouchEnd={() => setIsAdjustingBrush(false)}
+                        className="h-1.5 flex-1 cursor-pointer appearance-none rounded-full bg-white/20 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:bg-[#3B6BFF] hover:[&::-webkit-slider-thumb]:scale-110"
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setEraseBrushSize((s) => Math.min(200, s + 5))
+                        }
+                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[#2a2a34] bg-[#1c1c22] text-xs text-white/80 transition hover:bg-white/5 active:scale-95"
+                      >
+                        +
+                      </button>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setEraseFrameMaskResetNonce((n) => n + 1)
+                      }
+                      className="w-full rounded-lg border border-white/12 py-2 text-[12px] font-medium text-white/80 transition hover:bg-white/8"
+                    >
+                      Clear brush
+                    </button>
                   </div>
+                  <div className="mb-3 space-y-2">
+                    <label className="block text-[10px] font-semibold uppercase tracking-wider text-white/40">
+                      Base model
+                    </label>
+                    <div className="relative edit-dropdown">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setStyleComboDropdown(
+                            styleComboDropdown === "model" ? "" : "model",
+                          )
+                        }
+                        className="flex h-[38px] w-full items-center justify-between rounded-xl border border-white/12 px-4 text-left text-[13px] font-medium text-white/90 transition hover:bg-white/3"
+                      >
+                        <span className="truncate">
+                          {STYLE_COMBO_BASE_MODELS.find(
+                            (m) => m.value === styleComboModel,
+                          )?.label ?? styleComboModel}
+                        </span>
+                        <ChevronUp
+                          className={`ml-2 h-4 w-4 shrink-0 transition-transform duration-200 ${styleComboDropdown === "model" ? "" : "rotate-180"}`}
+                        />
+                      </button>
+                      {styleComboDropdown === "model" && (
+                        <div className="absolute left-0 top-full z-[100] mt-1 max-h-64 w-full overflow-y-auto rounded-xl bg-black py-0 ring-1 ring-white/15 backdrop-blur-xl dropdown-scrollbar">
+                          {STYLE_COMBO_BASE_MODELS.map((opt) => (
+                            <button
+                              key={opt.value}
+                              type="button"
+                              onClick={() => {
+                                setStyleComboModel(opt.value);
+                                const nextOpts =
+                                  liveResolutionOptionsByModel[opt.value] ||
+                                  (["1K", "2K", "4K"] as const);
+                                if (
+                                  !nextOpts.includes(
+                                    styleComboResolution as (typeof nextOpts)[number],
+                                  )
+                                ) {
+                                  setStyleComboResolution(
+                                    nextOpts[0] as "1K" | "2K" | "4K",
+                                  );
+                                }
+                                setStyleComboDropdown("");
+                              }}
+                              className={`flex w-full items-center gap-2 px-4 py-2.5 text-left text-[13px] ${styleComboModel === opt.value ? "bg-white/10 font-medium text-white" : "text-white/75 hover:bg-white/8 hover:text-white"}`}
+                            >
+                              {styleComboModel === opt.value && (
+                                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#2F6BFF]" />
+                              )}
+                              <span className="flex-1 truncate">{opt.label}</span>
+                              <span className="text-[11px] text-white/45">
+                                {getLiveModelCredits(
+                                  opt.value,
+                                  styleComboResolution,
+                                  "auto",
+                                )}{" "}
+                                credits
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-wider text-white/40">
+                          Resolution
+                        </label>
+                        <div className="relative edit-dropdown">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setStyleComboDropdown(
+                                styleComboDropdown === "resolution"
+                                  ? ""
+                                  : "resolution",
+                              )
+                            }
+                            className="flex h-[38px] w-full items-center justify-between rounded-xl border border-white/12 px-3 text-left text-[13px] font-medium text-white/90 transition hover:bg-white/3"
+                          >
+                            <span>{styleComboResolution}</span>
+                            <ChevronUp
+                              className={`ml-1 h-4 w-4 shrink-0 transition-transform duration-200 ${styleComboDropdown === "resolution" ? "" : "rotate-180"}`}
+                            />
+                          </button>
+                          {styleComboDropdown === "resolution" && (
+                            <div className="absolute left-0 top-full z-[100] mt-1 max-h-48 w-full overflow-y-auto rounded-xl bg-black py-0 ring-1 ring-white/15 backdrop-blur-xl dropdown-scrollbar">
+                              {(
+                                liveResolutionOptionsByModel[styleComboModel] ||
+                                (["1K", "2K", "4K"] as const)
+                              )
+                                .filter(
+                                  (r): r is "1K" | "2K" | "4K" =>
+                                    r === "1K" || r === "2K" || r === "4K",
+                                )
+                                .map((r) => (
+                                  <button
+                                    key={r}
+                                    type="button"
+                                    onClick={() => {
+                                      setStyleComboResolution(r);
+                                      setStyleComboDropdown("");
+                                    }}
+                                    className={`flex w-full items-center gap-2 px-4 py-2.5 text-left text-[13px] ${styleComboResolution === r ? "bg-white/10 font-medium text-white" : "text-white/75 hover:bg-white/8 hover:text-white"}`}
+                                  >
+                                    {styleComboResolution === r && (
+                                      <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#2F6BFF]" />
+                                    )}
+                                    {r}
+                                  </button>
+                                ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-wider text-white/40">
+                          Frame size
+                        </label>
+                        <div className="relative edit-dropdown">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setStyleComboDropdown(
+                                styleComboDropdown === "frame" ? "" : "frame",
+                              )
+                            }
+                            className="flex h-[38px] w-full items-center justify-between rounded-xl border border-white/12 px-3 text-left text-[13px] font-medium text-white/90 transition hover:bg-white/3"
+                          >
+                            <span className="truncate">
+                              {liveFrameSizes.find(
+                                (s) => s.value === styleComboFrameSize,
+                              )?.name ?? styleComboFrameSize}
+                            </span>
+                            <ChevronUp
+                              className={`ml-1 h-4 w-4 shrink-0 transition-transform duration-200 ${styleComboDropdown === "frame" ? "" : "rotate-180"}`}
+                            />
+                          </button>
+                          {styleComboDropdown === "frame" && (
+                            <div className="absolute left-0 top-full z-[100] mt-1 max-h-48 w-full overflow-y-auto rounded-xl bg-black py-0 ring-1 ring-white/15 backdrop-blur-xl dropdown-scrollbar">
+                              {liveFrameSizes.map((opt) => (
+                                <button
+                                  key={opt.value}
+                                  type="button"
+                                  onClick={() => {
+                                    setStyleComboFrameSize(
+                                      opt.value as typeof styleComboFrameSize,
+                                    );
+                                    setStyleComboDropdown("");
+                                  }}
+                                  className={`flex w-full items-center gap-2 px-4 py-2.5 text-left text-[13px] ${styleComboFrameSize === opt.value ? "bg-white/10 font-medium text-white" : "text-white/75 hover:bg-white/8 hover:text-white"}`}
+                                >
+                                  {styleComboFrameSize === opt.value && (
+                                    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#2F6BFF]" />
+                                  )}
+                                  {opt.name}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-[11px] text-white/70">
+                      <span className="text-white/45">Est. this run</span>
+                      <span className="font-semibold text-white">
+                        {styleComboCredits} credits
+                      </span>
+                    </div>
+                  </div>
+                  <div className="mb-3 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setStyleComboTab("general")}
+                      className={`flex-1 rounded-full px-3 py-1.5 text-[11px] font-medium transition md:text-xs ${
+                        styleComboTab === "general"
+                          ? "bg-white text-black"
+                          : "border border-white/15 bg-white/5 text-white/60 hover:text-white"
+                      }`}
+                    >
+                      General
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setStyleComboTab("indian")}
+                      className={`flex-1 rounded-full px-3 py-1.5 text-[11px] font-medium transition md:text-xs ${
+                        styleComboTab === "indian"
+                          ? "bg-white text-black"
+                          : "border border-white/15 bg-white/5 text-white/60 hover:text-white"
+                      }`}
+                    >
+                      Indian
+                    </button>
+                  </div>
+                  {styleComboTab === "indian" && (
+                    <div className="mb-3 space-y-2">
+                      <label className="block text-[10px] font-semibold uppercase tracking-wider text-white/40">
+                        Indian style version
+                      </label>
+                      <div className="flex gap-1.5">
+                        {(["V1", "V2", "V3"] as const).map((v) => (
+                          <button
+                            key={v}
+                            type="button"
+                            onClick={() => setStyleComboIndianVersion(v)}
+                            className={`flex-1 rounded-lg py-1.5 text-[11px] font-medium md:text-xs ${
+                              styleComboIndianVersion === v
+                                ? "bg-[#3B6BFF] text-white"
+                                : "bg-white/5 text-white/55 hover:bg-white/10"
+                            }`}
+                          >
+                            {v}
+                          </button>
+                        ))}
+                      </div>
+                      <input
+                        type="search"
+                        value={styleComboIndianSearch}
+                        onChange={(e) => setStyleComboIndianSearch(e.target.value)}
+                        placeholder="Search Indian styles…"
+                        className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-[12px] text-white placeholder:text-white/35 outline-none focus:border-white/25"
+                      />
+                    </div>
+                  )}
+                  <div className="mb-3 max-h-[220px] overflow-y-auto thin-scrollbar rounded-xl border border-white/10 bg-black/20 p-2">
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                      {styleComboTab === "general"
+                        ? styleComboGeneralStyles.map((s) => {
+                            const on = styleComboSelectedIds.includes(s.value);
+                            return (
+                              <button
+                                key={s.value}
+                                type="button"
+                                onClick={() => toggleStyleComboId(s.value)}
+                                className={`relative overflow-hidden rounded-lg border text-left transition ${
+                                  on
+                                    ? "border-[#3B6BFF] ring-1 ring-[#3B6BFF]/50"
+                                    : "border-white/10 hover:border-white/25"
+                                }`}
+                              >
+                                <div className="relative aspect-[4/3] w-full bg-[#18181f]">
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img
+                                    src={s.image}
+                                    alt=""
+                                    className="h-full w-full object-cover"
+                                  />
+                                  {on ? (
+                                    <div className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#3B6BFF] text-[10px] text-white">
+                                      ✓
+                                    </div>
+                                  ) : null}
+                                </div>
+                                <div className="truncate px-1.5 py-1 text-[9px] font-medium text-white/90">
+                                  {s.name}
+                                </div>
+                              </button>
+                            );
+                          })
+                        : styleComboIndianRows.map((row) => {
+                            const on = styleComboSelectedIds.includes(row.id);
+                            return (
+                              <button
+                                key={row.id}
+                                type="button"
+                                onClick={() => toggleStyleComboId(row.id)}
+                                className={`relative overflow-hidden rounded-lg border text-left transition ${
+                                  on
+                                    ? "border-[#3B6BFF] ring-1 ring-[#3B6BFF]/50"
+                                    : "border-white/10 hover:border-white/25"
+                                }`}
+                              >
+                                <div className="relative aspect-[4/3] w-full bg-[#18181f]">
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img
+                                    src={row.image}
+                                    alt=""
+                                    className="h-full w-full object-cover"
+                                  />
+                                  {on ? (
+                                    <div className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#3B6BFF] text-[10px] text-white">
+                                      ✓
+                                    </div>
+                                  ) : null}
+                                </div>
+                                <div className="truncate px-1.5 py-1 text-[8px] font-semibold uppercase leading-tight text-white/90">
+                                  {row.title}
+                                </div>
+                              </button>
+                            );
+                          })}
+                    </div>
+                  </div>
+                  <div className="mb-2 flex items-center justify-between text-[10px] text-white/45">
+                    <span>
+                      {styleComboSelectedIds.length} selected (max{" "}
+                      {STYLE_COMBO_MAX_SELECTIONS})
+                    </span>
+                    {styleComboSelectedIds.length > 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => setStyleComboSelectedIds([])}
+                        className="text-[#7aa3ff] hover:underline"
+                      >
+                        Clear all
+                      </button>
+                    ) : null}
+                  </div>
+                  <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-white/40">
+                    Optional extra instructions
+                  </label>
+                  <textarea
+                    value={styleComboExtraPrompt}
+                    onChange={(e) => setStyleComboExtraPrompt(e.target.value)}
+                    rows={3}
+                    placeholder="e.g. keep skin tones natural, stronger shadows…"
+                    className="w-full resize-none rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-[12px] text-white placeholder:text-white/35 outline-none focus:border-white/25"
+                  />
                 </div>
               )}
 
@@ -6116,7 +6933,8 @@ const EditImageInterface: React.FC = () => {
                       <div className="space-y-">
                         {selectedFeature !== "fill" &&
                           selectedFeature !== "erase" &&
-                          selectedFeature !== "expand" && (
+                          selectedFeature !== "expand" &&
+                          selectedFeature !== "style-combination" && (
                             <div>
                               <p className="text-[12px] md:text-[10px] font-semibold tracking-widest text-white/40 uppercase pb-1">
                                 AI Model
@@ -6213,9 +7031,9 @@ const EditImageInterface: React.FC = () => {
                           setModel={setEraseModel}
                           isProcessing={processing["fill"]}
                           onGenerate={handleRun}
-                          onClearMask={() =>
-                            setEraseMaskData(null)
-                          } /* We need a way to clear mask in Frame too */
+                          onClearMask={() => {
+                            setEraseFrameMaskResetNonce((n) => n + 1);
+                          }}
                           onBrushAdjustStart={() => setIsAdjustingBrush(true)}
                           onBrushAdjustEnd={() => setIsAdjustingBrush(false)}
                         />
@@ -7214,15 +8032,25 @@ const EditImageInterface: React.FC = () => {
                 <button
                   onClick={handleRun}
                   disabled={
-                    !inputs[selectedFeature] || processing[selectedFeature]
+                    !inputs[selectedFeature] ||
+                    processing[selectedFeature] ||
+                    (selectedFeature === "style-combination" &&
+                      (styleComboSelectedIds.length === 0 ||
+                        !styleComboMaskPainted))
                   }
                   className="flex-1 px-2 py-2 md:px-2 md:py-2 text-sm md:text-xs font-semibold text-white bg-[#3B6BFF] hover:bg-[#2a5fe3] disabled:opacity-50 disabled:cursor-not-allowed rounded-xl md:rounded-xl shadow-[0_10px_30px_rgba(59,107,255,0.28)] transition-colors 2xl:text-sm"
                 >
                   {processing[selectedFeature] ? "Processing..." : "Generate"}
                 </button>
-                {(selectedFeature === "fill" || selectedFeature === "expand") && (
+                {(selectedFeature === "fill" ||
+                  selectedFeature === "expand" ||
+                  selectedFeature === "style-combination") && (
                   <div className=" w-[92px] flex items-center text-[11px] text-white/70 px-2 py-2 rounded-xl bg-white/5 border border-white/10">
-                    {selectedFeature === "fill" ? eraseCredits : expandCredits}{" "}
+                    {selectedFeature === "fill"
+                      ? eraseCredits
+                      : selectedFeature === "expand"
+                        ? expandCredits
+                        : styleComboCredits}{" "}
                     credits
                   </div>
                 )}
@@ -8237,7 +9065,8 @@ const EditImageInterface: React.FC = () => {
                     {inputs[selectedFeature] ? (
                       <div className="absolute inset-0">
                         {selectedFeature === "resize" ||
-                        selectedFeature === "fill" ? (
+                        selectedFeature === "fill" ||
+                        selectedFeature === "style-combination" ? (
                           selectedFeature === "resize" ? (
                             <div className="absolute inset-0 z-10">
                               <EditImageExpandFrame
@@ -8279,12 +9108,19 @@ const EditImageInterface: React.FC = () => {
                           ) : (
                             <div className="absolute inset-0 z-10">
                               <EditImageEraseFrame
-                                sourceImageUrl={inputs["fill"] as string}
+                                sourceImageUrl={
+                                  (inputs[
+                                    selectedFeature === "fill"
+                                      ? "fill"
+                                      : "style-combination"
+                                  ] as string) || null
+                                }
                                 brushSize={eraseBrushSize}
                                 isDrawing={eraseIsDrawing}
                                 setIsDrawing={setEraseIsDrawing}
                                 onMaskChange={setEraseMaskData}
                                 isAdjustingBrush={isAdjustingBrush}
+                                maskResetNonce={eraseFrameMaskResetNonce}
                               />
                             </div>
                           )
