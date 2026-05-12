@@ -600,7 +600,7 @@ export const loadHistory = createAsyncThunk(
           const want = String(frameSizeFilter).toLowerCase();
           filteredItems = filteredItems.filter((it: any) => {
             const fs = String(it?.frameSize || it?.aspect_ratio || "").trim();
-            if (!fs) return true;
+            if (!fs) return false;
             return fs.toLowerCase() === want;
           });
         }

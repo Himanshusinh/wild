@@ -205,6 +205,34 @@ export default function HistoryFilterDropdown({
     [calendarYear, calendarMonth],
   );
 
+  const prevIsOpenRef = React.useRef(false);
+  React.useEffect(() => {
+    if (isOpen && !prevIsOpenRef.current) {
+      if (currentHistoryFilters?.frameSize) {
+        setSelectedAspect(currentHistoryFilters.frameSize);
+      }
+      if (currentHistoryFilters?.style) {
+        setSelectedStyle(currentHistoryFilters.style);
+      }
+      if (currentHistoryFilters?.model) {
+        const stored = Array.isArray(currentHistoryFilters.model)
+          ? currentHistoryFilters.model[0]
+          : currentHistoryFilters.model;
+        const foundLabel = ALL_MODELS.find((lbl) => {
+          const mapped = mapHistoryFilterModelChipToStoredModel(lbl);
+          if (Array.isArray(mapped)) return mapped.includes(stored);
+          return mapped === stored;
+        });
+        if (foundLabel) {
+          setSelectedModel(foundLabel);
+        } else if (typeof stored === "string") {
+          setSelectedModel(stored);
+        }
+      }
+    }
+    prevIsOpenRef.current = isOpen;
+  }, [isOpen, currentHistoryFilters]);
+
   React.useEffect(() => {
     if (!isCalendarOpen) return;
     const onDocDown = (e: MouseEvent) => {
@@ -855,10 +883,17 @@ export default function HistoryFilterDropdown({
             )}
           </div>
 
-          {QUICK_MODELS.filter((m) => {
-            if (!selectedTool || !TOOL_MODELS_MAP[selectedTool]) return true;
-            return TOOL_MODELS_MAP[selectedTool].includes(m);
-          }).map((m) => (
+          {(() => {
+            const baseQuick = QUICK_MODELS.filter((m) => {
+              if (!selectedTool || !TOOL_MODELS_MAP[selectedTool]) return true;
+              return TOOL_MODELS_MAP[selectedTool].includes(m);
+            });
+            const res: string[] = [...baseQuick];
+            if (selectedModel && !res.includes(selectedModel)) {
+              res.push(selectedModel);
+            }
+            return res;
+          })().map((m) => (
             <button
               key={m}
               type="button"

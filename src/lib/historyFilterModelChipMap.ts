@@ -8,7 +8,6 @@
 /** Quick chips shown in the filter popup (subset of FILTER_POPUP_MODEL_LABELS). */
 export const FILTER_POPUP_QUICK_MODEL_LABELS = [
   "Flux Dev",
-  "Classic",
   "Nano Banana",
 ] as const;
 
@@ -18,6 +17,7 @@ export const FILTER_POPUP_QUICK_MODEL_LABELS = [
  */
 export const FILTER_POPUP_MODEL_LABELS: readonly string[] = [
   ...FILTER_POPUP_QUICK_MODEL_LABELS,
+  "Classic",
   "Flux.2 Pro",
   "Flux 2 Pro",
   "Qwen Image 2 Pro",
