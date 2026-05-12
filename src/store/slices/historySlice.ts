@@ -81,6 +81,24 @@ import { HistoryEntry, HistoryFilters } from "@/types/history";
 import axiosInstance from "@/lib/axiosInstance";
 import { PaginationParams, PaginationResult } from "@/lib/paginationUtils";
 
+/** GET /api/generations: serialize arrays as repeated keys (`k=a&k=b`), not `k[]=...`. */
+function serializeGenerationsListParams(params: Record<string, unknown>): string {
+  const usp = new URLSearchParams();
+  for (const [key, raw] of Object.entries(params)) {
+    if (raw === undefined || raw === null) continue;
+    if (Array.isArray(raw)) {
+      for (const v of raw) {
+        if (v === undefined || v === null) continue;
+        const s = String(v).trim();
+        if (s) usp.append(key, s);
+      }
+    } else {
+      usp.append(key, String(raw));
+    }
+  }
+  return usp.toString();
+}
+
 // Map UI generation types to backend-expected values
 const mapGenerationTypeForBackend = (
   type?: string | string[],
@@ -95,17 +113,18 @@ const mapGenerationTypeForBackend = (
   const normalized = type.toLowerCase();
   // Synonym mapping for operations (try canonical underscore forms first)
   const opSynonyms: Record<string, string> = {
-    "image-upscale": "image_upscale",
-    image_upscale: "image_upscale",
-    upscale: "image_upscale",
-    "image-edit": "image_edit",
-    image_edit: "image_edit",
-    "edit-image": "image_edit",
-    edit_image: "image_edit",
-    "image-to-svg": "image_to_svg",
-    image_to_svg: "image_to_svg",
-    vectorize: "image_to_svg",
-    "image-vectorize": "image_to_svg",
+    // Backend expects hyphenated canonical values (see validateGenerations.ts)
+    "image-upscale": "image-upscale",
+    image_upscale: "image-upscale",
+    upscale: "image-upscale",
+    "image-edit": "image-edit",
+    image_edit: "image-edit",
+    "edit-image": "image-edit",
+    edit_image: "image-edit",
+    "image-to-svg": "image-to-svg",
+    image_to_svg: "image-to-svg",
+    vectorize: "image-to-svg",
+    "image-vectorize": "image-to-svg",
   };
   if (opSynonyms[normalized]) return opSynonyms[normalized];
   switch (normalized) {
@@ -127,9 +146,111 @@ const mapGenerationTypeForBackend = (
   }
 };
 
+/**
+ * When listing image history with a single-model (or single-entry) filter, Firestore often
+ * needs `generationType` on the query (composite index). Upscale sends `model[]` with many
+ * IDs — skip this default so upscale scans stay unconstrained by generationType.
+ */
+function attachDefaultImageGenerationTypesForModelQuery(
+  params: Record<string, unknown>,
+  filtersForBackend: HistoryFilters | Record<string, unknown> | undefined,
+): void {
+  const fb = filtersForBackend as any;
+  const modelRaw = fb?.model;
+  const arr = Array.isArray(modelRaw) ? modelRaw : null;
+  if (arr && arr.length > 1) return;
+
+  const hasModelFilter =
+    modelRaw != null &&
+    modelRaw !== "" &&
+    (arr ? arr.some((m: unknown) => String(m ?? "").trim()) : String(modelRaw).trim());
+
+  if (!hasModelFilter) return;
+  if (String(fb?.mode || "").toLowerCase() !== "image") return;
+  if (fb?.generationType) return;
+
+  const mapped = mapGenerationTypeForBackend([
+    "text-to-image",
+    "image-to-image",
+  ] as any);
+  if (mapped) (params as any).generationType = mapped;
+}
+
+const normalizeGenerationTypeForClient = (t?: string) =>
+  t ? String(t).replace(/[_-]/g, "-").toLowerCase() : "";
+
+/** Stable string for comparing history filter payloads (incl. Upscale `model[]`). */
+function modelFilterSignature(filters: any): string {
+  const m = filters?.model;
+  if (m === undefined || m === null) return "";
+  if (Array.isArray(m)) {
+    return [...m].map((v: any) => String(v)).sort().join("\u0001");
+  }
+  return String(m);
+}
+
+/** Stored MiniMax image rows use API id `image-01`; UI filters use `minimax-image-01`. */
+const MINIMAX_IMAGE_MODEL_IDS = new Set(["image-01", "minimax-image-01"]);
+
+function minimaxImageAliasPairMatches(want: string, stored: string): boolean {
+  const p = String(want || "").trim().toLowerCase();
+  const s = String(stored || "").trim().toLowerCase();
+  if (p === s) return true;
+  return MINIMAX_IMAGE_MODEL_IDS.has(p) && MINIMAX_IMAGE_MODEL_IDS.has(s);
+}
+
+/** Aligns with api-gateway `itemModelMatchesModelParam` (Replicate `owner/model:version` rows). */
+function itemModelMatchesModelParamClient(
+  itemModel: string | undefined,
+  paramModel: string | string[] | undefined,
+): boolean {
+  if (paramModel === undefined || paramModel === null) return true;
+  const rawList = Array.isArray(paramModel) ? paramModel : [paramModel];
+  const trimmed = rawList.map((m) => String(m ?? "").trim()).filter(Boolean);
+  if (trimmed.length === 0) return true;
+  const exact = new Set(trimmed);
+  const bases = new Set(
+    [...exact].map((e) => {
+      let x = String(e).trim().toLowerCase();
+      if (x.startsWith("replicate/")) x = x.slice("replicate/".length);
+      const c = x.indexOf(":");
+      if (c > 0) x = x.slice(0, c);
+      return x;
+    }).filter(Boolean),
+  );
+  const row = String(itemModel ?? "").trim();
+  if (!row) return false;
+  if (exact.has(row)) return true;
+  for (const want of exact) {
+    if (minimaxImageAliasPairMatches(want, row)) return true;
+  }
+  let x = row.toLowerCase();
+  if (x.startsWith("replicate/")) x = x.slice("replicate/".length);
+  const c = x.indexOf(":");
+  if (c > 0) x = x.slice(0, c);
+  return bases.has(x);
+}
+
 // Map frontend model values to backend SKU identifiers for filtering/history
 const mapModelSkuForBackend = (frontendValue?: string): string | undefined => {
   if (!frontendValue) return frontendValue;
+  // If the UI is already passing a backend model id (contains "/" or looks like a provider id),
+  // do NOT normalize it into underscore SKUs. The generations API stores raw model strings.
+  const raw = String(frontendValue).trim();
+  if (
+    raw.includes("/") ||
+    raw.startsWith("fal-ai/") ||
+    raw.startsWith("replicate/") ||
+    raw.startsWith("openai/") ||
+    raw.startsWith("google/") ||
+    raw.startsWith("bytedance/") ||
+    raw.startsWith("mv-lab/") ||
+    raw.startsWith("nightmareai/") ||
+    raw.startsWith("philz1337x/") ||
+    raw.startsWith("fermatresearch/")
+  ) {
+    return raw.toLowerCase();
+  }
   switch (frontendValue) {
     // Runway
     case "gen4_turbo":
@@ -145,12 +266,31 @@ const mapModelSkuForBackend = (frontendValue?: string): string | undefined => {
       return "minimax_i2v_01_director";
     case "S2V-01":
       return "minimax_s2v_01";
-    // Default: lowercase and replace non-alphanumerics with underscores
-    default:
-      return String(frontendValue)
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "_");
+    default: {
+      const lower = String(frontendValue).trim().toLowerCase();
+      // Keep canonical Firestore model ids (flux-2-pro, gemini-25-flash-image, openai/gpt-image-1.5, …).
+      if (
+        !/\s/.test(lower) &&
+        (lower.includes("-") || lower.includes("/")) &&
+        /^[a-z0-9./:_-]+$/.test(lower)
+      ) {
+        return lower;
+      }
+      return lower.replace(/[^a-z0-9]+/g, "_");
+    }
   }
+};
+
+const mapModelSkuForBackendAny = (
+  value?: string | string[],
+): string | string[] | undefined => {
+  if (!value) return value as any;
+  if (Array.isArray(value)) {
+    return value
+      .map((v) => mapModelSkuForBackend(String(v)) as string)
+      .filter(Boolean);
+  }
+  return mapModelSkuForBackend(value);
 };
 
 interface HistoryState {
@@ -262,27 +402,23 @@ export const loadHistory = createAsyncThunk(
       if (filtersForBackend?.generationType) {
         // If backendFilters is explicitly provided, send generationType directly to backend
         // Backend validation now accepts audio types, so we can send them
-        if (backendFilters && !skipBackendGenerationFilter) {
-          // Normalize audio types to canonical forms before sending
+        if (!skipBackendGenerationFilter) {
+          // Normalize audio types + map common op synonyms (image_upscale, image_edit, etc.)
           const normalized = canonicalAudioType(
             filtersForBackend.generationType as any,
           );
-          params.generationType = normalized;
-        } else {
-          const mapped = canonicalAudioType(
-            filtersForBackend.generationType as any,
-          );
-          if (mapped && !skipBackendGenerationFilter)
-            params.generationType = mapped;
+          const mapped = mapGenerationTypeForBackend(normalized as any);
+          if (mapped) params.generationType = mapped;
         }
       }
+      attachDefaultImageGenerationTypesForModelQuery(params, filtersForBackend);
       if (
         (filtersForBackend as any)?.mode &&
         typeof (filtersForBackend as any).mode === "string"
       )
         (params as any).mode = (filtersForBackend as any).mode;
       if (filtersForBackend?.model)
-        params.model = mapModelSkuForBackend(filtersForBackend.model);
+        params.model = mapModelSkuForBackendAny(filtersForBackend.model as any);
       if ((filtersForBackend as any)?.style)
         (params as any).style = String((filtersForBackend as any).style);
       if ((filtersForBackend as any)?.frameSize)
@@ -347,7 +483,11 @@ export const loadHistory = createAsyncThunk(
       });
       console.log("[HistorySlice] Making API call to /api/generations...");
 
-      const res = await client.get("/api/generations", { params, signal });
+      const res = await client.get("/api/generations", {
+        params,
+        signal,
+        paramsSerializer: serializeGenerationsListParams,
+      });
 
       console.log("[HistorySlice] API response received:", {
         status: res.status,
@@ -371,7 +511,8 @@ export const loadHistory = createAsyncThunk(
       if (
         Array.isArray(result.items) &&
         result.items.length === 0 &&
-        params.generationType
+        params.generationType &&
+        !params.model
       ) {
         const removed = String(params.generationType);
         try {
@@ -381,6 +522,7 @@ export const loadHistory = createAsyncThunk(
           const broadRes = await client.get("/api/generations", {
             params: broadParams,
             signal,
+            paramsSerializer: serializeGenerationsListParams,
           });
           const broadData = broadRes.data?.data || {
             items: [],
@@ -439,22 +581,53 @@ export const loadHistory = createAsyncThunk(
       });
 
       // Client-side safety net: if backend doesn't support style/frameSize filters, apply them here.
+      // Rows without style/frameSize (common for MiniMax `image-01`, older docs) must NOT be dropped,
+      // or the grid stays empty while the API returns full pages.
       let filteredItems = items;
       try {
         const styleFilter = (filters as any)?.style || (backendFilters as any)?.style;
         const frameSizeFilter =
           (filters as any)?.frameSize || (backendFilters as any)?.frameSize;
         if (styleFilter) {
-          filteredItems = filteredItems.filter(
-            (it: any) => String(it?.style || "").toLowerCase() === String(styleFilter).toLowerCase(),
-          );
+          const want = String(styleFilter).toLowerCase();
+          filteredItems = filteredItems.filter((it: any) => {
+            const st = String(it?.style || "").trim();
+            if (!st) return true;
+            return st.toLowerCase() === want;
+          });
         }
         if (frameSizeFilter) {
-          filteredItems = filteredItems.filter(
-            (it: any) =>
-              String(it?.frameSize || "").toLowerCase() ===
-              String(frameSizeFilter).toLowerCase(),
-          );
+          const want = String(frameSizeFilter).toLowerCase();
+          filteredItems = filteredItems.filter((it: any) => {
+            const fs = String(it?.frameSize || it?.aspect_ratio || "").trim();
+            if (!fs) return true;
+            return fs.toLowerCase() === want;
+          });
+        }
+      } catch {}
+
+      // Client-side safety net for generationType filters (especially for tool filters like Upscale).
+      // If backend-side filtering fails (or fallback broadened the response), enforce here.
+      try {
+        const requestedTypeRaw =
+          (filtersForBackend as any)?.generationType ||
+          (filters as any)?.generationType;
+        const requestedTypes: string[] = Array.isArray(requestedTypeRaw)
+          ? requestedTypeRaw.map((x: any) => String(x))
+          : requestedTypeRaw
+            ? [String(requestedTypeRaw)]
+            : [];
+        const requestedNorm = requestedTypes.map(normalizeGenerationTypeForClient);
+        if (requestedNorm.length > 0) {
+          filteredItems = filteredItems.filter((it: any) => {
+            const itType = normalizeGenerationTypeForClient(it?.generationType);
+            if (requestedNorm.includes(itType)) return true;
+            // Accept underscore variant when a hyphenated filter is used
+            const itTypeAlt = String(it?.generationType || "")
+              .replace(/[_-]/g, "-")
+              .toLowerCase();
+            return requestedNorm.includes(itTypeAlt);
+          });
         }
       } catch {}
 
@@ -584,6 +757,15 @@ export const loadMoreHistory = createAsyncThunk(
 
       const state = getState() as { history: HistoryState };
       const currentEntries = state.history.entries;
+      // Merge Redux slice filters with thunk args so infinite scroll keeps the same
+      // constraints as the initial load (e.g. Upscale `model[]` is only on `state.history.filters`).
+      const sliceFilters = (state.history.filters || {}) as HistoryFilters;
+      const effectiveFilterBundle = {
+        ...sliceFilters,
+        ...(filters || {}),
+        ...(backendFilters || {}),
+      } as HistoryFilters;
+      const filtersForBackend = effectiveFilterBundle;
 
       console.log("[HistorySlice] Current state before loadMore:", {
         currentEntriesCount: currentEntries.length,
@@ -633,9 +815,10 @@ export const loadMoreHistory = createAsyncThunk(
           return false;
         };
         const matchesFilters = (entry: any): boolean => {
+          const fb = effectiveFilterBundle;
           // Generation type filter
-          if (filters?.generationType) {
-            const filterType = filters.generationType;
+          if (fb?.generationType) {
+            const filterType = fb.generationType;
             if (Array.isArray(filterType)) {
               // If it's an array, check if any type matches
               if (
@@ -650,8 +833,8 @@ export const loadMoreHistory = createAsyncThunk(
               }
             }
           }
-          const modeFilter = (filters as any)?.mode
-            ? String((filters as any).mode).toLowerCase()
+          const modeFilter = (fb as any)?.mode
+            ? String((fb as any).mode).toLowerCase()
             : null;
           if (modeFilter) {
             const e = normalizeGenerationType(entry.generationType);
@@ -660,10 +843,14 @@ export const loadMoreHistory = createAsyncThunk(
               return false;
             }
           }
-          // Model filter (if provided)
-          if (filters?.model && entry.model !== filters.model) return false;
+          // Model filter (if provided) — support string or array (Upscale sends model[])
+          if (fb?.model) {
+            if (!itemModelMatchesModelParamClient(entry?.model, fb.model)) {
+              return false;
+            }
+          }
           // Status filter (if provided)
-          if (filters?.status && entry.status !== filters.status) return false;
+          if (fb?.status && entry.status !== fb.status) return false;
           return true;
         };
 
@@ -684,7 +871,7 @@ export const loadMoreHistory = createAsyncThunk(
 
       const client = axiosInstance;
       const params: any = { limit: nextPageParams.limit };
-      if (filters?.status) params.status = filters.status;
+      if (filtersForBackend?.status) params.status = filtersForBackend.status;
 
       // Normalize audio types to canonical forms
       const canonicalAudioType = (
@@ -711,20 +898,17 @@ export const loadMoreHistory = createAsyncThunk(
         return normalized.length === 1 ? normalized[0] : normalized;
       };
 
-      const filtersForBackend = backendFilters || filters;
-
-      // Only include generationType if explicitly provided in backendFilters
-      // When no search, don't send generationType array - rely on mode: 'image' only
-      if (filtersForBackend?.generationType && backendFilters) {
+      // Include generationType when the merged filter set has it (slice + thunk args).
+      if (filtersForBackend?.generationType) {
         // Backend validation now accepts audio types, so normalize and send them
         const normalized = canonicalAudioType(
           filtersForBackend.generationType as any,
         );
-        // Only set if it's actually an array or string (not undefined)
-        if (normalized) {
-          params.generationType = normalized;
-        }
+        // Also map common op synonyms to backend canonical forms (image_upscale, image_edit, etc.)
+        const mapped = mapGenerationTypeForBackend(normalized as any);
+        if (mapped) params.generationType = mapped;
       }
+      attachDefaultImageGenerationTypesForModelQuery(params, filtersForBackend);
       // Don't set generationType if not in backendFilters - let mode handle it
       if (
         (filtersForBackend as any)?.mode &&
@@ -732,7 +916,7 @@ export const loadMoreHistory = createAsyncThunk(
       )
         (params as any).mode = (filtersForBackend as any).mode;
       if (filtersForBackend?.model)
-        params.model = mapModelSkuForBackend(filtersForBackend.model);
+        params.model = mapModelSkuForBackendAny(filtersForBackend.model as any);
       if ((filtersForBackend as any)?.style)
         (params as any).style = String((filtersForBackend as any).style);
       if ((filtersForBackend as any)?.frameSize)
@@ -812,7 +996,10 @@ export const loadMoreHistory = createAsyncThunk(
         params,
       );
 
-      const res = await client.get("/api/generations", { params });
+      const res = await client.get("/api/generations", {
+        params,
+        paramsSerializer: serializeGenerationsListParams,
+      });
 
       console.log("[HistorySlice] loadMoreHistory API response:", {
         status: res.status,
@@ -1096,6 +1283,7 @@ const historySlice = createSlice({
             generationType,
             dateStart,
             dateEnd,
+            model: modelFilterSignature(filters),
           });
         };
         // If the caller explicitly requested a refresh, accept the response even if
@@ -1127,8 +1315,14 @@ const historySlice = createSlice({
         const hasNextCursor =
           action.payload?.nextCursor !== undefined &&
           action.payload?.nextCursor !== null;
-        const syntheticNextCursor =
-          !hasNextCursor && payloadEntries.length > 0
+        // If the server says hasMore=false and sends no cursor, the list is complete — even when
+        // fewer than `limit` rows match (e.g. 4 upscale hits with limit 60). Do not synthesize
+        // a cursor from the last row or we keep hasMore=true and refetch the same first page.
+        const serverExplicitlyExhausted =
+          action.payload?.hasMore === false && !hasNextCursor;
+        const syntheticNextCursor = serverExplicitlyExhausted
+          ? null
+          : !hasNextCursor && payloadEntries.length > 0
             ? (() => {
                 try {
                   const last = payloadEntries[payloadEntries.length - 1];
@@ -1141,11 +1335,12 @@ const historySlice = createSlice({
                 }
               })()
             : null;
-        const optimisticHasMore =
-          serverHasMore ||
-          hasNextCursor ||
-          Boolean(syntheticNextCursor) ||
-          payloadEntries.length >= requestedLimit;
+        const optimisticHasMore = serverExplicitlyExhausted
+          ? false
+          : serverHasMore ||
+            hasNextCursor ||
+            Boolean(syntheticNextCursor) ||
+            payloadEntries.length >= requestedLimit;
         state.filters = usedFilters;
 
         console.log(
@@ -1225,6 +1420,16 @@ const historySlice = createSlice({
 
           state.entries = [...mergedInOrder, ...localOnly];
         }
+
+        // Drop entries that do not match an explicit model allowlist (prevents `localOnly`
+        // merges and race conditions from showing Seedream/Gemini rows during Upscale filter).
+        const modelRawUsed = (usedFilters as any)?.model;
+        if (modelRawUsed) {
+          state.entries = state.entries.filter((e: any) =>
+            itemModelMatchesModelParamClient(e?.model, modelRawUsed),
+          );
+        }
+
         const usedTypeAny = (usedFilters as any)?.generationType as any;
         if (usedTypeAny) {
           const normalize = (t?: string): string =>
@@ -1376,9 +1581,9 @@ const historySlice = createSlice({
         state.lastLoadedCount = action.payload.entries.length;
         // Keep pagination optimistic: trust server flag, nextCursor, synthetic cursor, or a full page of items
         state.hasMore = optimisticHasMore;
-        // Store nextCursor from backend response or synthesize from last item to enable deeper paging when server omits cursor
-        state.nextCursor =
-          action.payload.nextCursor ?? syntheticNextCursor ?? null;
+        state.nextCursor = serverExplicitlyExhausted
+          ? null
+          : (action.payload.nextCursor ?? syntheticNextCursor ?? null);
         state.error = null;
 
         console.log(
@@ -1459,6 +1664,7 @@ const historySlice = createSlice({
             generationType,
             dateStart,
             dateEnd,
+            model: modelFilterSignature(filters),
           });
         };
         if (
@@ -1480,6 +1686,17 @@ const historySlice = createSlice({
           newEntriesCount: newEntries.length,
           duplicatesFiltered: action.payload.entries.length - newEntries.length,
         });
+
+        // Strict model allowlist (e.g. Upscale tool sends many `model[]` values).
+        const modelRawMerge =
+          (action.meta as any)?.arg?.backendFilters?.model ||
+          (action.meta as any)?.arg?.filters?.model ||
+          state.filters?.model;
+        if (modelRawMerge) {
+          newEntries = newEntries.filter((e: any) =>
+            itemModelMatchesModelParamClient(e?.model, modelRawMerge),
+          );
+        }
 
         // When using mode filters (mode: 'image' or mode: 'video'), the backend is the source of truth
         // and already filters correctly. Do NOT apply any frontend filtering in this case.
@@ -1647,37 +1864,26 @@ const historySlice = createSlice({
         // Append only genuinely new entries
         state.entries.push(...newEntries);
 
-        // Respect server-declared hasMore but stay optimistic when we have cursors or full pages.
-        // Zero-new can happen due to de-duplication while more pages still exist.
+        // Respect server-declared hasMore; avoid synthetic cursors when the server says the list is done.
         const serverHasMore = Boolean(action.payload.hasMore);
         const hasNextCursor =
           action.payload.nextCursor !== undefined &&
           action.payload.nextCursor !== null;
         const payloadEntries = action.payload.entries || [];
+        const serverExplicitlyExhausted =
+          action.payload?.hasMore === false && !hasNextCursor;
+        /** Backend returned rows but none were new (same page re-fetched) — stop scrolling. */
+        const duplicatePageNoProgress =
+          newEntries.length === 0 && payloadEntries.length > 0;
 
-        // Calculate synthetic cursor from entries that were actually added (after filtering/deduplication)
-        // This ensures cursor points to the correct position for next page
-        // Use the last item from NEW entries added (not original payload) to maintain pagination accuracy
+        // Calculate synthetic cursor only when the server did not declare exhaustion.
         const syntheticNextCursor =
-          !hasNextCursor && newEntries.length > 0
-            ? (() => {
-                try {
-                  // When sortOrder is 'asc', entries are oldest to newest, so use last item
-                  // When sortOrder is 'desc', entries are newest to oldest, so also use last item
-                  const last = newEntries[newEntries.length - 1];
-                  const ts = Date.parse(
-                    String(last?.timestamp || last?.createdAt || ""),
-                  );
-                  return Number.isNaN(ts) ? null : String(ts);
-                } catch {
-                  return null;
-                }
-              })()
-            : !hasNextCursor && payloadEntries.length > 0
+          serverExplicitlyExhausted || duplicatePageNoProgress
+            ? null
+            : !hasNextCursor && newEntries.length > 0
               ? (() => {
-                  // Fallback: if all entries were filtered but payload had items, use original payload's last item
                   try {
-                    const last = payloadEntries[payloadEntries.length - 1];
+                    const last = newEntries[newEntries.length - 1];
                     const ts = Date.parse(
                       String(last?.timestamp || last?.createdAt || ""),
                     );
@@ -1686,24 +1892,37 @@ const historySlice = createSlice({
                     return null;
                   }
                 })()
-              : null;
+              : !hasNextCursor && payloadEntries.length > 0
+                ? (() => {
+                    try {
+                      const last = payloadEntries[payloadEntries.length - 1];
+                      const ts = Date.parse(
+                        String(last?.timestamp || last?.createdAt || ""),
+                      );
+                      return Number.isNaN(ts) ? null : String(ts);
+                    } catch {
+                      return null;
+                    }
+                  })()
+                : null;
         const optimisticHasMore =
-          serverHasMore ||
-          hasNextCursor ||
-          Boolean(syntheticNextCursor) ||
-          payloadEntries.length >= requestedLimit;
+          serverExplicitlyExhausted || duplicatePageNoProgress
+            ? false
+            : serverHasMore ||
+              hasNextCursor ||
+              Boolean(syntheticNextCursor) ||
+              payloadEntries.length >= requestedLimit;
 
-        // CRITICAL FIX: If we received 0 entries from backend (payloadEntries) OR
-        // if we filtered everything out (newEntries), we MUST stop pagination
-        // unless the backend explicitly provided a nextCursor to jump over the gap.
-        // If we trust 'optimisticHasMore' when we have 0 items and no cursor, we'll
-        // just re-request the same page range forever (using the last known item as cursor).
         state.lastLoadedCount = newEntries.length;
-        if (payloadEntries.length === 0 && !hasNextCursor) {
+        if (
+          duplicatePageNoProgress ||
+          serverExplicitlyExhausted ||
+          (payloadEntries.length === 0 && !hasNextCursor)
+        ) {
           state.hasMore = false;
+          state.nextCursor = null;
         } else {
           // Check if the backend returned the EXACT SAME cursor we used for this request.
-          // This indicates a "stuck cursor" loop where we'd keep requesting the same page.
           const currentRequestCursor =
             (action.meta as any)?.arg?.paginationParams?.cursor?.id ||
             (action.meta as any)?.arg?.paginationParams?.cursor?.timestamp;
@@ -1711,7 +1930,6 @@ const historySlice = createSlice({
           const backendCursorStr = action.payload.nextCursor
             ? String(action.payload.nextCursor)
             : null;
-          // compare as strings to avoid type mismatches
           const requestCursorStr = currentRequestCursor
             ? String(currentRequestCursor)
             : null;
@@ -1725,8 +1943,6 @@ const historySlice = createSlice({
               "[HistorySlice] Backend returned duplicate cursor, ignoring to prevent loop.",
               backendCursorStr,
             );
-            // If cursor is stuck, we MUST use synthetic cursor from new entries to advance,
-            // or stop if no new entries.
             if (newEntries.length > 0) {
               state.hasMore = true;
               state.nextCursor = syntheticNextCursor ?? null;
@@ -1740,9 +1956,6 @@ const historySlice = createSlice({
               action.payload.nextCursor ?? syntheticNextCursor ?? null;
           }
         }
-        // Store nextCursor from backend response or synthesize from last item to enable deeper paging when server omits cursor
-        state.nextCursor =
-          action.payload.nextCursor ?? syntheticNextCursor ?? null;
 
         console.log(
           "[HistorySlice] State updated after loadMoreHistory.fulfilled:",

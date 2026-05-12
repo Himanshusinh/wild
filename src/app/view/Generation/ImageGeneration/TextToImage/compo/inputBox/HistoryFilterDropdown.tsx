@@ -10,6 +10,12 @@ import {
 } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { clearHistory, setFilters, loadHistory } from "@/store/slices/historySlice";
+import {
+  FILTER_POPUP_MODEL_LABELS,
+  FILTER_POPUP_QUICK_MODEL_LABELS,
+  mapHistoryFilterModelChipToStoredModel,
+  mapHistoryFilterModelChipsToStoredModels,
+} from "@/lib/historyFilterModelChipMap";
 
 interface HistoryFilterDropdownProps {
   isOpen: boolean;
@@ -70,31 +76,8 @@ export default function HistoryFilterDropdown({
   ];
   const QUICK_STYLES = ["Photo", "Anime", "3D"];
   const ALL_STYLES = ["Photo", "Anime", "3D", "Cinematic", "Illustration"];
-  const QUICK_MODELS = ["Flux Dev", "Classic", "Nano Banana"];
-  const ALL_MODELS = [
-    "Flux Dev",
-    "Classic",
-    "Nano Banana",
-    "Flux.2 Pro",
-    "Qwen Image 2 Pro",
-    "Qwen Image 2",
-    "Nano Banana 2",
-    "Seedream 5 Lite",
-    "Nano Banana Pro",
-    "z-image-turbo",
-    "GPT Image 1.5",
-    "Clarity Upscaler",
-    "Real-ESRGAN",
-    "Crystal Upscaler",
-    "Topaz Upscaler",
-    "SeedVR Upscaler",
-    "851 Labs Remove BG",
-    "Lucataco Remove BG",
-    "Bria GenFill",
-    "Bria Expand",
-    "Recraft Vectorize",
-    "Image2SVG",
-  ];
+  const QUICK_MODELS = [...FILTER_POPUP_QUICK_MODEL_LABELS];
+  const ALL_MODELS = [...FILTER_POPUP_MODEL_LABELS];
 
   const TOOL_MODELS_MAP: Record<string, string[]> = {
     Upscale: [
@@ -117,7 +100,40 @@ export default function HistoryFilterDropdown({
       aspect?: string;
       model?: string | null;
     }) => {
-      const modelToUse = next.model || (next.tool && TOOL_MODELS_MAP[next.tool] ? TOOL_MODELS_MAP[next.tool] : null);
+      // IMPORTANT: Tool filters should be backend-friendly.
+      // For Upscale, we filter by actual model IDs (not generationType), because older history rows
+      // may not have consistent generationType tagging.
+      const UPSCALE_BACKEND_MODELS: string[] = [
+        // Replicate upscalers/refiner
+        "philz1337x/clarity-upscaler",
+        "nightmareai/real-esrgan",
+        "philz1337x/crystal-upscaler",
+        "mv-lab/swin2sr",
+        "fermatresearch/magic-image-refiner",
+        // FAL upscalers
+        "fal-ai/topaz/upscale/image",
+        "fal-ai/seedvr/upscale/image",
+        "fal-ai/seedvr/upscale/video",
+      ];
+
+      const resolvedChipModel = mapHistoryFilterModelChipToStoredModel(
+        next.model ?? undefined,
+      );
+      const toolDefaultStored =
+        next.tool && TOOL_MODELS_MAP[next.tool]
+          ? mapHistoryFilterModelChipsToStoredModels(TOOL_MODELS_MAP[next.tool])
+          : [];
+
+      const modelToUse =
+        next.tool === "Upscale"
+          ? UPSCALE_BACKEND_MODELS
+          : resolvedChipModel != null
+            ? resolvedChipModel
+            : toolDefaultStored.length > 0
+              ? toolDefaultStored.length === 1
+                ? toolDefaultStored[0]
+                : toolDefaultStored
+              : null;
 
       const nextFilters: any = {
         ...(currentHistoryFilters || {}),
@@ -130,10 +146,9 @@ export default function HistoryFilterDropdown({
       };
 
       // Tool → generationType filter (backend-friendly). Keep it conservative.
+      // Remove BG: history rows use `text-to-image` (see replicate removeBackground) — filter by model[] only.
       const toolToGenerationType: Record<string, string> = {
-        Upscale: "image-upscale",
         Vectorize: "image-to-svg",
-        "Remove BG": "image-edit",
         "Erase / Replace": "image-edit",
         Expand: "image-edit",
       };
