@@ -274,7 +274,9 @@ const MusicHistory: React.FC<MusicHistoryProps> = ({
         )}
         <div ref={sentinelRef} style={{ height: 1 }} />
       </div>
+      
     </div>
+    
   );
 };
 

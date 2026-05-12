@@ -258,6 +258,7 @@ const AudioCloningInputBox = ({ showHistoryOnly = false, selectedModel }: { show
           onDeleteUserFile={handleDeleteAudioFile}
         />
 
+        {/* State-of-the-art Audio Player Bottom Bar */}
         {selectedAudio && (
           <GlobalBottomAudioPlayer 
             selectedAudio={selectedAudio} 
@@ -333,8 +334,8 @@ const AudioCloningInputBox = ({ showHistoryOnly = false, selectedModel }: { show
 
           <button
             onClick={handleCloneAudio}
-            disabled={isCloning || !audioFileName.trim() || !selectedFile}
-            className={`w-full py-3 mt-2 rounded-[12px] text-[13px] font-satoshi font-black tracking-wide transition-all active:scale-[0.98] shadow-lg ${isCloning || !audioFileName.trim() || !selectedFile
+            disabled={isCloning || !audioFileName.trim()}
+            className={`w-full py-3 mt-2 rounded-[12px] text-[13px] font-satoshi font-black tracking-wide transition-all active:scale-[0.98] shadow-lg ${isCloning || !audioFileName.trim()
               ? 'bg-white/10 text-white/30 cursor-not-allowed border border-white/5'
               : 'bg-[#2F6BFF] text-white hover:opacity-90 shadow-[0_6px_20px_rgba(47,107,255,0.3)]'
               }`}

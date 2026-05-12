@@ -394,7 +394,7 @@ const TextToSpeechInputBox = ({ showHistoryOnly = false, selectedModel }: { show
         </>
       )}
 
-      {/* Audio Player Modal - Rendered for both history and input views */}
+      {/* State-of-the-art Audio Player Bottom Bar */}
       {selectedAudio && (
         <GlobalBottomAudioPlayer 
           selectedAudio={selectedAudio} 

@@ -247,7 +247,7 @@ const SFXInputBox = ({ showHistoryOnly = false, selectedModel }: { showHistoryOn
         </>
       )}
 
-      {/* Audio Player Modal - Rendered for both history and input views */}
+      {/* State-of-the-art Audio Player Bottom Bar */}
       {selectedAudio && (
         <GlobalBottomAudioPlayer 
           selectedAudio={selectedAudio} 

@@ -149,9 +149,9 @@ const MusicGenerationInputBox = ({ showHistoryOnly = false, selectedModel }: { s
 
   const handleGenerate = async (payload: any) => {
     const isTtsModel = typeof payload?.model === 'string' && payload.model.toLowerCase().includes('eleven');
-    const primaryText = (isTtsModel ? payload?.text : payload?.lyrics) || payload?.prompt || '';
+    const primaryText = (isTtsModel ? payload?.text : payload?.lyrics) || payload?.lyrics_prompt || payload?.prompt || '';
     if (!primaryText.trim()) {
-      setErrorMessage(isTtsModel ? 'Please provide text' : 'Please provide lyrics');
+      setErrorMessage(isTtsModel ? 'Please provide text' : 'Please provide lyrics or style prompt');
       return;
     }
 
@@ -666,7 +666,7 @@ const MusicGenerationInputBox = ({ showHistoryOnly = false, selectedModel }: { s
         </>
       )}
 
-      {/* Audio Player Modal - Rendered for both history and input views */}
+      {/* State-of-the-art Audio Player Bottom Bar */}
       {selectedAudio && (
         <GlobalBottomAudioPlayer 
           selectedAudio={selectedAudio} 

@@ -5,13 +5,14 @@ import {
   useRef,
   useState,
 } from "react";
-import { shallowEqual } from "react-redux";
+import { shallowEqual, useStore } from "react-redux";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { loadHistory, setFilters } from "@/store/slices/historySlice";
 import useHistoryLoader from "@/hooks/useHistoryLoader";
 
 export function useInputBoxHistory(userData: unknown) {
   const dispatch = useAppDispatch();
+  const store = useStore();
 
   const [showSwitchLoader, setShowSwitchLoader] = useState(false);
   const switchLoadInFlightRef = useRef(false);
@@ -174,31 +175,31 @@ export function useInputBoxHistory(userData: unknown) {
 
       setPage(1);
 
-      const filters: any = { mode: "image", sortOrder: order };
+      const state: any = store.getState();
+      const prev = { ...(state?.history?.filters || {}) };
+      const filters: any = {
+        ...prev,
+        mode: "image",
+        sortOrder: order,
+      };
       if (s.trim()) filters.search = s.trim();
-      if (dr.start && dr.end)
+      else delete filters.search;
+
+      if (dr.start && dr.end) {
         filters.dateRange = {
           start: dr.start.toISOString(),
           end: dr.end.toISOString(),
         };
+      } else {
+        delete filters.dateRange;
+      }
+
       dispatch(setFilters(filters));
 
       await (dispatch as any)(
         loadHistory({
           filters,
-          backendFilters: {
-            mode: "image",
-            sortOrder: order,
-            ...(dr.start && dr.end
-              ? {
-                  dateRange: {
-                    start: dr.start.toISOString(),
-                    end: dr.end.toISOString(),
-                  },
-                }
-              : {}),
-            ...(s.trim() ? { search: s.trim() } : {}),
-          } as any,
+          backendFilters: { ...filters },
           // Keep initial payload small to avoid UI freezes / Chrome OOM on large accounts.
           paginationParams: { limit: 20 },
           requestOrigin: "page",
@@ -208,7 +209,7 @@ export function useInputBoxHistory(userData: unknown) {
         }),
       );
     },
-    [dispatch, userData, searchQuery, sortOrder, dateRange],
+    [dispatch, store, userData, searchQuery, sortOrder, dateRange],
   );
 
   const onSortChange = useCallback(
@@ -282,6 +283,62 @@ export function useInputBoxHistory(userData: unknown) {
     const normalize = (t?: string) =>
       t ? String(t).replace(/[_-]/g, "-").toLowerCase() : "";
 
+    const currentGenTypeFilterRaw = (currentFilters as any)?.generationType;
+    const currentGenTypeFilters: string[] = Array.isArray(currentGenTypeFilterRaw)
+      ? currentGenTypeFilterRaw.map((x: any) => String(x))
+      : currentGenTypeFilterRaw
+        ? [String(currentGenTypeFilterRaw)]
+        : [];
+    const currentGenTypeFiltersNorm = currentGenTypeFilters.map(normalize);
+
+    const currentModelFilterRaw = (currentFilters as any)?.model;
+    const currentModelFilters: string[] = Array.isArray(currentModelFilterRaw)
+      ? currentModelFilterRaw.map((x: any) => String(x))
+      : currentModelFilterRaw
+        ? [String(currentModelFilterRaw)]
+        : [];
+    const currentModelFilterSet = new Set(currentModelFilters.map((m) => String(m).trim()).filter(Boolean));
+
+    const normalizeModelBaseForCompare = (raw: string): string => {
+      let x = String(raw || "").trim().toLowerCase();
+      if (!x) return "";
+      if (x.startsWith("replicate/")) x = x.slice("replicate/".length);
+      const c = x.indexOf(":");
+      if (c > 0) x = x.slice(0, c);
+      return x;
+    };
+
+    const isUpscaleModel = (modelRaw: any): boolean => {
+      const m = normalize(modelRaw);
+      if (!m) return false;
+      // Replicate upscalers / refiner
+      if (
+        m.includes("philz1337x/clarity-upscaler") ||
+        m.includes("philz1337x/crystal-upscaler") ||
+        m.includes("nightmareai/real-esrgan") ||
+        m.includes("mv-lab/swin2sr") ||
+        m.includes("fermatresearch/magic-image-refiner")
+      )
+        return true;
+      // FAL upscalers
+      if (
+        m.includes("fal-ai/topaz/upscale/image") ||
+        m.includes("fal-ai/seedvr/upscale/image") ||
+        m.includes("fal-ai/seedvr/upscale/video")
+      )
+        return true;
+      // Friendly UI labels sometimes appear in model fields
+      if (
+        m.includes("topaz") && m.includes("upscale") ||
+        m.includes("seedvr") && m.includes("upscale") ||
+        m.includes("esrgan") ||
+        m.includes("clarity") && m.includes("upscal") ||
+        m.includes("crystal") && m.includes("upscal")
+      )
+        return true;
+      return false;
+    };
+
     const filtered = allEntries.filter((entry: any) => {
       const normalizedType = normalize(entry.generationType);
       const normalizedModel = normalize(entry.model);
@@ -323,11 +380,17 @@ export function useInputBoxHistory(userData: unknown) {
         return false;
       }
 
-      if (isSeedream && isTextToImage) {
-        return true;
-      }
-
-      if (isSeedream && !isTextToImage) {
+      // Seedream shortcut only when we are NOT restricting by an explicit model allowlist
+      // (e.g. Upscale tool sends many `model[]` values). Otherwise Seedream would bypass the
+      // allowlist and show unrelated image generations.
+      if (currentModelFilterSet.size === 0) {
+        if (isSeedream && isTextToImage) {
+          return true;
+        }
+        if (isSeedream && !isTextToImage) {
+          return false;
+        }
+      } else if (isSeedream && !isTextToImage) {
         return false;
       }
 
@@ -336,14 +399,46 @@ export function useInputBoxHistory(userData: unknown) {
         normalizedType === "image-vectorize" ||
         normalizedType.includes("vector");
 
-      return (
+      const basePass =
         normalizedType === "text-to-image" ||
         isImageToImage ||
         normalizedType === "image-upscale" ||
         normalizedType === "image-to-svg" ||
         normalizedType === "image-edit" ||
-        isVectorize
-      );
+        isVectorize;
+
+      if (!basePass) return false;
+
+      // Model filter (preferred for Upscale tool): if a model filter is active, enforce it.
+      if (currentModelFilterSet.size > 0) {
+        const entryModel = String(entry?.model || "").trim();
+        if (!entryModel) return false;
+        if (!currentModelFilterSet.has(entryModel)) {
+          const entryBase = normalizeModelBaseForCompare(entryModel);
+          const matchesBase = currentModelFilters.some(
+            (m) => normalizeModelBaseForCompare(m) === entryBase,
+          );
+          if (!matchesBase) return false;
+        }
+      }
+
+      // Apply active generationType filters from the filter popover (Tool → generationType).
+      // This is a client-side guard so the grid doesn't show non-matching entries if the backend
+      // returns mixed results (e.g., after a broadened fallback request).
+      if (currentGenTypeFiltersNorm.length > 0) {
+        const matchesType = currentGenTypeFiltersNorm.includes(normalizedType);
+        if (!matchesType) return false;
+
+        // Extra strictness for Upscale tool: require it to actually be one of the known upscale models,
+        // or already tagged as image-upscale. This prevents accidental leakage from mis-labeled entries.
+        const isUpscaleFilterActive = currentGenTypeFiltersNorm.includes("image-upscale");
+        if (isUpscaleFilterActive) {
+          if (normalizedType === "image-upscale") return true;
+          return isUpscaleModel(entry.model);
+        }
+      }
+
+      return true;
     });
 
     if (filtered.length === 0) {

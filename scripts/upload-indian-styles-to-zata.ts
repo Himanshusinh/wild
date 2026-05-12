@@ -102,7 +102,12 @@ async function main() {
   // Optional CLI filters:
   //   npx tsx scripts/upload-indian-styles-to-zata.ts himachal-pradesh telangana
   // If provided, we only upload files under these state folders.
-  const stateFilters = process.argv.slice(2).map((s) => s.trim()).filter(Boolean);
+  //   npx tsx scripts/upload-indian-styles-to-zata.ts arunachal --skip-rewrite
+  // Use --skip-rewrite when indianStylePreviews.ts already uses full Zata URLs
+  // (otherwise replaceAll would double-prefix the base URL).
+  const rawArgs = process.argv.slice(2).map((s) => s.trim()).filter(Boolean);
+  const skipRewrite = rawArgs.includes("--skip-rewrite");
+  const stateFilters = rawArgs.filter((s) => s !== "--skip-rewrite");
   const stateFilterSet = new Set(stateFilters);
 
   const { client: s3, bucket, endpoint } = buildClient();
@@ -146,9 +151,13 @@ async function main() {
 
   console.log(`[zata] uploaded total: ${uploaded}`);
 
-  // Rewrite mapping to use Zata URLs (so UI uses CDN immediately).
-  rewritePreviewFileToZataBase(zataPublicBase);
-  console.log("[zata] updated:", PREVIEWS_TS);
+  if (skipRewrite) {
+    console.log("[zata] skip preview rewrite (--skip-rewrite)");
+  } else {
+    // Rewrite mapping to use Zata URLs (so UI uses CDN immediately).
+    rewritePreviewFileToZataBase(zataPublicBase);
+    console.log("[zata] updated:", PREVIEWS_TS);
+  }
 }
 
 main().catch((err) => {

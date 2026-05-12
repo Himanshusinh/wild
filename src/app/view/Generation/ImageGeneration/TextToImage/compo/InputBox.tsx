@@ -2835,9 +2835,19 @@ const InputBox = () => {
               }
             : null);
 
+        const cf = currentFilters as any;
+        const filterExtras: Record<string, unknown> = {};
+        if (cf?.generationType != null && cf.generationType !== "")
+          filterExtras.generationType = cf.generationType;
+        if (cf?.model != null && (Array.isArray(cf.model) ? cf.model.length > 0 : String(cf.model).trim()))
+          filterExtras.model = cf.model;
+        if (cf?.style) filterExtras.style = cf.style;
+        if (cf?.frameSize) filterExtras.frameSize = cf.frameSize;
+
         const paginationFilters: any = {
           mode: "image",
           sortOrder: currentSortOrder,
+          ...filterExtras,
         };
         if (currentSearch) paginationFilters.search = currentSearch;
         if (currentDateRange?.start && currentDateRange?.end) {
@@ -2856,6 +2866,7 @@ const InputBox = () => {
         const backendFilters: any = {
           mode: "image",
           sortOrder: currentSortOrder,
+          ...filterExtras,
           ...(currentSearch ? { search: currentSearch } : {}),
           ...(currentDateRange?.start && currentDateRange?.end
             ? {
@@ -2877,7 +2888,7 @@ const InputBox = () => {
           loadMoreHistory({
             filters: paginationFilters,
             backendFilters: backendFilters,
-            paginationParams: { limit: 50 }, // Increased to 50 for better pagination coverage
+            paginationParams: { limit: 60 },
           }),
         ).unwrap();
       } catch (e: any) {
