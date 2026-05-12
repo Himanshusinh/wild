@@ -275,6 +275,39 @@ const InputAudioRow = ({ file, index = 0, onSelect, onDelete, isPlaying = false 
   const displayName = file.fileName ? (file.fileName.split('/').pop()?.replace(/\.[^/.]+$/, '') || file.fileName) : 'Voice Sample';
   const colorTheme = getColorTheme(file, index);
 
+  const [actualDuration, setActualDuration] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (!file) return;
+    const raw = file.duration;
+    if (typeof raw === 'string' && raw.includes(':')) {
+      setActualDuration(raw);
+      return;
+    }
+    if (typeof raw === 'number' && raw > 0) {
+      const mins = Math.floor(raw / 60);
+      const secs = Math.floor(raw % 60);
+      setActualDuration(`${mins}:${secs.toString().padStart(2, '0')}`);
+      return;
+    }
+
+    const url = file.url || file.firebaseUrl || file.originalUrl;
+    if (url) {
+      const aud = new Audio(url);
+      const onMeta = () => {
+        if (aud.duration && aud.duration !== Infinity) {
+          const mins = Math.floor(aud.duration / 60);
+          const secs = Math.floor(aud.duration % 60);
+          setActualDuration(`${mins}:${secs.toString().padStart(2, '0')}`);
+        }
+      };
+      aud.addEventListener('loadedmetadata', onMeta);
+      aud.preload = 'metadata';
+      aud.load();
+      return () => aud.removeEventListener('loadedmetadata', onMeta);
+    }
+  }, [file]);
+
   return (
     <div 
       onClick={() => onSelect?.()}
@@ -293,7 +326,7 @@ const InputAudioRow = ({ file, index = 0, onSelect, onDelete, isPlaying = false 
           {isPlaying ? (
             <span className="text-[9px] font-bold text-[#2F6BFF] uppercase bg-[#2F6BFF]/10 px-1.5 py-0.5 rounded border border-[#2F6BFF]/20 animate-pulse">Now playing</span>
           ) : (
-            <span className="text-[10px] font-mono text-white/40">Sample</span>
+            <span className="text-[10px] font-mono text-white/40">{actualDuration || 'Sample'}</span>
           )}
         </div>
         
@@ -328,7 +361,7 @@ const InputAudioRow = ({ file, index = 0, onSelect, onDelete, isPlaying = false 
         </div>
 
         <div className="text-[10px] text-white/30 uppercase tracking-wider font-bold truncate">
-          Uploaded Audio · Voice Sample
+          UPLOADED AUDIO · VOICE SAMPLE
         </div>
       </div>
 
@@ -357,12 +390,46 @@ const MusicRow = ({ entry, index = 0, onSelect, onDelete, isLocalPreview = false
     ? { id: entry.id || 'placeholder', url: '', originalUrl: '', type: 'audio' } 
     : null);
 
+  const [actualDuration, setActualDuration] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (!audio) return;
+    const raw = audio.duration || entry?.duration || entry?.audio?.duration;
+    if (typeof raw === 'string' && raw.includes(':')) {
+      setActualDuration(raw);
+      return;
+    }
+    if (typeof raw === 'number' && raw > 0) {
+      const mins = Math.floor(raw / 60);
+      const secs = Math.floor(raw % 60);
+      setActualDuration(`${mins}:${secs.toString().padStart(2, '0')}`);
+      return;
+    }
+
+    const url = audio.url || audio.firebaseUrl || audio.originalUrl;
+    if (url && entry?.status === 'completed') {
+      const aud = new Audio(url);
+      const onMeta = () => {
+        if (aud.duration && aud.duration !== Infinity) {
+          const mins = Math.floor(aud.duration / 60);
+          const secs = Math.floor(aud.duration % 60);
+          setActualDuration(`${mins}:${secs.toString().padStart(2, '0')}`);
+        }
+      };
+      aud.addEventListener('loadedmetadata', onMeta);
+      aud.preload = 'metadata';
+      aud.load();
+      return () => aud.removeEventListener('loadedmetadata', onMeta);
+    }
+  }, [audio, entry]);
+
   if (!audio) return null;
 
   const isGenerating = entry.status === 'generating';
   const isFailed = entry.status === 'failed';
   const trackName = entry.fileName || (entry.prompt ? (entry.prompt.length > 30 ? entry.prompt.substring(0, 30) + '...' : entry.prompt) : 'Cloned Voice');
-  const metadata = `${entry.model || 'Voice Cloning'} · Cloned Track`;
+  const modelName = entry.model || 'Voice Cloning';
+  const metadata = `${modelName.toUpperCase()} · CLONED TRACK`;
 
   return (
     <div 
@@ -387,7 +454,7 @@ const MusicRow = ({ entry, index = 0, onSelect, onDelete, isLocalPreview = false
           {isPlaying ? (
             <span className="text-[9px] font-bold text-[#2F6BFF] uppercase bg-[#2F6BFF]/10 px-1.5 py-0.5 rounded border border-[#2F6BFF]/20 animate-pulse">Now playing</span>
           ) : (
-            entry.status === 'completed' && <span className="text-[10px] font-mono text-white/40">Clone</span>
+            entry.status === 'completed' && <span className="text-[10px] font-mono text-white/40">{actualDuration || 'Clone'}</span>
           )}
         </div>
         
