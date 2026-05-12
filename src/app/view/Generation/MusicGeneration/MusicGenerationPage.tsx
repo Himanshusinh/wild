@@ -152,65 +152,66 @@ export default function MusicGenerationPage() {
             <div className="flex h-screen overflow-hidden">
                 <div className="flex flex-col flex-1 min-w-0 px-4 sm:px-6 md:px-8 h-full">
                     {/* Sticky header - moved down slightly to avoid Nav overlap */}
-                    <div className="sticky top-0 z-[50] bg-[#0E0E12] pt-4 pb-2">
-                        <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-2 md:gap-3">
+                    <div className="sticky top-0 z-[50] bg-[#0E0E12] pt-6 pb-0">
+                        <div className="flex items-center justify-between mb-4 px-2">
+                            <div className="flex items-center gap-4">
                                 <button
                                     onClick={() => dispatch(setSidebarExpanded(true))}
-                                    className="md:hidden fixed top-0 left-0 z-[60] flex h-10 w-10 items-center justify-center text-white/70 hover:text-white transition-colors cursor-pointer"
+                                    className="md:hidden flex h-10 w-10 items-center justify-center text-white/70 hover:text-white transition-colors cursor-pointer"
                                     aria-label="Toggle Menu"
                                 >
                                     <Menu size={24} />
                                 </button>
-                                <h3 className="text-white text-xl sm:text-2xl md:text-2xl font-semibold whitespace-nowrap">
+                                <h3 className="text-white text-xl sm:text-2xl font-bold tracking-tight">
                                     Music Generation
                                 </h3>
-
-                                <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
-                                    {(['Music', 'Voice (TTS)', 'Dialogue', 'SFX', 'Voice Cloning'] as MusicFeature[]).map((feature) => (
-                                        <button
-                                            key={feature}
-                                            onClick={() => handleSetFeature(feature)}
-                                            className={`
-                                                flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs 
-                                                transition-all duration-200 whitespace-nowrap relative
-                                                active:scale-95
-                                                ${activeFeature === feature
-                                                    ? 'bg-white text-black font-semibold shadow-[0_0_15px_rgba(255,255,255,0.3)]'
-                                                    : 'bg-white/10 text-white/90 border border-white/5 hover:bg-white hover:text-black hover:scale-105'}
-                                            `}
-                                            aria-label={feature}
-                                            style={{
-                                                pointerEvents: 'auto',
-                                                cursor: 'pointer',
-                                                zIndex: 10000
-                                            }}
-                                        >
-                                            <span>{feature}</span>
-                                        </button>
-                                    ))}
-                                </div>
                             </div>
 
                             {!user && (
                                 <button
                                     onClick={() => router.push(getSignInUrl())}
-                                    className='flex items-center gap-2 bg-white/10 backdrop-blur-xl border border-white/20 text-white text-sm font-medium px-4 py-1.5 rounded-full hover:bg-white/20 hover:border-white/30 transition-all duration-200 shadow-lg'
+                                    className='flex items-center gap-2 bg-white/5 backdrop-blur-xl border border-white/10 text-white text-sm font-medium px-5 py-2 rounded-full hover:bg-white/10 transition-all duration-200'
                                 >
                                     Sign In
                                 </button>
                             )}
                         </div>
-                        <p className="text-white/60 text-xs sm:text-sm">
+
+                        <div className="border-b border-white/10 mb-4">
+                            <div className="flex items-center gap-8 overflow-x-auto no-scrollbar px-2">
+                                {(['Music', 'Voice (TTS)', 'Dialogue', 'SFX', 'Voice Cloning'] as MusicFeature[]).map((feature) => (
+                                    <button
+                                        key={feature}
+                                        onClick={() => handleSetFeature(feature)}
+                                        className={`
+                                            pb-3 text-sm font-medium transition-all duration-200 whitespace-nowrap relative
+                                            ${activeFeature === feature
+                                                ? 'text-white border-b-2 border-blue-500'
+                                                : 'text-white/40 hover:text-white/80 border-b-2 border-transparent'}
+                                        `}
+                                        aria-label={feature}
+                                        style={{
+                                            pointerEvents: 'auto',
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        <span>
+                                            {feature}
+                                        </span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                        {/* <p className="text-white/40 text-xs sm:text-sm px-2">
                             Transform your ideas into stunning audio using advanced AI models
-                        </p>
+                        </p> */}
                     </div>
 
                     {/* Content area: flexbox for main content + history */}
-                    <div className="flex flex-col lg:flex-row gap-6 items-start flex-1 min-h-0 overflow-hidden">
+                    <div className="flex flex-col lg:flex-row items-start flex-1 min-h-0 overflow-hidden">
                         {/* Left Column: Input Box (scrollable) */}
-                        <div className="w-full lg:w-[350px] xl:w-[400px] flex-shrink-0 h-full flex flex-col">
-                            <div className="flex-1 overflow-y-auto input-scrollbar px-2 pt-7">
+                        <div className="w-full lg:w-[350px] xl:w-[400px] flex-shrink-0 h-full flex flex-col lg:border-r lg:border-white/10 lg:pr-6">
+                            <div className="flex-1 overflow-y-visible input-scrollbar px-2 pt-7">
                                 <div className="space-y-6 pb-32">
                                     {activeFeature === 'Music' && <MusicGenerationInputBox selectedModel={modelParam} />}
                                     {activeFeature === 'Voice (TTS)' && <TextToSpeechInputBox selectedModel={modelParam} />}
@@ -222,7 +223,7 @@ export default function MusicGenerationPage() {
                         </div>
 
                         {/* Right Column: History (scrollable) */}
-                        <div className="flex-1 min-w-0 h-full overflow-y-auto history-scrollbar py-4">
+                        <div className="flex-1 min-w-0 h-full overflow-y-auto history-scrollbar py-4 lg:pl-6">
                             <div className="pb-20">
                                 {activeFeature === 'Music' && (
                                     <MusicGenerationInputBox key={`m-hist-${activeFeature}`} showHistoryOnly={true} />

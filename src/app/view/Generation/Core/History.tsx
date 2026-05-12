@@ -945,10 +945,8 @@ const History = () => {
       // Preserve existing single-item behavior
       if (selectedItems.length === 1) {
         const item = selectedItems[0];
-        const ok = await downloadFileWithNaming(item.url, null, item.fileType);
-        if (!ok) {
-          alert(`1 file couldn't be downloaded. Please try again.`);
-        }
+        const proxyUrl = toProxyDownloadUrl(item.url) || item.url;
+        window.open(proxyUrl, '_blank');
         clearSelection();
         return;
       }

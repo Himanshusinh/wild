@@ -1362,9 +1362,10 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
       return;
     }
     try {
-      await downloadFileWithNaming(url, null, 'image');
+      const proxyUrl = toResourceProxy(url) || url;
+      window.open(proxyUrl, '_blank');
     } catch (e) {
-      console.error('Download failed:', e);
+      console.error('Open in new page failed:', e);
     }
   };
 

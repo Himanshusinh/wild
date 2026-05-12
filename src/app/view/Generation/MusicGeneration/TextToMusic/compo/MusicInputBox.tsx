@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { addNotification } from '@/store/slices/uiSlice';
-import { Music4, ChevronDown, ChevronUp, Volume2, FileText, Palette, Guitar } from "lucide-react";
+import { Music4, ChevronDown, ChevronUp, Volume2, FileText, Palette, Guitar, Plus, X } from "lucide-react";
 import { getModelCreditInfo } from '@/utils/modelCredits';
 
 // Music styles and instruments for dropdowns
@@ -241,6 +241,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
   const isMayaModel = model.toLowerCase().includes('maya');
   const isDialogueModel = model.toLowerCase().includes('dialogue');
   const isSfxModel = model.toLowerCase().includes('sfx') || model.toLowerCase().includes('sound-effect');
+  const isMusicMode = !isSfxModel && !isDialogueModel && !isTtsModel && !isVoiceCloning;
 
   // Get user from Redux for default file naming
   const user = useAppSelector((state: any) => state?.auth?.user || null);
@@ -900,132 +901,62 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
   // Dropdown Components
   const MusicModelsDropdown = () => {
     const creditInfo = getModelCreditInfo(model);
-
-    // Filter models based on mode
     let filteredOptions = MODEL_OPTIONS;
-    if (isSFXMode) {
-      // SFX mode: Only show SFX model
-      filteredOptions = MODEL_OPTIONS.filter(opt => opt.value === 'elevenlabs-sfx');
-    } else if (isDialogueMode) {
-      // Dialogue mode: Only show dialogue model
-      filteredOptions = MODEL_OPTIONS.filter(opt => opt.value === 'elevenlabs-dialogue');
-    } else if (isVoiceCloning) {
-      // Voice cloning: only Chatterbox
-      filteredOptions = MODEL_OPTIONS.filter(opt => opt.value === 'chatterbox-multilingual');
-    } else if (isTtsMode) {
-      // TTS mode: Only show TTS-capable models
-      filteredOptions = MODEL_OPTIONS.filter(opt =>
-        opt.value === 'elevenlabs-tts' ||
-        opt.value === 'chatterbox-multilingual' ||
-        opt.value === 'maya-tts'
-      );
-    } else {
-      // Music generation: Only show MiniMax Music 2
-      filteredOptions = MODEL_OPTIONS.filter(opt => opt.value === 'minimax-music-2');
-    }
+    if (isSFXMode) filteredOptions = MODEL_OPTIONS.filter(opt => opt.value === 'elevenlabs-sfx');
+    else if (isDialogueMode) filteredOptions = MODEL_OPTIONS.filter(opt => opt.value === 'elevenlabs-dialogue');
+    else if (isVoiceCloning) filteredOptions = MODEL_OPTIONS.filter(opt => opt.value === 'chatterbox-multilingual');
+    else if (isTtsMode) filteredOptions = MODEL_OPTIONS.filter(opt => ['elevenlabs-tts', 'chatterbox-multilingual', 'maya-tts'].includes(opt.value));
+    else filteredOptions = MODEL_OPTIONS.filter(opt => opt.value === 'minimax-music-2');
 
-    // Add credit information to each option
-    const filteredOptionsWithCredits = filteredOptions.map(opt => {
-      const optCreditInfo = getModelCreditInfo(opt.value);
-      return {
-        ...opt,
-        creditInfo: optCreditInfo
-      };
-    });
+    const filteredOptionsWithCredits = filteredOptions.map(opt => ({
+      ...opt,
+      creditInfo: getModelCreditInfo(opt.value)
+    }));
 
     const activeOption = filteredOptionsWithCredits.find((opt) => opt.value === model) || filteredOptionsWithCredits[0];
 
-    // If current model is not in filtered options, set to first available
     useEffect(() => {
       if (filteredOptions.length > 0 && !filteredOptions.find(opt => opt.value === model)) {
         setModel(filteredOptions[0].value);
       }
     }, [isSFXMode, isDialogueMode, isVoiceCloning, isTtsMode, filteredOptions.length]);
 
-    if (isVoiceCloning) {
-      const chatterboxOption = MODEL_OPTIONS.find(opt => opt.value === 'chatterbox-multilingual');
-      const chatterboxCreditInfo = getModelCreditInfo('chatterbox-multilingual');
-      return (
-        <div className="relative">
-          <div className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white text-black flex items-center gap-2 cursor-default select-none">
-            <Music4 className="w-4 h-4 text-black" />
-            {chatterboxOption?.label || 'Chatterbox Multilingual'}
-          </div>
-          {chatterboxCreditInfo.hasCredits && (
-            <div className="text-[11px] text-white/50 mt-1 pl-1">
-              {chatterboxCreditInfo.displayText}
-            </div>
-          )}
-          <p className="text-xs text-white/50 mt-1">Voice cloning always uses Chatterbox Multilingual.</p>
-        </div>
-      );
-    }
-
-    // If multiple options (e.g., TTS), show dropdown; otherwise static pill
-    const showDropdown = filteredOptionsWithCredits.length > 1;
-
-    if (!showDropdown) {
-      return (
-        <div className="flex flex-col gap-1">
-          <div className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 bg-white text-black flex items-center gap-2 cursor-default select-none">
-            <Music4 className="w-4 h-4 text-black" />
-            {activeOption?.label || model}
-          </div>
-          {creditInfo.hasCredits && (
-            <div className="text-[11px] text-white/50 pl-1">
-              {creditInfo.displayText}
-            </div>
-          )}
-        </div>
-      );
-    }
-
     return (
-      <div className="relative dropdown-container flex flex-col gap-1">
+      <div className="relative dropdown-container flex flex-col gap-1 w-full sm:w-auto">
         <button
-          onClick={() => {
-            setCloseStyleDropdown(true); setTimeout(() => setCloseStyleDropdown(false), 0);
-            setCloseInstrumentsDropdown(true); setTimeout(() => setCloseInstrumentsDropdown(false), 0);
-            setCloseSrDropdown(true); setTimeout(() => setCloseSrDropdown(false), 0);
-            setCloseBrDropdown(true); setTimeout(() => setCloseBrDropdown(false), 0);
-            setCloseFormatDropdown(true); setTimeout(() => setCloseFormatDropdown(false), 0);
-            setCloseOutputFormatDropdown(true); setTimeout(() => setCloseOutputFormatDropdown(false), 0);
-            setModelOpen(!modelOpen);
-          }}
-          className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-transparent text-white/90 hover:bg-white/5"
+          onClick={() => setModelOpen(!modelOpen)}
+          className="h-[38px] px-4 rounded-[10px] text-[12px] font-medium border border-white/10 hover:border-white/20 transition flex items-center justify-between bg-[#16161C] text-white/90 min-w-[180px]"
         >
           <div className="flex items-center gap-2">
-            <Music4 className="w-4 h-4" />
+            <Music4 className="w-3.5 h-3.5 text-[#2F6BFF]" />
             <span className="truncate">{activeOption?.label || model}</span>
           </div>
-          <ChevronUp className={`w-3.5 h-3.5 ml-1 transition-transform duration-200 ${modelOpen ? 'rotate-180' : ''}`} />
+          {filteredOptionsWithCredits.length > 1 && (
+            <ChevronDown className={`w-3.5 h-3.5 ml-1 transition-transform duration-200 ${modelOpen ? 'rotate-180' : ''}`} />
+          )}
         </button>
-        {modelOpen && (
-          <div className="absolute top-9 left-0 w-64 bg-black/85 z-[100] backdrop-blur-3xl rounded-lg overflow-hidden ring-1 ring-white/20 py-1">
+        {modelOpen && filteredOptionsWithCredits.length > 1 && (
+          <div className="absolute top-10 left-0 w-full sm:w-64 bg-[#1E1E27] z-[100] backdrop-blur-3xl rounded-[10px] overflow-hidden border border-white/10 py-1 shadow-2xl">
             {filteredOptionsWithCredits.map((option) => (
               <button
                 key={option.value}
                 onClick={() => { setModel(option.value); setModelOpen(false); }}
-                className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 flex flex-col ${model === option.value ? "bg-white text-black hover:bg-white/90" : "text-white/90 hover:bg-white/10"
-                  }`}
+                className={`w-full px-4 py-2.5 text-left text-[12px] transition-colors flex flex-col ${model === option.value ? "bg-[#2F6BFF] text-white" : "text-white/80 hover:bg-white/5"}`}
               >
                 <div className="flex items-center justify-between">
                   <span>{option.label}</span>
                   {option.creditInfo.hasCredits && (
-                    <span className={`text-xs font-medium ${model === option.value ? 'text-black/70' : 'text-white/60'}`}>
+                    <span className={`text-[10px] font-mono ${model === option.value ? 'text-white/80' : 'text-white/40'}`}>
                       {option.creditInfo.displayText}
                     </span>
                   )}
                 </div>
-                {/* <span className={`text-xs ${model === option.value ? 'text-black/70' : 'text-white/60'}`}>
-                  {option.description}
-                </span> */}
               </button>
             ))}
           </div>
         )}
         {creditInfo.hasCredits && (
-          <div className="text-[11px] text-white/50 pl-1">
+          <div className="text-[10px] text-white/40 font-mono pl-1 uppercase tracking-tighter">
             {creditInfo.displayText}
           </div>
         )}
@@ -1128,41 +1059,21 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
   const SampleRateDropdown = () => (
     <div className="relative dropdown-container">
       <button
-        onClick={() => {
-          // Close other dropdowns
-          setCloseStyleDropdown(true);
-          setTimeout(() => setCloseStyleDropdown(false), 0);
-          setCloseInstrumentsDropdown(true);
-          setTimeout(() => setCloseInstrumentsDropdown(false), 0);
-          setCloseModelDropdown(true);
-          setTimeout(() => setCloseModelDropdown(false), 0);
-          setCloseBrDropdown(true);
-          setTimeout(() => setCloseBrDropdown(false), 0);
-          setCloseFormatDropdown(true);
-          setTimeout(() => setCloseFormatDropdown(false), 0);
-          setCloseOutputFormatDropdown(true);
-          setTimeout(() => setCloseOutputFormatDropdown(false), 0);
-          setSrOpen(!srOpen);
-        }}
-        className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1  ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent text-white/90 hover:bg-white/5"
+        onClick={() => setSrOpen(!srOpen)}
+        className="h-[38px] px-4 rounded-[10px] text-[12px] font-medium border border-white/10 hover:border-white/20 transition flex items-center justify-between bg-[#16161C] text-white/90 w-full"
       >
-        <Volume2 className="w-4 h-4" />
-        Sample Rate
-        <ChevronUp className={`w-3.5 h-3.5 ml-1 transition-transform duration-200 ${srOpen ? 'rotate-180' : ''}`} />
+        <span className="flex items-center gap-2"><Volume2 size={14} className="text-[#2F6BFF]" /> {audio.sample_rate}</span>
+        <ChevronDown className={`w-3.5 h-3.5 ml-1 transition-transform duration-200 ${srOpen ? 'rotate-180' : ''}`} />
       </button>
       {srOpen && (
-        <div className="absolute top-8 left-0 mt-2 w-32 bg-black/85 backdrop-blur-xl max-h-40 overflow-y-auto rounded-lg overflow-hidden ring-1 ring-white/20 py-1 z-[100]">
+        <div className="absolute top-10 left-0 w-full bg-[#1E1E27] z-[100] backdrop-blur-3xl rounded-[10px] border border-white/10 py-1 shadow-2xl">
           {[44100, 32000, 24000, 22050, 16000, 8000].map((sr) => (
             <button
               key={sr}
               onClick={() => { setAudio({ ...audio, sample_rate: sr as any }); setSrOpen(false); }}
-              className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 flex items-center justify-between ${audio.sample_rate === sr ? "bg-white text-black" : "text-white/90"
-                }`}
+              className={`w-full px-4 py-2 text-left text-[12px] hover:bg-white/5 ${audio.sample_rate === sr ? "text-[#2F6BFF] font-bold bg-[#2F6BFF]/5" : "text-white/80"}`}
             >
-              <span>{sr}</span>
-              {audio.sample_rate === sr && (
-                <div className="w-2 h-2 bg-black rounded-full flex-shrink-0"></div>
-              )}
+              {sr} Hz
             </button>
           ))}
         </div>
@@ -1173,41 +1084,21 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
   const BitrateDropdown = () => (
     <div className="relative dropdown-container">
       <button
-        onClick={() => {
-          // Close other dropdowns
-          setCloseStyleDropdown(true);
-          setTimeout(() => setCloseStyleDropdown(false), 0);
-          setCloseInstrumentsDropdown(true);
-          setTimeout(() => setCloseInstrumentsDropdown(false), 0);
-          setCloseModelDropdown(true);
-          setTimeout(() => setCloseModelDropdown(false), 0);
-          setCloseSrDropdown(true);
-          setTimeout(() => setCloseSrDropdown(false), 0);
-          setCloseFormatDropdown(true);
-          setTimeout(() => setCloseFormatDropdown(false), 0);
-          setCloseOutputFormatDropdown(true);
-          setTimeout(() => setCloseOutputFormatDropdown(false), 0);
-          setBrOpen(!brOpen);
-        }}
-        className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent text-white/90 hover:bg-white/5"
+        onClick={() => setBrOpen(!brOpen)}
+        className="h-[38px] px-4 rounded-[10px] text-[12px] font-medium border border-white/10 hover:border-white/20 transition flex items-center justify-between bg-[#16161C] text-white/90 w-full"
       >
-        <Volume2 className="w-4 h-4" />
-        Bitrate
-        <ChevronUp className={`w-3.5 h-3.5 ml-1 transition-transform duration-200 ${brOpen ? 'rotate-180' : ''}`} />
+        <span className="flex items-center gap-2"><Volume2 size={14} className="text-[#2F6BFF]" /> {audio.bitrate / 1000}k</span>
+        <ChevronDown className={`w-3.5 h-3.5 ml-1 transition-transform duration-200 ${brOpen ? 'rotate-180' : ''}`} />
       </button>
       {brOpen && (
-        <div className="absolute top-full left-0 mt-2 w-32 bg-black/85 backdrop-blur-xl rounded-lg overflow-hidden ring-1 ring-white/20 py-1 z-[100]">
+        <div className="absolute top-10 left-0 w-full bg-[#1E1E27] z-[100] backdrop-blur-3xl rounded-[10px] border border-white/10 py-1 shadow-2xl">
           {[256000, 128000, 64000, 32000].map((br) => (
             <button
               key={br}
               onClick={() => { setAudio({ ...audio, bitrate: br as any }); setBrOpen(false); }}
-              className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 flex items-center justify-between ${audio.bitrate === br ? "bg-white text-black" : "text-white/90"
-                }`}
+              className={`w-full px-4 py-2 text-left text-[12px] hover:bg-white/5 ${audio.bitrate === br ? "text-[#2F6BFF] font-bold bg-[#2F6BFF]/5" : "text-white/80"}`}
             >
-              <span>{br}</span>
-              {audio.bitrate === br && (
-                <div className="w-2 h-2 bg-black rounded-full flex-shrink-0"></div>
-              )}
+              {br / 1000} kbps
             </button>
           ))}
         </div>
@@ -1218,41 +1109,21 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
   const FormatDropdown = () => (
     <div className="relative dropdown-container">
       <button
-        onClick={() => {
-          // Close other dropdowns
-          setCloseStyleDropdown(true);
-          setTimeout(() => setCloseStyleDropdown(false), 0);
-          setCloseInstrumentsDropdown(true);
-          setTimeout(() => setCloseInstrumentsDropdown(false), 0);
-          setCloseModelDropdown(true);
-          setTimeout(() => setCloseModelDropdown(false), 0);
-          setCloseSrDropdown(true);
-          setTimeout(() => setCloseSrDropdown(false), 0);
-          setCloseBrDropdown(true);
-          setTimeout(() => setCloseBrDropdown(false), 0);
-          setCloseOutputFormatDropdown(true);
-          setTimeout(() => setCloseOutputFormatDropdown(false), 0);
-          setFormatOpen(!formatOpen);
-        }}
-        className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent text-white/90 hover:bg-white/5"
+        onClick={() => setFormatOpen(!formatOpen)}
+        className="h-[38px] px-4 rounded-[10px] text-[12px] font-medium border border-white/10 hover:border-white/20 transition flex items-center justify-between bg-[#16161C] text-white/90 w-full"
       >
-        <FileText className="w-4 h-4" />
-        Format
-        <ChevronUp className={`w-3.5 h-3.5 ml-1 transition-transform duration-200 ${formatOpen ? 'rotate-180' : ''}`} />
+        <span className="flex items-center gap-2"><FileText size={14} className="text-[#2F6BFF]" /> {audio.format?.toUpperCase()}</span>
+        <ChevronDown className={`w-3.5 h-3.5 ml-1 transition-transform duration-200 ${formatOpen ? 'rotate-180' : ''}`} />
       </button>
       {formatOpen && (
-        <div className="absolute top-full left-0 mt-2 w-24 bg-black/85 backdrop-blur-xl  rounded-lg overflow-hidden ring-1 ring-white/20 py-1 z-[100]">
+        <div className="absolute top-10 left-0 w-full bg-[#1E1E27] z-[100] backdrop-blur-3xl rounded-[10px] border border-white/10 py-1 shadow-2xl">
           {(model === 'minimax-music-2' ? ['mp3', 'pcm', 'flac'] : ['mp3', 'wav', 'pcm']).map((format) => (
             <button
               key={format}
               onClick={() => { setAudio({ ...audio, format: format as any }); setFormatOpen(false); }}
-              className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 flex items-center justify-between ${audio.format === format ? "bg-white text-black" : "text-white/90"
-                }`}
+              className={`w-full px-4 py-2 text-left text-[12px] hover:bg-white/5 ${audio.format === format ? "text-[#2F6BFF] font-bold bg-[#2F6BFF]/5" : "text-white/80"}`}
             >
-              <span>{format.toUpperCase()}</span>
-              {audio.format === format && (
-                <div className="w-2 h-2 bg-black rounded-full flex-shrink-0"></div>
-              )}
+              {format.toUpperCase()}
             </button>
           ))}
         </div>
@@ -1263,45 +1134,38 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
   const OutputFormatDropdown = () => (
     <div className="relative dropdown-container">
       <button
-        onClick={() => {
-          // Close other dropdowns
-          setCloseStyleDropdown(true);
-          setTimeout(() => setCloseStyleDropdown(false), 0);
-          setCloseInstrumentsDropdown(true);
-          setTimeout(() => setCloseInstrumentsDropdown(false), 0);
-          setCloseModelDropdown(true);
-          setTimeout(() => setCloseModelDropdown(false), 0);
-          setCloseSrDropdown(true);
-          setTimeout(() => setCloseSrDropdown(false), 0);
-          setCloseBrDropdown(true);
-          setTimeout(() => setCloseBrDropdown(false), 0);
-          setCloseFormatDropdown(true);
-          setTimeout(() => setCloseFormatDropdown(false), 0);
-          setOutputFormatOpen(!outputFormatOpen);
-        }}
-        className="h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center gap-1 bg-transparent text-white/90 hover:bg-white/5"
+        onClick={() => setOutputFormatOpen(!outputFormatOpen)}
+        className="h-[38px] px-4 rounded-[10px] text-[12px] font-medium border border-white/10 hover:border-white/20 transition flex items-center justify-between bg-[#16161C] text-white/90 w-full"
       >
-        <FileText className="w-4 h-4" />
-        Output Format
-        <ChevronUp className={`w-3.5 h-3.5 ml-1 transition-transform duration-200 ${outputFormatOpen ? 'rotate-180' : ''}`} />
+        <span className="flex items-center gap-2"><FileText size={14} className="text-[#2F6BFF]" /> {outputFormat?.toUpperCase()}</span>
+        <ChevronDown className={`w-3.5 h-3.5 ml-1 transition-transform duration-200 ${outputFormatOpen ? 'rotate-180' : ''}`} />
       </button>
       {outputFormatOpen && (
-        <div className="absolute top-full left-0 mt-2 w-24 bg-black/85 backdrop-blur-xl rounded-lg overflow-hidden ring-1 ring-white/20 py-1 z-[100]">
+        <div className="absolute top-11 left-0 w-full bg-[#1E1E27] z-[100] backdrop-blur-3xl rounded-[10px] border border-white/10 py-1 shadow-2xl">
           {['hex', 'url'].map((format) => (
             <button
               key={format}
               onClick={() => { setOutputFormat(format as any); setOutputFormatOpen(false); }}
-              className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 flex items-center justify-between ${outputFormat === format ? "bg-white text-black" : "text-white/90"
-                }`}
+              className={`w-full px-4 py-2 text-left text-[12px] hover:bg-white/5 ${outputFormat === format ? "text-[#2F6BFF] font-bold bg-[#2F6BFF]/5" : "text-white/80"}`}
             >
-              <span>{format.toUpperCase()}</span>
-              {outputFormat === format && (
-                <div className="w-2 h-2 bg-black rounded-full flex-shrink-0"></div>
-              )}
+              {format.toUpperCase()}
             </button>
           ))}
         </div>
       )}
+    </div>
+  );
+
+  const SectionHeader = ({ num, label }: { num: string; label: string }) => (
+    <div className="flex items-center gap-2.5 mb-3 mt-0">
+      <div className="w-8 h-px bg-white/[0.08]"></div>
+      <span className="text-[10px] font-semibold text-[#2F6BFF] bg-[#2F6BFF]/10 border border-[#2F6BFF]/25 px-2 py-0.5 rounded-[4px] font-mono tracking-tighter flex-shrink-0">
+        {num}
+      </span>
+      <span className="text-[11px] font-satoshi font-bold text-white/50 tracking-[0.12em] uppercase whitespace-nowrap">
+        {label}
+      </span>
+      <div className="flex-1 h-px bg-white/[0.08]"></div>
     </div>
   );
 
@@ -1322,68 +1186,60 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
     onChange: (v: number) => void;
     suffix?: string;
   }) => (
-    <div>
-      <div className="flex items-center justify-between text-white/70 text-sm mb-1">
+    <div className="mb-5">
+      <div className="flex items-center justify-between text-[11px] font-medium text-white/50 mb-3 uppercase tracking-wider">
         <span>{label}</span>
-        <span className="text-white">{value.toFixed(2)}{suffix}</span>
+        <span className="text-[#2F6BFF] font-mono font-bold bg-[#2F6BFF]/5 px-1.5 py-0.5 rounded-sm">
+          {value.toFixed(2)}{suffix}
+        </span>
       </div>
-      <input
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onChange={(e) => onChange(parseFloat(e.target.value))}
-        className="w-full accent-white"
-      />
+      <div className="relative h-4 flex items-center group">
+        <div className="absolute left-0 right-0 h-[2.5px] bg-white/[0.08] rounded-full overflow-hidden pointer-events-none">
+          <div 
+            className="h-full bg-[#2F6BFF] rounded-full shadow-[0_0_8px_rgba(47,107,255,0.4)] transition-all duration-200 ease-out" 
+            style={{ width: `${((value - min) / (max - min)) * 100}%` }}
+          />
+        </div>
+        <input
+          type="range"
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          onChange={(e) => onChange(parseFloat(e.target.value))}
+          className="absolute inset-0 w-full h-full appearance-none bg-transparent cursor-pointer z-10 
+                     [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:w-3.5 
+                     [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white 
+                     [&::-webkit-slider-thumb]:shadow-[0_0_10px_rgba(255,255,255,0.3)]
+                     [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-[#2F6BFF]
+                     [&::-moz-range-thumb]:h-3.5 [&::-moz-range-thumb]:w-3.5 [&::-moz-range-thumb]:border-2 
+                     [&::-moz-range-thumb]:border-[#2F6BFF] [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white"
+        />
+      </div>
     </div>
   );
 
   const TtsSettings = () => {
     const voiceOptions = ELEVENLABS_STANDARD_VOICES;
 
-    const customAudioLanguageOptions = [
-      'english', 'arabic', 'danish', 'german', 'greek', 'spanish', 'finnish',
-      'french', 'hebrew', 'hindi', 'italian', 'japanese', 'korean', 'malay',
-      'dutch', 'norwegian', 'polish', 'portuguese', 'russian', 'swedish',
-      'swahili', 'turkish', 'chinese'
-    ];
-
-    // Check if voice is a custom URL (starts with http:// or https://)
-    const isCustomVoiceUrl = elevenlabsVoice && (elevenlabsVoice.startsWith('http://') || elevenlabsVoice.startsWith('https://'));
-
     return (
-      <div className="space-y-0 mx-1">
-        <div className="flex flex-col md:flex-row gap-3">
-          <div className="flex-1 relative dropdown-container -mt-2">
-            <label className="block text-white/70 text-sm mb-1">Voice (string)</label>
+      <div className="space-y-6">
+        <div className="block">
+          <SectionHeader num="03" label="Voice Settings" />
+          <div className="flex-1 relative dropdown-container">
+            <label className="block text-white/30 text-[10px] font-bold uppercase tracking-widest mb-1.5 ml-0.5">Voice Reference</label>
             <button
               onClick={() => {
                 setElevenlabsVoiceDropdownOpen(!elevenlabsVoiceDropdownOpen);
                 setElevenlabsCustomAudioLanguageDropdownOpen(false);
-                // Close other dropdowns
-                setCloseStyleDropdown(true);
-                setTimeout(() => setCloseStyleDropdown(false), 0);
-                setCloseInstrumentsDropdown(true);
-                setTimeout(() => setCloseInstrumentsDropdown(false), 0);
-                setCloseModelDropdown(true);
-                setTimeout(() => setCloseModelDropdown(false), 0);
-                setCloseSrDropdown(true);
-                setTimeout(() => setCloseSrDropdown(false), 0);
-                setCloseBrDropdown(true);
-                setTimeout(() => setCloseBrDropdown(false), 0);
-                setCloseFormatDropdown(true);
-                setTimeout(() => setCloseFormatDropdown(false), 0);
-                setCloseOutputFormatDropdown(true);
-                setTimeout(() => setCloseOutputFormatDropdown(false), 0);
               }}
-              className="w-full h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-transparent text-white/90 hover:bg-white/5"
+              className="w-full h-[38px] px-4 rounded-[10px] text-[12px] font-medium border border-white/10 hover:border-white/20 transition flex items-center justify-between bg-[#16161C] text-white/90"
             >
-              <span className="text-white/90">{elevenlabsVoice || ELEVENLABS_TTS_DEFAULT_VOICE}</span>
-              <ChevronUp className={`w-3.5 h-3.5 transition-transform duration-200 ${elevenlabsVoiceDropdownOpen ? 'rotate-180' : ''}`} />
+              <span>{elevenlabsVoice || ELEVENLABS_TTS_DEFAULT_VOICE}</span>
+              <ChevronDown className={`w-3.5 h-3.5 ml-1 transition-transform duration-200 ${elevenlabsVoiceDropdownOpen ? 'rotate-180' : ''}`} />
             </button>
             {elevenlabsVoiceDropdownOpen && (
-              <div className="absolute z-[100] top-12 left-0 mt-2 w-full max-h-60 overflow-y-auto bg-black/85  backdrop-blur-3xl rounded-lg overflow-hidden ring-1 ring-white/20 py-1" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+              <div className="absolute z-[100] top-15 left-0 w-full max-h-60 overflow-y-auto bg-[#1E1E27] backdrop-blur-3xl rounded-[10px] border border-white/10 py-1 shadow-2xl">
                 {voiceOptions.map((option) => (
                   <button
                     key={option}
@@ -1391,110 +1247,21 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
                       setElevenlabsVoice(option);
                       setElevenlabsVoiceDropdownOpen(false);
                     }}
-                    className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 flex items-center justify-between ${elevenlabsVoice === option ? "bg-white text-black" : "text-white/90"
-                      }`}
+                    className={`w-full px-4 py-2 text-left text-[12px] hover:bg-white/5 flex items-center justify-between ${elevenlabsVoice === option ? "text-[#2F6BFF] font-semibold bg-[#2F6BFF]/5" : "text-white/80"}`}
                   >
                     <span>{option}</span>
-                    {elevenlabsVoice === option && (
-                      <div className="w-2 h-2 bg-black rounded-full flex-shrink-0"></div>
-                    )}
                   </button>
                 ))}
               </div>
             )}
-            <p className="text-white/50 text-[10px] mt-1">The voice to use for speech generation. Default value: "Rachel".</p>
           </div>
-          {/* <div className="flex-1 relative">
-            <label className="block text-white/70 text-sm mb-1">Custom Audio Language</label>
-            <button
-              onClick={() => {
-                setElevenlabsCustomAudioLanguageDropdownOpen(!elevenlabsCustomAudioLanguageDropdownOpen);
-                setElevenlabsVoiceDropdownOpen(false);
-              }}
-              disabled={!isCustomVoiceUrl}
-              className={`w-full bg-black/30 ring-1 ring-white/10 hover:ring-white/20 transition flex items-center justify-between text-white p-2 rounded-lg text-left ${
-                !isCustomVoiceUrl ? 'opacity-50 cursor-not-allowed' : ''
-              }`}
-            >
-              <span className={elevenlabsCustomAudioLanguage ? 'text-white' : 'text-white/60'}>
-                {elevenlabsCustomAudioLanguage ? elevenlabsCustomAudioLanguage.charAt(0).toUpperCase() + elevenlabsCustomAudioLanguage.slice(1) : 'Select the Custom Audio Language'}
-              </span>
-              <ChevronUp className={`w-3.5 h-3.5 transition-transform duration-200 ${elevenlabsCustomAudioLanguageDropdownOpen ? 'rotate-180' : ''}`} />
-            </button>
-            {elevenlabsCustomAudioLanguageDropdownOpen && isCustomVoiceUrl && (
-              <div className="absolute z-[100] bottom-full left-0 mb-2 w-full max-h-60 overflow-y-auto bg-black/95 backdrop-blur-xl rounded-lg ring-1 ring-white/20 py-1 scrollbar-hide">
-                <button
-                  onClick={() => {
-                    setElevenlabsCustomAudioLanguage('');
-                    setElevenlabsCustomAudioLanguageDropdownOpen(false);
-                  }}
-                  className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 flex items-center justify-between ${
-                    !elevenlabsCustomAudioLanguage ? "bg-white/20 text-white" : "text-white/90"
-                  }`}
-                >
-                  <span>None</span>
-                  {!elevenlabsCustomAudioLanguage && (
-                    <div className="w-2 h-2 bg-white rounded-full flex-shrink-0"></div>
-                  )}
-                </button>
-                {customAudioLanguageOptions.map((option) => (
-                  <button
-                    key={option}
-                    onClick={() => {
-                      setElevenlabsCustomAudioLanguage(option);
-                      setElevenlabsCustomAudioLanguageDropdownOpen(false);
-                    }}
-                    className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 flex items-center justify-between ${
-                      elevenlabsCustomAudioLanguage === option ? "bg-white/20 text-white" : "text-white/90"
-                    }`}
-                  >
-                    <span className="capitalize">{option}</span>
-                    {elevenlabsCustomAudioLanguage === option && (
-                      <div className="w-2 h-2 bg-white rounded-full flex-shrink-0"></div>
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
-            <p className="text-white/50 text-xs mt-1">Required when using custom audio URL</p>
-          </div> */}
         </div>
-        <div className="space-y-0">
+
+        <div className="space-y-2">
           <RangeControl label="Exaggeration" value={elevenlabsExaggeration} min={0.25} max={2.0} step={0.01} onChange={setElevenlabsExaggeration} />
           <RangeControl label="Temperature" value={elevenlabsTemperature} min={0.05} max={5.0} step={0.01} onChange={setElevenlabsTemperature} />
           <RangeControl label="CFG Scale" value={elevenlabsCfgScale} min={0.0} max={1.0} step={0.01} onChange={setElevenlabsCfgScale} />
         </div>
-        {/* <div className="flex flex-col md:flex-row gap-3">
-          <div className="flex-1">
-            <label className="block text-white/70 text-sm mb-1">Seed</label>
-            <div className="flex items-center gap-2">
-              <input
-                value={seed}
-                onChange={(e) => setSeed(e.target.value)}
-                placeholder="random"
-                className="flex-1 bg-black/30 ring-1 ring-white/10 focus:ring-white/20 outline-none text-white placeholder-white/60 p-2 rounded-lg"
-              />
-              <button
-                onClick={() => setSeed('random')}
-                className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
-                title="Reset to random"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-white/80">
-                  <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8M3 3v5h5M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16M21 21v-5h-5" />
-                </svg>
-              </button>
-            </div>
-          </div>
-          <div className="flex-1">
-            <label className="block text-white/70 text-sm mb-1">Audio URL (Optional)</label>
-            <input
-              value={audioUrl}
-              onChange={(e) => setAudioUrl(e.target.value)}
-              placeholder="URL to reference audio..."
-              className="w-full bg-black/30 ring-1 ring-white/10 focus:ring-white/20 outline-none text-white placeholder-white/60 p-2 rounded-lg"
-            />
-          </div>
-        </div> */}
       </div>
     );
   };
@@ -1503,599 +1270,160 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
     const outputFormatOptions: ('wav' | 'mp3')[] = ['wav', 'mp3'];
 
     return (
-      <div className="space-y-4 mx-1">
-        <div className="flex-1">
-          <label className="block text-white/70 text-sm -mt-2 mb-1">Voice Prompt</label>
+      <div className="space-y-6">
+        <div className="block">
+          <SectionHeader num="03" label="Voice Prompt" />
           <textarea
             value={mayaPrompt}
             onChange={(e) => setMayaPrompt(e.target.value)}
-            placeholder="Realistic male voice in the 30s age with american accent. Normal pitch, warm timbre, conversational pacing, neutral tone delivery at med intensity."
-            className="w-full bg-black/30 ring-1 ring-white/10 focus:ring-white/20 text-xs outline-none text-white placeholder-white/60 placeholder:text-[10px] p-2 rounded-lg resize-none"
-            rows={1}
-            style={{
-              minHeight: '100px',
-              maxHeight: '200px'
-            }}
+            placeholder="Realistic male voice... Normal pitch, warm timbre..."
+            className="sonix-input min-h-[100px]"
+            rows={3}
           />
-          <p className="text-[10px] text-white/50 mt-1">
-            Description of the voice/character. Includes attributes like age, accent, pitch, timbre, pacing, tone, and intensity.
+          <p className="text-[10px] text-white/30 mt-2 font-mono uppercase tracking-tighter">
+            Describe age, accent, pitch, timbre, pacing, and tone.
           </p>
         </div>
-        <div className="space-y-0">
-          <RangeControl
-            label="Temperature"
-            value={mayaTemperature}
-            min={0.0}
-            max={2.0}
-            step={0.01}
-            onChange={setMayaTemperature}
-          />
-          <RangeControl
-            label="Top P"
-            value={mayaTopP}
-            min={0.0}
-            max={1.0}
-            step={0.01}
-            onChange={setMayaTopP}
-          />
-          <RangeControl
-            label="Max Tokens"
-            value={mayaMaxTokens}
-            min={100}
-            max={5000}
-            step={100}
-            onChange={setMayaMaxTokens}
-          />
-          <RangeControl
-            label="Repetition Penalty"
-            value={mayaRepetitionPenalty}
-            min={0.5}
-            max={2.0}
-            step={0.01}
-            onChange={setMayaRepetitionPenalty}
-          />
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6">
+          <RangeControl label="Temperature" value={mayaTemperature} min={0.0} max={2.0} step={0.01} onChange={setMayaTemperature} />
+          <RangeControl label="Top P" value={mayaTopP} min={0.0} max={1.0} step={0.01} onChange={setMayaTopP} />
+          <RangeControl label="Max Tokens" value={mayaMaxTokens} min={100} max={5000} step={100} onChange={setMayaMaxTokens} />
+          <RangeControl label="Repetition Penalty" value={mayaRepetitionPenalty} min={0.5} max={2.0} step={0.01} onChange={setMayaRepetitionPenalty} />
         </div>
-        <div className="flex-1 relative">
-          <label className="block text-white/70 text-sm -mt-4 mb-0">Output Format</label>
-          <button
-            onClick={() => {
-              setMayaOutputFormatDropdownOpen(!mayaOutputFormatDropdownOpen);
-            }}
-            className="w-full bg-black/30 ring-1 ring-white/10 hover:ring-white/20 transition flex items-center justify-between text-white p-2 rounded-lg text-left text-sm"
-          >
-            <span className={mayaOutputFormat ? 'text-white' : 'text-white/60'}>
-              {mayaOutputFormat ? mayaOutputFormat.toUpperCase() : 'Select format...'}
-            </span>
-            <ChevronUp className={`w-3.5 h-3.5 transition-transform duration-200 ${mayaOutputFormatDropdownOpen ? 'rotate-180' : ''}`} />
-          </button>
-          {mayaOutputFormatDropdownOpen && (
-            <div className="absolute z-[100] bottom-8 left-0 mb-2 w-full max-h-60 overflow-y-auto bg-black/95 backdrop-blur-xl rounded-lg ring-1 ring-white/20 py-1 scrollbar-hide">
-              {outputFormatOptions.map((option) => (
-                <button
-                  key={option}
-                  onClick={() => {
-                    setMayaOutputFormat(option);
-                    setMayaOutputFormatDropdownOpen(false);
-                  }}
-                  className={`w-full px-3 py-2 text-left text-[10px] hover:bg-white/10 flex items-center justify-between ${mayaOutputFormat === option ? "bg-white/20 text-white" : "text-white/90"
-                    }`}
-                >
-                  <span className="uppercase">{option}</span>
-                  {mayaOutputFormat === option && (
-                    <div className="w-2 h-2 bg-white rounded-full flex-shrink-0"></div>
-                  )}
-                </button>
-              ))}
-            </div>
-          )}
+
+        <div className="block">
+          <label className="block text-white/30 text-[10px] font-bold uppercase tracking-widest mb-1.5 ml-1">Output Format</label>
+          <div className="flex gap-2">
+            {outputFormatOptions.map(option => (
+              <button
+                key={option}
+                onClick={() => setMayaOutputFormat(option)}
+                className={`flex-1 h-[38px] rounded-[10px] text-[12px] font-medium border transition-all ${mayaOutputFormat === option ? "bg-[#2F6BFF] border-[#2F6BFF] text-white" : "bg-[#16161C] border-white/10 text-white/60 hover:border-white/20"}`}
+              >
+                {option.toUpperCase()}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     );
   };
 
   const ChatterboxSettings = () => {
-    const voiceOptions = [
-      'english', 'arabic', 'danish', 'german', 'greek', 'spanish', 'finnish',
-      'french', 'hebrew', 'hindi', 'italian', 'japanese', 'korean', 'malay',
-      'dutch', 'norwegian', 'polish', 'portuguese', 'russian', 'swedish',
-      'swahili', 'turkish', 'chinese'
-    ];
-
-    const customAudioLanguageOptions = [
-      'english', 'arabic', 'danish', 'german', 'greek', 'spanish', 'finnish',
-      'french', 'hebrew', 'hindi', 'italian', 'japanese', 'korean', 'malay',
-      'dutch', 'norwegian', 'polish', 'portuguese', 'russian', 'swedish',
-      'swahili', 'turkish', 'chinese'
-    ];
-
-    // Check if voice is a custom URL
-    const isCustomVoiceUrl = chatterboxVoice && typeof chatterboxVoice === 'string' &&
-      (chatterboxVoice.startsWith('http://') || chatterboxVoice.startsWith('https://'));
+    const voiceOptions = ['english', 'arabic', 'danish', 'german', 'greek', 'spanish', 'finnish', 'french', 'hebrew', 'hindi', 'italian', 'japanese', 'korean', 'malay', 'dutch', 'norwegian', 'polish', 'portuguese', 'russian', 'swedish', 'swahili', 'turkish', 'chinese'];
+    const isCustomVoiceUrl = chatterboxVoice && typeof chatterboxVoice === 'string' && (chatterboxVoice.startsWith('http://') || chatterboxVoice.startsWith('https://'));
 
     return (
-      <div className="space-y-1 mx-1">
-        <div className="flex flex-col gap-3">
-          <div className="flex-1 relative dropdown-container">
-            <label className="block text-white/70 text-sm mb-1 -mt-2">Voice</label>
-            <div className="flex gap-2">
-              <button
-                onClick={() => {
-                  setVoiceDropdownOpen(!voiceDropdownOpen);
-                  setCustomAudioLanguageDropdownOpen(false);
-                }}
-                className="flex-1 h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-transparent text-white/90 hover:bg-white/5"
-              >
-                <span className={chatterboxVoice ? 'text-white' : 'text-white/60'}>
-                  {chatterboxVoice && (chatterboxVoice.startsWith('http://') || chatterboxVoice.startsWith('https://'))
-                    ? 'Custom Voice URL'
-                    : (chatterboxVoice ? chatterboxVoice.charAt(0).toUpperCase() + chatterboxVoice.slice(1) : 'Select voice...')}
-                </span>
-                <ChevronUp className={`w-3.5 h-3.5 transition-transform duration-200 ${voiceDropdownOpen ? 'rotate-180' : ''}`} />
-              </button>
-            </div>
-            {voiceDropdownOpen && (
-              <div className="absolute z-[100] top-full left-0 mt-2 w-full max-h-80 overflow-y-auto bg-black/85 backdrop-blur-3xl rounded-lg overflow-hidden ring-1 ring-white/20 py-1 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                {voiceOptions.map((option) => (
-                  <button
-                    key={option}
-                    onClick={() => {
-                      setChatterboxVoice(option);
-                      setSelectedUploadedAudio(''); // Clear selected uploaded audio when choosing a language voice
-                      setVoiceDropdownOpen(false);
-                      setCustomAudioLanguage('');
-                      setUploadedVoiceFile(null);
-                    }}
-                    className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 flex items-center justify-between ${chatterboxVoice === option ? "bg-white text-black" : "text-white/90"
-                      }`}
-                  >
-                    <span className="capitalize">{option}</span>
-                    {chatterboxVoice === option && (
-                      <div className="w-2 h-2 bg-black rounded-full flex-shrink-0"></div>
-                    )}
-                  </button>
-                ))}
-                <div className="border-t border-white/10 my-1"></div>
-                <div className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
-                  <div>
-                    <label className="block text-white/70 text-xs mb-2 font-medium">Or enter custom audio URL:</label>
-                    <input
-                      type="text"
-                      value={chatterboxVoice && (chatterboxVoice.startsWith('http://') || chatterboxVoice.startsWith('https://')) ? chatterboxVoice : ''}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        setChatterboxVoice(value);
-                        if (!value.startsWith('http://') && !value.startsWith('https://')) {
-                          setCustomAudioLanguage('');
-                          setUploadedVoiceFile(null);
-                        } else if (value.startsWith('http://') || value.startsWith('https://')) {
-                          // Set default to english when a custom URL is entered
-                          if (!customAudioLanguage) {
-                            setCustomAudioLanguage('english');
-                          }
-                        }
-                      }}
-                      placeholder="https://example.com/voice.mp3"
-                      className="w-full bg-black/50 ring-1 ring-white/10 focus:ring-white/20 outline-none text-white placeholder-white/40 p-2 rounded text-xs"
-                    />
+      <div className="space-y-6">
+        <div className="block">
+          <SectionHeader num="03" label="Voice Selection" />
+          <div className="grid grid-cols-1 gap-4">
+             <div className="relative dropdown-container">
+                <label className="block text-white/30 text-[10px] font-bold uppercase tracking-widest mb-1.5 ml-1">Predefined Voice</label>
+                <button
+                  onClick={() => setVoiceDropdownOpen(!voiceDropdownOpen)}
+                  className="w-full h-[38px] px-4 rounded-[10px] text-[12px] font-medium border border-white/10 hover:border-white/20 transition flex items-center justify-between bg-[#16161C] text-white/90"
+                >
+                  <span className="capitalize">{chatterboxVoice && !isCustomVoiceUrl ? chatterboxVoice : 'Select voice...'}</span>
+                  <ChevronDown className={`w-3.5 h-3.5 ml-1 transition-transform duration-200 ${voiceDropdownOpen ? 'rotate-180' : ''}`} />
+                </button>
+                {voiceDropdownOpen && (
+                  <div className="absolute z-[100] top-11 left-0 w-full max-h-60 overflow-y-auto bg-[#1E1E27] backdrop-blur-3xl rounded-[10px] border border-white/10 py-1 shadow-2xl">
+                    {voiceOptions.map(option => (
+                      <button
+                        key={option}
+                        onClick={() => { setChatterboxVoice(option); setSelectedUploadedAudio(''); setVoiceDropdownOpen(false); }}
+                        className={`w-full px-4 py-2 text-left text-[12px] hover:bg-white/5 capitalize ${chatterboxVoice === option ? "text-[#2F6BFF] font-bold bg-[#2F6BFF]/5" : "text-white/80"}`}
+                      >
+                        {option}
+                      </button>
+                    ))}
                   </div>
-                </div>
-              </div>
-            )}
-          </div>
+                )}
+             </div>
 
-          {/* Voice Library Dropdown */}
-          <div className="flex-1 relative dropdown-container">
-            <label className="block text-white/70 text-sm -mt-2 mb-0">Voice Library</label>
-            <p className="text-[10px] text-white/50 mb-1">
-              Select a previously uploaded audio file from your library to use as a voice reference.
-            </p>
-            <button
-              onClick={() => {
-                setUploadedAudioDropdownOpen(!uploadedAudioDropdownOpen);
-                setVoiceDropdownOpen(false);
-                setCustomAudioLanguageDropdownOpen(false);
-              }}
-              className="w-full h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-transparent text-white/90 hover:bg-white/5"
-            >
-              <span className={selectedUploadedAudio ? 'text-white' : 'text-white/60'}>
-                {selectedUploadedAudio
-                  ? userAudioFiles.find(f => ensureZataUrl(f) === selectedUploadedAudio)?.fileName || 'Selected audio'
-                  : 'Select uploaded audio...'}
-              </span>
-              <ChevronUp className={`w-3.5 h-3.5 transition-transform duration-200 ${uploadedAudioDropdownOpen ? 'rotate-180' : ''}`} />
-            </button>
-            {uploadedAudioDropdownOpen && (
-              <div className="absolute z-[100] top-full left-0 mt-2 w-full max-h-80 overflow-y-auto bg-black/85 backdrop-blur-3xl rounded-lg overflow-hidden ring-1 ring-white/20 py-1 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                {isLoadingAudioFiles ? (
-                  <div className="px-3 py-2 text-sm text-white/60">Loading...</div>
-                ) : userAudioFiles.length === 0 ? (
-                  <div className="px-3 py-2 text-sm text-white/60">No audio files in library. Upload audio files to build your voice library.</div>
-                ) : (
-                  userAudioFiles.map((audioFile) => {
-                    const zataUrl = ensureZataUrl(audioFile);
-                    return (
+             <div className="relative dropdown-container">
+                <label className="block text-white/30 text-[10px] font-bold uppercase tracking-widest mb-1.5 ml-1">Voice Library</label>
+                <button
+                  onClick={() => setUploadedAudioDropdownOpen(!uploadedAudioDropdownOpen)}
+                  className="w-full h-[38px] px-4 rounded-[10px] text-[12px] font-medium border border-white/10 hover:border-white/20 transition flex items-center justify-between bg-[#16161C] text-white/90"
+                >
+                  <span className="truncate">{selectedUploadedAudio ? userAudioFiles.find(f => ensureZataUrl(f) === selectedUploadedAudio)?.fileName : 'Select uploaded...'}</span>
+                  <ChevronDown className={`w-3.5 h-3.5 ml-1 transition-transform duration-200 ${uploadedAudioDropdownOpen ? 'rotate-180' : ''}`} />
+                </button>
+                {uploadedAudioDropdownOpen && (
+                  <div className="absolute z-[100] top-11 left-0 w-full max-h-60 overflow-y-auto bg-[#1E1E27] backdrop-blur-3xl rounded-[10px] border border-white/10 py-1 shadow-2xl">
+                    {userAudioFiles.map(audioFile => (
                       <button
                         key={audioFile.id}
-                        onClick={() => {
-                          setSelectedUploadedAudio(zataUrl);
-                          setChatterboxVoice(zataUrl);
-                          setUploadedAudioDropdownOpen(false);
-                          setCustomAudioLanguage('english');
-                          // Clear uploadedVoiceFile to indicate this is NOT a new upload
-                          setUploadedVoiceFile(null);
-                          setVoiceFileName('');
-                        }}
-                        className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 flex items-center justify-between ${selectedUploadedAudio === zataUrl ? "bg-white text-black" : "text-white/90"
-                          }`}
+                        onClick={() => { setSelectedUploadedAudio(ensureZataUrl(audioFile)); setChatterboxVoice(ensureZataUrl(audioFile)); setUploadedAudioDropdownOpen(false); }}
+                        className="w-full px-4 py-2 text-left text-[12px] hover:bg-white/5 text-white/80 truncate"
                       >
-                        <span className="truncate flex-1" title={audioFile.fileName}>{audioFile.fileName}</span>
-                        {selectedUploadedAudio === zataUrl && (
-                          <div className="w-2 h-2 bg-black rounded-full flex-shrink-0 ml-2"></div>
-                        )}
+                        {audioFile.fileName}
                       </button>
-                    );
-                  })
+                    ))}
+                  </div>
                 )}
-              </div>
-            )}
-          </div>
-
-          {/* Show Custom Audio Language immediately after Voice Library selection or custom voice URL */}
-          {(selectedUploadedAudio || isCustomVoiceUrl) && (
-            <div className="flex-1 relative">
-              <label className="block text-white/70 text-sm mb-0">
-                Your Voice Language <span className="text-red-400">*</span>
-              </label>
-              <p className="text-[10px] text-white/50 mb-1 ">
-                Select the language of your uploaded audio file.
-              </p>
-              <button
-                onClick={() => {
-                  setCustomAudioLanguageDropdownOpen(!customAudioLanguageDropdownOpen);
-                  setVoiceDropdownOpen(false);
-                  setUploadedAudioDropdownOpen(false);
-                }}
-                className="w-full h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-transparent text-white/90 hover:bg-white/5"
-              >
-                <span className={customAudioLanguage ? 'text-white' : 'text-white/60'}>
-                  {customAudioLanguage ? customAudioLanguage.charAt(0).toUpperCase() + customAudioLanguage.slice(1) : 'Select language...'}
-                </span>
-                <ChevronUp className={`w-3.5 h-3.5 transition-transform duration-200 ${customAudioLanguageDropdownOpen ? 'rotate-180' : ''}`} />
-              </button>
-              {customAudioLanguageDropdownOpen && (
-                <div className="absolute z-[100] top-full left-0 mt-2 w-full max-h-60 overflow-y-auto bg-black/85 backdrop-blur-3xl rounded-lg overflow-hidden ring-1 ring-white/20 py-1 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                  {customAudioLanguageOptions.map((option) => (
-                    <button
-                      key={option}
-                      onClick={() => {
-                        setCustomAudioLanguage(option);
-                        setCustomAudioLanguageDropdownOpen(false);
-                      }}
-                      className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 flex items-center justify-between ${customAudioLanguage === option ? "bg-white text-black" : "text-white/90"
-                        }`}
-                    >
-                      <span className="capitalize">{option}</span>
-                      {customAudioLanguage === option && (
-                        <div className="w-2 h-2 bg-black rounded-full flex-shrink-0"></div>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Upload Audio File Section */}
-          <div className="flex flex-col gap-">
-            <label className="block text-white/70 text-sm -mt-2 mb-0">Upload Audio File</label>
-            <div className="space-y-2">
-              <input
-                type="text"
-                value={audioFileNameInput}
-                ref={audioFileNameInputRef}
-                onFocus={clearVoiceLibrarySelection}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setAudioFileNameInput(value);
-                  setFileNameError('');
-                  // Check if name already exists (case-insensitive, with or without extension)
-                  const trimmedValue = value.trim();
-                  if (trimmedValue) {
-                    const normalizedValue = trimmedValue.toLowerCase();
-                    const hasConflict = userAudioFiles.some(f => {
-                      const normalizedFileName = f.fileName.toLowerCase();
-                      // Check if the value matches the file name (with or without extension)
-                      return normalizedFileName === normalizedValue ||
-                        normalizedFileName === `${normalizedValue}.wav` ||
-                        normalizedFileName === `${normalizedValue}.mp3` ||
-                        normalizedValue === normalizedFileName.replace(/\.(wav|mp3)$/i, '');
-                    });
-                    if (hasConflict) {
-                      setFileNameError('Name is already taken. Please try a different name.');
-                    }
-                  }
-                }}
-                placeholder="Enter audio file name..."
-                className={`w-full bg-black/50 ring-1 ${fileNameError ? 'ring-red-500' : 'ring-white/10'} focus:ring-white/20 outline-none text-white placeholder-white/40 p-2 rounded text-xs`}
-                disabled={isUploadingVoice}
-                autoComplete="off"
-              />
-              {fileNameError && (
-                <p className="text-xs text-red-400">{fileNameError}</p>
-              )}
-              <input
-                type="file"
-                accept="audio/*"
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-
-                  // Validate file name - require name before upload
-                  if (!audioFileNameInput.trim()) {
-                    dispatch(addNotification({ type: 'error', message: 'Please enter a name for the audio file before uploading' }));
-                    e.target.value = '';
-                    return;
-                  }
-
-                  // Validate file type
-                  const allowedTypes = ['audio/wav', 'audio/mpeg', 'audio/mp3', 'audio/wave', 'audio/x-wav', 'audio/mpeg3', 'audio/x-mpeg-3'];
-                  const allowedExtensions = /\.(wav|mp3)$/i;
-                  if (!allowedTypes.includes(file.type) && !file.name.match(allowedExtensions)) {
-                    dispatch(addNotification({ type: 'error', message: 'Please upload a WAV or MP3 audio file' }));
-                    e.target.value = '';
-                    return;
-                  }
-
-                  // Extract file extension from the uploaded file
-                  const fileExtension = file.name.match(/\.([^.]+)$/)?.[1]?.toLowerCase() || '';
-                  if (!fileExtension || !['wav', 'mp3'].includes(fileExtension)) {
-                    dispatch(addNotification({ type: 'error', message: 'File must have .wav or .mp3 extension' }));
-                    e.target.value = '';
-                    return;
-                  }
-
-                  // Get the base name from user input and remove any existing extension
-                  let baseName = audioFileNameInput.trim();
-                  if (!baseName) {
-                    dispatch(addNotification({ type: 'error', message: 'Please enter a name for the audio file' }));
-                    e.target.value = '';
-                    return;
-                  }
-
-                  // Remove any existing extension from the base name to avoid double extensions
-                  baseName = baseName.replace(/\.(wav|mp3)$/i, '');
-
-                  // Construct full file name with extension (always add the extension from the actual file)
-                  const fullFileName = `${baseName}.${fileExtension}`;
-
-                  // Check for duplicate name (with extension)
-                  if (userAudioFiles.some(f => f.fileName.toLowerCase() === fullFileName.toLowerCase())) {
-                    dispatch(addNotification({ type: 'error', message: `Name "${fullFileName}" is already taken. Please try a different name.` }));
-                    e.target.value = '';
-                    return;
-                  }
-
-                  // Validate file size (max 15MB)
-                  const maxSize = 15 * 1024 * 1024;
-                  if (file.size > maxSize) {
-                    dispatch(addNotification({ type: 'error', message: 'Audio file too large. Maximum size is 15MB' }));
-                    e.target.value = '';
-                    return;
-                  }
-
-                  setIsUploadingVoice(true);
-                  setUploadedVoiceFile(file);
-
-                  try {
-                    // Convert file to data URI
-                    const reader = new FileReader();
-                    const dataUri = await new Promise<string>((resolve, reject) => {
-                      reader.onload = () => resolve(reader.result as string);
-                      reader.onerror = reject;
-                      reader.readAsDataURL(file);
-                    });
-
-                    // Upload to backend to get URL (send full file name with extension)
-                    const { getApiClient } = await import('@/lib/axiosInstance');
-                    const api = getApiClient();
-                    const uploadResponse = await api.post('/api/fal/upload-voice', {
-                      audioData: dataUri,
-                      fileName: fullFileName,
-                    });
-
-                    if (uploadResponse.data?.data?.url) {
-                      const uploadedUrl = uploadResponse.data.data.url;
-                      setChatterboxVoice(uploadedUrl);
-                      setSelectedUploadedAudio(uploadedUrl);
-                      setCustomAudioLanguage('english');
-                      setVoiceFileName(fullFileName);
-                      setAudioFileNameInput('');
-                      setFileNameError('');
-                      // Refresh the user audio files list
-                      try {
-                        const response = await api.get('/api/fal/audio-files');
-                        if (response.data?.data?.audioFiles) {
-                          const audioFilesWithZataUrls = response.data.data.audioFiles.map((audioFile: any) => ({
-                            ...audioFile,
-                            url: ensureZataUrl(audioFile),
-                          }));
-                          setUserAudioFiles(audioFilesWithZataUrls);
-                        }
-                      } catch (err) {
-                        console.error('Failed to refresh audio files list:', err);
-                      }
-                      dispatch(addNotification({ type: 'success', message: 'Voice file uploaded successfully' }));
-                    } else {
-                      throw new Error('No URL returned from upload');
-                    }
-                  } catch (error: any) {
-                    console.error('Failed to upload voice file:', error);
-                    const errorMessage = error?.response?.data?.message || 'Failed to upload voice file';
-                    dispatch(addNotification({ type: 'error', message: errorMessage }));
-                    if (errorMessage.includes('already taken')) {
-                      setFileNameError(errorMessage);
-                    }
-                    setUploadedVoiceFile(null);
-                  } finally {
-                    setIsUploadingVoice(false);
-                    e.target.value = '';
-                  }
-                }}
-                className="hidden"
-                id="upload-audio-file-input"
-                disabled={isUploadingVoice || !!selectedUploadedAudio}
-              />
-              <label
-                htmlFor="upload-audio-file-input"
-                className={`flex items-center justify-center gap-2 w-full bg-white/10 hover:bg-white/20 ring-1 ring-white/20 hover:ring-white/30 text-center py-2.5 rounded-lg text-sm font-medium text-white transition-all ${isUploadingVoice || !!selectedUploadedAudio ? 'opacity-50 cursor-not-allowed pointer-events-none' : 'cursor-pointer'}`}
-              >
-                {isUploadingVoice ? (
-                  <>
-                    <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <span>Uploading...</span>
-                  </>
-                ) : (
-                  <>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-white">
-                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                      <polyline points="17 8 12 3 7 8"></polyline>
-                      <line x1="12" y1="3" x2="12" y2="15"></line>
-                    </svg>
-                    <span>Choose Audio File</span>
-                  </>
-                )}
-              </label>
-            </div>
+             </div>
           </div>
         </div>
+
         <div className="space-y-2">
           <RangeControl label="Exaggeration" value={exaggeration} min={0.25} max={2.0} step={0.01} onChange={setExaggeration} />
           <RangeControl label="Temperature" value={temperature} min={0.05} max={5.0} step={0.01} onChange={setTemperature} />
           <RangeControl label="CFG Scale" value={cfgScale} min={0.0} max={1.0} step={0.01} onChange={setCfgScale} />
         </div>
-        {/* <div className="flex flex-col md:flex-row gap-3">
-        <div className="flex-1">
-          <label className="block text-white/70 text-sm mb-1">Seed</label>
-          <div className="flex items-center gap-2">
-            <input
-              value={seed}
-              onChange={(e) => setSeed(e.target.value)}
-              placeholder="random"
-              className="flex-1 bg-black/30 ring-1 ring-white/10 focus:ring-white/20 outline-none text-white placeholder-white/60 p-2 rounded-lg"
-            />
-            <button
-              onClick={() => setSeed('random')}
-              className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
-              title="Reset to random"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-white/80">
-                <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8M3 3v5h5M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16M21 21v-5h-5" />
-              </svg>
-            </button>
-          </div>
-        </div>
-        <div className="flex-1">
-          <label className="block text-white/70 text-sm mb-1">Audio URL (Optional)</label>
-          <input
-            value={audioUrl}
-            onChange={(e) => setAudioUrl(e.target.value)}
-            placeholder="URL to reference audio..."
-            className="w-full bg-black/30 ring-1 ring-white/10 focus:ring-white/20 outline-none text-white placeholder-white/60 p-2 rounded-lg"
-          />
-        </div>
-      </div> */}
       </div>
     );
   };
 
   const SFXSettings = () => {
-    const outputFormatOptions = [
-      'mp3_22050_32', 'mp3_44100_32', 'mp3_44100_64', 'mp3_44100_96',
-      'mp3_44100_128', 'mp3_44100_192', 'pcm_8000', 'pcm_16000',
-      'pcm_22050', 'pcm_24000', 'pcm_44100', 'pcm_48000',
-      'ulaw_8000', 'alaw_8000', 'opus_48000_32', 'opus_48000_64',
-      'opus_48000_96', 'opus_48000_128', 'opus_48000_192'
-    ];
+    const outputFormatOptions = ['mp3_22050_32', 'mp3_44100_32', 'mp3_44100_64', 'mp3_44100_96', 'mp3_44100_128', 'mp3_44100_192', 'pcm_8000', 'pcm_16000', 'pcm_22050', 'pcm_24000', 'pcm_44100', 'pcm_48000', 'ulaw_8000', 'alaw_8000', 'opus_48000_32', 'opus_48000_64', 'opus_48000_96', 'opus_48000_128', 'opus_48000_192'];
 
     return (
-      <div className="space-y-4">
-        <div className="space-y-3">
-          <RangeControl
-            label="Duration (seconds)"
-            value={sfxDuration}
-            min={0.5}
-            max={22}
-            step={0.1}
-            onChange={setSfxDuration}
-          />
-
-          <RangeControl
-            label="Prompt Influence"
-            value={sfxPromptInfluence}
-            min={0.0}
-            max={1.0}
-            step={0.01}
-            onChange={setSfxPromptInfluence}
-          />
-
-          <div className="relative dropdown-container">
-            <label className="block text-white/70 text-sm mb-1">Output Format</label>
+      <div className="space-y-6">
+        <div className="block">
+          <SectionHeader num="03" label="Audio Parameters" />
+          <RangeControl label="Duration" value={sfxDuration} min={0.5} max={22} step={0.1} onChange={setSfxDuration} suffix="s" />
+          <RangeControl label="Prompt Influence" value={sfxPromptInfluence} min={0.0} max={1.0} step={0.01} onChange={setSfxPromptInfluence} />
+          
+          <div className="block relative dropdown-container">
+            <label className="block text-white/30 text-[10px] font-bold uppercase tracking-widest mb-1.5 ml-1 font-satoshi">Format</label>
             <button
-              onClick={() => {
-                setCloseStyleDropdown(true);
-                setTimeout(() => setCloseStyleDropdown(false), 0);
-                setCloseInstrumentsDropdown(true);
-                setTimeout(() => setCloseInstrumentsDropdown(false), 0);
-                setCloseModelDropdown(true);
-                setTimeout(() => setCloseModelDropdown(false), 0);
-                setSfxOutputFormatDropdownOpen(!sfxOutputFormatDropdownOpen);
-              }}
-              className="w-full h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-transparent text-white/90 hover:bg-white/5"
+              onClick={() => setSfxOutputFormatDropdownOpen(!sfxOutputFormatDropdownOpen)}
+              className="w-full h-[38px] px-4 rounded-[10px] text-[12px] font-medium border border-white/10 hover:border-white/20 transition flex items-center justify-between bg-[#16161C] text-white/90"
             >
-              <span className="text-white/90">{sfxOutputFormat}</span>
-              <ChevronUp className={`w-3.5 h-3.5 transition-transform duration-200 ${sfxOutputFormatDropdownOpen ? 'rotate-180' : ''}`} />
+              <span>{sfxOutputFormat}</span>
+              <ChevronDown className={`w-3.5 h-3.5 ml-1 transition-transform duration-200 ${sfxOutputFormatDropdownOpen ? 'rotate-180' : ''}`} />
             </button>
             {sfxOutputFormatDropdownOpen && (
-              <div className="absolute z-[100] top-full left-0 mt-2 w-full max-h-60 overflow-y-auto bg-black/85 backdrop-blur-3xl rounded-lg overflow-hidden ring-1 ring-white/20 py-1 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                {outputFormatOptions.map((format) => (
+              <div className="absolute z-[100] top-[62px] left-0 w-full max-h-60 overflow-y-auto bg-[#1E1E27] backdrop-blur-3xl rounded-[10px] border border-white/10 py-1 shadow-2xl">
+                {outputFormatOptions.map(format => (
                   <button
                     key={format}
-                    onClick={() => {
-                      setSfxOutputFormat(format);
-                      setSfxOutputFormatDropdownOpen(false);
-                    }}
-                    className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 flex items-center justify-between ${sfxOutputFormat === format ? "bg-white text-black" : "text-white/90"
-                      }`}
+                    onClick={() => { setSfxOutputFormat(format); setSfxOutputFormatDropdownOpen(false); }}
+                    className={`w-full px-4 py-2 text-left text-[12px] hover:bg-white/5 ${sfxOutputFormat === format ? "text-[#2F6BFF] font-bold" : "text-white/80"}`}
                   >
-                    <span>{format}</span>
-                    {sfxOutputFormat === format && (
-                      <div className="w-2 h-2 bg-black rounded-full flex-shrink-0"></div>
-                    )}
+                    {format}
                   </button>
                 ))}
               </div>
             )}
           </div>
+        </div>
 
-          <div className="flex items-center justify-between p-3 bg-black/20 rounded-lg ring-1 ring-white/10">
-            <div>
-              <label className="block text-white/70 text-sm mb-1">Loop</label>
-              <p className="text-xs text-white/50">Create a sound effect that loops smoothly</p>
-            </div>
-            <button
-              onClick={() => setSfxLoop(!sfxLoop)}
-              className={`relative w-12 h-6 rounded-full transition-colors ${sfxLoop ? 'bg-purple-500' : 'bg-white/20'
-                }`}
-            >
-              <div
-                className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${sfxLoop ? 'translate-x-6' : 'translate-x-0'
-                  }`}
-              />
-            </button>
+        <div className="flex items-center justify-between p-4 bg-[#16161C] rounded-[10px] border border-white/5">
+          <div>
+            <label className="block text-white/90 text-[13px] font-semibold mb-0.5">Seamless Loop</label>
+            <p className="text-[11px] text-white/30">Create perfectly loopable sound</p>
           </div>
+          <button
+            onClick={() => setSfxLoop(!sfxLoop)}
+            className={`relative w-11 h-6 rounded-full transition-all duration-300 ${sfxLoop ? 'bg-[#2F6BFF]' : 'bg-white/10'}`}
+          >
+            <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-lg transition-transform duration-300 ${sfxLoop ? 'translate-x-5' : 'translate-x-0'}`} />
+          </button>
         </div>
       </div>
     );
@@ -2104,455 +1432,235 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
   const DialogueSettings = () => {
     const voiceOptions = ELEVENLABS_STANDARD_VOICES;
 
-    const addDialogueInput = () => {
-      setDialogueInputs([...dialogueInputs, { text: '', voice: ELEVENLABS_DIALOGUE_DEFAULT_VOICE }]);
-    };
-
-    const removeDialogueInput = (index: number) => {
-      if (dialogueInputs.length > 1) {
-        setDialogueInputs(dialogueInputs.filter((_, i) => i !== index));
-      }
-    };
-
-    const updateDialogueInput = (index: number, field: 'text' | 'voice', value: string) => {
-      const updated = [...dialogueInputs];
-      updated[index] = { ...updated[index], [field]: value };
-      setDialogueInputs(updated);
-    };
-
     return (
-      <div className="space-y-1">
-        {/* Dialogue Inputs */}
-        <div className="space-y-1 mx-1">
-          <label className="block text-white/70 text-sm -mt-2 mb-2">Dialogue Inputs</label>
+      <div className="space-y-6">
+        <SectionHeader num="03" label="Dialogue Script" />
+        <div className="space-y-4">
           {dialogueInputs.map((input, index) => (
-            <div key={index} className="bg-black/20 rounded-lg p-3 ring-1 ring-white/10">
-              <div className="flex items-start justify-between gap-2 mb-2">
-                <span className="text-white/60 text-xs">Input {index + 1}</span>
-                {dialogueInputs.length > 1 && (
-                  <button
-                    onClick={() => removeDialogueInput(index)}
-                    className="text-red-400 hover:text-red-300 transition-colors p-1"
-                    title="Remove input"
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M18 6L6 18M6 6l12 12" />
-                    </svg>
-                  </button>
-                )}
+            <div key={index} className="bg-[#16161C] rounded-[12px] p-5 border border-white/5 space-y-4 shadow-sm relative group">
+              {dialogueInputs.length > 1 && (
+                <button
+                  onClick={() => setDialogueInputs(dialogueInputs.filter((_, i) => i !== index))}
+                  className="absolute top-4 right-4 text-white/20 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+                >
+                  <X size={16} />
+                </button>
+              )}
+              
+              <div className="block">
+                <label className="block text-white/30 text-[10px] font-bold uppercase tracking-widest mb-2">Speaker {index + 1} Text</label>
+                <textarea
+                  value={input.text}
+                  onChange={(e) => {
+                    const updated = [...dialogueInputs];
+                    updated[index] = { ...updated[index], text: e.target.value };
+                    setDialogueInputs(updated);
+                  }}
+                  className="sonix-input min-h-[80px] text-xs"
+                  placeholder="What should this speaker say?"
+                />
               </div>
-              <div className="space-y-0">
-                <div>
-                  <label className="block text-white/70 text-xs -mt-2 mb-1">Text</label>
-                  <textarea
-                    value={input.text}
-                    onChange={(e) => updateDialogueInput(index, 'text', e.target.value)}
-                    placeholder="Enter dialogue text... You can use emotion tags like [applause], [excited], etc."
-                    maxLength={1000}
-                    className="w-full bg-black/30 ring-1 ring-white/10 focus:ring-white/20 outline-none text-xs text-white placeholder-white/60 placeholder:text-[10px] p-2 rounded-lg resize-y"
-                    rows={2}
-                    style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'break-word' }}
-                  />
-                </div>
-                <div className="relative dropdown-container">
-                  <label className="block text-white/70 text-xs -mt-2 mb-1">Voice</label>
-                  <button
-                    onClick={() => {
-                      // Close other dropdowns
-                      setCloseStyleDropdown(true);
-                      setTimeout(() => setCloseStyleDropdown(false), 0);
-                      setCloseInstrumentsDropdown(true);
-                      setTimeout(() => setCloseInstrumentsDropdown(false), 0);
-                      setCloseModelDropdown(true);
-                      setTimeout(() => setCloseModelDropdown(false), 0);
-                      // Toggle this dialogue voice dropdown
-                      setDialogueVoiceDropdownOpenIndex(dialogueVoiceDropdownOpenIndex === index ? null : index);
-                    }}
-                    className="w-full h-[32px] px-4 rounded-lg text-[13px] font-medium ring-1 ring-white/20 hover:ring-white/30 transition flex items-center justify-between bg-transparent text-white/90 hover:bg-white/5"
-                  >
-                    <span className={input.voice ? 'text-white/90' : 'text-white/60'}>
-                      {input.voice || 'Select voice...'}
-                    </span>
-                    <ChevronUp className={`w-3.5 h-3.5 transition-transform duration-200 ${dialogueVoiceDropdownOpenIndex === index ? 'rotate-180' : ''}`} />
-                  </button>
-                  {dialogueVoiceDropdownOpenIndex === index && (
-                    <div className="absolute z-[100] top-12 left-0 mt-2 w-full max-h-60 overflow-y-auto bg-black/85  backdrop-blur-3xl rounded-lg overflow-hidden ring-1 ring-white/20 py-1 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                      {voiceOptions.map((voice) => (
-                        <button
-                          key={voice}
-                          onClick={() => {
-                            updateDialogueInput(index, 'voice', voice);
-                            setDialogueVoiceDropdownOpenIndex(null);
-                          }}
-                          className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 flex items-center justify-between ${input.voice === voice ? "bg-white text-black" : "text-white/90"
-                            }`}
-                        >
-                          <span>{voice}</span>
-                          {input.voice === voice && (
-                            <div className="w-2 h-2 bg-black rounded-full flex-shrink-0"></div>
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
+
+              <div className="block relative dropdown-container">
+                <label className="block text-white/30 text-[10px] font-bold uppercase tracking-widest mb-2">Voice</label>
+                <button
+                  onClick={() => setDialogueVoiceDropdownOpenIndex(dialogueVoiceDropdownOpenIndex === index ? null : index)}
+                  className="w-full h-[38px] px-4 rounded-[10px] text-[12px] font-medium border border-white/10 hover:border-white/20 transition flex items-center justify-between bg-[#0E0E12]"
+                >
+                  <span>{input.voice}</span>
+                  <ChevronDown size={14} />
+                </button>
+                {dialogueVoiceDropdownOpenIndex === index && (
+                  <div className="absolute z-[110] top-[62px] left-0 w-full max-h-52 overflow-y-auto bg-[#1E1E27] border border-white/10 rounded-[10px] py-1 shadow-2xl">
+                    {voiceOptions.map(voice => (
+                      <button
+                        key={voice}
+                        onClick={() => {
+                          const updated = [...dialogueInputs];
+                          updated[index] = { ...updated[index], voice };
+                          setDialogueInputs(updated);
+                          setDialogueVoiceDropdownOpenIndex(null);
+                        }}
+                        className={`w-full px-4 py-2 text-left text-[12px] hover:bg-white/5 ${input.voice === voice ? "text-[#2F6BFF] bg-[#2F6BFF]/5 font-bold" : "text-white/80"}`}
+                      >
+                        {voice}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           ))}
+
           <button
-            onClick={addDialogueInput}
-            className="w-full py-2 px-4 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors text-sm flex items-center justify-center gap-2"
+            onClick={() => setDialogueInputs([...dialogueInputs, { text: '', voice: ELEVENLABS_DIALOGUE_DEFAULT_VOICE }])}
+            className="w-full py-3 rounded-[10px] border border-dashed border-white/10 hover:border-[#2F6BFF]/30 hover:bg-[#2F6BFF]/5 text-white/40 hover:text-[#2F6BFF] transition-all text-[12px] font-bold flex items-center justify-center gap-2"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M12 5v14M5 12h14" />
-            </svg>
-            Add Dialogue Input
+            <Plus size={16} />
+            Add Speaker
           </button>
         </div>
 
-        {/* Additional Settings */}
-        <div className="space-y-3">
-          <RangeControl
-            label="Stability"
-            value={dialogueStability}
-            min={0.0}
-            max={1.0}
-            step={0.01}
-            onChange={setDialogueStability}
-          />
-
-          <div className="flex items-center justify-between p-3 bg-black/20 rounded-lg ring-1 ring-white/10">
+        <div className="pt-4 border-t border-white/[0.04] space-y-4">
+          <RangeControl label="Stability" value={dialogueStability} min={0.0} max={1.0} step={0.01} onChange={setDialogueStability} />
+          
+          <div className="flex items-center justify-between p-4 bg-[#16161C] rounded-[10px] border border-white/5">
             <div>
-              <label className="block text-white/70 text-sm mb-1">Use Speaker Boost</label>
-              <p className="text-xs text-white/50">Boosts similarity to the original speaker</p>
+              <label className="block text-white/90 text-[13px] font-semibold">Speaker Boost</label>
+              <p className="text-[11px] text-white/30">Enhance similarity to original speaker</p>
             </div>
             <button
               onClick={() => setDialogueUseSpeakerBoost(!dialogueUseSpeakerBoost)}
-              className={`relative w-12 h-6 rounded-full transition-colors ${dialogueUseSpeakerBoost ? 'bg-purple-500' : 'bg-white/20'
-                }`}
+              className={`relative w-11 h-6 rounded-full transition-all duration-300 ${dialogueUseSpeakerBoost ? 'bg-[#2F6BFF]' : 'bg-white/10'}`}
             >
-              <div
-                className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${dialogueUseSpeakerBoost ? 'translate-x-6' : 'translate-x-0'
-                  }`}
-              />
+              <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-300 ${dialogueUseSpeakerBoost ? 'translate-x-5' : 'translate-x-0'}`} />
             </button>
           </div>
-
-          {/* <div>
-            <label className="block text-white/70 text-sm mb-1">Seed</label>
-            <div className="flex items-center gap-2">
-              <input
-                value={dialogueSeed}
-                onChange={(e) => setDialogueSeed(e.target.value)}
-                placeholder="random"
-                className="flex-1 bg-black/30 ring-1 ring-white/10 focus:ring-white/20 outline-none text-white placeholder-white/60 p-2 rounded-lg"
-              />
-              <button
-                onClick={() => setDialogueSeed('random')}
-                className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
-                title="Reset to random"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-white/80">
-                  <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8M3 3v5h5M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16M21 21v-5h-5" />
-                </svg>
-              </button>
-            </div>
-          </div> */}
-
-          {/* Pronunciation Dictionary Locators */}
-          {/* <div className="space-y-2">
-            <label className="block text-white/70 text-sm mb-1">Pronunciation Dictionary Locators</label>
-            <p className="text-xs text-white/50 mb-2">Add up to 3 pronunciation dictionaries to apply to the text</p>
-            {dialoguePronunciationDicts.map((dict, index) => (
-              <div key={index} className="bg-black/20 rounded-lg p-3 ring-1 ring-white/10">
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <span className="text-white/60 text-xs">Dictionary {index + 1}</span>
-                  {dialoguePronunciationDicts.length > 0 && (
-                    <button
-                      onClick={() => {
-                        const updated = dialoguePronunciationDicts.filter((_, i) => i !== index);
-                        setDialoguePronunciationDicts(updated);
-                      }}
-                      className="text-red-400 hover:text-red-300 transition-colors p-1"
-                      title="Remove dictionary"
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M18 6L6 18M6 6l12 12" />
-                      </svg>
-                    </button>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <div>
-                    <label className="block text-white/70 text-xs mb-1">Dictionary ID *</label>
-                    <input
-                      value={dict.pronunciation_dictionary_id}
-                      onChange={(e) => {
-                        const updated = [...dialoguePronunciationDicts];
-                        updated[index] = { ...updated[index], pronunciation_dictionary_id: e.target.value };
-                        setDialoguePronunciationDicts(updated);
-                      }}
-                      placeholder="Enter dictionary ID"
-                      className="w-full bg-black/30 ring-1 ring-white/10 focus:ring-white/20 outline-none text-white placeholder-white/60 p-2 rounded-lg text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-white/70 text-xs mb-1">Version ID (optional)</label>
-                    <input
-                      value={dict.version_id || ''}
-                      onChange={(e) => {
-                        const updated = [...dialoguePronunciationDicts];
-                        updated[index] = { ...updated[index], version_id: e.target.value || undefined };
-                        setDialoguePronunciationDicts(updated);
-                      }}
-                      placeholder="Enter version ID (optional)"
-                      className="w-full bg-black/30 ring-1 ring-white/10 focus:ring-white/20 outline-none text-white placeholder-white/60 p-2 rounded-lg text-sm"
-                    />
-                  </div>
-                </div>
-              </div>
-            ))}
-            {dialoguePronunciationDicts.length < 3 && (
-              <button
-                onClick={() => {
-                  setDialoguePronunciationDicts([...dialoguePronunciationDicts, { pronunciation_dictionary_id: '' }]);
-                }}
-                className="w-full py-2 px-4 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors text-sm flex items-center justify-center gap-2"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M12 5v14M5 12h14" />
-                </svg>
-                Add Dictionary Locator
-              </button>
-            )}
-          </div> */}
         </div>
       </div>
     );
   };
 
   return (
-    <div className="w-full max-w-full rounded-2xl bg-transparent backdrop-blur-3xl ring-1 ring-white/20 shadow-2xl p-4" style={{ overflow: 'visible', position: 'relative', boxSizing: 'border-box', overflowWrap: 'break-word' }}>
-      {/* Custom scrollbar styles */}
+    <div className="w-full max-w-full rounded-[12px] bg-[#0E0E12] shadow-2xl p-6" style={{ overflow: 'visible', position: 'relative', boxSizing: 'border-box', overflowWrap: 'break-word' }}>
       <style jsx>{`
         .scrollbar-hide {
           -ms-overflow-style: none;
           scrollbar-width: none;
         }
-        
         .scrollbar-hide::-webkit-scrollbar {
           display: none;
         }
-        
-        /* Hide scrollbars in dropdown menus */
-        .dropdown-container .scrollbar-hide {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
+        .sonix-input {
+          width: 100%;
+          background: #16161C;
+          border: 1px solid rgba(255,255,255,0.1);
+          border-radius: 10px;
+          padding: 12px 14px;
+          font-size: 13px;
+          color: #F0EFF8;
+          line-height: 1.6;
+          outline: none;
+          transition: border-color 0.2s, box-shadow 0.2s;
         }
-        
-        .dropdown-container .scrollbar-hide::-webkit-scrollbar {
-          display: none;
+        .sonix-input:focus {
+          border-color: rgba(47,107,255,0.4);
+          box-shadow: 0 0 0 3px rgba(47,107,255,0.08);
         }
-        
-        /* Global scrollbar hiding for all dropdowns */
-        .dropdown-container div[class*="overflow-y-auto"] {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
-        
-        .dropdown-container div[class*="overflow-y-auto"]::-webkit-scrollbar {
-          display: none;
+        .sonix-input::placeholder {
+          color: #3E3D52;
         }
       `}</style>
-      {/* Main Input Section - Compact Layout */}
-      <div className="space-y-4">
+      
+      <div className="space-y-6">
         <div className="flex flex-wrap items-center gap-3">
           <MusicModelsDropdown />
-          {!isTtsModel && !isDialogueModel && !isSfxModel && model !== 'minimax-music-2' && (
-            <>
-              {/* <StyleDropdown />
-          <InstrumentsDropdown /> */}
-            </>
+        </div>
+
+        {/* Dynamic Section Blocks */}
+        {!isDialogueModel && (
+          <div className="block">
+            <SectionHeader num="01" label={isSfxModel ? "Sound Description" : (isTtsModel ? "Voice Text" : "Style & Prompt")} />
+            {model === 'minimax-music-2' ? (
+              <div className="space-y-6">
+                <textarea
+                  placeholder="Genre, mood, pace, instruments, scene... The more vivid, the better."
+                  value={prompt}
+                  onChange={(e) => { setPrompt(e.target.value); adjustTextareaHeight(e.target); }}
+                  className="sonix-input min-h-[100px]"
+                  rows={4}
+                />
+                <div className="block">
+                  <SectionHeader num="02" label="Lyrics" />
+                  <textarea
+                    placeholder="[verse] ... [chorus] ..."
+                    value={lyricsPrompt}
+                    onChange={(e) => { setLyricsPrompt(e.target.value); adjustTextareaHeight(e.target); }}
+                    className="sonix-input min-h-[150px]"
+                    rows={6}
+                  />
+                </div>
+              </div>
+            ) : (
+              <textarea
+                placeholder={isSfxModel ? "Describe the sound effect... e.g. 'Epic cinematic impact'" : "Enter text to convert to speech..."}
+                value={lyrics}
+                onChange={(e) => { setLyrics(e.target.value); adjustTextareaHeight(e.target); }}
+                className="sonix-input min-h-[120px]"
+                rows={4}
+              />
+            )}
+          </div>
+        )}
+
+        {/* Model Specific Settings */}
+        <div className="block">
+          {isDialogueModel ? (
+            <DialogueSettings />
+          ) : isSfxModel ? (
+            <SFXSettings />
+          ) : isMayaModel ? (
+            <MayaSettings />
+          ) : isChatterboxModel ? (
+            <ChatterboxSettings />
+          ) : model === 'minimax-music-2' ? (
+             <div className="block">
+                <SectionHeader num="03" label="Output Settings" />
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex-1 relative">
+                    <label className="block text-white/30 text-[10px] font-bold uppercase mb-1.5 ml-1 tracking-widest font-satoshi">Sample Rate</label>
+                    <SampleRateDropdown />
+                  </div>
+                  <div className="flex-1 relative">
+                    <label className="block text-white/30 text-[10px] font-bold uppercase mb-1.5 ml-1 tracking-widest font-satoshi">Bitrate</label>
+                    <BitrateDropdown />
+                  </div>
+                </div>
+             </div>
+          ) : (
+            <TtsSettings />
           )}
         </div>
 
-        {/* Input Section - Different for MiniMax Music 2 vs other models */}
-        {!isDialogueModel && (
-          <>
-            {model === 'minimax-music-2' ? (
-              <>
-                {/* Prompt Input for MiniMax Music 2 */}
-                <div className="w-full">
-                  <label className="block text-white/90 text-sm font-thin mb-1 -mt-4 flex items-center gap-1 ml-1">
-                    Prompt
-                    {/* <svg className="w-4 h-4 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg> */}
-                  </label>
-                  <textarea
-                    placeholder="Enter what kind of music you want: genre (pop, lo-fi, hip-hop, cinematic), mood (happy, sad, romantic, dark), pace (slow/fast), instruments, and the scene or situation the music should fit."
-                    value={prompt}
-                    onChange={(e) => {
-                      setPrompt(e.target.value);
-                      adjustTextareaHeight(e.target);
-                    }}
-                    maxLength={1000}
-                    className={`w-full bg-black/30 ring-1 ring-white/10 focus:ring-white/20 text-xs outline-none text-white placeholder-white/80 placeholder:text-xs placeholder-t p-2 rounded-lg resize-none overflow-hidden transition-all ${promptLen > 0 && !isPromptValid(prompt) ? 'ring-red-500/50' : ''
-                      }`}
-                    rows={1}
-                    style={{
-                      minHeight: '100px',
-                      maxHeight: '200px'
-                    }}
-                  />
-                  {promptLen > 0 && !isPromptValid(prompt) && (
-                    <p className="text-red-400 text-xs mt-1">
-                      Prompt must be between 10-1000 characters
-                    </p>
-                  )}
-                  <div className="flex items-center justify-between gap-2 mt-0 ml-1">
-                    {/* <p className="text-white/70 text-xs pl-1">
-                      A description of the music, specifying style, mood, and scenario.
-                    </p> */}
-                    <span className="text-[10px] text-white/60">({promptLen}/1000)</span>
-                  </div>
+        {/* Action Section */}
+        <div className="pt-2 mt-4">
+          {!isVoiceCloning && (
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              {isMusicMode && (
+                <div className="relative">
+                  <label className="block text-white/30 text-[10px] font-bold uppercase mb-1.5 ml-1 tracking-widest font-satoshi">Format</label>
+                  <FormatDropdown />
                 </div>
-
-                {/* Lyrics Prompt Input for MiniMax Music 2 */}
-                <div className="w-full">
-                  <label className="block text-white/90 text-sm font-medium mb-1 -mt-2 ml-1 flex items-center gap-1">
-                    Lyrics Prompt
-                    {/* <svg className="w-4 h-4 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg> */}
-                  </label>
-                  <textarea
-                    placeholder="[verse]Streetlights flicker, the night breeze sighs
-Shadows stretch as I walk alone
-An old coat wraps my silent sorrow
-Wandering, longing, where should I go
-[chorus]Pushing the wooden door, the aroma spreads
-In a familiar corner, a stranger gazes"
-                    value={lyricsPrompt}
-                    onChange={(e) => {
-                      setLyricsPrompt(e.target.value);
-                      adjustTextareaHeight(e.target);
-                    }}
-                    maxLength={5000}
-                    className={`w-full bg-black/30 ring-1 ring-white/10 focus:ring-white/20 text-xs outline-none text-white placeholder-white/80 placeholder:text-xs placeholder-t p-2 rounded-lg resize-none overflow-hidden transition-all ${lyricsPromptLen > 0 && !isLyricsPromptValid(lyricsPrompt) ? 'ring-red-500/50' : ''
-                      }`}
-                    rows={1}
-                    style={{
-                      minHeight: '150px',
-                      maxHeight: '300px'
-                    }}
-                  />
-                  {lyricsPromptLen > 0 && !isLyricsPromptValid(lyricsPrompt) && (
-                    <p className="text-red-400 text-[10px] mt-1">
-                      Lyrics prompt must be between 10-5000 characters
-                    </p>
-                  )}
-                  <div className="flex items-center justify-between gap-1 mt-0 ml-1">
-                    <p className="text-white/70 text-[10px] pl-0">
-                      Lyrics of the song. Use \n to separate lines. You may add structure tags like [Intro], [Verse], [Chorus], [Bridge], [Outro] to enhance the arrangement.
-                    </p>
-                    <span className="text-[10px] text-white/60">({lyricsPromptLen}/5000)</span>
-                  </div>
-                </div>
-              </>
-            ) : (
-              /* Standard Lyrics Input for other models */
-              <div className="w-full">
-                <textarea
-                  placeholder={isSfxModel ? "Describe the sound effect you want to generate. e.g., 'Spacious braam suitable for high-impact movie trailer moments'..." : (isTtsModel ? (isMayaModel ? "Enter the text you want to convert to speech. You can embed emotion tags using <emotion_name> format..." : (isChatterboxModel ? "Enter the text you want to convert to speech (maximum 300 characters, supports multiple languages)..." : "Enter the text you want to convert to speech...")) : "Write your lyrics....")}
-                  value={lyrics}
-                  onChange={(e) => {
-                    setLyrics(e.target.value);
-                    adjustTextareaHeight(e.target);
-                  }}
-                  maxLength={isChatterboxModel ? 300 : 1000}
-                  className={`w-full bg-black/30 ring-1 ring-white/10 focus:ring-white/20 outline-none text-xs text-white placeholder-white/70 placeholder:text-xs -mt-3 p-2 rounded-lg resize-none overflow-hidden transition-all ${lyricsLen > 0 && !isLyricsValid(lyrics) ? 'ring-red-500/50' : ''
-                    }`}
-                  rows={1}
-                  style={{
-                    minHeight: '100px',
-                    maxHeight: '200px'
-                  }}
+              )}
+              <div className={`relative ${!isMusicMode ? 'col-span-2' : ''}`}>
+                <label className="block text-white/30 text-[10px] font-bold uppercase mb-1.5 ml-1 tracking-widest font-satoshi">File Name</label>
+                <input
+                  type="text"
+                  value={fileName}
+                  onChange={(e) => setFileName(e.target.value)}
+                  placeholder="Optional"
+                  className="sonix-input !py-[9px]"
                 />
-                {lyricsLen > 0 && !isLyricsValid(lyrics) && (
-                  <p className="text-red-400 text-xs mt-0 ml-1">
-                    Text must be between 10-{isChatterboxModel ? 300 : 5000} characters
-                  </p>
-                )}
-                <div className="flex items-center justify-between gap-2 mt-0">
-                  <p className="text-white/70 text-xs pl-1">
-                    {isTtsModel
-                      ? (isMayaModel
-                        ? 'The text to synthesize into speech. You can embed emotion tags anywhere in the text using the format <emotion_name>. Available emotions: laugh, laugh_harder, sigh, chuckle, gasp, angry, excited, whisper, cry, scream, sing, snort, exhale, gulp, giggle, sarcastic, curious. Pricing: 6 credits per second of generated audio.'
-                        : (isChatterboxModel
-                          ? `Supports 23 languages including English, French, German, Spanish, Italian, Portuguese, Hindi, Arabic, Chinese, Japanese, Korean, and more.`
-                          : 'The text to be converted to speech (maximum 1000 characters). '))
-                      : 'Use intro, verse, chorus, bridge, outro tags to structure your song.....'}
-                  </p>
-                  <span className="text-[10px] text-white/60">({lyricsLen}/{isChatterboxModel ? 300 : 1000})</span>
-                </div>
               </div>
-            )}
-          </>
-        )}
-
-        {!isTtsModel && !isDialogueModel ? (
-          <div className="flex flex-wrap items-center gap-3">
-            <SampleRateDropdown />
-            <BitrateDropdown />
-            <FormatDropdown />
-            {model !== 'minimax-music-2' && <OutputFormatDropdown />}
-          </div>
-        ) : isDialogueModel ? (
-          <DialogueSettings />
-        ) : isSfxModel ? (
-          <SFXSettings />
-        ) : isMayaModel ? (
-          <MayaSettings />
-        ) : isChatterboxModel ? (
-          <ChatterboxSettings />
-        ) : (
-          <TtsSettings />
-        )}
-
-        {/* File Name Input and Generate Button - At the bottom */}
-        <div className="w-full flex items-center gap-2 pt-0">
-          {/* File Name Input */}
-          <div className="flex-1">
-            <input
-              type="text"
-              value={fileName}
-              onChange={(e) => setFileName(e.target.value)}
-              placeholder="File name (optional)"
-              className="w-full px-3 py-1.5 rounded-lg text-sm bg-white/5 border border-white/10 text-white placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-white/20 focus:border-white/20"
-            />
-          </div>
-          {/* Generate Button */}
+            </div>
+          )}
           <button
             onClick={handleGenerate}
             disabled={!canGenerate}
-            className="bg-[#2F6BFF] hover:bg-[#2a5fe3] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#2F6BFF] text-white px-6 py-1 rounded-lg text-lg font-semibold transition shadow-[0_4px_16px_rgba(47,107,255,.45)] flex items-center gap-3 relative z-[60]"
+            className="w-full py-4 bg-[#2F6BFF] hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-[12px] text-[15px] font-bold tracking-wide transition-all shadow-[0_6px_20px_rgba(47,107,255,0.3)] flex items-center justify-center gap-3 active:scale-[0.98]"
+            style={{ fontFamily: "Satoshi, sans-serif" }}
           >
-            {generating || runningGenerationsCount > 0 ? (
-              <>
-                <div className="w-5 h-5 border-2 border-white/20 border-t-white/60 rounded-lg animate-spin" />
-                Composing...
-              </>
+            {generating ? (
+              <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
             ) : (
               <>
-                {/* <Music4 className="w-6 h-6" /> */}
-                Generate
+                <Volume2 size={18} />
+                Generate Track
               </>
             )}
           </button>
         </div>
       </div>
-
     </div>
   );
 };
