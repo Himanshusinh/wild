@@ -49,8 +49,8 @@ const NEW_ITEMS: NewItem[] = [
     Icon: Wand2,
     media: {
       kind: "video",
-      src: "https://idr01.zata.ai/devstoragev1/public/HomePage/whatsnew/veo-clouds.mp4",
-      alt: "Cinematic cloud motion video for Veo 3.1 Lite",
+      src: "https://idr01.zata.ai/devstoragev1/public/homepage/whatsnew/veo-3.1-lite.mp4",
+      alt: "Cinematic motion video for Veo 3.1 Lite",
       position: "center",
     },
   },
@@ -65,7 +65,7 @@ const NEW_ITEMS: NewItem[] = [
     Icon: Bot,
     media: {
       kind: "video",
-      src: "https://idr01.zata.ai/devstoragev1/public/HomePage/whatsnew/kling-run.mp4",
+      src: "https://idr01.zata.ai/devstoragev1/public/homepage/whatsnew/kling-run.mp4",
       alt: "Dynamic motion video for Kling 3.0 Pro",
       position: "center",
     },
@@ -81,7 +81,7 @@ const NEW_ITEMS: NewItem[] = [
     Icon: Bot,
     media: {
       kind: "video",
-      src: "https://idr01.zata.ai/devstoragev1/public/HomePage/whatsnew/veo-clouds.mp4",
+      src: "https://idr01.zata.ai/devstoragev1/public/homepage/whatsnew/pixverse.mp4",
       alt: "Atmospheric motion preview for PixVerse V6",
       position: "50% 35%",
     },
