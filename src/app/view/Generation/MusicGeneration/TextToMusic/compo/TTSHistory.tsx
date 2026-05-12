@@ -280,12 +280,47 @@ const MusicRow = ({ entry, index = 0, onSelect, onDelete, isLocalPreview = false
     ? { id: entry.id || 'placeholder', url: '', originalUrl: '', type: 'audio' } 
     : null);
 
+  const [actualDuration, setActualDuration] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (!audio) return;
+    const raw = audio.duration || entry?.duration || entry?.audio?.duration;
+    if (typeof raw === 'string' && raw.includes(':')) {
+      setActualDuration(raw);
+      return;
+    }
+    if (typeof raw === 'number' && raw > 0) {
+      const mins = Math.floor(raw / 60);
+      const secs = Math.floor(raw % 60);
+      setActualDuration(`${mins}:${secs.toString().padStart(2, '0')}`);
+      return;
+    }
+
+    const url = audio.url || audio.firebaseUrl || audio.originalUrl;
+    if (url && entry?.status === 'completed') {
+      const aud = new Audio(url);
+      const onMeta = () => {
+        if (aud.duration && aud.duration !== Infinity) {
+          const mins = Math.floor(aud.duration / 60);
+          const secs = Math.floor(aud.duration % 60);
+          setActualDuration(`${mins}:${secs.toString().padStart(2, '0')}`);
+        }
+      };
+      aud.addEventListener('loadedmetadata', onMeta);
+      aud.preload = 'metadata';
+      aud.load();
+      return () => aud.removeEventListener('loadedmetadata', onMeta);
+    }
+  }, [audio, entry]);
+
   if (!audio) return null;
 
   const isGenerating = entry.status === 'generating';
   const isFailed = entry.status === 'failed';
   const trackName = entry.fileName || (entry.prompt ? (entry.prompt.length > 30 ? entry.prompt.substring(0, 30) + '...' : entry.prompt) : 'Untitled Track');
-  const metadata = `${entry.model || 'ElevenLabs'} · ${entry.generationType || 'Speech'} · 0:00`;
+  const modelName = entry.model || 'ElevenLabs';
+  const genTypeString = entry.generationType || 'Speech';
+  const metadata = `${modelName.toUpperCase()} · ${genTypeString.toUpperCase()}`;
 
   return (
     <div 
@@ -312,7 +347,7 @@ const MusicRow = ({ entry, index = 0, onSelect, onDelete, isLocalPreview = false
           {isPlaying ? (
             <span className="text-[9px] font-bold text-[#2F6BFF] uppercase bg-[#2F6BFF]/10 px-1.5 py-0.5 rounded border border-[#2F6BFF]/20 animate-pulse">Now playing</span>
           ) : (
-            entry.status === 'completed' && <span className="text-[10px] font-mono text-white/40">3:52</span>
+            entry.status === 'completed' && <span className="text-[10px] font-mono text-white/40">{actualDuration || '--:--'}</span>
           )}
         </div>
         
