@@ -286,7 +286,7 @@ const AudioCloningInputBox = ({ showHistoryOnly = false, selectedModel }: { show
         </div>
       )}
 
-      <div className="w-full space-y-4 p-6 bg-[#0E0E12] rounded-[12px] shadow-2xl">
+      <div className="w-full max-w-full space-y-4 rounded-[12px] bg-[#0E0E12] shadow-2xl px-6 py-6" style={{ overflow: 'visible', position: 'relative', boxSizing: 'border-box', overflowWrap: 'break-word' }}>
         <div className="space-y-4">
           <div>
             <label className="block text-white/30 text-[10px] font-satoshi font-bold uppercase tracking-widest mb-1.5 ml-1">
@@ -335,7 +335,7 @@ const AudioCloningInputBox = ({ showHistoryOnly = false, selectedModel }: { show
           <button
             onClick={handleCloneAudio}
             disabled={isCloning || !audioFileName.trim()}
-            className={`w-full py-3 mt-2 rounded-[12px] text-[13px] font-satoshi font-black tracking-wide transition-all active:scale-[0.98] shadow-lg ${isCloning || !audioFileName.trim()
+            className={`w-full py-2 mt-2 rounded-[12px] text-[13px] font-satoshi font-black tracking-wide transition-all active:scale-[0.98] shadow-lg ${isCloning || !audioFileName.trim()
               ? 'bg-white/10 text-white/30 cursor-not-allowed border border-white/5'
               : 'bg-[#2F6BFF] text-white hover:opacity-90 shadow-[0_6px_20px_rgba(47,107,255,0.3)]'
               }`}

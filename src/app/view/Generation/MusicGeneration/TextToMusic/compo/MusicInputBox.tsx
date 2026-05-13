@@ -936,7 +936,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
           )}
         </button>
         {modelOpen && filteredOptionsWithCredits.length > 1 && (
-          <div className="absolute top-10 left-0 w-full sm:w-64 bg-[#1E1E27] z-[100] backdrop-blur-3xl rounded-[10px] overflow-hidden border border-white/10 py-1 shadow-2xl">
+          <div className="absolute top-9 left-0 w-full sm:w-64 bg-[#1E1E27] z-[100] backdrop-blur-3xl rounded-[10px] overflow-hidden border border-white/10 py-1 shadow-2xl">
             {filteredOptionsWithCredits.map((option) => (
               <button
                 key={option.value}
