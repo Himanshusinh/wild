@@ -324,30 +324,30 @@ const ProfileManagement = ({ initialUserData }: { initialUserData?: UserData }) 
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white dark:bg-[#07070B] flex items-center justify-center">
-        <div className="h-8 w-8 rounded-full border-2 border-transparent border-t-[#1C303D] dark:border-t-white/80 animate-spin drop-shadow-sm" />
+      <div className="min-h-screen bg-[#07070B] flex items-center justify-center">
+        <div className="h-8 w-8 rounded-full border-2 border-transparent border-t-white/80 animate-spin drop-shadow-sm" />
       </div>
     );
   }
 
   return (
-    <div className="relative min-h-screen bg-[#FFFFFF] dark:bg-[#07070B] text-gray-900 dark:text-white p-3 md:p-5 transition-colors duration-300">
+    <div className="relative min-h-screen bg-[#07070B] text-white p-3 md:p-5 transition-colors duration-300">
       <div className="relative z-10 max-w-3xl mx-auto">
         {/* Header */}
         <div className="flex items-center gap-3 md:gap-4 mb-6 md:mb-8">
           <button
             onClick={handleBack}
-            className="flex items-center justify-center w-9 h-9 rounded-full bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 transition-colors"
+            className="flex items-center justify-center w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
           >
             <ArrowLeft size={24} />
           </button>
-          <h1 className="text-xl md:text-2xl font-semibold text-gray-900 dark:text-white">Account Settings</h1>
+          <h1 className="text-xl md:text-2xl font-semibold text-white">Account Settings</h1>
         </div>
 
         {/* Rounded main wrapper */}
         <div className="rounded-3xl">
           {/* Header card */}
-          <div className="rounded-3xl border border-black/10 dark:border-white/10 bg-gradient-to-br from-[#0E1A22] via-[#101722] to-[#0B0F14] p-5 md:p-6 mb-5 shadow-xl">
+          <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-[#0E1A22] via-[#101722] to-[#0B0F14] p-5 md:p-6 mb-5 shadow-xl">
             <div className="flex items-center gap-4 md:gap-5">
               <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center overflow-hidden border border-white/20">
                 {(userData?.photoURL && !avatarFailed) ? (
@@ -369,7 +369,7 @@ const ProfileManagement = ({ initialUserData }: { initialUserData?: UserData }) 
                     ).label}
                   </span>
                   <span className="px-2.5 py-1 rounded-full text-xs bg-white/10 text-white border border-white/10 flex items-center gap-1 min-w-[45px] justify-center">
-                    <Image src="https://idr01.zata.ai/devstoragev1/public/icons/coinswhite.svg" alt="credits" width={14} height={14} className="dark:brightness-100" />
+                    <Image src="https://idr01.zata.ai/devstoragev1/public/icons/coinswhite.svg" alt="credits" width={14} height={14} className="brightness-100" />
                     {creditBalance ?? userData?.credits ?? 0}
                     {creditsLoading && (
                       <div className="w-2.5 h-2.5 border-2 border-white/20 border-t-white/80 rounded-full animate-spin ml-0.5" />
@@ -381,39 +381,39 @@ const ProfileManagement = ({ initialUserData }: { initialUserData?: UserData }) 
           </div>
 
           {/* Info grid */}
-          <div className="rounded-2xl border border-black/10 dark:border-white/10 bg-white dark:bg-[#0F1419] p-4 md:p-5 mb-5">
-            <h2 className="text-gray-900 dark:text-white text-base md:text-lg font-semibold mb-3">Profile Information</h2>
+          <div className="rounded-2xl border border-white/10 bg-[#0F1419] p-4 md:p-5 mb-5">
+            <h2 className="text-white text-base md:text-lg font-semibold mb-3">Profile Information</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1.5">Username</label>
-                <div className="px-3 py-2 bg-gray-100 dark:bg-[#11161C] border border-gray-300 dark:border-white/20 rounded-2xl text-gray-900 dark:text-white text-sm">{userData?.username || 'No username'}</div>
+                <label className="block text-xs font-medium text-gray-300 mb-1.5">Username</label>
+                <div className="px-3 py-2 bg-[#11161C] border border-white/20 rounded-2xl text-white text-sm">{userData?.username || 'No username'}</div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1.5">Email Address</label>
-                <div className="px-3 py-2 bg-gray-50 dark:bg-[#11161C] border border-gray-200 dark:border-white/10 rounded-2xl text-gray-600 dark:text-gray-300 text-sm truncate">{userData?.email || 'No email'}</div>
+                <label className="block text-xs font-medium text-gray-300 mb-1.5">Email Address</label>
+                <div className="px-3 py-2 bg-[#11161C] border border-white/10 rounded-2xl text-gray-300 text-sm truncate">{userData?.email || 'No email'}</div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1.5">Account Status</label>
+                <label className="block text-xs font-medium text-gray-300 mb-1.5">Account Status</label>
                 <div className="flex items-center gap-2.5">
-                  <span className="px-3 py-2 bg-gray-50 dark:bg-[#11161C] border border-gray-200 dark:border-white/10 rounded-2xl text-gray-600 dark:text-gray-300 text-xs">{userData?.metadata?.accountStatus || 'Active'}</span>
+                  <span className="px-3 py-2 bg-[#11161C] border border-white/10 rounded-2xl text-gray-300 text-xs">{userData?.metadata?.accountStatus || 'Active'}</span>
                   <span className="w-2 h-2 bg-green-400 rounded-full"></span>
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1.5">Member Since</label>
-                <div className="px-3 py-2 bg-gray-50 dark:bg-[#11161C] border border-gray-200 dark:border-white/10 rounded-2xl text-gray-600 dark:text-gray-300 text-sm">{userData?.createdAt ? new Date(userData.createdAt).toLocaleDateString() : 'Unknown'}</div>
+                <label className="block text-xs font-medium text-gray-300 mb-1.5">Member Since</label>
+                <div className="px-3 py-2 bg-[#11161C] border border-white/10 rounded-2xl text-gray-300 text-sm">{userData?.createdAt ? new Date(userData.createdAt).toLocaleDateString() : 'Unknown'}</div>
               </div>
             </div>
           </div>
 
           {/* Preferences */}
-          <div className="rounded-2xl border border-black/10 dark:border-white/10 bg-white dark:bg-[#0F1419] p-4 md:p-5 mb-5">
-            <h2 className="text-gray-900 dark:text-white text-base md:text-lg font-semibold mb-3">Preferences</h2>
-            <div className="bg-gray-50 dark:bg-[#11161C] rounded-2xl p-4 border border-gray-200 dark:border-white/10">
+          <div className="rounded-2xl border border-white/10 bg-[#0F1419] p-4 md:p-5 mb-5">
+            <h2 className="text-white text-base md:text-lg font-semibold mb-3">Preferences</h2>
+            <div className="bg-[#11161C] rounded-2xl p-4 border border-white/10">
               <div className="flex items-center justify-between">
                 <div className="flex-1">
-                  <h3 className="text-gray-900 dark:text-white font-semibold text-sm mb-1">Make Generations Public</h3>
-                  <p className="text-gray-600 dark:text-gray-300 text-xs">
+                  <h3 className="text-white font-semibold text-sm mb-1">Make Generations Public</h3>
+                  <p className="text-gray-300 text-xs">
                     {canTogglePublic
                       ? 'Allow others to see your generated content on the public feed'
                       : '🔒 Your plan requires all generations to be public'}
@@ -430,16 +430,16 @@ const ProfileManagement = ({ initialUserData }: { initialUserData?: UserData }) 
                     tabIndex={0}
                     disabled={!canTogglePublic}
                     className={`relative z-10 w-12 h-6 rounded-full transition-colors outline-none ${!canTogglePublic
-                      ? 'bg-gray-300 dark:bg-white/20 cursor-not-allowed opacity-60'
+                      ? 'bg-white/20 cursor-not-allowed opacity-60'
                       : isPublic
-                        ? 'bg-blue-500 dark:bg-blue-600 cursor-pointer'
-                        : 'bg-gray-300 dark:bg-white/20 cursor-pointer'
+                        ? 'bg-blue-600 cursor-pointer'
+                        : 'bg-white/20 cursor-pointer'
                       }`}
                   >
-                    <span className={`block w-5 h-5 bg-white dark:bg-white rounded-full shadow-md transition-transform transform ${isPublic ? 'translate-x-6' : 'translate-x-0.5'} relative top-0`} />
+                    <span className={`block w-5 h-5 bg-white rounded-full shadow-md transition-transform transform ${isPublic ? 'translate-x-6' : 'translate-x-0.5'} relative top-0`} />
                   </button>
                   {!canTogglePublic && (
-                    <div className="absolute hidden group-hover:block bottom-full right-0 mb-2 w-56 p-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-xs rounded-lg shadow-lg z-50">
+                    <div className="absolute hidden group-hover:block bottom-full right-0 mb-2 w-56 p-2 bg-white text-gray-900 text-xs rounded-lg shadow-lg z-50">
                       Upgrade to Plan C or D to toggle private generations
                     </div>
                   )}
@@ -470,21 +470,21 @@ const ProfileManagement = ({ initialUserData }: { initialUserData?: UserData }) 
       {/* Upgrade Modal */}
       {showUpgradeModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white dark:bg-[#0F1419] rounded-2xl p-6 max-w-md w-full border border-black/10 dark:border-white/10 shadow-2xl">
+          <div className="bg-[#0F1419] rounded-2xl p-6 max-w-md w-full border border-white/10 shadow-2xl">
             <div className="text-center">
-              <div className="w-16 h-16 bg-blue-500/10 dark:bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+              <div className="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-3xl">🔒</span>
               </div>
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+              <h3 className="text-xl font-bold text-white mb-2">
                 Want Private Generations?
               </h3>
-              <p className="text-gray-600 dark:text-gray-300 text-sm mb-6">
+              <p className="text-gray-300 text-sm mb-6">
                 {policyMessage}
               </p>
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowUpgradeModal(false)}
-                  className="flex-1 px-4 py-2.5 bg-gray-200 dark:bg-white/10 hover:bg-gray-300 dark:hover:bg-white/20 rounded-full transition-colors font-medium text-sm text-gray-900 dark:text-white"
+                  className="flex-1 px-4 py-2.5 bg-white/10 hover:bg-white/20 rounded-full transition-colors font-medium text-sm text-white"
                 >
                   Cancel
                 </button>
