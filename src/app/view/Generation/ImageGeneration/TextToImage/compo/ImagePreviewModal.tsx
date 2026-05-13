@@ -135,9 +135,10 @@ const isUploadFileHistoryEntry = (entry?: HistoryEntry | null): boolean => {
 interface ImagePreviewModalProps {
   preview: { entry: HistoryEntry; image: { id?: string; url: string } } | null;
   onClose: () => void;
+  customSequence?: HistoryEntry[];
 }
 
-const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose }) => {
+const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose, customSequence }) => {
   const dispatch = useAppDispatch();
   const user = useAppSelector((state: any) => state.auth?.user);
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || '';
@@ -188,7 +189,8 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
       ordered.push(entry);
     };
 
-    historyEntries.forEach((entry: HistoryEntry) => pushIfValid(entry));
+    const sourceEntries = customSequence || historyEntries;
+    sourceEntries.forEach((entry: HistoryEntry) => pushIfValid(entry));
 
     const active = currentEntry || preview?.entry || null;
     if (active && active.id && !isUploadFileHistoryEntry(active)) {
@@ -262,6 +264,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
 
   // Auto-load more history when navigating close to the end
   const loadMoreIfNeeded = React.useCallback(async (currentIdx: number, total: number) => {
+    if (customSequence) return;
     // Load more when within 3 items of the end
     if (total - currentIdx <= 3 && hasMoreHistory && !historyLoading && !isLoadingMoreRef.current) {
       isLoadingMoreRef.current = true;
@@ -323,8 +326,8 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
 
     const nextIndex = currentFlatIndex + 1;
     if (nextIndex >= flattenedImageSequence.length) {
-      // At last image, try to load more
-      if (hasMoreHistory) {
+      // At last image, try to load more if not using a custom sequence
+      if (!customSequence && hasMoreHistory) {
         loadMoreIfNeededRef.current(activeEntryIndex, generationSequence.length);
       }
       return;
@@ -1643,7 +1646,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
           <button
             aria-label="Previous image"
             onClick={(e) => { e.stopPropagation(); goPrevImage(e); }}
-            className="fixed left-4 md:left-25 top-1/2 -translate-y-1/2 z-[75] w-12 h-12 md:w-16 md:h-16 rounded-full bg-black/50 hover:bg-black/80 text-white transition-all backdrop-blur-sm border border-white/20 hover:border-white/40 flex items-center justify-center pointer-events-auto"
+            className="fixed left-4 md:left-19 top-1/2 -translate-y-1/2 z-[75] w-10 h-10 md:w-14 md:h-14 rounded-full bg-black/50 hover:bg-black/80 text-white transition-all backdrop-blur-sm border border-white/20 hover:border-white/40 flex items-center justify-center pointer-events-auto"
             title="Previous image (←)"
           >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 md:w-8 md:h-8">
@@ -1657,7 +1660,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose 
           <button
             aria-label="Next image"
             onClick={(e) => { e.stopPropagation(); goNextImage(e); }}
-            className="fixed right-4 md:right-8 top-1/2 -translate-y-1/2 z-[75] w-12 h-12 md:w-16 md:h-16 rounded-full bg-black/50 hover:bg-black/80 text-white transition-all backdrop-blur-sm border border-white/20 hover:border-white/40 flex items-center justify-center pointer-events-auto"
+            className="fixed right-4 md:right-15 top-1/2 -translate-y-1/2 z-[75] w-10 h-10 md:w-14 md:h-14 rounded-full bg-black/50 hover:bg-black/80 text-white transition-all backdrop-blur-sm border border-white/20 hover:border-white/40 flex items-center justify-center pointer-events-auto"
             title="Next image (→)"
           >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 md:w-8 md:h-8">

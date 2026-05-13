@@ -614,7 +614,7 @@ export default function ArtStationPreview({
             e.stopPropagation()
             goPrevMedia()
           }}
-          className="absolute left-2 md:left-8 top-1/2 -translate-y-1/2 z-[100] w-12 h-12 md:w-16 md:h-16 rounded-full bg-black/70 hover:bg-black/90 text-white flex items-center justify-center transition-all backdrop-blur-sm border border-white/20 hover:border-white/40 pointer-events-auto"
+          className="absolute left-4 md:left-19 top-1/2 -translate-y-1/2 z-[100] w-10 h-10 md:w-14 md:h-14 rounded-full bg-black/50 hover:bg-black/90 text-white flex items-center justify-center transition-all backdrop-blur-sm border border-white/20 hover:border-white/40 pointer-events-auto"
           aria-label="Previous media"
         >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="md:w-8 md:h-8">
@@ -629,7 +629,7 @@ export default function ArtStationPreview({
             e.stopPropagation()
             goNextMedia()
           }}
-          className="absolute right-2 md:right-8 top-1/2 -translate-y-1/2 z-[100] w-12 h-12 md:w-16 md:h-16 rounded-full bg-black/70 hover:bg-black/90 text-white flex items-center justify-center transition-all backdrop-blur-sm border border-white/20 hover:border-white/40 pointer-events-auto"
+          className="absolute right-4 md:right-15 top-1/2 -translate-y-1/2 z-[100] w-10 h-10 md:w-14 md:h-14 rounded-full bg-black/70 hover:bg-black/90 text-white flex items-center justify-center transition-all backdrop-blur-sm border border-white/20 hover:border-white/40 pointer-events-auto"
           aria-label="Next media"
         >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="md:w-8 md:h-8">

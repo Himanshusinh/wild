@@ -3,6 +3,8 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { useRouter } from 'next/navigation';
 import ArtStationPreview, { PublicItem } from '@/components/ArtStationPreview'
+import ImagePreviewModal from '@/app/view/Generation/ImageGeneration/TextToImage/compo/ImagePreviewModal'
+import VideoPreviewModal from '@/app/view/Generation/VideoGeneration/TextToVideo/compo/VideoPreviewModal'
 import { API_BASE } from '../routes'
 import { toMediaProxy, toDirectUrl } from '@/lib/thumb'
 
@@ -312,16 +314,29 @@ export default function CommunityCreations({
           return null
         }
         
+        const customSequence = items as any;
+
+        if (mode === 'video') {
+          return (
+            <VideoPreviewModal
+              preview={{
+                entry: preview as any,
+                video: { id: previewMedia?.id || preview.id, url: previewUrl } as any
+              }}
+              onClose={() => setPreview(null)}
+              customSequence={customSequence}
+            />
+          )
+        }
+
         return (
-          <ArtStationPreview
-            preview={{ kind: mode === 'video' ? 'video' : 'image', url: previewUrl, item: preview }}
+          <ImagePreviewModal
+            preview={{
+              entry: preview as any,
+              image: { id: previewMedia?.id || preview.id, url: previewUrl }
+            }}
             onClose={() => setPreview(null)}
-            onConfirmDelete={async () => {}} // Read-only view
-            currentUid={null} // Read-only view
-            currentUser={null}
-            cards={cards} // Allow navigation through the set
-            likedCards={new Set()} // No interaction in this view
-            toggleLike={() => {}}
+            customSequence={customSequence}
           />
         )
       })()}
