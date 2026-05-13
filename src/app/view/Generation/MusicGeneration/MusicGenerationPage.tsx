@@ -152,7 +152,7 @@ export default function MusicGenerationPage() {
             <div className="flex h-screen overflow-hidden">
                 <div className="flex flex-col flex-1 min-w-0 px-4 sm:px-6 md:px-8 h-full">
                     {/* Sticky header - moved down slightly to avoid Nav overlap */}
-                    <div className="sticky top-0 z-[50] bg-[#0E0E12] pt-6 pb-0">
+                    <div className="sticky top-0 z-[50] bg-[#0E0E12] pt-3 pb-0">
                         <div className="flex items-center justify-between mb-4 px-2">
                             <div className="flex items-center gap-4">
                                 <button
