@@ -280,6 +280,8 @@ const DialogueHistory: React.FC<Props> = ({ onAudioSelect, selectedAudio, localP
               index={index} 
               onSelect={onAudioSelect} 
               onDelete={handleDeleteAudio} 
+              onToggleLike={handleToggleLike}
+              onDownload={handleDownloadAudio}
               isPlaying={selectedAudio?.entry?.id === entry.id}
             />
           ))}
@@ -315,7 +317,7 @@ const DialogueHistory: React.FC<Props> = ({ onAudioSelect, selectedAudio, localP
 };
 
 // Sub-component for individual track row
-const MusicRow = ({ entry, index = 0, onSelect, onDelete, isLocalPreview = false, isPlaying = false }: any) => {
+const MusicRow = ({ entry, index = 0, onSelect, onDelete, onToggleLike, onDownload, isLocalPreview = false, isPlaying = false }: any) => {
   const colorTheme = getColorTheme(entry, index);
   const mediaItems = [
     ...((entry.audios || []) as any[]),
@@ -368,6 +370,25 @@ const MusicRow = ({ entry, index = 0, onSelect, onDelete, isLocalPreview = false
   const modelName = entry.model || 'ElevenLabs';
   const genTypeString = entry.generationType || 'Dialogue';
   const metadata = `${modelName.toUpperCase()} · ${genTypeString.toUpperCase()}`;
+
+  const formattedDate = React.useMemo(() => {
+    try {
+      const raw = entry.createdAt || entry.timestamp;
+      if (!raw) return '';
+      const date = typeof raw?.toDate === 'function' ? raw.toDate() : new Date(raw);
+      if (Number.isNaN(date.getTime())) return '';
+      return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      }) + ' · ' + date.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+      });
+    } catch {
+      return '';
+    }
+  }, [entry.createdAt, entry.timestamp]);
 
   return (
     <div 
@@ -436,30 +457,58 @@ const MusicRow = ({ entry, index = 0, onSelect, onDelete, isLocalPreview = false
         </div>
       </div>
 
-      {/* Actions */}
-      <div className="flex items-center gap-2 pl-4 pr-1">
-        {entry.status === 'completed' ? (
-          <>
-             <button className="p-2 text-white/40 hover:text-white transition-colors bg-white/5 hover:bg-white/10 rounded-lg border border-white/5">
-                <Download size={14} />
-             </button>
-             <button className="p-2 text-white/40 hover:text-white transition-colors bg-white/5 hover:bg-white/10 rounded-lg border border-white/5">
-                <Share2 size={14} />
-             </button>
-          </>
-        ) : isGenerating ? (
-          <span className="text-[10px] font-bold text-[#2F6BFF] uppercase tracking-widest px-2 py-1 bg-[#2F6BFF]/10 rounded-md border border-[#2F6BFF]/20 animate-pulse">Composing</span>
-        ) : isFailed ? (
-          <span className="text-[10px] font-bold text-red-500 uppercase tracking-widest px-2 py-1 bg-red-500/10 rounded-md border border-red-500/20">Failed</span>
-        ) : null}
-        
-        {!isLocalPreview && (
-          <button 
-            onClick={(e) => onDelete?.(e, entry)}
-            className="p-2 text-white/40 hover:text-red-500 transition-colors bg-white/5 hover:bg-red-500/10 rounded-lg border border-white/5 hover:border-red-500/20"
-          >
-            <Trash2 size={14} />
-          </button>
+      {/* Actions & Date */}
+      <div className="flex flex-col items-end gap-1.5 pl-4 pr-1 flex-shrink-0 justify-center">
+        <div className="flex items-center gap-2">
+          {entry.status === 'completed' ? (
+            <>
+               {!isLocalPreview && (
+                 <button 
+                   onClick={(e) => onToggleLike?.(e, entry)}
+                   className={`p-2 transition-colors bg-white/5 rounded-lg border ${
+                     entry.like 
+                       ? 'text-red-500 bg-red-500/10 border-red-500/20 hover:bg-red-500/20' 
+                       : 'text-white/40 hover:text-white hover:bg-white/10 border-white/5'
+                   }`}
+                 >
+                   <Heart size={14} fill={entry.like ? 'currentColor' : 'none'} />
+                 </button>
+               )}
+               <button 
+                 onClick={(e) => onDownload?.(e, entry, audio)}
+                 className={`p-2 transition-colors bg-white/5 rounded-lg border ${
+                   entry.downloaded
+                     ? 'text-[#2F6BFF] bg-[#2F6BFF]/10 border-[#2F6BFF]/20 hover:bg-[#2F6BFF]/20'
+                     : 'text-white/40 hover:text-white hover:bg-white/10 border-white/5'
+                 }`}
+               >
+                  <Download size={14} />
+               </button>
+               <button className="p-2 text-white/40 hover:text-white transition-colors bg-white/5 hover:bg-white/10 rounded-lg border border-white/5">
+                  <Share2 size={14} />
+               </button>
+            </>
+          ) : isGenerating ? (
+            <span className="text-[10px] font-bold text-[#2F6BFF] uppercase tracking-widest px-2 py-1 bg-[#2F6BFF]/10 rounded-md border border-[#2F6BFF]/20 animate-pulse">Composing</span>
+          ) : isFailed ? (
+            <span className="text-[10px] font-bold text-red-500 uppercase tracking-widest px-2 py-1 bg-red-500/10 rounded-md border border-red-500/20">Failed</span>
+          ) : null}
+          
+          {!isLocalPreview && (
+            <button 
+              onClick={(e) => onDelete?.(e, entry)}
+              className="p-2 text-white/40 hover:text-red-500 transition-colors bg-white/5 hover:bg-red-500/10 rounded-lg border border-white/5 hover:border-red-500/20"
+            >
+              <Trash2 size={14} />
+            </button>
+          )}
+        </div>
+
+        {/* Creation Date String */}
+        {formattedDate && entry.status === 'completed' && (
+          <div className="text-[9px] font-mono text-white/30 tracking-tight pr-0.5">
+            {formattedDate}
+          </div>
         )}
       </div>
     </div>
