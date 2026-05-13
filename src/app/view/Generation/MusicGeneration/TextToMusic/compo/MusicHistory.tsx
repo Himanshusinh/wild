@@ -245,8 +245,8 @@ const MusicHistory: React.FC<MusicHistoryProps> = ({
     <div className="no-scrollbar scrollbar-hide">
       <div className="pl-0 pr-6  pb-32">
         {/* Sticky Header Section */}
-        <div className="sticky top-0 z-20 bg-[#0E0E12] pt-2 pb-4 mb-4 border-b border-white/[0.05]">
-          <div className="flex flex-col gap-6 mt-2">
+        <div className="sticky top-0 z-20 bg-[#0E0E12] pb-4 mb-4 border-b border-white/[0.05]">
+          <div className="flex flex-col gap-6">
             <div className="flex items-center justify-between">
               <h2 className="text-[28px] text-white font-satoshi font-black tracking-tight">Your studio</h2>
               <div className="flex items-center gap-4 text-[10px] font-mono font-bold tracking-widest text-white/30 uppercase">
