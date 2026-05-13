@@ -1,9 +1,5 @@
 /**
- * Upload What's New hero videos to Zata (same prefix as public-zata-manifest.json).
- *
- *   npx tsx scripts/upload-whatsnew-videos-to-zata.ts
- *
- * Env: same as scripts/upload-indian-styles-to-zata.ts (ZATA_* from api-gateway .env or wild/.env).
+ * Upload What's New images to Zata.
  */
 import * as dotenv from "dotenv";
 import * as fs from "fs";
@@ -51,13 +47,8 @@ function buildClient() {
   };
 }
 
-/** local file under public/ -> object key under public/ (no leading slash in key body) */
-const UPLOADS: { file: string; objectRel: string }[] = [
-  { file: "veo 3.1 lite.mp4", objectRel: "homepage/whatsnew/veo-3.1-lite.mp4" },
-  // Source filename includes `_new`; published URL stays .../pixverse.mp4 (WhatsNew adds ?v= for cache bust).
-  { file: "pixverse_new.mp4", objectRel: "homepage/whatsnew/pixverse.mp4" },
-  { file: "seedance 2.0.mp4", objectRel: "homepage/whatsnew/seedance-2.0.mp4" },
-  { file: "happy horse.mp4", objectRel: "homepage/whatsnew/happy-horse.mp4" },
+const UPLOADS: { file: string; objectRel: string; contentType: string }[] = [
+  { file: "gpt-image-2.avif", objectRel: "homepage/whatsnew/gpt-image-2.avif", contentType: "image/avif" },
 ];
 
 async function main() {
@@ -65,7 +56,7 @@ async function main() {
   const { client, bucket, endpoint } = buildClient();
   const base = `${endpoint}/${bucket}/public`;
 
-  for (const { file, objectRel } of UPLOADS) {
+  for (const { file, objectRel, contentType } of UPLOADS) {
     const abs = path.join(PUBLIC_DIR, file);
     if (!fs.existsSync(abs)) {
       throw new Error(`Missing file: ${abs}`);
@@ -77,7 +68,7 @@ async function main() {
         Bucket: bucket,
         Key: key,
         Body: body,
-        ContentType: "video/mp4",
+        ContentType: contentType,
         CacheControl: "public, max-age=31536000, immutable",
       }),
     );
