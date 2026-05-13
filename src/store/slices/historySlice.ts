@@ -423,6 +423,10 @@ export const loadHistory = createAsyncThunk(
         (params as any).style = String((filtersForBackend as any).style);
       if ((filtersForBackend as any)?.frameSize)
         (params as any).frameSize = String((filtersForBackend as any).frameSize);
+      if ((filtersForBackend as any)?.like !== undefined && (filtersForBackend as any)?.like !== '')
+        (params as any).like = String((filtersForBackend as any).like);
+      if ((filtersForBackend as any)?.downloaded !== undefined && (filtersForBackend as any)?.downloaded !== '')
+        (params as any).downloaded = String((filtersForBackend as any).downloaded);
       // Add search parameter if present
       if (
         (filtersForBackend as any)?.search &&
@@ -851,6 +855,14 @@ export const loadMoreHistory = createAsyncThunk(
           }
           // Status filter (if provided)
           if (fb?.status && entry.status !== fb.status) return false;
+          if ((fb as any)?.like !== undefined && (fb as any)?.like !== '') {
+            const wantsLiked = String((fb as any).like) === 'true';
+            if ((entry.like === true) !== wantsLiked) return false;
+          }
+          if ((fb as any)?.downloaded !== undefined && (fb as any)?.downloaded !== '') {
+            const wantsDownloaded = String((fb as any).downloaded) === 'true';
+            if ((entry.downloaded === true) !== wantsDownloaded) return false;
+          }
           return true;
         };
 
@@ -921,6 +933,10 @@ export const loadMoreHistory = createAsyncThunk(
         (params as any).style = String((filtersForBackend as any).style);
       if ((filtersForBackend as any)?.frameSize)
         (params as any).frameSize = String((filtersForBackend as any).frameSize);
+      if ((filtersForBackend as any)?.like !== undefined && (filtersForBackend as any)?.like !== '')
+        (params as any).like = String((filtersForBackend as any).like);
+      if ((filtersForBackend as any)?.downloaded !== undefined && (filtersForBackend as any)?.downloaded !== '')
+        (params as any).downloaded = String((filtersForBackend as any).downloaded);
       // Add search parameter if present (check both filtersForBackend and filters)
       const searchQuery =
         (filtersForBackend as any)?.search || (filters as any)?.search;
@@ -2012,5 +2028,42 @@ export const {
 
 // Export the async thunk
 export { addAndSaveHistoryEntry };
+
+// Async thunk for toggling favourite/like status
+export const toggleLikeHistoryEntry = createAsyncThunk(
+  "history/toggleLikeHistoryEntry",
+  async ({ id, like }: { id: string; like: boolean }, { dispatch, rejectWithValue }) => {
+    // Optimistic update
+    dispatch(updateHistoryEntry({ id, updates: { like } }));
+    try {
+      await axiosInstance.patch(`/api/generations/${id}`, { like });
+      return { id, like };
+    } catch (error) {
+      // Revert optimistic update on failure
+      dispatch(updateHistoryEntry({ id, updates: { like: !like } }));
+      return rejectWithValue(
+        error instanceof Error ? error.message : "Failed to update favourite status"
+      );
+    }
+  }
+);
+
+// Async thunk for marking an entry as downloaded
+export const markDownloadedHistoryEntry = createAsyncThunk(
+  "history/markDownloadedHistoryEntry",
+  async ({ id }: { id: string }, { dispatch, rejectWithValue }) => {
+    // Optimistic update
+    dispatch(updateHistoryEntry({ id, updates: { downloaded: true } }));
+    try {
+      await axiosInstance.patch(`/api/generations/${id}`, { downloaded: true });
+      return { id, downloaded: true };
+    } catch (error) {
+      // Keep silent on transient failure since actual file download already triggered
+      return rejectWithValue(
+        error instanceof Error ? error.message : "Failed to mark as downloaded"
+      );
+    }
+  }
+);
 
 export default historySlice.reducer;

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, 
   MessageSquare, Volume2, VolumeX, X, Download, Copy, Check, Music4 
@@ -123,8 +124,8 @@ export default function GlobalBottomAudioPlayer({ selectedAudio, onClose }: Prop
 
   if (!selectedAudio) return null;
 
-  return (
-    <div className="fixed bottom-0 left-0 right-0 h-24 bg-[#121216] border-t border-white/10 z-[100] flex items-center justify-between px-6 backdrop-blur-2xl shadow-2xl select-none animate-slide-up">
+  const content = (
+    <div className="fixed lg:absolute bottom-0 left-0 right-0 h-24 bg-[#121216] border-t lg:border-t-0 lg:border border-white/10 z-[100] flex items-center justify-between px-6 backdrop-blur-2xl shadow-2xl select-none animate-slide-up lg:rounded-t-2xl">
       <audio ref={audioRef} src={audioUrl} preload="metadata" />
 
       {/* Left section: Cover & Title */}
@@ -249,4 +250,7 @@ export default function GlobalBottomAudioPlayer({ selectedAudio, onClose }: Prop
       `}</style>
     </div>
   );
+
+  const container = typeof document !== 'undefined' ? document.getElementById('music-player-container') : null;
+  return container ? createPortal(content, container) : content;
 }
