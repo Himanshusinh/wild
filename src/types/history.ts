@@ -63,6 +63,8 @@ export interface HistoryEntry {
     parameters?: any;
   };
   mode?: 'auto' | 'manual';
+  like?: boolean;
+  downloaded?: boolean;
 }
 
 export interface HistoryEntryFirestore {
@@ -97,6 +99,8 @@ export interface HistoryEntryFirestore {
     parameters?: any;
   };
   mode?: 'auto' | 'manual';
+  like?: boolean;
+  downloaded?: boolean;
 }
 
 export interface HistoryFilters {
@@ -122,6 +126,8 @@ export interface HistoryFilters {
   query?: string;
   sortOrder?: 'asc' | 'desc';
   sortBy?: string;
+  like?: boolean | string;
+  downloaded?: boolean | string;
 }
 
 // Live Chat specific types

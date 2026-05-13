@@ -3,12 +3,13 @@
 import React, { useRef, useState } from 'react';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { useBottomScrollPagination } from '@/hooks/useBottomScrollPagination';
-import { loadMoreHistory, loadHistory, setFilters, removeHistoryEntry } from '@/store/slices/historySlice';
+import { loadMoreHistory, loadHistory, setFilters, removeHistoryEntry, toggleLikeHistoryEntry, markDownloadedHistoryEntry } from '@/store/slices/historySlice';
 import type { HistoryFilters } from '@/types/history';
-import { Music4, Trash2, Download, Share2, Zap, ListFilter } from 'lucide-react';
+import { Music4, Trash2, Download, Share2, Zap, ListFilter, Heart } from 'lucide-react';
 import WildMindLogoGenerating from '@/app/components/WildMindLogoGenerating';
 import axiosInstance from '@/lib/axiosInstance';
 import toast from 'react-hot-toast';
+import { downloadFileWithNaming } from '@/utils/downloadUtils';
 
 // Helper function to get color theme based on entry
 const getColorTheme = (entry: any, index: number = 0): string => {
@@ -65,6 +66,38 @@ const DialogueHistory: React.FC<Props> = ({ onAudioSelect, selectedAudio, localP
     }
   };
 
+  const handleToggleLike = async (e: React.MouseEvent, entry: any) => {
+    try {
+      e.stopPropagation();
+      e.preventDefault();
+      const newLike = !entry.like;
+      await (dispatch as any)(toggleLikeHistoryEntry({ id: entry.id, like: newLike })).unwrap();
+      toast.success(newLike ? 'Added to Favourites' : 'Removed from Favourites');
+    } catch (err) {
+      toast.error('Failed to update favourite status');
+    }
+  };
+
+  const handleDownloadAudio = async (e: React.MouseEvent, entry: any, audioObj: any) => {
+    try {
+      e.stopPropagation();
+      e.preventDefault();
+      const url = audioObj?.url || audioObj?.originalUrl || audioObj?.firebaseUrl;
+      if (!url) {
+        toast.error('Audio file not available');
+        return;
+      }
+      const username = entry?.createdBy?.username || entry?.username || null;
+      downloadFileWithNaming(url, username, 'audio');
+      
+      if (!entry.downloaded) {
+        (dispatch as any)(markDownloadedHistoryEntry({ id: entry.id }));
+      }
+    } catch (err) {
+      toast.error('Download failed');
+    }
+  };
+
   const historyEntries = useAppSelector((state: any) => {
     const all = state.history.entries || [];
     return all.filter((entry: any) => {
@@ -87,9 +120,14 @@ const DialogueHistory: React.FC<Props> = ({ onAudioSelect, selectedAudio, localP
   React.useEffect(() => {
     const fetchDialogueHistory = async () => {
       try {
-        const genFilter: HistoryFilters = {
-            generationType: ['text-to-dialogue', 'text_to_dialogue', 'dialogue'] as HistoryFilters['generationType'],
+        const genFilter: any = {
+            generationType: ['text-to-dialogue', 'text_to_dialogue', 'dialogue'],
         };
+        if (activeFilter === 'Favourites') {
+          genFilter.like = 'true';
+        } else if (activeFilter === 'Downloaded') {
+          genFilter.downloaded = 'true';
+        }
         setPage(1);
         (dispatch as any)(setFilters(genFilter));
         await (dispatch as any)(loadHistory({
@@ -105,8 +143,7 @@ const DialogueHistory: React.FC<Props> = ({ onAudioSelect, selectedAudio, localP
       }
     };
     fetchDialogueHistory();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [activeFilter]);
 
   useBottomScrollPagination({
     containerRef: undefined,
@@ -117,9 +154,14 @@ const DialogueHistory: React.FC<Props> = ({ onAudioSelect, selectedAudio, localP
     throttleMs: 200,
     loadMore: async () => {
       const next = page + 1; setPage(next);
-      const genFilter: HistoryFilters = {
-        generationType: ['text-to-dialogue', 'text_to_dialogue', 'dialogue'] as HistoryFilters['generationType'],
+      const genFilter: any = {
+        generationType: ['text-to-dialogue', 'text_to_dialogue', 'dialogue'],
       };
+      if (activeFilter === 'Favourites') {
+        genFilter.like = 'true';
+      } else if (activeFilter === 'Downloaded') {
+        genFilter.downloaded = 'true';
+      }
       await (dispatch as any)(loadMoreHistory({
         filters: genFilter,
         backendFilters: genFilter,
@@ -148,6 +190,16 @@ const DialogueHistory: React.FC<Props> = ({ onAudioSelect, selectedAudio, localP
 
   // Filter out Redux entries that are fully covered by localPreview if localPreview is being shown to avoid duplicates
   const displayEntries = historyEntries.filter((entry: any) => {
+    if (activeFilter === 'Favourites') return entry.like === true;
+    if (activeFilter === 'Downloaded') return entry.downloaded === true;
+    if (activeFilter === 'Today') {
+      try {
+        const created = new Date(entry.createdAt || entry.timestamp);
+        const today = new Date();
+        if (created.toDateString() !== today.toDateString()) return false;
+      } catch { return true; }
+    }
+
     if (shouldShowLocalPreview) {
       const idMatches = entry.id === localPreview.id;
       const promptMatches = entry.prompt === localPreview.prompt && entry.model === localPreview.model;
