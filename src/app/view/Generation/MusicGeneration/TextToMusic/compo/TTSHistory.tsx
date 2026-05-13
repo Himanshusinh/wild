@@ -3,12 +3,13 @@
 import React, { useRef, useState } from 'react';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { useBottomScrollPagination } from '@/hooks/useBottomScrollPagination';
-import { loadMoreHistory, loadHistory, setFilters, removeHistoryEntry } from '@/store/slices/historySlice';
+import { loadMoreHistory, loadHistory, setFilters, removeHistoryEntry, toggleLikeHistoryEntry, markDownloadedHistoryEntry } from '@/store/slices/historySlice';
 import type { HistoryFilters } from '@/types/history';
-import { Music4, Trash2, Download, Share2, Zap, ListFilter } from 'lucide-react';
+import { Music4, Trash2, Download, Share2, Zap, ListFilter, Heart } from 'lucide-react';
 import WildMindLogoGenerating from '@/app/components/WildMindLogoGenerating';
 import axiosInstance from '@/lib/axiosInstance';
 import toast from 'react-hot-toast';
+import { downloadFileWithNaming } from '@/utils/downloadUtils';
 
 // Helper function to get color theme based on entry
 const getColorTheme = (entry: any, index: number = 0): string => {
@@ -65,6 +66,38 @@ const TTSHistory: React.FC<Props> = ({ onAudioSelect, selectedAudio, localPrevie
     }
   };
 
+  const handleToggleLike = async (e: React.MouseEvent, entry: any) => {
+    try {
+      e.stopPropagation();
+      e.preventDefault();
+      const newLike = !entry.like;
+      await (dispatch as any)(toggleLikeHistoryEntry({ id: entry.id, like: newLike })).unwrap();
+      toast.success(newLike ? 'Added to Favourites' : 'Removed from Favourites');
+    } catch (err) {
+      toast.error('Failed to update favourite status');
+    }
+  };
+
+  const handleDownloadAudio = async (e: React.MouseEvent, entry: any, audioObj: any) => {
+    try {
+      e.stopPropagation();
+      e.preventDefault();
+      const url = audioObj?.url || audioObj?.originalUrl || audioObj?.firebaseUrl;
+      if (!url) {
+        toast.error('Audio file not available');
+        return;
+      }
+      const username = entry?.createdBy?.username || entry?.username || null;
+      downloadFileWithNaming(url, username, 'audio');
+      
+      if (!entry.downloaded) {
+        (dispatch as any)(markDownloadedHistoryEntry({ id: entry.id }));
+      }
+    } catch (err) {
+      toast.error('Download failed');
+    }
+  };
+
   const historyEntries = useAppSelector((state: any) => {
     const all = state.history.entries || [];
     return all.filter((entry: any) => {
@@ -91,9 +124,14 @@ const TTSHistory: React.FC<Props> = ({ onAudioSelect, selectedAudio, localPrevie
   React.useEffect(() => {
     const fetchTTSHistory = async () => {
       try {
-        const genFilter: HistoryFilters = {
-          generationType: ['text-to-speech', 'text_to_speech', 'tts'] as unknown as HistoryFilters['generationType'],
+        const genFilter: any = {
+          generationType: ['text-to-speech', 'text_to_speech', 'tts'],
         };
+        if (activeFilter === 'Favourites') {
+          genFilter.like = 'true';
+        } else if (activeFilter === 'Downloaded') {
+          genFilter.downloaded = 'true';
+        }
         setPage(1);
         (dispatch as any)(setFilters(genFilter));
         await (dispatch as any)(loadHistory({
@@ -110,8 +148,7 @@ const TTSHistory: React.FC<Props> = ({ onAudioSelect, selectedAudio, localPrevie
       }
     };
     fetchTTSHistory();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [activeFilter]);
 
   useBottomScrollPagination({
     containerRef: undefined,
@@ -122,9 +159,14 @@ const TTSHistory: React.FC<Props> = ({ onAudioSelect, selectedAudio, localPrevie
     throttleMs: 200,
     loadMore: async () => {
       const next = page + 1; setPage(next);
-      const genFilter: HistoryFilters = {
-        generationType: ['text-to-speech', 'text_to_speech', 'tts'] as unknown as HistoryFilters['generationType'],
+      const genFilter: any = {
+        generationType: ['text-to-speech', 'text_to_speech', 'tts'],
       };
+      if (activeFilter === 'Favourites') {
+        genFilter.like = 'true';
+      } else if (activeFilter === 'Downloaded') {
+        genFilter.downloaded = 'true';
+      }
       await (dispatch as any)(loadMoreHistory({
         filters: genFilter,
         backendFilters: genFilter,
@@ -153,6 +195,16 @@ const TTSHistory: React.FC<Props> = ({ onAudioSelect, selectedAudio, localPrevie
 
   // Filter out Redux entries that are fully covered by localPreview if localPreview is being shown to avoid duplicates
   const displayEntries = historyEntries.filter((entry: any) => {
+    if (activeFilter === 'Favourites') return entry.like === true;
+    if (activeFilter === 'Downloaded') return entry.downloaded === true;
+    if (activeFilter === 'Today') {
+      try {
+        const created = new Date(entry.createdAt || entry.timestamp);
+        const today = new Date();
+        if (created.toDateString() !== today.toDateString()) return false;
+      } catch { return true; }
+    }
+
     if (shouldShowLocalPreview) {
       const idMatches = entry.id === localPreview.id;
       const promptMatches = entry.prompt === localPreview.prompt && entry.model === localPreview.model;
@@ -233,6 +285,8 @@ const TTSHistory: React.FC<Props> = ({ onAudioSelect, selectedAudio, localPrevie
               index={index} 
               onSelect={onAudioSelect} 
               onDelete={handleDeleteAudio} 
+              onToggleLike={handleToggleLike}
+              onDownload={handleDownloadAudio}
               isPlaying={selectedAudio?.entry?.id === entry.id}
             />
           ))}
@@ -268,7 +322,7 @@ const TTSHistory: React.FC<Props> = ({ onAudioSelect, selectedAudio, localPrevie
 };
 
 // Sub-component for individual track row
-const MusicRow = ({ entry, index = 0, onSelect, onDelete, isLocalPreview = false, isPlaying = false }: any) => {
+const MusicRow = ({ entry, index = 0, onSelect, onDelete, onToggleLike, onDownload, isLocalPreview = false, isPlaying = false }: any) => {
   const colorTheme = getColorTheme(entry, index);
   const mediaItems = [
     ...((entry.audios || []) as any[]),
@@ -321,6 +375,25 @@ const MusicRow = ({ entry, index = 0, onSelect, onDelete, isLocalPreview = false
   const modelName = entry.model || 'ElevenLabs';
   const genTypeString = entry.generationType || 'Speech';
   const metadata = `${modelName.toUpperCase()} · ${genTypeString.toUpperCase()}`;
+
+  const formattedDate = React.useMemo(() => {
+    try {
+      const raw = entry.createdAt || entry.timestamp;
+      if (!raw) return '';
+      const date = typeof raw?.toDate === 'function' ? raw.toDate() : new Date(raw);
+      if (Number.isNaN(date.getTime())) return '';
+      return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      }) + ' · ' + date.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+      });
+    } catch {
+      return '';
+    }
+  }, [entry.createdAt, entry.timestamp]);
 
   return (
     <div 
@@ -389,30 +462,58 @@ const MusicRow = ({ entry, index = 0, onSelect, onDelete, isLocalPreview = false
         </div>
       </div>
 
-      {/* Actions */}
-      <div className="flex items-center gap-2 pl-4 pr-1">
-        {entry.status === 'completed' ? (
-          <>
-             <button className="p-2 text-white/40 hover:text-white transition-colors bg-white/5 hover:bg-white/10 rounded-lg border border-white/5">
-                <Download size={14} />
-             </button>
-             <button className="p-2 text-white/40 hover:text-white transition-colors bg-white/5 hover:bg-white/10 rounded-lg border border-white/5">
-                <Share2 size={14} />
-             </button>
-          </>
-        ) : isGenerating ? (
-          <span className="text-[10px] font-bold text-[#2F6BFF] uppercase tracking-widest px-2 py-1 bg-[#2F6BFF]/10 rounded-md border border-[#2F6BFF]/20 animate-pulse">Composing</span>
-        ) : isFailed ? (
-          <span className="text-[10px] font-bold text-red-500 uppercase tracking-widest px-2 py-1 bg-red-500/10 rounded-md border border-red-500/20">Failed</span>
-        ) : null}
-        
-        {!isLocalPreview && (
-          <button 
-            onClick={(e) => onDelete?.(e, entry)}
-            className="p-2 text-white/40 hover:text-red-500 transition-colors bg-white/5 hover:bg-red-500/10 rounded-lg border border-white/5 hover:border-red-500/20"
-          >
-            <Trash2 size={14} />
-          </button>
+      {/* Actions & Date */}
+      <div className="flex flex-col items-end gap-1.5 pl-4 pr-1 flex-shrink-0 justify-center">
+        <div className="flex items-center gap-2">
+          {entry.status === 'completed' ? (
+            <>
+               {!isLocalPreview && (
+                 <button 
+                   onClick={(e) => onToggleLike?.(e, entry)}
+                   className={`p-2 transition-colors bg-white/5 rounded-lg border ${
+                     entry.like 
+                       ? 'text-red-500 bg-red-500/10 border-red-500/20 hover:bg-red-500/20' 
+                       : 'text-white/40 hover:text-white hover:bg-white/10 border-white/5'
+                   }`}
+                 >
+                   <Heart size={14} fill={entry.like ? 'currentColor' : 'none'} />
+                 </button>
+               )}
+               <button 
+                 onClick={(e) => onDownload?.(e, entry, audio)}
+                 className={`p-2 transition-colors bg-white/5 rounded-lg border ${
+                   entry.downloaded
+                     ? 'text-[#2F6BFF] bg-[#2F6BFF]/10 border-[#2F6BFF]/20 hover:bg-[#2F6BFF]/20'
+                     : 'text-white/40 hover:text-white hover:bg-white/10 border-white/5'
+                 }`}
+               >
+                  <Download size={14} />
+               </button>
+               <button className="p-2 text-white/40 hover:text-white transition-colors bg-white/5 hover:bg-white/10 rounded-lg border border-white/5">
+                  <Share2 size={14} />
+               </button>
+            </>
+          ) : isGenerating ? (
+            <span className="text-[10px] font-bold text-[#2F6BFF] uppercase tracking-widest px-2 py-1 bg-[#2F6BFF]/10 rounded-md border border-[#2F6BFF]/20 animate-pulse">Composing</span>
+          ) : isFailed ? (
+            <span className="text-[10px] font-bold text-red-500 uppercase tracking-widest px-2 py-1 bg-red-500/10 rounded-md border border-red-500/20">Failed</span>
+          ) : null}
+          
+          {!isLocalPreview && (
+            <button 
+              onClick={(e) => onDelete?.(e, entry)}
+              className="p-2 text-white/40 hover:text-red-500 transition-colors bg-white/5 hover:bg-red-500/10 rounded-lg border border-white/5 hover:border-red-500/20"
+            >
+              <Trash2 size={14} />
+            </button>
+          )}
+        </div>
+
+        {/* Creation Date String */}
+        {formattedDate && entry.status === 'completed' && (
+          <div className="text-[9px] font-mono text-white/30 tracking-tight pr-0.5">
+            {formattedDate}
+          </div>
         )}
       </div>
     </div>

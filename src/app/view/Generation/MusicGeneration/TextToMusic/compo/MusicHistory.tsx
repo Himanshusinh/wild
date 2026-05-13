@@ -1,12 +1,13 @@
 import React, { useRef, useState } from "react";
 import { useAppSelector } from '@/store/hooks';
 import { useBottomScrollPagination } from '@/hooks/useBottomScrollPagination';
-import { loadMoreHistory, loadHistory, setFilters, removeHistoryEntry } from '@/store/slices/historySlice';
+import { loadMoreHistory, loadHistory, setFilters, removeHistoryEntry, toggleLikeHistoryEntry, markDownloadedHistoryEntry } from '@/store/slices/historySlice';
 import { useAppDispatch } from '@/store/hooks';
-import { Music4, Trash2, Download, Share2, Zap, ChevronDown, ListFilter } from 'lucide-react';
+import { Music4, Trash2, Download, Share2, Zap, ChevronDown, ListFilter, Heart } from 'lucide-react';
 import WildMindLogoGenerating from '@/app/components/WildMindLogoGenerating';
 import axiosInstance from '@/lib/axiosInstance';
 import toast from 'react-hot-toast';
+import { downloadFileWithNaming } from '@/utils/downloadUtils';
 
 // Helper function to get color theme based on entry
 const getColorTheme = (entry: any, index: number = 0): string => {
@@ -77,6 +78,40 @@ const MusicHistory: React.FC<MusicHistoryProps> = ({
     }
   };
 
+  const handleToggleLike = async (e: React.MouseEvent, entry: any) => {
+    try {
+      e.stopPropagation();
+      e.preventDefault();
+      const newLike = !entry.like;
+      await (dispatch as any)(toggleLikeHistoryEntry({ id: entry.id, like: newLike })).unwrap();
+      toast.success(newLike ? 'Added to Favourites' : 'Removed from Favourites');
+    } catch (err) {
+      toast.error('Failed to update favourite status');
+    }
+  };
+
+  const handleDownloadAudio = async (e: React.MouseEvent, entry: any, audioObj: any) => {
+    try {
+      e.stopPropagation();
+      e.preventDefault();
+      const url = audioObj?.url || audioObj?.originalUrl || audioObj?.firebaseUrl;
+      if (!url) {
+        toast.error('Audio file not available');
+        return;
+      }
+
+      // Use shared download manager helper to fetch blob through proxy and trigger direct file save
+      const username = entry?.createdBy?.username || entry?.username || null;
+      downloadFileWithNaming(url, username, 'audio');
+      
+      if (!entry.downloaded) {
+        (dispatch as any)(markDownloadedHistoryEntry({ id: entry.id }));
+      }
+    } catch (err) {
+      toast.error('Download failed');
+    }
+  };
+
   // Get history entries filtered by type
   const normalizedAllowedTypes = allowedTypes.map(normalizeType);
   const generationTypeList = Array.isArray(generationType) ? generationType : [generationType];
@@ -122,8 +157,14 @@ const MusicHistory: React.FC<MusicHistoryProps> = ({
           ? { generationType: generationTypeFilter }
           : { generationType: generationTypeFilter[0] || generationType };
 
+      if (activeFilter === 'Favourites') {
+        genFilter.like = 'true';
+      } else if (activeFilter === 'Downloaded') {
+        genFilter.downloaded = 'true';
+      }
+
       setPage(1);
-      const currentGenTypeKey = normalizedGenerationTypes.join(',') + '|' + normalizedAllowedTypes.join(',');
+      const currentGenTypeKey = normalizedGenerationTypes.join(',') + '|' + normalizedAllowedTypes.join(',') + '|' + activeFilter;
       if (initialFetchDoneRef.current && lastGenTypeKeyRef.current !== currentGenTypeKey) {
         initialFetchDoneRef.current = false;
       }
@@ -143,7 +184,7 @@ const MusicHistory: React.FC<MusicHistoryProps> = ({
         }));
       }
     } catch { /* swallow */ }
-  }, [normalizedGenerationTypes.join(','), normalizedAllowedTypes.join(',')]);
+  }, [normalizedGenerationTypes.join(','), normalizedAllowedTypes.join(','), activeFilter]);
 
   useBottomScrollPagination({
     containerRef: undefined,
@@ -164,6 +205,13 @@ const MusicHistory: React.FC<MusicHistoryProps> = ({
           : generationTypeFilter.length > 1
             ? { generationType: generationTypeFilter }
             : { generationType: generationTypeFilter[0] || generationType };
+        
+        if (activeFilter === 'Favourites') {
+          genFilter.like = 'true';
+        } else if (activeFilter === 'Downloaded') {
+          genFilter.downloaded = 'true';
+        }
+
         await (dispatch as any)(loadMoreHistory({
           filters: genFilter,
           backendFilters: genFilter,
@@ -180,6 +228,19 @@ const MusicHistory: React.FC<MusicHistoryProps> = ({
     year: 'numeric' 
   }).toUpperCase().replace(/,/g, ' ·');
 
+  const renderedEntries = historyEntries.filter((entry: any) => {
+    if (activeFilter === 'Favourites') return entry.like === true;
+    if (activeFilter === 'Downloaded') return entry.downloaded === true;
+    if (activeFilter === 'Today') {
+      try {
+        const created = new Date(entry.createdAt || entry.timestamp);
+        const today = new Date();
+        return created.toDateString() === today.toDateString();
+      } catch { return true; }
+    }
+    return true;
+  });
+
   return (
     <div className="no-scrollbar scrollbar-hide">
       <div className="pl-0 pr-6  pb-32">
@@ -191,7 +252,7 @@ const MusicHistory: React.FC<MusicHistoryProps> = ({
               <div className="flex items-center gap-4 text-[10px] font-mono font-bold tracking-widest text-white/30 uppercase">
                 <span>{currentDate}</span>
                 <span className="w-1.5 h-1.5 rounded-full bg-white/10" />
-                <span className="bg-white/5 px-2 py-0.5 rounded-[4px] border border-white/5">{historyEntries.length} tracks</span>
+                <span className="bg-white/5 px-2 py-0.5 rounded-[4px] border border-white/5">{renderedEntries.length} tracks</span>
               </div>
             </div>
 
@@ -220,14 +281,14 @@ const MusicHistory: React.FC<MusicHistoryProps> = ({
         </div>
 
         {/* Main Loader */}
-        {storeLoading && historyEntries.length === 0 && (
+        {storeLoading && renderedEntries.length === 0 && (
           <div className="flex items-center justify-center py-20">
             <WildMindLogoGenerating running={true} size="lg" />
           </div>
         )}
 
         {/* Empty State */}
-        {!storeLoading && historyEntries.length === 0 && !suppressEmptyState && (
+        {!storeLoading && renderedEntries.length === 0 && !suppressEmptyState && (
           <div className="flex flex-col items-center gap-4 py-20 text-center opacity-40">
             <Music4 size={48} />
             <p className="text-lg font-serif">No tracks in your studio yet</p>
@@ -237,13 +298,15 @@ const MusicHistory: React.FC<MusicHistoryProps> = ({
         {/* Studio List */}
         <div className="space-y-3">
           {localPreview && <MusicRow entry={localPreview} onSelect={onAudioSelect} isLocalPreview />}
-          {historyEntries.map((entry: any, index: number) => (
+          {renderedEntries.map((entry: any, index: number) => (
             <MusicRow 
               key={entry.id} 
               entry={entry} 
               index={index} 
               onSelect={onAudioSelect} 
               onDelete={handleDeleteAudio} 
+              onToggleLike={handleToggleLike}
+              onDownload={handleDownloadAudio}
               isPlaying={selectedAudio?.entry?.id === entry.id}
             />
           ))}
@@ -281,7 +344,7 @@ const MusicHistory: React.FC<MusicHistoryProps> = ({
 };
 
 // Sub-component for individual track row
-const MusicRow = ({ entry, index = 0, onSelect, onDelete, isLocalPreview = false, isPlaying = false }: any) => {
+const MusicRow = ({ entry, index = 0, onSelect, onDelete, onToggleLike, onDownload, isLocalPreview = false, isPlaying = false }: any) => {
   const colorTheme = getColorTheme(entry, index);
   const mediaItems = [
     ...((entry.audios || []) as any[]),
@@ -334,6 +397,25 @@ const MusicRow = ({ entry, index = 0, onSelect, onDelete, isLocalPreview = false
   const modelName = entry.model || 'MiniMax';
   const genTypeString = entry.generationType || 'Text-to-Music';
   const metadata = `${modelName.toUpperCase()} · ${genTypeString.toUpperCase()}`;
+
+  const formattedDate = React.useMemo(() => {
+    try {
+      const raw = entry.createdAt || entry.timestamp;
+      if (!raw) return '';
+      const date = typeof raw?.toDate === 'function' ? raw.toDate() : new Date(raw);
+      if (Number.isNaN(date.getTime())) return '';
+      return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      }) + ' · ' + date.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+      });
+    } catch {
+      return '';
+    }
+  }, [entry.createdAt, entry.timestamp]);
 
   return (
     <div 
@@ -402,30 +484,58 @@ const MusicRow = ({ entry, index = 0, onSelect, onDelete, isLocalPreview = false
         </div>
       </div>
 
-      {/* Actions */}
-      <div className="flex items-center gap-2 pl-4 pr-1">
-        {entry.status === 'completed' ? (
-          <>
-             <button className="p-2 text-white/40 hover:text-white transition-colors bg-white/5 hover:bg-white/10 rounded-lg border border-white/5">
-                <Download size={14} />
-             </button>
-             <button className="p-2 text-white/40 hover:text-white transition-colors bg-white/5 hover:bg-white/10 rounded-lg border border-white/5">
-                <Share2 size={14} />
-             </button>
-          </>
-        ) : isGenerating ? (
-          <span className="text-[10px] font-bold text-[#2F6BFF] uppercase tracking-widest px-2 py-1 bg-[#2F6BFF]/10 rounded-md border border-[#2F6BFF]/20 animate-pulse">Composing</span>
-        ) : isFailed ? (
-          <span className="text-[10px] font-bold text-red-500 uppercase tracking-widest px-2 py-1 bg-red-500/10 rounded-md border border-red-500/20">Failed</span>
-        ) : null}
-        
-        {!isLocalPreview && (
-          <button 
-            onClick={(e) => onDelete?.(e, entry)}
-            className="p-2 text-white/40 hover:text-red-500 transition-colors bg-white/5 hover:bg-red-500/10 rounded-lg border border-white/5 hover:border-red-500/20"
-          >
-            <Trash2 size={14} />
-          </button>
+      {/* Actions & Date */}
+      <div className="flex flex-col items-end gap-1.5 pl-4 pr-1 flex-shrink-0 justify-center">
+        <div className="flex items-center gap-2">
+          {entry.status === 'completed' ? (
+            <>
+               {!isLocalPreview && (
+                 <button 
+                   onClick={(e) => onToggleLike?.(e, entry)}
+                   className={`p-2 transition-colors bg-white/5 rounded-lg border ${
+                     entry.like 
+                       ? 'text-red-500 bg-red-500/10 border-red-500/20 hover:bg-red-500/20' 
+                       : 'text-white/40 hover:text-white hover:bg-white/10 border-white/5'
+                   }`}
+                 >
+                   <Heart size={14} fill={entry.like ? 'currentColor' : 'none'} />
+                 </button>
+               )}
+               <button 
+                 onClick={(e) => onDownload?.(e, entry, audio)}
+                 className={`p-2 transition-colors bg-white/5 rounded-lg border ${
+                   entry.downloaded
+                     ? 'text-[#2F6BFF] bg-[#2F6BFF]/10 border-[#2F6BFF]/20 hover:bg-[#2F6BFF]/20'
+                     : 'text-white/40 hover:text-white hover:bg-white/10 border-white/5'
+                 }`}
+               >
+                  <Download size={14} />
+               </button>
+               <button className="p-2 text-white/40 hover:text-white transition-colors bg-white/5 hover:bg-white/10 rounded-lg border border-white/5">
+                  <Share2 size={14} />
+               </button>
+            </>
+          ) : isGenerating ? (
+            <span className="text-[10px] font-bold text-[#2F6BFF] uppercase tracking-widest px-2 py-1 bg-[#2F6BFF]/10 rounded-md border border-[#2F6BFF]/20 animate-pulse">Composing</span>
+          ) : isFailed ? (
+            <span className="text-[10px] font-bold text-red-500 uppercase tracking-widest px-2 py-1 bg-red-500/10 rounded-md border border-red-500/20">Failed</span>
+          ) : null}
+          
+          {!isLocalPreview && (
+            <button 
+              onClick={(e) => onDelete?.(e, entry)}
+              className="p-2 text-white/40 hover:text-red-500 transition-colors bg-white/5 hover:bg-red-500/10 rounded-lg border border-white/5 hover:border-red-500/20"
+            >
+              <Trash2 size={14} />
+            </button>
+          )}
+        </div>
+
+        {/* Creation Date String */}
+        {formattedDate && entry.status === 'completed' && (
+          <div className="text-[9px] font-mono text-white/30 tracking-tight pr-0.5">
+            {formattedDate}
+          </div>
         )}
       </div>
     </div>

@@ -222,25 +222,29 @@ export default function MusicGenerationPage() {
                             </div>
                         </div>
 
-                        {/* Right Column: History (scrollable) */}
-                        <div className="flex-1 min-w-0 lg:h-full lg:overflow-y-auto history-scrollbar pt-0 pb-4 lg:pl-6">
-                            <div className="pb-20">
-                                {activeFeature === 'Music' && (
-                                    <MusicGenerationInputBox key={`m-hist-${activeFeature}`} showHistoryOnly={true} />
-                                )}
-                                {activeFeature === 'Voice (TTS)' && (
-                                    <TextToSpeechInputBox key={`t-hist-${activeFeature}`} showHistoryOnly={true} />
-                                )}
-                                {activeFeature === 'Dialogue' && (
-                                    <DialogueInputBox key={`d-hist-${activeFeature}`} showHistoryOnly={true} />
-                                )}
-                                {activeFeature === 'SFX' && (
-                                    <SFXInputBox key={`s-hist-${activeFeature}`} showHistoryOnly={true} />
-                                )}
-                                {activeFeature === 'Voice Cloning' && (
-                                    <AudioCloningInputBox key={`v-hist-${activeFeature}`} showHistoryOnly={true} />
-                                )}
+                        {/* Right Column: History Container */}
+                        <div className="flex-1 min-w-0 lg:h-full relative flex flex-col lg:pl-6 pt-0 pb-4">
+                            <div className="flex-1 lg:overflow-y-auto history-scrollbar">
+                                <div className="pb-20">
+                                    {activeFeature === 'Music' && (
+                                        <MusicGenerationInputBox key={`m-hist-${activeFeature}`} showHistoryOnly={true} />
+                                    )}
+                                    {activeFeature === 'Voice (TTS)' && (
+                                        <TextToSpeechInputBox key={`t-hist-${activeFeature}`} showHistoryOnly={true} />
+                                    )}
+                                    {activeFeature === 'Dialogue' && (
+                                        <DialogueInputBox key={`d-hist-${activeFeature}`} showHistoryOnly={true} />
+                                    )}
+                                    {activeFeature === 'SFX' && (
+                                        <SFXInputBox key={`s-hist-${activeFeature}`} showHistoryOnly={true} />
+                                    )}
+                                    {activeFeature === 'Voice Cloning' && (
+                                        <AudioCloningInputBox key={`v-hist-${activeFeature}`} showHistoryOnly={true} />
+                                    )}
+                                </div>
                             </div>
+                            {/* Portal target for GlobalBottomAudioPlayer */}
+                            <div id="music-player-container" />
                         </div>
                     </div>
                 </div>
