@@ -206,7 +206,7 @@ const SFXHistory: React.FC<Props> = ({ onAudioSelect, selectedAudio, localPrevie
         {/* Main Loader */}
         {loading && historyEntries.length === 0 && (
           <div className="flex items-center justify-center py-20">
-            <WildMindLogoGenerating running={true} size="lg" />
+            {/* Loader removed as requested */}
           </div>
         )}
 
@@ -253,7 +253,7 @@ const SFXHistory: React.FC<Props> = ({ onAudioSelect, selectedAudio, localPrevie
         {/* Scroll Loading */}
         {hasMore && loading && (
           <div className="py-8 flex justify-center">
-            <WildMindLogoGenerating running={true} size="md" />
+            {/* Loader removed as requested */}
           </div>
         )}
         <div ref={sentinelRef} style={{ height: 1 }} />

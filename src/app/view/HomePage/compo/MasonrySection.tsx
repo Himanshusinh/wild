@@ -208,7 +208,7 @@ export default function MasonrySection({ mode = "image", onModeChange }: Masonry
         </div> */}
 
         <h1
-          className="mb-5 text-[42px] font-extrabold uppercase leading-[0.9] tracking-[0.02em] text-[#EAF1FF] [text-shadow:0_8px_20px_rgba(0,0,0,0.35)] sm:text-[78px] md:text-[80px] lg:text-[79px]"
+          className="mb-5 text-[42px] font-extrabold uppercase leading-[0.9] tracking-[0.02em] text-[#EAF1FF] [text-shadow:0_8px_20px_rgba(0,0,0,0.35)] sm:text-[78px] md:text-[80px] lg:text-[70px]"
           style={{
             fontFamily: "var(--font-bebas-neue), 'Bebas Neue', sans-serif",
           }}
