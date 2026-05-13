@@ -259,7 +259,7 @@ export default function WhatsNew() {
                     "--accent": item.color,
                   } as React.CSSProperties
                 }
-                className="group relative flex aspect-[3/4] w-[300px] shrink-0 snap-start flex-col overflow-hidden rounded-[20px] border border-white/[0.08] bg-gradient-to-b from-[#17171F] to-[#101016] p-5 transition-all duration-500 hover:-translate-y-1 hover:border-[color:var(--accent)]/40 hover:shadow-[0_20px_60px_-20px_var(--accent)] sm:w-[330px] sm:p-6"
+                className="group relative flex aspect-[3/4] w-[300px] shrink-0 snap-start flex-col overflow-hidden rounded-[20px] border border-white/[0.08] bg-gradient-to-b from-[#17171F] to-[#101016] p-5 transition-all duration-500 sm:w-[330px] sm:p-6"
               >
                 {isRealVideo ? (
                   <video
@@ -270,7 +270,7 @@ export default function WhatsNew() {
                     loop
                     playsInline
                     preload="metadata"
-                    className="pointer-events-none absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.08]"
+                    className="pointer-events-none absolute inset-0 h-full w-full object-cover transition-transform duration-700"
                     style={{ objectPosition: item.media.position || "center" }}
                   />
                 ) : (
@@ -278,7 +278,7 @@ export default function WhatsNew() {
                     src={item.media.src}
                     alt={item.media.alt}
                     loading="lazy"
-                    className="pointer-events-none absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.08]"
+                    className="pointer-events-none absolute inset-0 h-full w-full object-cover transition-transform duration-700"
                     style={{ objectPosition: item.media.position || "center" }}
                   />
                 )}
@@ -293,13 +293,13 @@ export default function WhatsNew() {
 
                 {/* Top-right accent glow */}
                 <div
-                  className="pointer-events-none absolute -right-20 -top-20 h-48 w-48 rounded-full opacity-40 blur-3xl transition-opacity duration-500 group-hover:opacity-70"
+                  className="pointer-events-none absolute -right-20 -top-20 h-48 w-48 rounded-full opacity-40 blur-3xl transition-opacity duration-500"
                   style={{ background: `radial-gradient(circle, ${item.color} 0%, transparent 70%)` }}
                 />
 
                 {/* Top accent line */}
                 <div
-                  className="pointer-events-none absolute left-0 right-0 top-0 h-[2px] opacity-60 transition-opacity duration-500 group-hover:opacity-100"
+                  className="pointer-events-none absolute left-0 right-0 top-0 h-[2px] opacity-60 transition-opacity duration-500"
                   style={{
                     background: `linear-gradient(90deg, transparent 0%, ${item.color} 50%, transparent 100%)`,
                   }}

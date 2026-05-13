@@ -1474,9 +1474,9 @@ export default function ArtStationPage() {
       <div className={`flex ${isAuth ? 'md:ml-[68px]' : 'ml-0'} md:ml-18`}>
         <div className="flex-1 min-w-0 px-2 sm:px-4 md:px-3 ">
           {/* Sticky header + filters (pinned under navbar) */}
-          <div className="fixed top-0 left-0 right-0 z-40 border-b border-white/5 bg-[#07070B] pt-0 md:sticky md:top-0 md:left-auto md:right-auto md:pt-4">
-            <div className="mb-2 md:mb-0">
-              <div className="flex min-w-0 items-start gap-1.5 pl-10 md:block md:pl-0">
+          <div className={`fixed top-0 right-0 z-40 border-b border-white/10 shadow-xl transition-all bg-[#07070B] py-1 md:mt-1.5 md:py-2 px-2 sm:px-4 md:px-3 left-0 ${isAuth ? 'md:left-[68px]' : 'md:left-[72px]'}`}>
+            <div className="mb-0 px-2 md:px-0">
+              <div className="flex items-center gap-2 md:gap-4 pl-10 md:pl-0 w-full overflow-x-auto scrollbar-none">
                 <button
                   onClick={() => dispatch(setSidebarExpanded(true))}
                   className="md:hidden fixed top-0 left-0 z-[60] flex h-10 w-10 items-center justify-center text-white/70 hover:text-white transition-colors cursor-pointer"
@@ -1484,40 +1484,35 @@ export default function ArtStationPage() {
                 >
                   <Menu size={24} />
                 </button>
-                <div className="min-w-0">
-                  <h3 className="text-white text-lg sm:text-2xl mt-2 md:mt-0 mb-1 md:mb-0 md:text-2xl font-bold md:font-semibold md:mb-0 mb-0 leading-tight tracking-tight">
+                
+                <div className="min-w-0 flex-shrink-0">
+                  <h3 className="text-white text-lg sm:text-2xl font-bold md:font-semibold leading-tight tracking-tight whitespace-nowrap">
                     Art Station
                   </h3>
-                  <p className="hidden md:block text-white/80 text-xs sm:text-lg md:text-md">
-                    Discover amazing AI-generated content from our creative community
-                  </p>
                 </div>
-              </div>
-            </div>
 
-            {/* Category Filter Bar */}
-            <div className="md:mb-2 md:pb-0 pb-2 md:mt-0 mt-1 ml-2 md:ml-0 mr-2 md:mr-0">
-              <div className="flex items-center md:gap-3 gap-1 overflow-x-auto md:pb-0 pb-0 scrollbar-none">
-                {(['All', 'Images', 'Videos'] as Category[]).map((category) => (
-                  <button
-                    key={category}
-                    onClick={() => setActiveCategory(category)}
-                    className={`inline-flex items-center md:gap-2  md:px-2 px-2 md:py-1 py-1 rounded-lg md:text-sm text-[11px] font-medium transition-all border ${activeCategory === category
-                      ? 'bg-white border-white/5 text-black shadow-sm'
-                      : 'bg-gradient-to-b from-white/5 to-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10'
-                      }`}
-                  >
-                    {category}
-                  </button>
-                ))}
+                {/* Category Filter Bar */}
+                <div className="flex items-center gap-1 md:gap-2 flex-shrink-0 ml-1 md:ml-2">
+                  {(['All', 'Images', 'Videos'] as Category[]).map((category) => (
+                    <button
+                      key={category}
+                      onClick={() => setActiveCategory(category)}
+                      className={`inline-flex items-center md:px-3 px-2 md:py-1 py-1 rounded-lg md:text-sm text-[11px] font-medium transition-all border whitespace-nowrap ${activeCategory === category
+                        ? 'bg-white border-white/5 text-black shadow-sm'
+                        : 'bg-gradient-to-b from-white/5 to-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10'
+                        }`}
+                    >
+                      {category}
+                    </button>
+                  ))}
+                </div>
 
                 {/* Liked filter + Search Input */}
-                <div className="ml-auto flex items-center md:gap-2 gap-1 flex-shrink-0 md:p-1 p-0">
+                <div className="ml-auto flex items-center gap-1 md:gap-2 flex-shrink-0 pl-2">
                   {/* Liked-only toggle button */}
                   <button
                     type="button"
                     onClick={async () => {
-                      // When enabling liked-only for the first time, load IDs from backend
                       if (!showLikedOnly && likedIds.size === 0) {
                         await loadLikedIds()
                       }
@@ -1551,18 +1546,15 @@ export default function ArtStationPage() {
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          // Search is already applied via filteredItems useMemo
-                        }
+                        if (e.key === 'Enter') e.preventDefault();
                       }}
                       placeholder="Search by prompt..."
-                      className={`md:px-2 px-2 md:py-1.5 py-1 rounded-lg md:text-sm text-[11px] bg-white/5 border border-white/15 focus:outline-none focus:ring-1 focus:ring-white/10 focus:border-white/10 text-white placeholder-white/90 md:w-48 w-32 ${searchQuery ? 'pr-10' : ''}`}
+                      className={`md:px-3 px-2 md:py-1 py-1 rounded-lg md:text-sm text-[11px] bg-white/5 border border-white/15 focus:outline-none focus:ring-1 focus:ring-white/10 focus:border-white/10 text-white placeholder-white/90 md:w-48 w-32 ${searchQuery ? 'pr-10' : ''}`}
                     />
                     {searchQuery && (
                       <button
                         onClick={() => setSearchQuery('')}
-                        className="absolute md:right-2 right-1 md:p-1.5 p-0.5 rounded-lg  hover:bg-white/20 text-white/80 hover:text-white transition-colors"
+                        className="absolute md:right-2 right-1 md:p-1.5 p-0.5 rounded-lg hover:bg-white/20 text-white/80 hover:text-white transition-colors"
                         aria-label="Clear search"
                       >
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1580,7 +1572,7 @@ export default function ArtStationPage() {
           {error && <div className="text-red-400 mb-4 text-sm">{error}</div>}
 
           {/* Feed container uses main page scrollbar */}
-          <div ref={scrollContainerRef} className="pt-[86px] md:pt-0">
+          <div ref={scrollContainerRef} className="pt-[60px] md:pt-[64px]">
             {/* Masonry grid */}
             <Masonry
               items={cards}

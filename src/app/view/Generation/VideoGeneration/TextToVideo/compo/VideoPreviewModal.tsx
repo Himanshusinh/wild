@@ -6,7 +6,7 @@ import { Share, Trash2 } from 'lucide-react';
 import { HistoryEntry } from '@/types/history';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import axiosInstance from '@/lib/axiosInstance';
-import { removeHistoryEntry, updateHistoryEntry } from '@/store/slices/historySlice';
+import { removeHistoryEntry, updateHistoryEntry, loadMoreHistory } from '@/store/slices/historySlice';
 import { downloadFileWithNaming, getFileType, getExtensionFromUrl } from '@/utils/downloadUtils';
 import { toResourceProxy, toMediaProxy } from '@/lib/thumb';
 import { getModelDisplayName } from '@/utils/modelDisplayNames';
@@ -14,9 +14,10 @@ import { getModelDisplayName } from '@/utils/modelDisplayNames';
 interface VideoPreviewModalProps {
   preview: { entry: HistoryEntry; video: any } | null;
   onClose: () => void;
+  customSequence?: HistoryEntry[];
 }
 
-const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose }) => {
+const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose, customSequence }) => {
   // Early return BEFORE any hooks to keep hook order stable across renders
   if (!preview) return null;
 
@@ -29,6 +30,135 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
   React.useEffect(() => {
     setCurrentEntry(preview.entry || null);
   }, [preview.entry]);
+
+  const historyEntries = useAppSelector((state: any) => state.history?.entries || []);
+  const hasMoreHistory = useAppSelector((state: any) => state.history?.hasMore ?? true);
+  const historyLoading = useAppSelector((state: any) => state.history?.loading ?? false);
+  const isLoadingMoreRef = React.useRef(false);
+
+  const generationSequence = React.useMemo<HistoryEntry[]>(() => {
+    const seen = new Set<string>();
+    const ordered: HistoryEntry[] = [];
+    
+    const pushIfValid = (ent?: HistoryEntry | null) => {
+      if (!ent || !ent.id) return;
+      if ((ent as any).model === "upload-file") return;
+      const vids = (ent as any)?.videos;
+      if (!Array.isArray(vids) || vids.length === 0) return;
+      if (seen.has(ent.id)) return;
+      seen.add(ent.id);
+      ordered.push(ent);
+    };
+
+    const sourceEntries = customSequence || historyEntries;
+    sourceEntries.forEach((ent: HistoryEntry) => pushIfValid(ent));
+    
+    const active = currentEntry || preview?.entry || null;
+    if (active && active.id && (active as any).model !== "upload-file") {
+      const activeVids = (active as any)?.videos;
+      if (Array.isArray(activeVids) && activeVids.length > 0) {
+        if (!seen.has(active.id)) {
+          ordered.unshift(active);
+        } else {
+          const idx = ordered.findIndex((item) => item.id === active.id);
+          if (idx >= 0) ordered[idx] = active;
+        }
+      }
+    }
+
+    return ordered.sort((a, b) => {
+      const ta = new Date(a.createdAt || 0).getTime();
+      const tb = new Date(b.createdAt || 0).getTime();
+      return tb - ta;
+    });
+  }, [historyEntries, preview?.entry, currentEntry]);
+
+  const flattenedVideoSequence = React.useMemo(() => {
+    const flattened: Array<{ entry: HistoryEntry; video: any; generationIndex: number; videoIndex: number }> = [];
+    generationSequence.forEach((ent, genIdx) => {
+      const videos = (ent as any)?.videos || [];
+      videos.forEach((vid: any, vidIdx: number) => {
+        flattened.push({
+          entry: ent,
+          video: vid,
+          generationIndex: genIdx,
+          videoIndex: vidIdx
+        });
+      });
+    });
+    return flattened;
+  }, [generationSequence]);
+
+  const [selectedIndex, setSelectedIndex] = React.useState<number>(0);
+
+  React.useEffect(() => {
+    try {
+      const vids = (preview?.entry as any)?.videos || [];
+      const mId = (preview?.video as any)?.id;
+      const mUrl = (preview?.video as any)?.url;
+      let idx = 0;
+      if (vids && vids.length > 0) {
+        const found = vids.findIndex((im: any) => (mId && im.id === mId) || (mUrl && im.url === mUrl));
+        if (found >= 0) idx = found;
+      }
+      setSelectedIndex(idx);
+    } catch { }
+  }, [preview?.entry?.id, preview?.video?.id, preview?.video?.url]);
+
+  const activeEntryId = currentEntry?.id || preview?.entry?.id || null;
+
+  const currentFlatIndex = React.useMemo(() => {
+    if (!activeEntryId) return 0;
+    const idx = flattenedVideoSequence.findIndex(item => item.entry.id === activeEntryId && item.videoIndex === selectedIndex);
+    return idx >= 0 ? idx : 0;
+  }, [flattenedVideoSequence, activeEntryId, selectedIndex]);
+
+  const goPrevVideo = React.useCallback((e?: React.SyntheticEvent | KeyboardEvent) => {
+    if (e && 'preventDefault' in e) e.preventDefault();
+    if (e && 'stopPropagation' in e) e.stopPropagation();
+    const prevIndex = currentFlatIndex - 1;
+    if (prevIndex < 0) return;
+    const prevItem = flattenedVideoSequence[prevIndex];
+    if (!prevItem) return;
+    setCurrentEntry(prevItem.entry);
+    setSelectedIndex(prevItem.videoIndex);
+  }, [currentFlatIndex, flattenedVideoSequence]);
+
+  const loadMoreIfNeeded = React.useCallback(async (currentIdx: number, total: number) => {
+    if (customSequence) return;
+    if (total - currentIdx <= 3 && hasMoreHistory && !historyLoading && !isLoadingMoreRef.current) {
+      isLoadingMoreRef.current = true;
+      try {
+        await dispatch(loadMoreHistory({
+          filters: { mode: 'video' } as any,
+          paginationParams: { limit: 30 }
+        })).unwrap();
+      } catch (error) {
+        console.warn('[VideoPreviewModal] Failed to load more history:', error);
+      } finally {
+        isLoadingMoreRef.current = false;
+      }
+    }
+  }, [hasMoreHistory, historyLoading, dispatch]);
+
+  const goNextVideo = React.useCallback((e?: React.SyntheticEvent | KeyboardEvent) => {
+    if (e && 'preventDefault' in e) e.preventDefault();
+    if (e && 'stopPropagation' in e) e.stopPropagation();
+    const nextIndex = currentFlatIndex + 1;
+    if (nextIndex >= flattenedVideoSequence.length) {
+      if (!customSequence && hasMoreHistory) {
+        const activeEntryIndex = generationSequence.findIndex((ent) => ent.id === activeEntryId);
+        loadMoreIfNeeded(activeEntryIndex >= 0 ? activeEntryIndex : 0, generationSequence.length);
+      }
+      return;
+    }
+    const nextItem = flattenedVideoSequence[nextIndex];
+    if (!nextItem) return;
+    setCurrentEntry(nextItem.entry);
+    setSelectedIndex(nextItem.videoIndex);
+  }, [currentFlatIndex, flattenedVideoSequence, hasMoreHistory, activeEntryId, generationSequence, loadMoreIfNeeded]);
+
+
 
   React.useEffect(() => {
     if (!preview.entry?.id) return;
@@ -64,6 +194,24 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
   const fsContainerRef = React.useRef<HTMLDivElement>(null);
   const fsMouseDownTimeRef = React.useRef(0);
   const fsMouseDownPosRef = React.useRef({ x: 0, y: 0 });
+
+  React.useEffect(() => {
+    if (!preview || isFsOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        goPrevVideo(e);
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        goNextVideo(e);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [preview, isFsOpen, onClose, goPrevVideo, goNextVideo]);
 
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 
@@ -217,7 +365,7 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
   
   // First, try to get video from entry (most reliable, has storagePath)
   if (entry?.videos && Array.isArray(entry.videos) && entry.videos.length > 0) {
-    const entryVideo = entry.videos[0];
+    const entryVideo = entry.videos[selectedIndex] || entry.videos[0];
     rawVideoUrl = entryVideo.url || entryVideo.firebaseUrl || entryVideo.originalUrl || '';
     videoStoragePath = entryVideo.storagePath;
     console.log('[VideoPreviewModal] Using video from entry:', { url: rawVideoUrl, storagePath: videoStoragePath });
@@ -463,6 +611,32 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose 
           e.stopPropagation()
         }}
       >✕</button>
+      )}
+
+      {/* Navigation Buttons */}
+      {!isFsOpen && flattenedVideoSequence.length > 1 && currentFlatIndex > 0 && (
+        <button
+          aria-label="Previous video"
+          onClick={goPrevVideo}
+          className="fixed left-4 md:left-19 top-1/2 -translate-y-1/2 z-[75] w-10 h-10 md:w-14 md:h-14 rounded-full bg-black/50 hover:bg-black/80 text-white transition-all backdrop-blur-sm border border-white/20 hover:border-white/40 flex items-center justify-center pointer-events-auto"
+          title="Previous video (←)"
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 md:w-8 md:h-8">
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
+        </button>
+      )}
+      {!isFsOpen && flattenedVideoSequence.length > 1 && (currentFlatIndex < flattenedVideoSequence.length - 1 || hasMoreHistory) && (
+        <button
+          aria-label="Next video"
+          onClick={goNextVideo}
+          className="fixed right-4 md:right-15 top-1/2 -translate-y-1/2 z-[75] w-10 h-10 md:w-14 md:h-14 rounded-full bg-black/50 hover:bg-black/80 text-white transition-all backdrop-blur-sm border border-white/20 hover:border-white/40 flex items-center justify-center pointer-events-auto"
+          title="Next video (→)"
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 md:w-8 md:h-8">
+            <path d="M9 18l6-6-6-6" />
+          </svg>
+        </button>
       )}
       <div className="relative h-full md:w-full md:max-w-6xl w-[90%] max-w-[90%] bg-transparent border border-white/10 rounded-3xl overflow-hidden shadow-3xl" onClick={(e) => e.stopPropagation()}>
         {/* Header */}

@@ -441,10 +441,10 @@ export default function VideoGenerationPage() {
                 )}
               </div>
 
-              <p className="hidden md:flex px-1.5 pb-0 text-[13px] leading-5 text-white/75 md:px-0 md:text-sm">
+              {/* <p className="hidden md:flex px-1.5 pb-0 text-[13px] leading-5 text-white/75 md:px-0 md:text-sm">
                 Transform your ideas into stunning videos using advanced AI
                 models
-              </p>
+              </p> */}
 
               {authUser && activeFeature !== "Edit" && (
                 <div className="px-1.5 pb-0 md:hidden">
