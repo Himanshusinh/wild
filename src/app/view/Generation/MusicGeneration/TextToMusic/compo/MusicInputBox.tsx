@@ -925,7 +925,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
       <div className="relative dropdown-container flex flex-col gap-1 w-full sm:w-auto">
         <button
           onClick={() => setModelOpen(!modelOpen)}
-          className="h-[38px] px-4 rounded-[10px] text-[12px] font-medium border border-white/10 hover:border-white/20 transition flex items-center justify-between bg-[#16161C] text-white/90 min-w-[180px]"
+          className="h-[34px] px-4 rounded-[10px] text-[11px] font-medium border border-white/10 hover:border-white/20 transition flex items-center justify-between bg-[#16161C] text-white/90 min-w-[180px]"
         >
           <div className="flex items-center gap-2">
             <Music4 className="w-3.5 h-3.5 text-[#2F6BFF]" />
@@ -1329,7 +1329,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
                   <ChevronDown className={`w-3.5 h-3.5 ml-1 transition-transform duration-200 ${voiceDropdownOpen ? 'rotate-180' : ''}`} />
                 </button>
                 {voiceDropdownOpen && (
-                  <div className="absolute z-[100] top-11 left-0 w-full max-h-60 overflow-y-auto bg-[#1E1E27] backdrop-blur-3xl rounded-[10px] border border-white/10 py-1 shadow-2xl">
+                  <div className="absolute z-[100] top-15 left-0 w-full max-h-60 overflow-y-auto bg-[#1E1E27] backdrop-blur-3xl rounded-[10px] border border-white/10 py-1 shadow-2xl">
                     {voiceOptions.map(option => (
                       <button
                         key={option}
@@ -1353,7 +1353,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
                   <ChevronDown className={`w-3.5 h-3.5 ml-1 transition-transform duration-200 ${uploadedAudioDropdownOpen ? 'rotate-180' : ''}`} />
                 </button>
                 {uploadedAudioDropdownOpen && (
-                  <div className="absolute z-[100] top-11 left-0 w-full max-h-60 overflow-y-auto bg-[#1E1E27] backdrop-blur-3xl rounded-[10px] border border-white/10 py-1 shadow-2xl">
+                  <div className="absolute z-[100] top-15 left-0 w-full max-h-60 overflow-y-auto bg-[#1E1E27] backdrop-blur-3xl rounded-[10px] border border-white/10 py-1 shadow-2xl">
                     {userAudioFiles.map(audioFile => (
                       <button
                         key={audioFile.id}
@@ -1398,7 +1398,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
               <ChevronDown className={`w-3.5 h-3.5 ml-1 transition-transform duration-200 ${sfxOutputFormatDropdownOpen ? 'rotate-180' : ''}`} />
             </button>
             {sfxOutputFormatDropdownOpen && (
-              <div className="absolute z-[100] top-[62px] left-0 w-full max-h-60 overflow-y-auto bg-[#1E1E27] backdrop-blur-3xl rounded-[10px] border border-white/10 py-1 shadow-2xl">
+              <div className="absolute z-[100] top-[60px] left-0 w-full max-h-60 overflow-y-auto bg-[#1E1E27] backdrop-blur-3xl rounded-[10px] border border-white/10 py-1 shadow-2xl">
                 {outputFormatOptions.map(format => (
                   <button
                     key={format}
@@ -1465,7 +1465,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
                 <label className="block text-white/30 text-[10px] font-bold uppercase tracking-widest mb-2">Voice</label>
                 <button
                   onClick={() => setDialogueVoiceDropdownOpenIndex(dialogueVoiceDropdownOpenIndex === index ? null : index)}
-                  className="w-full h-[38px] px-4 rounded-[10px] text-[12px] font-medium border border-white/10 hover:border-white/20 transition flex items-center justify-between bg-[#0E0E12]"
+                  className="w-full h-[36px] px-4 rounded-[10px] text-[11px] font-medium border border-white/10 hover:border-white/20 transition flex items-center justify-between bg-[#0E0E12]"
                 >
                   <span>{input.voice}</span>
                   <ChevronDown size={14} />
@@ -1494,7 +1494,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
 
           <button
             onClick={() => setDialogueInputs([...dialogueInputs, { text: '', voice: ELEVENLABS_DIALOGUE_DEFAULT_VOICE }])}
-            className="w-full py-3 rounded-[10px] border border-dashed border-white/10 hover:border-[#2F6BFF]/30 hover:bg-[#2F6BFF]/5 text-white/40 hover:text-[#2F6BFF] transition-all text-[12px] font-bold flex items-center justify-center gap-2"
+            className="w-full py-2 rounded-[10px] border border-dashed border-white/10 hover:border-[#2F6BFF]/30 hover:bg-[#2F6BFF]/5 text-white/40 hover:text-[#2F6BFF] transition-all text-[12px] font-bold flex items-center justify-center gap-2"
           >
             <Plus size={16} />
             Add Speaker
@@ -1522,7 +1522,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
   };
 
   return (
-    <div className="w-full max-w-full rounded-[12px] bg-[#0E0E12] shadow-2xl p-6" style={{ overflow: 'visible', position: 'relative', boxSizing: 'border-box', overflowWrap: 'break-word' }}>
+    <div className="w-full max-w-full rounded-[12px] bg-[#0E0E12] shadow-2xl px-6" style={{ overflow: 'visible', position: 'relative', boxSizing: 'border-box', overflowWrap: 'break-word' }}>
       <style jsx>{`
         .scrollbar-hide {
           -ms-overflow-style: none;
@@ -1647,7 +1647,7 @@ const MusicInputBox: React.FC<MusicInputBoxProps> = ({
           <button
             onClick={handleGenerate}
             disabled={!canGenerate}
-            className="w-full py-4 bg-[#2F6BFF] hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-[12px] text-[15px] font-bold tracking-wide transition-all shadow-[0_6px_20px_rgba(47,107,255,0.3)] flex items-center justify-center gap-3 active:scale-[0.98]"
+            className="w-full py-2 bg-[#2F6BFF] hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-[12px] text-[14px] font-bold tracking-wide transition-all shadow-[0_6px_20px_rgba(47,107,255,0.3)] flex items-center justify-center gap-3 active:scale-[0.98]"
             style={{ fontFamily: "Satoshi, sans-serif" }}
           >
             {generating ? (
