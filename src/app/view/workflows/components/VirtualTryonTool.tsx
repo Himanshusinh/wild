@@ -218,46 +218,50 @@ export function VirtualTryonTool() {
         </div>
 
         {/* Status Bar */}
-        <div className="flex items-center justify-between px-2 text-[10px] font-black uppercase tracking-[0.15em] text-white/20">
+        <div className="flex items-center justify-between px-2 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">
           <div className="flex items-center gap-2">
-            <span className={`w-1.5 h-1.5 rounded-full ${isGenerating ? 'bg-amber-500 animate-ping' : 'bg-green-500/40'}`} />
-            {isGenerating ? 'Neural Processing' : 'Active Stage'}
+            <span className={`w-1.5 h-1.5 rounded-full ${isGenerating ? 'bg-[#60a5fa] animate-ping' : 'bg-green-500/40'}`} />
+            {isGenerating ? 'Neural Processing' : 'System Ready'}
           </div>
-          <div className="font-mono">1024 × 1280</div>
+          <div className="font-mono opacity-50">1024 × 1280 px</div>
         </div>
       </div>
 
       {/* RIGHT: SELECTION (68%) */}
       <div className="flex-1 h-full flex flex-col z-10 bg-[#0D0D0D] relative overflow-hidden">
         {/* Sticky Header */}
-        <div className="sticky top-0 z-30 flex items-center justify-between shrink-0 px-8 md:px-12 py-6 bg-[#0D0D0D]/80 backdrop-blur-xl border-b border-white/5 shadow-2xl">
+        <div className="sticky top-0 z-30 flex items-center justify-between shrink-0 px-8 md:px-12 py-8 bg-[#0D0D0D]/90 backdrop-blur-2xl border-b border-white/5">
           <button 
             onClick={resetSelection}
-            className="flex items-center gap-2.5 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white/60 hover:text-white transition-all text-[10px] font-black uppercase tracking-widest hover:bg-white/10"
+            className="flex items-center gap-2.5 px-5 py-2.5 rounded-full bg-white/5 border border-white/10 text-slate-300 hover:text-white transition-all text-[11px] font-bold uppercase tracking-wider hover:bg-white/10"
           >
-            <RotateCcw size={12} />
-            Reset Look
+            <RotateCcw size={14} />
+            Reset
           </button>
 
-          <div className="flex items-center gap-4">
-            {/* Compact Credits */}
-            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20">
-              <Zap size={14} fill="currentColor" className="text-amber-500" />
-              <span className="text-sm font-black text-white italic">{credits}</span>
+          <div className="flex items-center gap-5">
+            {/* Credits Display */}
+            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10">
+              <Zap size={14} fill="currentColor" className="text-amber-400" />
+              <span className="text-sm font-bold text-white tracking-tight">{credits} <span className="text-[10px] text-slate-500 ml-0.5 uppercase tracking-tighter">NPUs</span></span>
             </div>
 
-            {/* Compact Sync Button */}
+            {/* SYNC Button (Brand Color) */}
             <button 
               onClick={handleSync}
               disabled={isGenerating}
-              className={`h-10 px-6 bg-white hover:bg-[#FAFAFA] text-black font-black text-[10px] uppercase tracking-[0.2em] rounded-xl transition-all flex items-center justify-center gap-2 shadow-xl ${isGenerating ? 'opacity-50' : 'active:scale-95'}`}
+              className={`h-11 px-8 rounded-full font-bold text-[11px] uppercase tracking-[0.15em] transition-all flex items-center justify-center gap-3 shadow-[0_0_20px_rgba(96,165,250,0.3)] ${
+                isGenerating 
+                  ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-white/5' 
+                  : 'bg-[#60a5fa] hover:bg-[#70b5ff] text-black active:scale-95'
+              }`}
             >
               {isGenerating ? (
-                <div className="w-3 h-3 border-2 border-black/20 border-t-black rounded-full animate-spin" />
+                <div className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin" />
               ) : (
-                <Layers size={14} strokeWidth={3} />
+                <Layers size={18} strokeWidth={2.5} />
               )}
-              {isGenerating ? 'Syncing...' : 'Sync Assets'}
+              {isGenerating ? 'Processing...' : 'Sync Assets'}
             </button>
           </div>
         </div>
@@ -268,8 +272,8 @@ export function VirtualTryonTool() {
           {/* ROW 1: MODELS */}
           <section className="space-y-6">
             <div className="flex items-center justify-between px-1">
-              <h3 className="text-[11px] uppercase tracking-[0.3em] text-white/20 font-black flex items-center gap-3">
-                <div className="w-1.5 h-1.5 rounded-full bg-white/10" />
+              <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-500 flex items-center gap-3">
+                <span className="w-6 h-[1px] bg-[#60a5fa]/30" />
                 01. Identity Selection
               </h3>
             </div>
@@ -290,7 +294,7 @@ export function VirtualTryonTool() {
                   key={m.id}
                   onClick={() => setSelectedModel(m)}
                   className={`relative flex-shrink-0 w-[120px] aspect-[4/5] rounded-[20px] overflow-hidden border-2 transition-all duration-500 group snap-start ${
-                    selectedModel?.id === m.id ? 'border-white ring-[6px] ring-white/5 scale-[1.02] shadow-2xl z-20' : 'border-transparent hover:border-white/10'
+                    selectedModel?.id === m.id ? 'border-[#60a5fa] ring-[6px] ring-[#60a5fa]/10 scale-[1.02] shadow-2xl z-20' : 'border-transparent hover:border-white/10'
                   }`}
                 >
                   <img src={m.image} alt={m.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000 ease-out" />
@@ -310,8 +314,8 @@ export function VirtualTryonTool() {
           {/* ROW 2: TOP WEAR */}
           <section className="space-y-6">
             <div className="flex items-center justify-between px-1">
-              <h3 className="text-[11px] uppercase tracking-[0.3em] text-white/20 font-black flex items-center gap-3">
-                <div className="w-1.5 h-1.5 rounded-full bg-white/10" />
+              <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-500 flex items-center gap-3">
+                <span className="w-6 h-[1px] bg-[#60a5fa]/30" />
                 02. Upper Body
               </h3>
             </div>
@@ -332,7 +336,7 @@ export function VirtualTryonTool() {
                   key={t.id}
                   onClick={() => setSelectedTop(t)}
                   className={`relative flex-shrink-0 w-[120px] aspect-[4/5] rounded-[20px] overflow-hidden border-2 transition-all duration-500 group snap-start ${
-                    selectedTop?.id === t.id ? 'border-white ring-[6px] ring-white/5 scale-[1.02] shadow-2xl z-20' : 'border-transparent hover:border-white/10'
+                    selectedTop?.id === t.id ? 'border-[#60a5fa] ring-[6px] ring-[#60a5fa]/10 scale-[1.02] shadow-2xl z-20' : 'border-transparent hover:border-white/10'
                   }`}
                 >
                   <img src={t.image} alt={t.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000 ease-out" />
@@ -349,11 +353,11 @@ export function VirtualTryonTool() {
             </div>
           </section>
 
-          {/* ROW 3: BOTTOM WEAR (ACTIVE) */}
+          {/* ROW 3: BOTTOM WEAR */}
           <section className="space-y-6">
             <div className="flex items-center justify-between px-1">
-              <h3 className="text-[11px] uppercase tracking-[0.3em] text-white/20 font-black flex items-center gap-3">
-                <div className="w-1.5 h-1.5 rounded-full bg-white/10" />
+              <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-500 flex items-center gap-3">
+                <span className="w-6 h-[1px] bg-[#60a5fa]/30" />
                 03. Lower Body
               </h3>
             </div>
@@ -374,7 +378,7 @@ export function VirtualTryonTool() {
                   key={b.id}
                   onClick={() => setSelectedBottom(b)}
                   className={`relative flex-shrink-0 w-[120px] aspect-[4/5] rounded-[20px] overflow-hidden border-2 transition-all duration-500 group snap-start ${
-                    selectedBottom?.id === b.id ? 'border-white ring-[6px] ring-white/5 scale-[1.02] shadow-2xl z-20' : 'border-transparent hover:border-white/10'
+                    selectedBottom?.id === b.id ? 'border-[#60a5fa] ring-[6px] ring-[#60a5fa]/10 scale-[1.02] shadow-2xl z-20' : 'border-transparent hover:border-white/10'
                   }`}
                 >
                   <img src={b.image} alt={b.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000 ease-out" />
@@ -394,8 +398,8 @@ export function VirtualTryonTool() {
           {/* ROW 4: FOOTWEAR */}
           <section className="space-y-6">
             <div className="flex items-center justify-between px-1">
-              <h3 className="text-[11px] uppercase tracking-[0.3em] text-white/20 font-black flex items-center gap-3">
-                <div className="w-1.5 h-1.5 rounded-full bg-white/10" />
+              <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-500 flex items-center gap-3">
+                <span className="w-6 h-[1px] bg-[#60a5fa]/30" />
                 04. Footwear
               </h3>
             </div>
@@ -416,7 +420,7 @@ export function VirtualTryonTool() {
                   key={f.id}
                   onClick={() => setSelectedFootwear(f)}
                   className={`relative flex-shrink-0 w-[120px] aspect-[4/5] rounded-[20px] overflow-hidden border-2 transition-all duration-500 group snap-start ${
-                    selectedFootwear?.id === f.id ? 'border-white ring-[6px] ring-white/5 scale-[1.02] shadow-2xl z-20' : 'border-transparent hover:border-white/10'
+                    selectedFootwear?.id === f.id ? 'border-[#60a5fa] ring-[6px] ring-[#60a5fa]/10 scale-[1.02] shadow-2xl z-20' : 'border-transparent hover:border-white/10'
                   }`}
                 >
                   <img src={f.image} alt={f.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000 ease-out" />
@@ -436,8 +440,8 @@ export function VirtualTryonTool() {
           {/* ROW 5: ACCESSORIES */}
           <section className="space-y-6">
             <div className="flex items-center justify-between px-1">
-              <h3 className="text-[11px] uppercase tracking-[0.3em] text-white/20 font-black flex items-center gap-3">
-                <div className="w-1.5 h-1.5 rounded-full bg-white/10" />
+              <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-500 flex items-center gap-3">
+                <span className="w-6 h-[1px] bg-[#60a5fa]/30" />
                 05. Accessories
               </h3>
             </div>
@@ -458,7 +462,7 @@ export function VirtualTryonTool() {
                   key={a.id}
                   onClick={() => setSelectedAccessory(a)}
                   className={`relative flex-shrink-0 w-[120px] aspect-[4/5] rounded-[20px] overflow-hidden border-2 transition-all duration-500 group snap-start ${
-                    selectedAccessory?.id === a.id ? 'border-white ring-[6px] ring-white/5 scale-[1.02] shadow-2xl z-20' : 'border-transparent hover:border-white/10'
+                    selectedAccessory?.id === a.id ? 'border-[#60a5fa] ring-[6px] ring-[#60a5fa]/10 scale-[1.02] shadow-2xl z-20' : 'border-transparent hover:border-white/10'
                   }`}
                 >
                   <img src={a.image} alt={a.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000 ease-out" />
@@ -477,8 +481,8 @@ export function VirtualTryonTool() {
           {/* ROW 6: BAGS */}
           <section className="space-y-6">
             <div className="flex items-center justify-between px-1">
-              <h3 className="text-[11px] uppercase tracking-[0.3em] text-white/20 font-black flex items-center gap-3">
-                <div className="w-1.5 h-1.5 rounded-full bg-white/10" />
+              <h3 className="text-[11px] font-bold uppercase tracking-widest text-slate-500 flex items-center gap-3">
+                <span className="w-6 h-[1px] bg-[#60a5fa]/30" />
                 06. Bags & Packs
               </h3>
             </div>
@@ -499,7 +503,7 @@ export function VirtualTryonTool() {
                   key={bg.id}
                   onClick={() => setSelectedBag(bg)}
                   className={`relative flex-shrink-0 w-[120px] aspect-[4/5] rounded-[20px] overflow-hidden border-2 transition-all duration-500 group snap-start ${
-                    selectedBag?.id === bg.id ? 'border-white ring-[6px] ring-white/5 scale-[1.02] shadow-2xl z-20' : 'border-transparent hover:border-white/10'
+                    selectedBag?.id === bg.id ? 'border-[#60a5fa] ring-[6px] ring-[#60a5fa]/10 scale-[1.02] shadow-2xl z-20' : 'border-transparent hover:border-white/10'
                   }`}
                 >
                   <img src={bg.image} alt={bg.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000 ease-out" />
