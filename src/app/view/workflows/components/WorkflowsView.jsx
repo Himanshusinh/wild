@@ -199,9 +199,9 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
                 <h3 className="text-white text-xl sm:text-2xl md:text-2xl font-semibold">
                   Explore Apps
                 </h3>
-                <p className="text-white/80 text-xs sm:text-lg md:text-sm pb-1 pt-2">
+                {/* <p className="text-white/80 text-xs sm:text-lg md:text-sm pb-1 pt-2">
                   Explore AI tools that make your creative process easier and better
-                </p>
+                </p> */}
               </div>
 
               {/* Right Side Controls */}
