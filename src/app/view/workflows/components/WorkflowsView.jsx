@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { WORKFLOWS_DATA, CATEGORIES } from './data';
 import { useDispatch } from 'react-redux';
 import { setSidebarExpanded } from '@/store/slices/uiSlice';
+import { VirtualTryonTool } from './VirtualTryonTool';
 
 // ... imports
 export default function WorkflowsView({ openModal, initialCategory = "All", basePath = "/view/workflows", workflows = null }) {
@@ -314,6 +315,10 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
             })}
           </motion.div>
         </AnimatePresence>
+      ) : activeCategory === "Virtual Tryon" ? (
+        <div className="mt-4">
+          <VirtualTryonTool />
+        </div>
       ) : (
         <div className="flex flex-col items-center justify-center py-20 bg-white/[0.02] border border-white/5 rounded-[2.5rem] mt-4">
           <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-6 border border-white/10">
