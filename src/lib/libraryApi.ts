@@ -38,6 +38,7 @@ export interface UploadItem {
   storagePath?: string;
   mediaId?: string;
   originalUrl?: string;
+  loading?: boolean;
 }
 
 export interface UploadResponse {
@@ -154,43 +155,23 @@ async function uploadLocalMediaFile(params: {
       'file',
       uploadFile,
       uploadFile.name ||
-        `upload.${inferUploadFileExtension(uploadFile.type, params.type)}`,
+      `upload.${inferUploadFileExtension(uploadFile.type, params.type)}`,
     );
     form.append('type', params.type);
     if (params.projectId) {
       form.append('projectId', params.projectId);
     }
 
-    // Use same-origin Next.js proxy route for uploads so production edge/network
-    // handling stays consistent and doesn't depend on browser->backend multipart quirks.
-    const response = await fetch('/api/canvas/media-library/upload-file', {
-      method: 'POST',
-      body: form,
-      credentials: 'include',
+    const api = getApiClient();
+    console.log('[libraryApi] Uploading file to backend...', { name: uploadFile.name, size: uploadFile.size, type: params.type });
+    const response = await api.post('/api/canvas/media-library/upload-file', form, {
       headers: {
         'ngrok-skip-browser-warning': 'true',
       },
     });
+    console.log('[libraryApi] Upload response:', response.status, response.data?.responseStatus);
 
-    const text = await response.text();
-    let data: any = {};
-    try {
-      data = text ? JSON.parse(text) : {};
-    } catch {
-      data = {
-        responseStatus: 'error',
-        message: text || 'Invalid upload response',
-      };
-    }
-
-    if (!response.ok) {
-      return {
-        responseStatus: 'error',
-        message: data?.message || `Upload failed (${response.status})`,
-      };
-    }
-
-    return data as SaveUploadResponse;
+    return response.data as SaveUploadResponse;
   } catch (error: any) {
     console.error('[libraryApi] Error uploading local media file:', error);
     return {
@@ -380,13 +361,30 @@ export async function getUploadsPage(
  * This allows uploaded files to appear in "My Uploads" in the library
  */
 export async function saveUpload(params: {
-  url: string;
+  url?: string;
+  file?: File;
   type: 'image' | 'video';
   projectId?: string;
 }): Promise<SaveUploadResponse> {
   try {
-    if (isLocalMediaSource(params.url)) {
-      return uploadLocalMediaSource(params);
+    if (params.file) {
+      return uploadLocalMediaFile({
+        file: params.file,
+        type: params.type,
+        projectId: params.projectId,
+      });
+    }
+
+    if (params.url && isLocalMediaSource(params.url)) {
+      return uploadLocalMediaSource({
+        url: params.url,
+        type: params.type,
+        projectId: params.projectId,
+      });
+    }
+
+    if (!params.url) {
+      throw new Error('Either url or file is required for saveUpload');
     }
 
     const api = getApiClient();

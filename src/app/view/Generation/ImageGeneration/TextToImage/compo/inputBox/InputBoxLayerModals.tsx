@@ -132,7 +132,7 @@ export function InputBoxLayerModals({
         <UploadModal
           isOpen={isUploadOpen}
           onClose={onCloseUpload}
-          persistLocalDeviceUploads={false}
+          persistLocalDeviceUploads={true}
           remainingSlots={uploadRemainingSlots}
           onAdd={onUploadAdd}
         />
