@@ -21,9 +21,12 @@ const scrollStyles =
 
 interface PricingPlansProps {
   isAuthenticated: boolean;
+  hideHeader?: boolean;
+  showOnlyCards?: boolean;
 }
 
-export default function PricingPlans({ isAuthenticated }: PricingPlansProps) {
+export default function PricingPlans(props: PricingPlansProps) {
+  const { isAuthenticated, hideHeader = false, showOnlyCards = false } = props;
   const router = useRouter();
   const { displayCurrency, formatMoney, fxLoading, hasFxRates } = useDisplayCurrency();
   const needsForeignFx = displayCurrency !== 'INR';
@@ -131,10 +134,79 @@ export default function PricingPlans({ isAuthenticated }: PricingPlansProps) {
           setCurrentPlanCode(code.trim());
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   }, [isAuthenticated]);
 
   const showCatalogSkeleton = catalogLoading && !catalog;
+
+  if (showOnlyCards) {
+    return (
+      <div className={`relative z-10 w-full min-w-0 max-w-[1540px] mx-auto ${gutter} pb-8`}>
+        {showCatalogSkeleton ? (
+          <>
+            <div className="xl:hidden space-y-6">
+              <div className={`flex flex-nowrap gap-5 ${scrollStyles}`}>
+                {[0, 1, 2, 3].map((i) => (
+                  <div
+                    key={i}
+                    className="snap-center shrink-0 w-[min(88vw,280px)] sm:w-[260px] flex min-h-[500px]"
+                  >
+                    <MainPlanCardSkeleton compact className="h-full w-full" />
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="hidden xl:grid min-w-0 grid-cols-4 gap-x-5 gap-y-4 items-stretch">
+              {[0, 1, 2, 3].map((i) => (
+                <MainPlanCardSkeleton key={i} className="h-full" />
+              ))}
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="xl:hidden space-y-6">
+              <div className={`flex flex-nowrap gap-5 ${scrollStyles}`}>
+                {mainPlans.map((plan) => (
+                  <div
+                    key={plan.id}
+                    className="snap-center shrink-0 w-[min(88vw,280px)] sm:w-[260px] flex min-h-[500px]"
+                  >
+                    <MainPlanCard
+                      plan={plan}
+                      billingPeriod={billingPeriod}
+                      onCta={goSubscribe}
+                      isCurrent={currentMainPlanId === plan.id}
+                      gstRatePercent={checkoutGstRatePercent}
+                      compact
+                      className="h-full w-full"
+                      isPriceLoading={isPriceFxPending}
+                      {...foreignCardProps}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="hidden xl:grid min-w-0 grid-cols-4 gap-x-5 gap-y-4 items-stretch">
+              {mainPlans.map((plan) => (
+                <MainPlanCard
+                  key={plan.id}
+                  plan={plan}
+                  billingPeriod={billingPeriod}
+                  onCta={goSubscribe}
+                  isCurrent={currentMainPlanId === plan.id}
+                  gstRatePercent={checkoutGstRatePercent}
+                  className="h-full"
+                  isPriceLoading={isPriceFxPending}
+                  {...foreignCardProps}
+                />
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className={`relative z-10 w-full min-w-0 max-w-[1540px] mx-auto ${gutter} pb-24`}>
@@ -143,7 +215,9 @@ export default function PricingPlans({ isAuthenticated }: PricingPlansProps) {
         aria-label="All plans"
         aria-busy={showCatalogSkeleton || isPriceFxPending}
       >
-        <p className="text-[10px] uppercase tracking-[0.28em] text-slate-500 mb-5 md:mb-6">Plans</p>
+        {!hideHeader && (
+          <p className="text-[10px] uppercase tracking-[0.28em] text-slate-500 mb-5 md:mb-6">Plans</p>
+        )}
 
         <div className="flex w-full min-w-0 justify-center px-2 mb-6 md:mb-7">
           {showCatalogSkeleton ? (

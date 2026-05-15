@@ -471,12 +471,12 @@ export default function AllFeatures({ mode = "image" }: { mode?: "image" | "vide
                       {card.badge}
                     </div>
                   </div>
-                  
+
                   <div className="flex items-start gap-3 px-1 mb-4">
                     <div className={`shrink-0 flex items-center justify-center w-8 h-8 rounded-[8px] ${card.iconClassName} text-white`}>
                       {card.icon}
                     </div>
-                    
+
                     <div className="flex flex-col min-w-0">
                       <h3 className="text-[14px] font-semibold tracking-tight text-[#FAFAFA] group-hover:text-white transition-colors line-clamp-1">
                         {card.title.replace('\n', ' ')}

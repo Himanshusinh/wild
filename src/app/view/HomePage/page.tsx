@@ -12,10 +12,10 @@ import '@/utils/checkSessionStatus'
 // Nav and SidePannelFeatures are provided by the persistent root layout
 import Header from './compo/Header'
 import Image from 'next/image'
-import { getImageUrl, API_BASE, imageRoutes } from './routes'
-// import PromotionalBanner from './compo/PromotionalBanner'
-// Lazy load non-critical components for better performance
 import dynamic from 'next/dynamic'
+import { getImageUrl, API_BASE, imageRoutes } from './routes'
+import PricingPlans from '../pricing/compo/PricingPlans'
+import { isUserAuthenticated } from '@/lib/axiosInstance'
 
 const Second = dynamic(() => import('./compo/Second'), {
     loading: () => <div className="h-96 animate-pulse bg-white/5 rounded-lg" />
@@ -856,7 +856,6 @@ import VideoModelCards from './compo/VideoModelCards';
 import StudioHomeShowcase from './compo/StudioHomeShowcase';
 import WildMindAIAPPS from './compo/WildMindAIAPPS';
 import CreatorsSection from './compo/CreatorsSection';
-import CreationCTASection from './compo/CreationCTASection';
 import CreativeStyle, { STYLES } from './compo/CreativeStyle';
 import ImageVideoToggle from './compo/ImageVideoToggle';
 import WhatsNew from './compo/WhatsNew';
@@ -868,6 +867,21 @@ const HomePage: React.FC = () => {
     const router = useRouter();
     const dispatch = useAppDispatch();
     const [currentView, setCurrentView] = useState<ViewType>('home');
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+    useEffect(() => {
+        try {
+            const userStr = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
+            const authToken = typeof window !== 'undefined' ? (localStorage.getItem('authToken') || localStorage.getItem('idToken')) : null;
+            const hasStoredUser = Boolean(userStr);
+            const hasStoredToken = Boolean(authToken);
+            const hasLiveSession = isUserAuthenticated();
+            setIsAuthenticated(hasLiveSession || hasStoredToken || hasStoredUser);
+        } catch {
+            setIsAuthenticated(false);
+        }
+    }, []);
+
     const [currentGenerationType, setCurrentGenerationType] = useState<GenerationType>('text-to-image');
     const [showWildmindSkitPopup, setShowWildmindSkitPopup] = useState(false);
     const [showWelcomeModal, setShowWelcomeModal] = useState(false);
@@ -2645,7 +2659,29 @@ const HomePage: React.FC = () => {
                     <WildMindAIAPPS />
                     {/* <CreatorsSection /> */}
 
-                    <CreationCTASection />
+                    <section className="relative overflow-hidden bg-[#07070B] py-20">
+                        {/* Background Effects to match real pricing design */}
+                        <div className="absolute inset-0 pointer-events-none z-0">
+                            <div
+                                className="absolute inset-0 opacity-[0.03] mix-blend-overlay"
+                                style={{ backgroundImage: "url('https://idr01.zata.ai/devstoragev1/public/noise.svg')" }}
+                            />
+                            <div
+                                className="absolute inset-0"
+                                style={{
+                                    backgroundImage:
+                                        'linear-gradient(rgba(96, 165, 250, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(96, 165, 250, 0.03) 1px, transparent 1px)',
+                                    backgroundSize: '100px 100px',
+                                }}
+                            />
+                            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-blue-600/[0.04] rounded-full blur-[120px]" />
+                        </div>
+                        
+                        <div className="relative z-10">
+                            
+                            <PricingPlans isAuthenticated={isAuthenticated} hideHeader={true} showOnlyCards={true} />
+                        </div>
+                    </section>
 
                     {/* <CompactFeatureStrip /> */}
 
