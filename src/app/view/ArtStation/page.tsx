@@ -1474,7 +1474,7 @@ export default function ArtStationPage() {
       <div className={`flex ${isAuth ? 'md:ml-[68px]' : 'ml-0'} md:ml-18`}>
         <div className="flex-1 min-w-0 px-2 sm:px-4 md:px-3 ">
           {/* Sticky header + filters (pinned under navbar) */}
-          <div className={`fixed top-0 right-0 z-40 border-b border-white/10 shadow-xl transition-all bg-[#07070B] py-1 md:mt-1.5 md:py-2 px-2 sm:px-4 md:px-3 left-0 ${isAuth ? 'md:left-[68px]' : 'md:left-[72px]'}`}>
+          <div className={`fixed top-0 right-0 z-40 border-b border-white/10 shadow-xl transition-all bg-[#07070B] py-1 md:mt-0 md:py-4 px-2 sm:px-4 md:px-3 left-0 ${isAuth ? 'md:left-[68px]' : 'md:left-[72px]'}`}>
             <div className="mb-0 px-2 md:px-0">
               <div className="flex items-center gap-2 md:gap-4 pl-10 md:pl-0 w-full overflow-x-auto scrollbar-none">
                 <button
@@ -1572,7 +1572,7 @@ export default function ArtStationPage() {
           {error && <div className="text-red-400 mb-4 text-sm">{error}</div>}
 
           {/* Feed container uses main page scrollbar */}
-          <div ref={scrollContainerRef} className="pt-[60px] md:pt-[64px]">
+          <div ref={scrollContainerRef} className="pt-[60px] md:pt-[74px]">
             {/* Masonry grid */}
             <Masonry
               items={cards}

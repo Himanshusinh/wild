@@ -5,14 +5,20 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Search, LayoutGrid, List, Menu, Heart } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { WORKFLOWS_DATA, CATEGORIES } from './data';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { setSidebarExpanded } from '@/store/slices/uiSlice';
+import { VirtualTryonTool } from './VirtualTryonTool';
+import { useAppSelector } from '@/store/hooks';
+
 
 // ... imports
 export default function WorkflowsView({ openModal, initialCategory = "All", basePath = "/view/workflows", workflows = null }) {
   const router = useRouter();
   const pathname = usePathname();
   const dispatch = useDispatch();
+  const userData = useAppSelector((state) => state?.auth?.user || null);
+  const isAuth = !!userData;
+
 
   // ... slugify ...
   const slugify = (cat) => cat.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-+$/, '').trim();
@@ -95,7 +101,7 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
     // Apply visibility filters
     return result.filter(wf => {
       // Logic for determining if an item is "Coming Soon"
-      const isComingSoon = (!['General', 'Photography', 'Fun', 'Fashion', 'Branding', 'Architecture', 'Film Industry'].includes(wf.category) && wf.id !== 'selfie-video') || wf.comingSoon;
+      const isComingSoon = (!['General', 'Photography', 'Fun', 'Fashion', 'Branding', 'Architecture', 'Film Industry', 'Virtual Tryon'].includes(wf.category) && wf.id !== 'selfie-video') || wf.comingSoon;
 
       // Hide coming soon items if they are in the 'Fun' category
       if (wf.category === 'Fun' && isComingSoon) return false;
@@ -120,28 +126,24 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
   };
 
   return (
-    <div className="animate-in">
-      {/* Mobile Title (Static - Scrolls away) */}
-      <div className="md:hidden pt-0 pb-0 px-0 bg-[#07070B]">
-        <button
-          onClick={() => dispatch(setSidebarExpanded(true))}
-          className="md:hidden fixed -top-1.5 -left-2 z-[60] flex h-10 w-10 items-center justify-center text-white/70 hover:text-white transition-colors cursor-pointer"
-          aria-label="Toggle Menu"
-        >
-          <Menu size={24} />
-        </button>
-        <div className="mb-2 pl-11 md:pt-0 pt-1" >
-          <h3 className="text-white text-base font-bold leading-tight tracking-tight mb-0.5">
+    <div className="">
+      {/* Sticky Header Section */}
+      <div className={`fixed top-0 right-0 z-40 border-b border-white/5 shadow-2xl transition-all bg-[#07070B]/95 backdrop-blur-md py-1 md:py-0 px-2 sm:px-6 md:px-6 left-0 ${isAuth ? 'md:left-[72px]' : 'md:left-[72px]'}`}>
+        {/* Mobile Title (Now Sticky) */}
+        <div className="animate-in md:hidden pt-2 pb-1 px-1 flex items-center gap-1">
+          <button
+            onClick={() => dispatch(setSidebarExpanded(true))}
+            className="flex h-10 w-10 items-center justify-center text-white/70 hover:text-white transition-colors cursor-pointer"
+            aria-label="Toggle Menu"
+          >
+            <Menu size={24} />
+          </button>
+          <h3 className="text-white text-base font-bold leading-tight tracking-tight">
             Explore Apps
           </h3>
-          {/* <p className="text-white/75 text-[11px] leading-[1.25] mt-0 max-w-[260px]">
-            Explore AI tools that make your creative process easier and better
-          </p> */}
         </div>
-      </div>
 
-      {/* Sticky Header Section */}
-      <div className="sticky top-0 z-20 bg-[#07070B] -mx-2 px-2">
+
         <div className="mb-2 md:mb-1 pt-2">
 
 
@@ -192,15 +194,15 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
 
           {/* Desktop Title & Controls Row */}
           {/* Desktop Title & Controls Row */}
-          <div className="hidden md:flex flex-col mb-2">
+          <div className="animate-in hidden md:flex flex-col mb-2">
             <div className="flex items-center justify-between gap-4 mb-1">
               <div className="flex flex-col">
                 <h3 className="text-white text-xl sm:text-2xl md:text-2xl font-semibold">
                   Explore Apps
                 </h3>
-                <p className="text-white/80 text-xs sm:text-lg md:text-sm pb-1 pt-2">
+                {/* <p className="text-white/80 text-xs sm:text-lg md:text-sm pb-1 pt-2">
                   Explore AI tools that make your creative process easier and better
-                </p>
+                </p> */}
               </div>
 
               {/* Right Side Controls */}
@@ -236,7 +238,7 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
             </div>
 
             {/* Desktop Category Navigation */}
-            <div className="hidden md:flex items-center gap-3 overflow-x-auto no-scrollbar py-4">
+            <div className="hidden md:flex items-center gap-3 overflow-x-auto no-scrollbar py-0">
               <button
                 onClick={() => handleCategoryClick('All')}
                 className={`inline-flex items-center px-5 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all border relative gap-2 ${activeCategory === 'All'
@@ -248,7 +250,7 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
               </button>
 
               {CATEGORIES.filter(cat => cat !== 'All').map((cat) => {
-                const isCatComingSoon = !['General', 'Fun', 'Photography', 'Fashion', 'Branding', 'Architecture', 'Film Industry'].includes(cat);
+                const isCatComingSoon = !['General', 'Fun', 'Photography', 'Fashion', 'Branding', 'Architecture', 'Film Industry', 'Virtual Tryon'].includes(cat);
                 return (
                   <button
                     key={cat}
@@ -271,15 +273,14 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
           </div>
         </div>
       </div>
-
-
-
-
-      {/* Workflow Grid */}
+      <div className="pt-[110px] md:pt-[100px]">
+        {/* Workflow Grid */}
       {filteredWorkflows.length > 0 ? (
         <AnimatePresence mode="wait">
           <motion.div
             key={activeCategory + viewMode}
+
+
             initial="hidden"
             animate="visible"
             exit="hidden"
@@ -306,7 +307,7 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
             }
           >
             {filteredWorkflows.map((wf) => {
-              const isComingSoon = (!['General', 'Photography', 'Fun'].includes(wf.category) && wf.id !== 'selfie-video') || wf.comingSoon;
+              const isComingSoon = (!['General', 'Photography', 'Fun', 'Virtual Tryon'].includes(wf.category) && wf.id !== 'selfie-video') || wf.comingSoon;
 
               return (
                 <WorkflowCard key={wf.id} wf={wf} router={router} />
@@ -314,15 +315,21 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
             })}
           </motion.div>
         </AnimatePresence>
+      ) : activeCategory === "Virtual Tryon" ? (
+        <div className="mt-4">
+          <VirtualTryonTool />
+        </div>
       ) : (
-        <div className="flex flex-col items-center justify-center py-20 bg-white/[0.02] border border-white/5 rounded-[2.5rem] mt-4">
+        <div className="animate-in flex flex-col items-center justify-center py-20 bg-white/[0.02] border border-white/5 rounded-[2.5rem] mt-4">
           <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-6 border border-white/10">
+
             <span className="text-2xl animate-pulse">✨</span>
           </div>
           <h3 className="text-white text-xl font-medium mb-2">Something Magic is Coming</h3>
           <p className="text-white/40 text-sm max-w-xs text-center">We're building incredible AI workflows for the {activeCategory} category. Stay tuned!</p>
         </div>
       )}
+      </div>
     </div>
 
   );
@@ -330,7 +337,7 @@ export default function WorkflowsView({ openModal, initialCategory = "All", base
 
 function WorkflowCard({ wf, router }) {
   const [isPlaying, setIsPlaying] = useState(false);
-  const isComingSoon = (!['General', 'Branding', 'Photography', 'Architecture', 'Fun', 'Fashion', 'Film Industry'].includes(wf.category) && wf.id !== 'selfie-video') || wf.comingSoon;
+  const isComingSoon = (!['General', 'Branding', 'Photography', 'Architecture', 'Fun', 'Fashion', 'Film Industry', 'Virtual Tryon'].includes(wf.category) && wf.id !== 'selfie-video') || wf.comingSoon;
 
   const handleClick = () => {
     if (isComingSoon) return;
