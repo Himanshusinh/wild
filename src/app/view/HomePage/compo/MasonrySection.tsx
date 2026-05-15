@@ -222,12 +222,12 @@ export default function MasonrySection({ mode = "image", onModeChange }: Masonry
           styles, and AI-powered creative workflows.
         </p>
 
-        <div className="mb-2 flex w-full max-w-[920px] items-center gap-0.5 rounded-full border border-[#E5E4E0] bg-white p-1 pl-1 pr-1 shadow-[0_1px_4px_rgba(0,0,0,0.08)] sm:gap-1 sm:mb-3 sm:p-1.5 sm:pl-3">
+        <div className="mb-2 flex w-full max-w-[920px] items-center gap-0.5 rounded-full border border-white/10 bg-white/5 backdrop-blur-xl p-1 pl-1 pr-1 shadow-2xl sm:gap-1 sm:mb-3 sm:p-1.5 sm:pl-3">
           <button
             type="button"
             onClick={() => setIsUploadModalOpen(true)}
             aria-label="Upload image"
-            className="mr-1 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#ddd9d2] bg-[#e8e7e3] text-[#333] transition-colors hover:bg-[#e8e7e3] hover:text-[#111] sm:mr-1 sm:h-10 sm:w-10 sm:border-[#E5E4E0] sm:bg-[#f5f4f2] sm:text-[#777]"
+            className="mr-1 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white/70 transition-colors hover:bg-white/10 hover:text-white sm:mr-1 sm:h-10 sm:w-10 sm:border-white/10 sm:bg-white/5 sm:text-white/60"
           >
             <Plus className="h-4 w-4" strokeWidth={2.4} />
           </button>
@@ -248,11 +248,11 @@ export default function MasonrySection({ mode = "image", onModeChange }: Masonry
               }
             }}
             placeholder="Describe your idea, scene, style, or visual goal. "
-            className="min-w-0 flex-1 bg-transparent px-1 py-1.5 text-[13px] text-[#111] outline-none placeholder:text-black/90 selection:bg-transparent sm:py-2 sm:text-[15px]"
+            className="min-w-0 flex-1 bg-transparent px-1 py-1.5 text-[13px] text-white outline-none placeholder:text-white/40 selection:bg-white/20 sm:py-2 sm:text-[15px]"
             style={{
               backgroundColor: "transparent",
               WebkitBoxShadow: "0 0 0 1000px transparent inset",
-              WebkitTextFillColor: "#111",
+              WebkitTextFillColor: "white",
             }}
           />
 
@@ -260,7 +260,7 @@ export default function MasonrySection({ mode = "image", onModeChange }: Masonry
             type="button"
             onClick={handleEnhancePrompt}
             disabled={!prompt.trim() || isEnhancing}
-            className="group relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#ddd9d2] bg-[#e8e7e3] text-[#333] transition-colors hover:bg-[#e8e7e3] hover:text-[#333] sm:mr-1 sm:h-10 sm:w-10 sm:border-[#E5E4E0] sm:bg-[#f5f4f2] sm:text-[#999]"
+            className="group relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white/70 transition-colors hover:bg-white/10 hover:text-white sm:mr-1 sm:h-10 sm:w-10 sm:border-white/10 sm:bg-white/5 sm:text-white/40"
             aria-label="Enhance prompt"
           >
             {isEnhancing ? (
@@ -305,9 +305,9 @@ export default function MasonrySection({ mode = "image", onModeChange }: Masonry
               onClick={() => setShowGenerateMenu((prev) => !prev)}
               disabled={isGenerating}
               aria-label="Choose generation type"
-              className="inline-flex h-8 items-center gap-1 rounded-full border border-[#ddd9d2] bg-[#e8e7e3] px-2 text-[12px] font-medium text-[#222] transition-colors hover:bg-[#e8e7e3] hover:text-[#222] disabled:cursor-default disabled:opacity-75 sm:h-10 sm:border-[#E5E4E0] sm:bg-[#f5f4f2] sm:px-3 sm:text-[13px] sm:text-[#555]"
+              className="inline-flex h-8 items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 text-[12px] font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white disabled:cursor-default disabled:opacity-75 sm:h-10 sm:border-white/10 sm:bg-white/5 sm:px-3 sm:text-[13px] sm:text-white/70"
             >
-              <span className="flex items-center text-[#222] sm:hidden">
+              <span className="flex items-center text-white/80 sm:hidden">
                 {generateTypeIcon(selectedGenerateType)}
               </span>
               <span className="hidden capitalize sm:inline">{selectedGenerateType}</span>
@@ -323,12 +323,12 @@ export default function MasonrySection({ mode = "image", onModeChange }: Masonry
             </button>
 
             {showGenerateMenu && (
-              <div className="absolute right-0 top-[calc(100%+4px)] z-[140] min-w-[110px] overflow-hidden rounded-xl border border-[#E5E4E0] bg-white shadow-[0_10px_30px_rgba(0,0,0,0.22)]">
+              <div className="absolute right-0 top-[calc(100%+4px)] z-[140] min-w-[110px] overflow-hidden rounded-xl border border-white/10 bg-[#0E0E12]/95 backdrop-blur-xl shadow-2xl">
                 <button
                   type="button"
                   onClick={() => handleModeToggle("image")}
                   disabled={isGenerating}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-[#111] transition-colors hover:bg-[#f3f4f6] disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-white/90 transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {generateTypeIcon("image")}
                   Image
@@ -337,7 +337,7 @@ export default function MasonrySection({ mode = "image", onModeChange }: Masonry
                   type="button"
                   onClick={() => handleModeToggle("video")}
                   disabled={isGenerating}
-                  className="flex w-full items-center gap-2 border-t border-[#E5E7EB] px-3 py-2 text-left text-[13px] text-[#111] transition-colors hover:bg-[#f3f4f6] disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex w-full items-center gap-2 border-t border-white/5 px-3 py-2 text-left text-[13px] text-white/90 transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {generateTypeIcon("video")}
                   Video
@@ -394,7 +394,7 @@ export default function MasonrySection({ mode = "image", onModeChange }: Masonry
                 key={item.label}
                 type="button"
                 onClick={() => fillPrompt(item.value)}
-                className="shrink-0 rounded-full border border-[#E5E4E0] bg-white px-3.5 py-1.5 text-[11px] text-[#777] shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-all hover:border-[rgba(59,130,246,0.34)] hover:bg-[rgba(59,130,246,0.09)] hover:text-[#3B82F6] sm:px-4 sm:text-[12px]"
+                className="shrink-0 rounded-full border border-white/10 bg-white/5 px-3.5 py-1.5 text-[11px] text-white/50 shadow-md transition-all hover:border-white/30 hover:bg-white/10 hover:text-white sm:px-4 sm:text-[12px]"
               >
                 + {item.label}
               </button>

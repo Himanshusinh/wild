@@ -159,33 +159,20 @@ const DEFAULT_NAV_ITEMS: NavItemDef[] = [
   },
 ];
 
-const DESKTOP_PRIMARY_ORDER = ['home', 'genart', 'image', 'video', 'studio', 'audio', 'apps'];
+const DESKTOP_PRIMARY_ORDER = ['home', 'image', 'video', 'studio', 'genart', 'audio', 'apps'];
 const DESKTOP_BOTTOM_ORDER = ['pricing', 'history'];
-const MOBILE_ORDER = ['genart', 'image', 'video', 'audio', 'apps'];
+const MOBILE_ORDER = ['home', 'image', 'video', 'studio', 'genart', 'audio', 'apps'];
 
 function getStorageKey(userId: string) {
   return `sidebar_item_order:${userId}`;
 }
 
-function loadOrder(storageKey: string): string[] {
-  try {
-    const raw = localStorage.getItem(storageKey);
-    if (!raw) return DEFAULT_NAV_ITEMS.map((item) => item.id);
-    const parsed: string[] = JSON.parse(raw);
-    const merged = parsed.filter((id) => DEFAULT_NAV_ITEMS.some((item) => item.id === id));
-    DEFAULT_NAV_ITEMS.forEach((item) => {
-      if (!merged.includes(item.id)) merged.push(item.id);
-    });
-    return merged;
-  } catch {
-    return DEFAULT_NAV_ITEMS.map((item) => item.id);
-  }
+function loadOrder(): string[] {
+  return [...DESKTOP_PRIMARY_ORDER, ...DESKTOP_BOTTOM_ORDER];
 }
 
-function saveOrder(storageKey: string, order: string[]) {
-  try {
-    localStorage.setItem(storageKey, JSON.stringify(order));
-  } catch {}
+function saveOrder() {
+  // Persistence disabled
 }
 
 function applyOrder(order: string[]): NavItemDef[] {
@@ -207,10 +194,7 @@ const SidePannelFeatures = () => {
 
   const storageKey = React.useMemo(() => getStorageKey(userData?.uid || userData?.email || userData?.username || 'guest'), [userData?.uid, userData?.email, userData?.username]);
 
-  const [order, setOrder] = React.useState<string[]>(() => {
-    if (typeof window === 'undefined') return DEFAULT_NAV_ITEMS.map((item) => item.id);
-    return DEFAULT_NAV_ITEMS.map((item) => item.id);
-  });
+  const [order, setOrder] = React.useState<string[]>(() => loadOrder());
 
   const orderedItems = React.useMemo(() => applyOrder(order), [order]);
   const desktopPrimaryItems = React.useMemo(() => orderedItems.filter((item) => DESKTOP_PRIMARY_ORDER.includes(item.id)), [orderedItems]);
@@ -223,14 +207,8 @@ const SidePannelFeatures = () => {
   const listRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
-    if (typeof window === 'undefined') return;
-    setOrder(loadOrder(storageKey));
+    setOrder(loadOrder());
   }, [storageKey]);
-
-  React.useEffect(() => {
-    if (typeof window === 'undefined') return;
-    saveOrder(storageKey, order);
-  }, [storageKey, order]);
 
   const handleMouseEnterItem = (id: string | null, e?: React.MouseEvent) => {
     if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
@@ -337,9 +315,6 @@ const SidePannelFeatures = () => {
           href={item.url}
           key={item.id}
           data-navid={item.id}
-          draggable={compact}
-          onDragStart={compact ? (e) => handleDragStart(e, item) : undefined}
-          onDragEnd={compact ? handleDragEnd : undefined}
           onClick={(e) => {
             if (e.button === 0 && !e.ctrlKey && !e.metaKey) {
               e.preventDefault();
@@ -347,32 +322,18 @@ const SidePannelFeatures = () => {
             }
           }}
           onMouseEnter={(e) => {
-            if (isDragging) return;
             handleMouseEnterItem(item.popoutId || null, e);
-          }}
-          style={{
-            opacity: isBeingDragged ? 0.25 : 1,
-            transition: isDragging ? 'none' : 'background-color 0.15s, color 0.15s, opacity 0.15s',
-            cursor: compact ? (isDragging ? 'grabbing' : 'grab') : 'pointer',
           }}
           className={`group relative select-none ${
             compact
               ? 'flex w-full flex-col items-center justify-center gap-[5px] rounded-[18px] px-1.5 py-[10px]'
               : 'flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl py-1.5'
           } ${
-            isBeingDragged
-              ? 'border border-dashed border-white/25 bg-white/[0.04]'
-              : isActive
-                ? 'bg-[#1f2128] text-[#3B82F6] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.05)]'
-                : 'text-[#8b8e98] hover:bg-white/[0.03] hover:text-zinc-200'
+            isActive
+              ? 'bg-[#1f2128] text-[#3B82F6] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.05)]'
+              : 'text-[#8b8e98] hover:bg-white/[0.03] hover:text-zinc-200'
           }`}
         >
-          {compact && (
-            <span className="pointer-events-none absolute -left-0.5 top-1/2 hidden -translate-y-1/2 text-white opacity-0 transition-opacity duration-200 group-hover:opacity-40 lg:flex">
-              <GripVertical size={11} strokeWidth={2.5} />
-            </span>
-          )}
-
           <span className="pointer-events-none flex h-5 w-5 items-center justify-center">
             {item.renderIcon()}
           </span>
@@ -407,8 +368,6 @@ const SidePannelFeatures = () => {
 
         <div
           ref={listRef}
-          onDragOver={handleDragOver}
-          onDrop={handleDrop}
           className="flex flex-1 flex-col gap-[6px] overflow-y-auto px-[6px] no-scrollbar"
         >
           {renderNavItems(desktopPrimaryItems, true)}

@@ -86,122 +86,135 @@ const InputActions: React.FC<InputActionsProps> = ({
           selectedModel === "T2V-01-Director") ||
           (generationMode === "image_to_video" &&
             selectedModel === "I2V-01-Director")) && (
-          <CameraMovementButton
-            selectedCameraMovements={selectedCameraMovements}
-            setSelectedCameraMovements={setSelectedCameraMovements}
-            onAddMovement={onAddMovement}
-          />
-        )}
+            <CameraMovementButton
+              selectedCameraMovements={selectedCameraMovements}
+              setSelectedCameraMovements={setSelectedCameraMovements}
+              onAddMovement={onAddMovement}
+            />
+          )}
 
         {/* References Upload */}
         {(currentModelCapabilities.requiresReferenceImage ||
           isSeedance2ReferenceModel ||
           isHappyHorseReferenceModel) && (
-          <div className="relative">
-            <button
-              className={`p-1 rounded-lg transition-all duration-200 cursor-pointer peer relative flex items-center justify-center ${
-                (generationMode === "image_to_video" &&
+            <div className="relative">
+              <div
+                role="button"
+                tabIndex={0}
+                className={`p-1 rounded-lg transition-all duration-200 cursor-pointer peer relative flex items-center justify-center ${(generationMode === "image_to_video" &&
                   selectedModel === "S2V-01" &&
                   references.length >= 1) ||
-                references.length >= referenceLimit
+                  references.length >= referenceLimit
                   ? "opacity-50 cursor-not-allowed"
                   : "hover:bg-white/10"
-              }`}
-              onClick={() => {
-                setUploadModalType("reference");
-                setIsUploadModalOpen(true);
-              }}
-              disabled={
-                (generationMode === "image_to_video" &&
-                  selectedModel === "S2V-01" &&
-                  references.length >= 1) ||
-                references.length >= referenceLimit
-              }
-            >
-              <FilePlus2
-                size={16}
-                className={`transition-all duration-200 ${
-                  (generationMode === "image_to_video" &&
+                  }`}
+                onClick={() => {
+                  if (
+                    (generationMode === "image_to_video" &&
+                      selectedModel === "S2V-01" &&
+                      references.length >= 1) ||
+                    references.length >= referenceLimit
+                  )
+                    return;
+                  setUploadModalType("reference");
+                  setIsUploadModalOpen(true);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    if (
+                      (generationMode === "image_to_video" &&
+                        selectedModel === "S2V-01" &&
+                        references.length >= 1) ||
+                      references.length >= referenceLimit
+                    )
+                      return;
+                    setUploadModalType("reference");
+                    setIsUploadModalOpen(true);
+                  }
+                }}
+              >
+                <FilePlus2
+                  size={16}
+                  className={`transition-all duration-200 ${(generationMode === "image_to_video" &&
                     selectedModel === "S2V-01" &&
                     references.length >= 1) ||
-                  references.length >= referenceLimit
+                    references.length >= referenceLimit
                     ? "text-gray-400"
                     : "text-green-400"
-                }`}
-              />
-            </button>
-            <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/5 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">
-              {generationMode === "image_to_video" && selectedModel === "S2V-01"
-                ? "Upload character reference (1 max)"
-                : isSeedance2ReferenceModel
-                  ? `Upload references (${referenceLimit} max)`
-                  : "Upload references"}
-            </div>
+                    }`}
+                />
+              </div>
+              <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/5 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">
+                {generationMode === "image_to_video" && selectedModel === "S2V-01"
+                  ? "Upload character reference (1 max)"
+                  : isSeedance2ReferenceModel
+                    ? `Upload references (${referenceLimit} max)`
+                    : "Upload references"}
+              </div>
 
-            {/* References Count Badge */}
-            {references.length > 0 && (
-              <div
-                className={`absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center ${
-                  (generationMode === "image_to_video" &&
+              {/* References Count Badge */}
+              {references.length > 0 && (
+                <div
+                  className={`absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center ${(generationMode === "image_to_video" &&
                     selectedModel === "S2V-01" &&
                     references.length >= 1) ||
-                  references.length >= referenceLimit
+                    references.length >= referenceLimit
                     ? "bg-red-500"
                     : "bg-green-500"
-                }`}
-              >
-                <span className="text-xs text-white font-bold">
-                  {references.length}
-                </span>
-              </div>
-            )}
+                    }`}
+                >
+                  <span className="text-xs text-white font-bold">
+                    {references.length}
+                  </span>
+                </div>
+              )}
 
-            {/* References Preview Popup */}
-            {references.length > 0 && (
-              <div className="absolute bottom-full left-0 mb-2 p-2 bg-black/80 backdrop-blur-xl rounded-xl border border-white/20 shadow-2xl z-50 min-w-[200px]">
-                <div className="text-xs text-white/60 mb-2">
-                  {generationMode === "image_to_video" &&
-                  selectedModel === "S2V-01"
-                    ? `Character Reference (${references.length}/1)`
-                    : `References (${references.length}/${referenceLimit})`}
-                </div>
-                <div className="space-y-2">
-                  {references.map((ref, index) => (
-                    <div key={index} className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-lg overflow-hidden bg-white/10">
-                        <img
-                          src={ref}
-                          alt={`Reference ${index + 1}`}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <span className="text-xs text-white/80 flex-1">
-                        Reference {index + 1}
-                      </span>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          removeReference(index);
-                        }}
-                        className="w-5 h-5 rounded-full bg-red-500/20 hover:bg-red-500/40 flex items-center justify-center transition-colors"
-                      >
-                        <svg
-                          width="12"
-                          height="12"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
+              {/* References Preview Popup */}
+              {references.length > 0 && (
+                <div className="absolute bottom-full left-0 mb-2 p-2 bg-black/80 backdrop-blur-xl rounded-xl border border-white/20 shadow-2xl z-50 min-w-[200px]">
+                  <div className="text-xs text-white/60 mb-2">
+                    {generationMode === "image_to_video" &&
+                      selectedModel === "S2V-01"
+                      ? `Character Reference (${references.length}/1)`
+                      : `References (${references.length}/${referenceLimit})`}
+                  </div>
+                  <div className="space-y-2">
+                    {references.map((ref, index) => (
+                      <div key={index} className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-lg overflow-hidden bg-white/10">
+                          <img
+                            src={ref}
+                            alt={`Reference ${index + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <span className="text-xs text-white/80 flex-1">
+                          Reference {index + 1}
+                        </span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeReference(index);
+                          }}
+                          className="w-5 h-5 rounded-full bg-red-500/20 hover:bg-red-500/40 flex items-center justify-center transition-colors"
                         >
-                          <path d="M18 6L6 18M6 6l12 12" />
-                        </svg>
-                      </button>
-                    </div>
-                  ))}
+                          <svg
+                            width="12"
+                            height="12"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                          >
+                            <path d="M18 6L6 18M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
-        )}
+              )}
+            </div>
+          )}
 
         {/* Image Upload */}
         {hasImageToVideoSupport &&
@@ -209,12 +222,21 @@ const InputActions: React.FC<InputActionsProps> = ({
           selectedModel !== "I2V-01-Director" &&
           selectedModel !== "S2V-01" && (
             <div className="relative">
-              <button
+              <div
+                role="button"
+                tabIndex={0}
                 className="p-1.5 md:p-0 rounded-lg transition-all duration-200 cursor-pointer peer relative flex items-center justify-center hover:bg-white/10"
                 onClick={() => {
                   setUploadModalType("image");
                   setUploadModalTarget("first_frame");
                   setIsUploadModalOpen(true);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    setUploadModalType("image");
+                    setUploadModalTarget("first_frame");
+                    setIsUploadModalOpen(true);
+                  }
                 }}
               >
                 {uploadedImages[0] ? (
@@ -242,11 +264,11 @@ const InputActions: React.FC<InputActionsProps> = ({
                     className="text-white transition-all duration-200"
                   />
                 )}
-              </button>
+              </div>
               <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/5 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">
                 {selectedModel === "seedance-2.0-t2v" ||
-                selectedModel === "seedance-2.0-fast" ||
-                selectedModel === "seedance-2.0-fast-i2v"
+                  selectedModel === "seedance-2.0-fast" ||
+                  selectedModel === "seedance-2.0-fast-i2v"
                   ? "Image"
                   : "First Frame"}
               </div>
@@ -259,12 +281,21 @@ const InputActions: React.FC<InputActionsProps> = ({
           (currentModelCapabilities.requiresFirstFrame ||
             currentModelCapabilities.supportsImageToVideo) && (
             <div className="relative">
-              <button
+              <div
+                role="button"
+                tabIndex={0}
                 className="p-1.5 md:p-0 rounded-lg transition-all duration-200 cursor-pointer peer relative flex items-center justify-center hover:bg-white/10"
                 onClick={() => {
                   setUploadModalType("image");
                   setUploadModalTarget("first_frame");
                   setIsUploadModalOpen(true);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    setUploadModalType("image");
+                    setUploadModalTarget("first_frame");
+                    setIsUploadModalOpen(true);
+                  }
                 }}
               >
                 {uploadedImages[0] ? (
@@ -292,7 +323,7 @@ const InputActions: React.FC<InputActionsProps> = ({
                     className="text-white transition-all duration-200"
                   />
                 )}
-              </button>
+              </div>
               <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/5 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">
                 First Frame
               </div>
@@ -305,11 +336,10 @@ const InputActions: React.FC<InputActionsProps> = ({
             <button
               type="button"
               aria-label="Swap first and last frame"
-              className={`p-1 rounded-lg transition-all duration-200 peer relative flex items-center justify-center ${
-                canSwapFrames
-                  ? "cursor-pointer hover:bg-white/10"
-                  : "cursor-not-allowed opacity-50"
-              }`}
+              className={`p-1 rounded-lg transition-all duration-200 peer relative flex items-center justify-center ${canSwapFrames
+                ? "cursor-pointer hover:bg-white/10"
+                : "cursor-not-allowed opacity-50"
+                }`}
               onClick={() => {
                 if (canSwapFrames) onSwapFrames?.();
               }}
@@ -334,12 +364,21 @@ const InputActions: React.FC<InputActionsProps> = ({
         {/* Last Frame Upload */}
         {supportsLastFrameUpload && (
           <div className="relative">
-            <button
+            <div
+              role="button"
+              tabIndex={0}
               className="p-1.5 md:p-0 rounded-lg transition-all duration-200 cursor-pointer peer relative flex items-center justify-center hover:bg-white/10"
               onClick={() => {
                 setUploadModalType("image");
                 setUploadModalTarget("last_frame");
                 setIsUploadModalOpen(true);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  setUploadModalType("image");
+                  setUploadModalTarget("last_frame");
+                  setIsUploadModalOpen(true);
+                }
               }}
             >
               {lastFrameImage ? (
@@ -367,7 +406,7 @@ const InputActions: React.FC<InputActionsProps> = ({
                   className="text-white transition-all duration-200"
                 />
               )}
-            </button>
+            </div>
             <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/5 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">
               Last Frame (optional)
             </div>
@@ -380,27 +419,27 @@ const InputActions: React.FC<InputActionsProps> = ({
           selectedModel.startsWith("ltx-2.3-pro") ||
           isSeedance2ReferenceModel ||
           isHappyHorseReferenceModel) && (
-          <div className="relative">
-            <button
-              className="p-1.5  md:pl-1 rounded-lg transition-all duration-200 cursor-pointer peer relative flex items-center justify-center hover:bg-white/10"
-              onClick={() => {
-                setUploadModalType("video");
-                setIsUploadModalOpen(true);
-              }}
-            >
-              <FilePlay
-                size={16}
-                className="text-white transition-all duration-200"
-              />
-            </button>
-            <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/5 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">
-              {selectedModel === "wan-2.2-animate-replace" &&
-              activeFeature === "Animate"
-                ? "Upload video (mandatory)"
-                : "Upload video"}
+            <div className="relative">
+              <button
+                className="p-1.5  md:pl-1 rounded-lg transition-all duration-200 cursor-pointer peer relative flex items-center justify-center hover:bg-white/10"
+                onClick={() => {
+                  setUploadModalType("video");
+                  setIsUploadModalOpen(true);
+                }}
+              >
+                <FilePlay
+                  size={16}
+                  className="text-white transition-all duration-200"
+                />
+              </button>
+              <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-8 mt-2 opacity-0 peer-hover:opacity-100 transition-opacity bg-white/5 backdrop-blur-3xl shadow-3xl text-white/100 text-[10px] px-2 py-1 rounded-md whitespace-nowrap z-70">
+                {selectedModel === "wan-2.2-animate-replace" &&
+                  activeFeature === "Animate"
+                  ? "Upload video (mandatory)"
+                  : "Upload video"}
+              </div>
             </div>
-          </div>
-        )}
+          )}
       </div>
     </>
   );

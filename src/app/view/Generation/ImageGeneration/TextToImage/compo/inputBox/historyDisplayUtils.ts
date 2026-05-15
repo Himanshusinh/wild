@@ -29,6 +29,15 @@ export const toGridAspectRatioCss = (frameSize?: string): string => {
 /** Resolved URL for a history image tile (must stay in sync with grid render). */
 export const getHistoryImageDisplaySrc = (image: any): string => {
   if (!image) return "";
+
+  // Handle case where image is a string (legacy or edge cases)
+  if (typeof image === "string") {
+    if (image.length > 0 && (image.startsWith("http") || image.startsWith("blob:") || image.startsWith("data:"))) {
+      return image;
+    }
+    return "";
+  }
+
   const pick = [
     image.thumbnailUrl,
     image.avifUrl,
@@ -36,9 +45,16 @@ export const getHistoryImageDisplaySrc = (image: any): string => {
     image.url,
     image.originalUrl,
     image.firebaseUrl,
+    image.relightedUrl,
+    image.relightedImageUrl,
+    image.resultUrl,
+    image.outputUrl,
+    image.result,
+    image.output,
   ]
     .map((x) => String(x || "").trim())
-    .find((x) => x.length > 0);
+    .find((x) => x.length > 0 && (x.startsWith("http") || x.startsWith("blob:") || x.startsWith("data:")));
+
   if (pick) {
     // Prefer small thumbnails in grids to avoid Chrome OOM crashes on pages
     // with many high-resolution images.
