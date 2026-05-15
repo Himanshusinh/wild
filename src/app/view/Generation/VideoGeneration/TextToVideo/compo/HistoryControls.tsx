@@ -42,19 +42,22 @@ export default function HistoryControls({
   const currentFilters = useAppSelector(
     (state: any) => state.history?.filters || {},
   );
+  const totalCount = useAppSelector(
+    (state: any) => state.history?.totalCount || 0,
+  );
 
   // Initialize from Redux state if available
   const initialSortOrder = currentFilters.sortOrder || "desc";
   const initialSearch = currentFilters.search || "";
   const initialDateRange = currentFilters.dateRange
     ? {
-        start: currentFilters.dateRange.start
-          ? new Date(currentFilters.dateRange.start)
-          : null,
-        end: currentFilters.dateRange.end
-          ? new Date(currentFilters.dateRange.end)
-          : null,
-      }
+      start: currentFilters.dateRange.start
+        ? new Date(currentFilters.dateRange.start)
+        : null,
+      end: currentFilters.dateRange.end
+        ? new Date(currentFilters.dateRange.end)
+        : null,
+    }
     : { start: null, end: null };
 
   // Search state
@@ -233,11 +236,11 @@ export default function HistoryControls({
           ...(s ? { search: s } : {}),
           ...(dateRange.start && dateRange.end
             ? {
-                dateRange: {
-                  start: dateRange.start.toISOString(),
-                  end: dateRange.end.toISOString(),
-                },
-              }
+              dateRange: {
+                start: dateRange.start.toISOString(),
+                end: dateRange.end.toISOString(),
+              },
+            }
             : {}),
         } as any),
       );
@@ -258,11 +261,11 @@ export default function HistoryControls({
             ...(s ? { search: s } : {}),
             ...(dateRange.start && dateRange.end
               ? {
-                  dateRange: {
-                    start: dateRange.start.toISOString(),
-                    end: dateRange.end.toISOString(),
-                  },
-                }
+                dateRange: {
+                  start: dateRange.start.toISOString(),
+                  end: dateRange.end.toISOString(),
+                },
+              }
               : {}),
           } as any,
           backendFilters: {
@@ -272,11 +275,11 @@ export default function HistoryControls({
             ...(s ? { search: s } : {}),
             ...(dateRange.start && dateRange.end
               ? {
-                  dateRange: {
-                    start: dateRange.start.toISOString(),
-                    end: dateRange.end.toISOString(),
-                  },
-                }
+                dateRange: {
+                  start: dateRange.start.toISOString(),
+                  end: dateRange.end.toISOString(),
+                },
+              }
               : {}),
           } as any,
           paginationParams: { limit: paginationLimit },
@@ -363,11 +366,11 @@ export default function HistoryControls({
             ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}),
             ...(dateRange.start && dateRange.end
               ? {
-                  dateRange: {
-                    start: dateRange.start.toISOString(),
-                    end: dateRange.end.toISOString(),
-                  },
-                }
+                dateRange: {
+                  start: dateRange.start.toISOString(),
+                  end: dateRange.end.toISOString(),
+                },
+              }
               : {}),
           } as any),
         );
@@ -380,11 +383,11 @@ export default function HistoryControls({
               ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}),
               ...(dateRange.start && dateRange.end
                 ? {
-                    dateRange: {
-                      start: dateRange.start.toISOString(),
-                      end: dateRange.end.toISOString(),
-                    },
-                  }
+                  dateRange: {
+                    start: dateRange.start.toISOString(),
+                    end: dateRange.end.toISOString(),
+                  },
+                }
                 : {}),
             } as any,
             backendFilters: {
@@ -394,11 +397,11 @@ export default function HistoryControls({
               ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}),
               ...(dateRange.start && dateRange.end
                 ? {
-                    dateRange: {
-                      start: dateRange.start.toISOString(),
-                      end: dateRange.end.toISOString(),
-                    },
-                  }
+                  dateRange: {
+                    start: dateRange.start.toISOString(),
+                    end: dateRange.end.toISOString(),
+                  },
+                }
                 : {}),
             } as any,
             paginationParams: { limit: paginationLimit },
@@ -463,11 +466,11 @@ export default function HistoryControls({
           ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}),
           ...(next.start && next.end
             ? {
-                dateRange: {
-                  start: next.start.toISOString(),
-                  end: next.end.toISOString(),
-                },
-              }
+              dateRange: {
+                start: next.start.toISOString(),
+                end: next.end.toISOString(),
+              },
+            }
             : {}),
         } as any),
       );
@@ -480,11 +483,11 @@ export default function HistoryControls({
             ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}),
             ...(next.start && next.end
               ? {
-                  dateRange: {
-                    start: next.start.toISOString(),
-                    end: next.end.toISOString(),
-                  },
-                }
+                dateRange: {
+                  start: next.start.toISOString(),
+                  end: next.end.toISOString(),
+                },
+              }
               : {}),
           } as any,
           backendFilters: {
@@ -494,11 +497,11 @@ export default function HistoryControls({
             ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}),
             ...(next.start && next.end
               ? {
-                  dateRange: {
-                    start: next.start.toISOString(),
-                    end: next.end.toISOString(),
-                  },
-                }
+                dateRange: {
+                  start: next.start.toISOString(),
+                  end: next.end.toISOString(),
+                },
+              }
               : {}),
           } as any,
           paginationParams: { limit: paginationLimit },
@@ -695,7 +698,7 @@ export default function HistoryControls({
                       const isSelected =
                         !!dateRange.start &&
                         new Date(dateRange.start).toDateString() ===
-                          thisDate.toDateString();
+                        thisDate.toDateString();
                       const isFuture =
                         thisDate.getTime() >
                         new Date().setHours(23, 59, 59, 999);
@@ -810,14 +813,22 @@ export default function HistoryControls({
         </div>
       </div>
 
-      <div className="hidden md:flex items-center gap-2">
+      <div className="hidden md:flex items-center gap-4">
+        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/10">
+          <span className="text-[12px] font-semibold text-white/90">
+            {totalCount.toLocaleString()}
+          </span>
+          <span className="text-[10px] text-white/40 uppercase tracking-wider font-bold">
+            Total {mode === 'image' ? 'Images' : (mode === 'video' ? 'Videos' : 'Items')}
+          </span>
+        </div>
         <div className="relative flex items-center">
           <input
             type="text"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             placeholder="Search..."
-            className={`pl-8 pr-2 h-[28px] rounded-lg text-[12px] focus:outline-none focus:ring-2 focus:ring-blue-500/40 border border-white/10 bg-white/5 text-white placeholder-white/40 w-64 transition-all ${searchInput ? "pr-8" : ""}`}
+            className="pl-8 pr-2 h-[28px] rounded-lg text-[12px] focus:outline-none focus:ring-2 focus:ring-blue-500/40 border border-white/10 bg-white/5 text-white placeholder-white/40 w-64 transition-all"
           />
           <div className="pointer-events-none absolute left-2.5 text-white/40">
             <svg
@@ -1021,7 +1032,7 @@ export default function HistoryControls({
                       const isSelected =
                         !!dateRange.start &&
                         new Date(dateRange.start).toDateString() ===
-                          thisDate.toDateString();
+                        thisDate.toDateString();
                       const isFuture =
                         thisDate.getTime() >
                         new Date().setHours(23, 59, 59, 999);
@@ -1178,7 +1189,7 @@ export default function HistoryControls({
               )}
           </div>
         )}
-        </div>
       </div>
+    </div>
   );
 }

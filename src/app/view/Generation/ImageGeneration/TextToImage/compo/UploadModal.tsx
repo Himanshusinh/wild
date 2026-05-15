@@ -43,7 +43,7 @@ const UploadModal: React.FC<UploadModalProps> = ({
   maxFileSizeBytes,
 }) => {
   const [mounted, setMounted] = React.useState(false);
-  const [tab, setTab] = React.useState<'library' | 'computer' | 'uploads'>('uploads');
+  const [tab, setTab] = React.useState<'library' | 'computer' | 'uploads'>(initialTab || 'uploads');
 
   // State for library and uploads data
   const [libraryItems, setLibraryItems] = React.useState<LibraryItem[]>([]);
@@ -113,7 +113,7 @@ const UploadModal: React.FC<UploadModalProps> = ({
     }
   }, [isOpen, tab]);
   const [selection, setSelection] = React.useState<Set<string>>(new Set());
-  const [localUploads, setLocalUploads] = React.useState<string[]>([]);
+  const [localUploads, setLocalUploads] = React.useState<{ url: string, loading: boolean, error?: string }[]>([]);
   const [isSavingLocalUploads, setIsSavingLocalUploads] = React.useState(false);
   const [isDragging, setIsDragging] = React.useState(false);
   const [cameraActive, setCameraActive] = React.useState(false);
@@ -170,8 +170,8 @@ const UploadModal: React.FC<UploadModalProps> = ({
     console.log('[UploadModal] sizeOkFiles count:', sizeOkFiles.length);
     if (!sizeOkFiles.length) return;
 
-    // In "Your Uploads", persist immediately so refresh keeps items (DB + Zata).
-    if (tab === 'uploads' && persistLocalDeviceUploads) {
+    // If persistence is enabled, persist immediately so refresh keeps items (DB + Zata).
+    if (persistLocalDeviceUploads) {
       console.log('[UploadModal] Starting persistent upload flow');
       setIsSavingLocalUploads(true);
 
@@ -183,18 +183,18 @@ const UploadModal: React.FC<UploadModalProps> = ({
         // Create a local preview URL immediately
         const localUrl = URL.createObjectURL(file);
 
-        // 1. Optimistically insert into "Your Uploads" grid immediately with loading=true
-        setUploadItems((prev) => [
-          {
-            id: tempId,
-            historyId: '',
-            url: localUrl,
-            type: type,
-            createdAt: new Date().toISOString(),
-            loading: true,
-          } as any,
-          ...prev,
-        ]);
+        // 1. Optimistically insert into both arrays immediately with loading=true
+        const newItem = {
+          id: tempId,
+          historyId: '',
+          url: localUrl,
+          type: type,
+          createdAt: new Date().toISOString(),
+          loading: true,
+        } as any;
+
+        setUploadItems((prev) => [newItem, ...prev]);
+        setLocalUploads((prev) => [...prev, { url: localUrl, loading: true }]);
 
         // 2. Start upload in background
         (async () => {
@@ -203,7 +203,7 @@ const UploadModal: React.FC<UploadModalProps> = ({
             if (resp.responseStatus === 'success' && resp.data?.url) {
               const persistedUrl = String(resp.data.url || '').trim();
 
-              // Update placeholder with real data
+              // Update placeholders with real data
               setUploadItems((prev) =>
                 prev.map((item: any) =>
                   item.id === tempId
@@ -220,6 +220,14 @@ const UploadModal: React.FC<UploadModalProps> = ({
                 )
               );
 
+              setLocalUploads((prev) =>
+                prev.map((item) =>
+                  item.url === localUrl
+                    ? { ...item, url: persistedUrl, loading: false }
+                    : item
+                )
+              );
+
               // Auto-select the persisted URL
               setSelection((prev) => new Set(prev).add(persistedUrl));
 
@@ -232,8 +240,9 @@ const UploadModal: React.FC<UploadModalProps> = ({
             console.error('[UploadModal] Immediate upload failed:', error);
             toast.error(`Failed to upload ${file.name}: ${error?.message || 'Please try again.'}`);
 
-            // Remove the placeholder on failure
+            // Remove placeholders on failure
             setUploadItems((prev) => prev.filter((item: any) => item.id !== tempId));
+            setLocalUploads((prev) => prev.filter((item) => item.url !== localUrl));
             URL.revokeObjectURL(localUrl);
           } finally {
             // Check if any other items are still loading
@@ -246,12 +255,11 @@ const UploadModal: React.FC<UploadModalProps> = ({
         })();
       }
     } else {
-      // Just add to local previews if persistence is disabled or on library tab
-      const localUrls: string[] = [];
+      // Just add to local previews if persistence is disabled
       for (const file of sizeOkFiles) {
-        localUrls.push(URL.createObjectURL(file));
+        const localUrl = URL.createObjectURL(file);
+        setLocalUploads(prev => [...prev, { url: localUrl, loading: false }]);
       }
-      setLocalUploads((prev) => [...prev, ...localUrls].slice(0, remainingSlots));
     }
   }, [isSupportedImageFile, localUploads.length, persistLocalDeviceUploads, remainingSlots, tab, saveUpload]);
 
@@ -750,24 +758,21 @@ const UploadModal: React.FC<UploadModalProps> = ({
   if (!isOpen) return null;
 
   const handleAdd = async () => {
-    if (tab === 'library') {
-      const chosen = Array.from(selection).slice(0, remainingSlots);
+    if (tab === 'computer') {
+      const chosen = localUploads.filter(u => !u.loading).map(u => u.url).slice(0, remainingSlots);
       if (chosen.length) onAdd(chosen);
-      setSelection(new Set());
+      setLocalUploads([]);
       onClose();
       return;
     }
 
-    if (tab === 'uploads') {
-      const chosen = Array.from(selection).slice(0, remainingSlots);
-      if (chosen.length) {
-        onAdd(chosen);
-      }
-      setLocalUploads([]);
-      setSelection(new Set());
-      onClose();
-      return;
+    const chosen = Array.from(selection).slice(0, remainingSlots);
+    if (chosen.length) {
+      onAdd(chosen);
     }
+    setLocalUploads([]);
+    setSelection(new Set());
+    onClose();
   };
 
   const modal = (
@@ -1125,10 +1130,10 @@ const UploadModal: React.FC<UploadModalProps> = ({
                       <div className="mt-2 text-sm">Drop images here or click to browse</div>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3  w-full place-content-start">
-                      {localUploads.map((url, idx) => (
-                        <div key={`local-upload-${idx}-${url.substring(0, 20)}`} className="group relative aspect-square rounded-lg overflow-hidden ring-1 ring-white/20">
-                          {url.startsWith('data:application/pdf') ? (
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 w-full place-content-start">
+                      {localUploads.map((item, idx) => (
+                        <div key={`local-upload-${idx}-${item.url.substring(0, 20)}`} className="group relative aspect-square rounded-lg overflow-hidden ring-1 ring-white/20">
+                          {item.url.startsWith('data:application/pdf') ? (
                             <div className="w-full h-full flex flex-col items-center justify-center bg-red-900/20 text-red-200">
                               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-8 h-8 mb-1">
                                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -1138,25 +1143,32 @@ const UploadModal: React.FC<UploadModalProps> = ({
                               <span className="text-[10px] font-medium">PDF Document</span>
                             </div>
                           ) : (
-                            <img src={url} alt={`upload-${idx}`} className="w-full h-full object-cover" />
+                            <img src={item.url} alt={`upload-${idx}`} className="w-full h-full object-cover" />
                           )}
-                          <button
-                            aria-label="Remove"
-                            title="Remove"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setLocalUploads(prev => prev.filter((u, i) => !(u === url && i === idx)));
-                            }}
-                            className="absolute top-1.5 right-1.5 w-7 h-7 rounded-lg bg-black/60 hover:bg-black/80 text-white/90 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-4 h-4">
-                              <path d="M3 6h18" />
-                              <path d="M8 6v-2a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                              <path d="M10 11v6" />
-                              <path d="M14 11v6" />
-                            </svg>
-                          </button>
+
+                          {item.loading ? (
+                            <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-10">
+                              <div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                            </div>
+                          ) : (
+                            <button
+                              aria-label="Remove"
+                              title="Remove"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setLocalUploads(prev => prev.filter((u, i) => !(u.url === item.url && i === idx)));
+                              }}
+                              className="absolute top-1.5 right-1.5 w-7 h-7 rounded-lg bg-black/60 hover:bg-black/80 text-white/90 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-4 h-4">
+                                <path d="M3 6h18" />
+                                <path d="M8 6v-2a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                                <path d="M10 11v6" />
+                                <path d="M14 11v6" />
+                              </svg>
+                            </button>
+                          )}
                         </div>
                       ))}
                     </div>

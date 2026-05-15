@@ -200,10 +200,9 @@ export function useInputBoxHistory(userData: unknown) {
         loadHistory({
           filters,
           backendFilters: { ...filters },
-          // Keep initial payload small to avoid UI freezes / Chrome OOM on large accounts.
-          paginationParams: { limit: 20 },
+          // Increase initial payload to 100 to ensure a rich history view on first load.
+          paginationParams: { limit: 100 },
           requestOrigin: "page",
-          expectedType: "text-to-image",
           skipBackendGenerationFilter: true,
           forceRefresh: true,
         }),
@@ -233,13 +232,13 @@ export function useInputBoxHistory(userData: unknown) {
   const reduxSearchQuery = (currentFilters as any)?.search || "";
   const reduxDateRange = (currentFilters as any)?.dateRange
     ? {
-        start: (currentFilters as any).dateRange.start
-          ? new Date((currentFilters as any).dateRange.start)
-          : null,
-        end: (currentFilters as any).dateRange.end
-          ? new Date((currentFilters as any).dateRange.end)
-          : null,
-      }
+      start: (currentFilters as any).dateRange.start
+        ? new Date((currentFilters as any).dateRange.start)
+        : null,
+      end: (currentFilters as any).dateRange.end
+        ? new Date((currentFilters as any).dateRange.end)
+        : null,
+    }
     : { start: null, end: null };
   const reduxDateStartMs = reduxDateRange.start
     ? reduxDateRange.start.getTime()
@@ -342,11 +341,13 @@ export function useInputBoxHistory(userData: unknown) {
     const filtered = allEntries.filter((entry: any) => {
       const normalizedType = normalize(entry.generationType);
       const normalizedModel = normalize(entry.model);
-      const isUploadFileEntry = normalizedModel === "upload-file";
+      const isUploadFileEntry = normalizedModel === "upload-file" || normalizedModel === "canvas-upload" || normalizedModel === "wild-upload";
       const isSeedream = normalizedModel.includes("seedream");
       const isTextToImage = normalizedType === "text-to-image";
       const isImageToImage = normalizedType === "image-to-image";
 
+      // Per user request: exclude manual uploads from the history grid in Image Generation.
+      // They want to see generated images, not library uploads.
       if (isUploadFileEntry) {
         return false;
       }
@@ -380,33 +381,8 @@ export function useInputBoxHistory(userData: unknown) {
         return false;
       }
 
-      // Seedream shortcut only when we are NOT restricting by an explicit model allowlist
-      // (e.g. Upscale tool sends many `model[]` values). Otherwise Seedream would bypass the
-      // allowlist and show unrelated image generations.
-      if (currentModelFilterSet.size === 0) {
-        if (isSeedream && isTextToImage) {
-          return true;
-        }
-        if (isSeedream && !isTextToImage) {
-          return false;
-        }
-      } else if (isSeedream && !isTextToImage) {
-        return false;
-      }
-
-      const isVectorize =
-        normalizedType === "vectorize" ||
-        normalizedType === "image-vectorize" ||
-        normalizedType.includes("vector");
-
-      const basePass =
-        normalizedType === "text-to-image" ||
-        isImageToImage ||
-        normalizedType === "image-upscale" ||
-        normalizedType === "image-to-svg" ||
-        normalizedType === "image-edit" ||
-        isVectorize;
-
+      const hasImages = Array.isArray(entry.images) && entry.images.length > 0;
+      const basePass = hasImages;
       if (!basePass) return false;
 
       // Model filter (preferred for Upscale tool): if a model filter is active, enforce it.
@@ -583,7 +559,7 @@ export function useInputBoxHistory(userData: unknown) {
   } = useHistoryLoader({
     generationType: "text-to-image",
     generationTypes: fallbackGenerationTypes,
-    initialLimit: 60,
+    initialLimit: 100,
     mode: "image",
     skipBackendGenerationFilter: true,
     sortOrder,

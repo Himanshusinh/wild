@@ -215,7 +215,7 @@ const InputBox = () => {
 
       // Clean up the query param so refresh doesn't keep opening tabs.
       router.replace("/text-to-image");
-    } catch {}
+    } catch { }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userData]);
 
@@ -332,6 +332,9 @@ const InputBox = () => {
   const existingEntries = useAppSelector(
     (state: any) => state.history?.entries || [],
   );
+  const totalCount = useAppSelector(
+    (state: any) => state.history?.totalCount || 0,
+  );
 
   // Note: localGeneratingEntries was originally single-entry; with parallel generation enabled
   // the queue rendering relies on Redux `activeGenerations` instead for per-job placeholders.
@@ -421,7 +424,7 @@ const InputBox = () => {
             el.style.height =
               Math.min(el.scrollHeight, PROMPT_EDITOR_MAX_HEIGHT_PX) + "px";
           }
-        } catch {}
+        } catch { }
       }
 
       const mapIncomingModel = (m: string): string => {
@@ -449,7 +452,7 @@ const InputBox = () => {
             type: "generation/setFrameSize",
             payload: frameToApply,
           });
-        } catch {}
+        } catch { }
       }
 
       const styleToApply = sty || studioDraft?.style;
@@ -459,7 +462,7 @@ const InputBox = () => {
             type: "generation/setStyle",
             payload: styleToApply,
           });
-        } catch {}
+        } catch { }
       }
 
       if (studioDraft?.imageCount) {
@@ -468,7 +471,7 @@ const InputBox = () => {
             type: "generation/setImageCount",
             payload: studioDraft.imageCount,
           });
-        } catch {}
+        } catch { }
       }
 
       if (studioDraft) {
@@ -506,7 +509,7 @@ const InputBox = () => {
             : "");
         router.replace(next, { scroll: false });
       }
-    } catch {}
+    } catch { }
   }, [dispatch, searchParams, pathname, router]);
 
   // Track the first history request lifecycle so empty accounts can show the guide
@@ -561,7 +564,7 @@ const InputBox = () => {
   useEffect(() => {
     try {
       (dispatch as any)(setCurrentGenerationType("text-to-image" as any));
-    } catch {}
+    } catch { }
   }, [dispatch]);
 
   // Helper function to get clean prompt without style
@@ -649,7 +652,7 @@ const InputBox = () => {
             const direct = toDirectUrl(rawUrl);
             if (direct) directUrls.push(direct);
           }
-        } catch {}
+        } catch { }
       });
 
       // Use userPrompt for remix if available, otherwise use cleanPrompt
@@ -766,7 +769,7 @@ const InputBox = () => {
     } catch {
       try {
         (await import("react-hot-toast")).default.error("Failed to copy");
-      } catch {}
+      } catch { }
     }
   };
 
@@ -814,7 +817,7 @@ const InputBox = () => {
         // Full deletion
         try {
           dispatch(removeHistoryEntry(entry.id));
-        } catch {}
+        } catch { }
         toast.success("Generation deleted");
       }
 
@@ -2768,7 +2771,7 @@ const InputBox = () => {
               : undefined,
     quality:
       selectedModel === "openai/gpt-image-1.5" ||
-      selectedModel === "openai/gpt-image-2"
+        selectedModel === "openai/gpt-image-2"
         ? gptImage15Quality
         : undefined,
   });
@@ -2830,9 +2833,9 @@ const InputBox = () => {
           (currentFilters as any)?.dateRange ||
           (dateRange.start && dateRange.end
             ? {
-                start: dateRange.start.toISOString(),
-                end: dateRange.end.toISOString(),
-              }
+              start: dateRange.start.toISOString(),
+              end: dateRange.end.toISOString(),
+            }
             : null);
 
         const cf = currentFilters as any;
@@ -2870,17 +2873,17 @@ const InputBox = () => {
           ...(currentSearch ? { search: currentSearch } : {}),
           ...(currentDateRange?.start && currentDateRange?.end
             ? {
-                dateRange: {
-                  start:
-                    typeof currentDateRange.start === "string"
-                      ? currentDateRange.start
-                      : new Date(currentDateRange.start).toISOString(),
-                  end:
-                    typeof currentDateRange.end === "string"
-                      ? currentDateRange.end
-                      : new Date(currentDateRange.end).toISOString(),
-                },
-              }
+              dateRange: {
+                start:
+                  typeof currentDateRange.start === "string"
+                    ? currentDateRange.start
+                    : new Date(currentDateRange.start).toISOString(),
+                end:
+                  typeof currentDateRange.end === "string"
+                    ? currentDateRange.end
+                    : new Date(currentDateRange.end).toISOString(),
+              },
+            }
             : {}),
         };
 
@@ -3377,6 +3380,7 @@ const InputBox = () => {
             setCalendarMonth={setCalendarMonth}
             calendarFirstWeekday={calendarFirstWeekday}
             calendarDaysInMonth={calendarDaysInMonth}
+            totalCount={totalCount}
           />
 
           {/* Mobile: Search, Sort, and Date controls */}
@@ -3584,7 +3588,7 @@ const InputBox = () => {
         uploadRemainingSlots={Math.max(
           0,
           getInputImageLimitForModel(selectedModel) -
-            (uploadedImages?.length || 0),
+          (uploadedImages?.length || 0),
         )}
         onUploadAdd={(urls: string[]) => {
           try {
@@ -3600,19 +3604,19 @@ const InputBox = () => {
                 next.slice(0, getInputImageLimitForModel(selectedModel)),
               ),
             );
-          } catch {}
+          } catch { }
         }}
         isCharacterModalOpen={isCharacterModalOpen}
         onCloseCharacter={() => setIsCharacterModalOpen(false)}
         onCharacterAdd={(character) => {
           try {
             dispatch(addSelectedCharacter(character));
-          } catch {}
+          } catch { }
         }}
         onCharacterRemove={(characterId: string) => {
           try {
             dispatch(removeSelectedCharacter(characterId));
-          } catch {}
+          } catch { }
         }}
         selectedCharacters={selectedCharacters}
         isGuideModalOpen={isGuideModalOpen}

@@ -94,10 +94,10 @@ export function InputBoxHistoryScrollBody(props: InputBoxHistoryScrollBodyProps)
   // This page is more CPU/memory sensitive than the global history pages, so keep it tighter.
   // IMPORTANT: This limit must grow as we paginate, otherwise "load more" succeeds
   // but the user never sees additional tiles.
-  const PAGE_RENDERED_GALLERY_CELLS = 48;
+  const PAGE_RENDERED_GALLERY_CELLS = 60;
   const MAX_RENDERED_GALLERY_CELLS = Math.min(
     PAGE_RENDERED_GALLERY_CELLS * Math.max(1, Number(page) || 1),
-    288, // hard ceiling to stay memory-safe
+    1000, // hard ceiling to stay memory-safe
   );
   const MAX_TRACKED_LOADED_IMAGES = 320;
 

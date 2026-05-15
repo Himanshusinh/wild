@@ -181,7 +181,8 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose,
 
     const pushIfValid = (entry?: HistoryEntry | null) => {
       if (!entry || !entry.id) return;
-      if (isUploadFileHistoryEntry(entry)) return;
+      // We now allow 'upload-file' entries in navigation
+      // if (isUploadFileHistoryEntry(entry)) return;
       const imgs = (entry as any)?.images;
       if (!Array.isArray(imgs) || imgs.length === 0) return;
       if (seen.has(entry.id)) return;
@@ -193,7 +194,7 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({ preview, onClose,
     sourceEntries.forEach((entry: HistoryEntry) => pushIfValid(entry));
 
     const active = currentEntry || preview?.entry || null;
-    if (active && active.id && !isUploadFileHistoryEntry(active)) {
+    if (active && active.id) {
       const activeImgs = (active as any)?.images;
       if (Array.isArray(activeImgs) && activeImgs.length > 0) {
         if (!seen.has(active.id)) {

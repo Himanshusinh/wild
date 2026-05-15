@@ -47,18 +47,6 @@ const cards: CardConfig[] = [
     cta: "Try Now ->",
   },
   {
-    title: "Edit\nImage",
-    subtitle: "Inpaint - Outpaint - Replace",
-    href: "/text-to-image/edit-image",
-    badge: "EDIT",
-    icon: <Crop size={20} />,
-    iconClassName: "bg-[linear-gradient(135deg,#4c1d95,#7c3aed)] shadow-[0_8px_24px_rgba(124,58,237,0.45)]",
-    glowClassName: "bg-[radial-gradient(circle_at_top_left,rgba(124,58,237,0.2),transparent_68%)]",
-    hoverClassName: "hover:border-[#7c3aed]/55 hover:shadow-[0_14px_34px_rgba(124,58,237,0.14)]",
-    footerClassName: "bg-[rgba(124,58,237,0.06)] text-[#7c3aed]",
-    cta: "Try Now ->",
-  },
-  {
     title: "Upscale",
     subtitle: "Up to 4x HD resolution",
     href: "/text-to-image/edit-image?tool=expand&feature=upscale",

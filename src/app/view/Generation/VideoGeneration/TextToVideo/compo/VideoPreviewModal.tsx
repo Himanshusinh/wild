@@ -42,7 +42,8 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose,
     
     const pushIfValid = (ent?: HistoryEntry | null) => {
       if (!ent || !ent.id) return;
-      if ((ent as any).model === "upload-file") return;
+      // We now allow 'upload-file' entries in navigation
+      // if ((ent as any).model === "upload-file") return;
       const vids = (ent as any)?.videos;
       if (!Array.isArray(vids) || vids.length === 0) return;
       if (seen.has(ent.id)) return;
@@ -54,7 +55,7 @@ const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({ preview, onClose,
     sourceEntries.forEach((ent: HistoryEntry) => pushIfValid(ent));
     
     const active = currentEntry || preview?.entry || null;
-    if (active && active.id && (active as any).model !== "upload-file") {
+    if (active && active.id) {
       const activeVids = (active as any)?.videos;
       if (Array.isArray(activeVids) && activeVids.length > 0) {
         if (!seen.has(active.id)) {

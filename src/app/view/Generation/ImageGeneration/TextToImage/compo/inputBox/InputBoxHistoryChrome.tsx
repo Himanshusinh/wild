@@ -51,6 +51,7 @@ export type InputBoxHistoryChromeProps = {
   setCalendarMonth: (m: number) => void;
   calendarFirstWeekday: number;
   calendarDaysInMonth: number;
+  totalCount?: number;
 };
 
 export function InputBoxHistoryChrome({
@@ -85,6 +86,7 @@ export function InputBoxHistoryChrome({
   setCalendarMonth,
   calendarFirstWeekday,
   calendarDaysInMonth,
+  totalCount = 0,
 }: InputBoxHistoryChromeProps) {
   const [isFilterOpen, setIsFilterOpen] = React.useState(false);
   const filterTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
@@ -239,7 +241,7 @@ export function InputBoxHistoryChrome({
         {/* Desktop: Search, Sort, and Date controls - positioned at right end of Image Generation text */}
         {hasUserData && !pathname?.startsWith("/text-to-image/edit-image") && (
           <div className="hidden md:flex items-center pr-4">
-            <HistoryControls mode="image" className="mb-0 pt-0" />
+            <HistoryControls mode="image" className="mb-0 pt-0" totalCount={totalCount} />
           </div>
         )}
       </div>
@@ -262,8 +264,13 @@ export function InputBoxHistoryChrome({
                   }
                 }}
                 placeholder="Search prompt..."
-                className="h-6 w-full rounded-lg border border-white/10 bg-white/[0.04] pl-8.5 pr-8 text-[13px] text-white outline-none transition placeholder:text-white/35 focus:border-white/20 focus:bg-white/[0.06]"
+                className="h-6 w-full rounded-lg border border-white/10 bg-white/[0.04] pl-8.5 pr-16 text-[13px] text-white outline-none transition placeholder:text-white/35 focus:border-white/20 focus:bg-white/[0.06]"
               />
+              {!searchQuery && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-white/30 pointer-events-none uppercase tracking-tighter">
+                  {totalCount.toLocaleString()} TOTAL
+                </div>
+              )}
               {searchQuery && (
                 <button
                   onClick={async () => {

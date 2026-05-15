@@ -72,6 +72,7 @@ export const useHistoryLoader = ({
   const entries = useAppSelector((s: any) => s.history?.entries || []);
   const loading = useAppSelector((s: any) => s.history?.loading || false);
   const currentFilters = useAppSelector((s: any) => s.history?.filters || {});
+  const totalCount = useAppSelector((s: any) => s.history?.totalCount || 0);
   // Get current UI generation type to detect feature switches
   const currentUIGenerationType = useAppSelector((s: any) => s.ui?.currentGenerationType || 'text-to-image');
   // Get user auth state to skip loading for unauthenticated users
@@ -454,6 +455,7 @@ export const useHistoryLoader = ({
     refreshImmediate,
     loading,
     entries,
+    totalCount,
     lastLoadedAt: lastLoadTimestamps[generationType] || 0,
   };
 };

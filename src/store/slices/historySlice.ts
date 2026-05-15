@@ -303,6 +303,7 @@ interface HistoryState {
   inFlight: boolean;
   currentRequestKey: string | null;
   nextCursor: string | number | null;
+  totalCount: number;
 }
 
 const initialState: HistoryState = {
@@ -315,6 +316,7 @@ const initialState: HistoryState = {
   inFlight: false,
   currentRequestKey: null,
   nextCursor: null,
+  totalCount: 0,
 };
 
 // Async thunk for loading history
@@ -468,10 +470,10 @@ export const loadHistory = createAsyncThunk(
       // Preference: explicit args -> existing slice filters -> default 'desc'
       const effectiveSortOrder =
         (filtersForBackend as any)?.sortOrder === "asc" ||
-        (filtersForBackend as any)?.sortOrder === "desc"
+          (filtersForBackend as any)?.sortOrder === "desc"
           ? (filtersForBackend as any).sortOrder
           : ((state as any)?.history?.filters as any)?.sortOrder === "asc" ||
-              ((state as any)?.history?.filters as any)?.sortOrder === "desc"
+            ((state as any)?.history?.filters as any)?.sortOrder === "desc"
             ? ((state as any).history.filters as any).sortOrder
             : "desc";
       params.sortOrder = effectiveSortOrder;
@@ -562,19 +564,19 @@ export const loadHistory = createAsyncThunk(
           );
         const normalizedInputImages = Array.isArray(it?.inputImages)
           ? it.inputImages
-              .map((img: any, idx: number) => {
-                const url = String(img?.url || img?.originalUrl || "").trim();
-                if (!url) return null;
-                return {
-                  id: img?.id || `input-${it?.id || "entry"}-${idx}`,
-                  url,
-                  thumbnailUrl: url,
-                  avifUrl: url,
-                  originalUrl: img?.originalUrl || url,
-                  storagePath: img?.storagePath,
-                };
-              })
-              .filter(Boolean)
+            .map((img: any, idx: number) => {
+              const url = String(img?.url || img?.originalUrl || "").trim();
+              if (!url) return null;
+              return {
+                id: img?.id || `input-${it?.id || "entry"}-${idx}`,
+                url,
+                thumbnailUrl: url,
+                avifUrl: url,
+                originalUrl: img?.originalUrl || url,
+                storagePath: img?.storagePath,
+              };
+            })
+            .filter(Boolean)
           : [];
         return {
           ...it,
@@ -608,7 +610,7 @@ export const loadHistory = createAsyncThunk(
             return fs.toLowerCase() === want;
           });
         }
-      } catch {}
+      } catch { }
 
       // Client-side safety net for generationType filters (especially for tool filters like Upscale).
       // If backend-side filtering fails (or fallback broadened the response), enforce here.
@@ -633,7 +635,7 @@ export const loadHistory = createAsyncThunk(
             return requestedNorm.includes(itTypeAlt);
           });
         }
-      } catch {}
+      } catch { }
 
       // Backend returns hasMore (preferred). If absent, infer using RAW item count before filtering failures.
       const requestedLimit = (paginationParams && paginationParams.limit) || 10;
@@ -649,7 +651,12 @@ export const loadHistory = createAsyncThunk(
       }
       const nextCursor = result.nextCursor;
 
-      return { entries: filteredItems, hasMore, nextCursor };
+      return {
+        entries: filteredItems,
+        hasMore,
+        nextCursor,
+        totalCount: result.totalCount
+      };
     } catch (error: any) {
       if (
         error === "__CONDITION_ABORT__" ||
@@ -1056,19 +1063,19 @@ export const loadMoreHistory = createAsyncThunk(
           );
         const normalizedInputImages = Array.isArray(it?.inputImages)
           ? it.inputImages
-              .map((img: any, idx: number) => {
-                const url = String(img?.url || img?.originalUrl || "").trim();
-                if (!url) return null;
-                return {
-                  id: img?.id || `input-${it?.id || "entry"}-${idx}`,
-                  url,
-                  thumbnailUrl: url,
-                  avifUrl: url,
-                  originalUrl: img?.originalUrl || url,
-                  storagePath: img?.storagePath,
-                };
-              })
-              .filter(Boolean)
+            .map((img: any, idx: number) => {
+              const url = String(img?.url || img?.originalUrl || "").trim();
+              if (!url) return null;
+              return {
+                id: img?.id || `input-${it?.id || "entry"}-${idx}`,
+                url,
+                thumbnailUrl: url,
+                avifUrl: url,
+                originalUrl: img?.originalUrl || url,
+                storagePath: img?.storagePath,
+              };
+            })
+            .filter(Boolean)
           : [];
         return {
           ...it,
@@ -1102,14 +1109,19 @@ export const loadMoreHistory = createAsyncThunk(
               : `${nextCursor} (legacy)`
             : null,
         });
-      } catch {}
+      } catch { }
 
-      return { entries: items, hasMore, nextCursor };
+      return {
+        entries: items,
+        hasMore,
+        nextCursor,
+        totalCount: result.totalCount
+      };
     } catch (error) {
       // Keep error for visibility
       try {
         console.error("[INF_SCROLL] thunk:loadMoreHistory:error", error);
-      } catch {}
+      } catch { }
       return rejectWithValue(
         error instanceof Error ? error.message : "Failed to load more history",
       );
@@ -1340,24 +1352,25 @@ const historySlice = createSlice({
           ? null
           : !hasNextCursor && payloadEntries.length > 0
             ? (() => {
-                try {
-                  const last = payloadEntries[payloadEntries.length - 1];
-                  const ts = Date.parse(
-                    String(last?.timestamp || last?.createdAt || ""),
-                  );
-                  return Number.isNaN(ts) ? null : String(ts);
-                } catch {
-                  return null;
-                }
-              })()
+              try {
+                const last = payloadEntries[payloadEntries.length - 1];
+                const ts = Date.parse(
+                  String(last?.timestamp || last?.createdAt || ""),
+                );
+                return Number.isNaN(ts) ? null : String(ts);
+              } catch {
+                return null;
+              }
+            })()
             : null;
         const optimisticHasMore = serverExplicitlyExhausted
           ? false
           : serverHasMore ||
-            hasNextCursor ||
-            Boolean(syntheticNextCursor) ||
-            payloadEntries.length >= requestedLimit;
+          hasNextCursor ||
+          Boolean(syntheticNextCursor) ||
+          payloadEntries.length >= requestedLimit;
         state.filters = usedFilters;
+        state.totalCount = action.payload?.totalCount ?? state.totalCount;
 
         console.log(
           "[HistorySlice] ========== loadHistory.fulfilled ==========",
@@ -1653,6 +1666,7 @@ const historySlice = createSlice({
         state.loading = false;
         state.inFlight = false;
         state.currentRequestKey = null;
+        state.totalCount = action.payload?.totalCount ?? state.totalCount;
 
         // Drop stale pagination responses that don't match the currently selected filters.
         const incomingFilters: any =
@@ -1898,8 +1912,20 @@ const historySlice = createSlice({
             ? null
             : !hasNextCursor && newEntries.length > 0
               ? (() => {
+                try {
+                  const last = newEntries[newEntries.length - 1];
+                  const ts = Date.parse(
+                    String(last?.timestamp || last?.createdAt || ""),
+                  );
+                  return Number.isNaN(ts) ? null : String(ts);
+                } catch {
+                  return null;
+                }
+              })()
+              : !hasNextCursor && payloadEntries.length > 0
+                ? (() => {
                   try {
-                    const last = newEntries[newEntries.length - 1];
+                    const last = payloadEntries[payloadEntries.length - 1];
                     const ts = Date.parse(
                       String(last?.timestamp || last?.createdAt || ""),
                     );
@@ -1908,26 +1934,14 @@ const historySlice = createSlice({
                     return null;
                   }
                 })()
-              : !hasNextCursor && payloadEntries.length > 0
-                ? (() => {
-                    try {
-                      const last = payloadEntries[payloadEntries.length - 1];
-                      const ts = Date.parse(
-                        String(last?.timestamp || last?.createdAt || ""),
-                      );
-                      return Number.isNaN(ts) ? null : String(ts);
-                    } catch {
-                      return null;
-                    }
-                  })()
                 : null;
         const optimisticHasMore =
           serverExplicitlyExhausted || duplicatePageNoProgress
             ? false
             : serverHasMore ||
-              hasNextCursor ||
-              Boolean(syntheticNextCursor) ||
-              payloadEntries.length >= requestedLimit;
+            hasNextCursor ||
+            Boolean(syntheticNextCursor) ||
+            payloadEntries.length >= requestedLimit;
 
         state.lastLoadedCount = newEntries.length;
         if (
